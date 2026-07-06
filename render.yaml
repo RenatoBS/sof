@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: soft-agendamento
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    healthCheckPath: /api/health
+    disk:
+      name: soft-data
+      mountPath: /opt/render/project/src/server/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: PUBLIC_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO_ENABLED
+        value: "true"
+      - key: SEED_DEMO_EMAIL
+        sync: false
+      - key: SEED_DEMO_PASSWORD
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_PUBLIC_KEY
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false

@@ -120,6 +120,35 @@ Antes de divulgar o site publicamente:
 - [ ] Credenciais do Mercado Pago e do WhatsApp configuradas (opcional — sem elas o site
       continua no ar, só fica em modo demonstração/bot desligado).
 
+## Deploy — por que não dá pra usar o Netlify
+
+Esse projeto **não roda no Netlify**. O Netlify é feito para sites estáticos e funções
+serverless de vida curta; esta aplicação é um servidor Node/Express de processo
+contínuo, que precisa ficar escutando o tempo todo (login, checkout, o canal de tempo
+real do WhatsApp via SSE) e que grava num arquivo local (`server/data/db.json`) que
+precisa persistir entre requisições. Nenhuma dessas três coisas existe no modelo do
+Netlify, então o deploy nunca vai "subir" lá — não é um bug no código.
+
+Use um host que rode um servidor Node comum com disco persistente: **Render**,
+Railway, Fly.io ou uma VPS qualquer (DigitalOcean, EC2 etc.) com Nginx na frente. O
+projeto já vem com um `render.yaml` pronto para o Render (o mais simples dos quatro):
+
+1. Crie uma conta em https://render.com e conecte o repositório do GitHub.
+2. Em **New > Blueprint**, aponte para este repositório — o Render lê o `render.yaml`
+   sozinho e já cria o serviço web com disco persistente montado em
+   `server/data`.
+3. Preencha as variáveis marcadas como "secretas" no painel do Render antes do primeiro
+   deploy: `PUBLIC_URL` (a URL que o Render te dá, tipo `https://soft-agendamento.onrender.com`),
+   `SEED_DEMO_EMAIL`/`SEED_DEMO_PASSWORD` (opcional) e, quando for cobrar/receber
+   WhatsApp de verdade, as chaves do Mercado Pago e da Meta. `JWT_SECRET` já é gerado
+   sozinho pelo Render (`generateValue: true` no blueprint).
+4. Deploy. O `healthCheckPath: /api/health` já está configurado para o Render saber que
+   o serviço subiu.
+
+Sem Blueprint, também dá pra criar o serviço manualmente no Render (New > Web Service,
+build command `npm install`, start command `npm start`) — só não esqueça de anexar um
+disco persistente em `server/data`, senão o banco reseta a cada deploy.
+
 ## Segurança
 
 - Senhas com hash `bcrypt` (nunca texto puro em disco).
