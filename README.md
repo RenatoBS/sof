@@ -17,11 +17,10 @@ cp .env.example .env   # ajuste os valores conforme necessário
 npm start               # ou: npm run dev (reinicia sozinho ao salvar)
 ```
 
-Acesse `http://localhost:3000`. Uma conta de demonstração é criada automaticamente no
-primeiro start:
-
-- **E-mail:** `demo@soft.com`
-- **Senha:** `demo123`
+Acesse `http://localhost:3000`. Uma conta de teste é criada em silêncio no primeiro
+start — ela **não aparece em nenhum lugar da interface**, só existe pra você logar e
+testar (veja as variáveis `SEED_DEMO_*` no `.env.example`, e a seção
+[Conta de teste](#conta-de-teste-oculta) abaixo).
 
 Os dados ficam em `server/data/db.json` (arquivo local, ignorado pelo git). Para
 recomeçar do zero, apague esse arquivo e reinicie o servidor.
@@ -89,6 +88,37 @@ Para ligar o bot de verdade:
 Quando um cliente confirma um horário pelo WhatsApp, o agendamento é criado com
 `source: "whatsapp"` e aparece imediatamente no painel (via Server-Sent Events),
 com um aviso e um destaque visual diferenciando-o dos agendamentos manuais.
+
+## Conta de teste oculta
+
+No primeiro start, o servidor cria uma conta de teste **só no banco de dados** — ela não
+é mencionada em nenhuma tela, nem na página de login, nem em nenhuma resposta de API.
+As credenciais padrão são `demo@soft.com` / `demo123` (definidas em
+`server/src/config.js` via as variáveis `SEED_DEMO_EMAIL`/`SEED_DEMO_PASSWORD`).
+
+Antes de divulgar o site publicamente:
+
+1. Defina `SEED_DEMO_EMAIL` e `SEED_DEMO_PASSWORD` no `.env` com um e-mail/senha só seus
+   (o padrão é só para o primeiro teste local).
+2. Se o servidor já tiver rodado antes com os valores padrão, apague
+   `server/data/db.json` (ou troque só a senha manualmente) para que a conta seja
+   recriada com as novas credenciais.
+3. Quando não precisar mais dela, desative de vez com `SEED_DEMO_ENABLED=false`.
+
+## Checklist antes de subir em produção
+
+- [ ] `NODE_ENV=production` na variável de ambiente do host.
+- [ ] `JWT_SECRET` definido com um valor aleatório forte — o servidor recusa iniciar em
+      produção sem isso (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`).
+- [ ] Domínio servido em **HTTPS** — o cookie de sessão só é salvo pelo navegador em
+      conexões seguras quando `NODE_ENV=production`.
+- [ ] `PUBLIC_URL` apontando para a URL pública real (usada nos links de retorno do
+      Mercado Pago e no `notification_url` do webhook).
+- [ ] Disco do host é **persistente** entre deploys/restarts — hoje o banco é o arquivo
+      `server/data/db.json`; num filesystem efêmero os dados somem a cada redeploy.
+- [ ] `SEED_DEMO_EMAIL`/`SEED_DEMO_PASSWORD` trocados (ou `SEED_DEMO_ENABLED=false`).
+- [ ] Credenciais do Mercado Pago e do WhatsApp configuradas (opcional — sem elas o site
+      continua no ar, só fica em modo demonstração/bot desligado).
 
 ## Segurança
 

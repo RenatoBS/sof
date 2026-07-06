@@ -1,21 +1,23 @@
 const db = require('./db');
+const config = require('./config');
 const password = require('./lib/password');
 const { id } = require('./lib/id');
 
-const DEMO_EMAIL = 'demo@soft.com';
-const DEMO_PASSWORD = 'demo123';
-
-// Cria uma conta de demonstração (visível na tela de login) só na primeira execução,
-// para dar pra testar o dashboard sem precisar passar pelo checkout.
+// Cria uma conta de teste só na primeira execução, para você conseguir logar e testar o
+// dashboard sem passar pelo checkout. Ela NÃO aparece em nenhum lugar da interface — o
+// e-mail/senha só existem aqui e nas variáveis de ambiente (SEED_DEMO_EMAIL/SEED_DEMO_PASSWORD).
+// Troque-os antes de divulgar o site, ou desative com SEED_DEMO_ENABLED=false.
 async function seedDemoData() {
-  if (db.accounts.find((a) => a.email === DEMO_EMAIL)) return;
+  if (!config.demoAccount.enabled) return;
+  const { email, password: demoPassword } = config.demoAccount;
+  if (db.accounts.find((a) => a.email === email)) return;
 
-  const passwordHash = await password.hash(DEMO_PASSWORD);
+  const passwordHash = await password.hash(demoPassword);
   const account = db.accounts.insert({
     id: id('acc'),
     businessName: 'Santa Madalena',
     ownerName: 'Conta Demo',
-    email: DEMO_EMAIL,
+    email,
     passwordHash,
     plan: 'Estúdio',
     planPrice: 197,
@@ -53,8 +55,9 @@ async function seedDemoData() {
     createdAt: new Date().toISOString(),
   });
 
+  // Só no log do servidor — nunca em resposta de API nem em HTML.
   // eslint-disable-next-line no-console
-  console.log(`[seed] Conta demo criada: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
+  console.log(`[seed] Conta de teste criada (não é exibida na interface): ${email} / ${demoPassword}`);
 }
 
 module.exports = { seedDemoData };

@@ -31,6 +31,15 @@ const config = {
       return Boolean(config.whatsapp.token && config.whatsapp.phoneNumberId);
     },
   },
+
+  // Conta de teste criada em silêncio no primeiro start, sem aparecer em lugar nenhum da
+  // interface — só existe pra você logar e testar. Troque o e-mail/senha via env antes de
+  // divulgar o site (veja .env.example) e, se quiser, desative de vez com SEED_DEMO_ENABLED=false.
+  demoAccount: {
+    enabled: bool(process.env.SEED_DEMO_ENABLED, true),
+    email: process.env.SEED_DEMO_EMAIL || 'demo@soft.com',
+    password: process.env.SEED_DEMO_PASSWORD || 'demo123',
+  },
 };
 
 if (!config.jwtSecret) {
