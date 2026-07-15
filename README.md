@@ -103,12 +103,12 @@ Banco: usar `DATABASE_URL` / `DIRECT_URL` já existentes (ex.: Supabase) — **n
 
 ```bash
 # remotes (uma vez)
-heroku git:remote -a sof-agendamento-api -r heroku-api
-heroku git:remote -a sof-agendamento-web -r heroku-web
+npm run heroku:remotes
 
 # deploy da branch atual → main do Heroku
-git push heroku-api HEAD:main
-git push heroku-web HEAD:main
+npm run deploy:api   # só API
+npm run deploy:web   # só front
+npm run deploy       # API + front
 
 # seed opcional
 heroku run -a sof-agendamento-api npx prisma db seed

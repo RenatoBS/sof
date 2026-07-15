@@ -9,6 +9,13 @@
     "backend:migrate": "npm run prisma:migrate --prefix backend",
     "backend:seed": "npm run prisma:seed --prefix backend",
     "frontend:dev": "npm run start --prefix frontend",
-    "frontend:web": "npm run web --prefix frontend"
+    "frontend:web": "npm run web --prefix frontend",
+    "heroku:remotes": "heroku git:remote -a sof-agendamento-api -r heroku-api && heroku git:remote -a sof-agendamento-web -r heroku-web",
+    "deploy:api": "git push heroku-api HEAD:main",
+    "deploy:web": "git push heroku-web HEAD:main",
+    "deploy": "npm run deploy:api && npm run deploy:web"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

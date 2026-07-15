@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-15 — Scripts npm de deploy Heroku
+
+- **Contexto:** Deploy de dois apps exigia lembrar remotes e dois `git push`.  
+- **Decisão:** Scripts na raiz: `deploy:api`, `deploy:web`, `deploy` (api depois web), e `heroku:remotes`.  
+- **Consequências:** Um comando `npm run deploy` publica back e front da HEAD atual para `main` nos remotes Heroku.  
+- **Alternativas descartadas:** script shell separado; deploy paralelo (ordem api→web facilita falha da API antes do front).
+
 ## 2026-07-15 — Edição de serviços no painel
 
 - **Contexto:** Só existia create/delete de serviços; preço/duração/nome precisavam ser alteráveis.  

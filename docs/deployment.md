@@ -78,13 +78,27 @@ MP / WhatsApp: vazios = modos demo / bot off.
 
 ### Deploy
 
+Na raiz do monorepo ([`package.json`](../package.json)):
+
 ```bash
 # autenticar: HEROKU_API_KEY no ambiente, ou heroku login
-git push heroku-api HEAD:main
-git push heroku-web HEAD:main
+# (uma vez) configurar remotes
+npm run heroku:remotes
 
-heroku run -a sof-agendamento-api npx prisma db seed   # se necessário
+# só API
+npm run deploy:api
+
+# só front
+npm run deploy:web
+
+# API + front (na ordem: api → web)
+npm run deploy
+
+# seed opcional
+heroku run -a sof-agendamento-api npx prisma db seed
 ```
+
+Equivalente manual: `git push heroku-api HEAD:main` e `git push heroku-web HEAD:main`.
 
 Smoke:
 
