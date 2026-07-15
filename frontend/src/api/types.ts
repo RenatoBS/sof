@@ -10,22 +10,21 @@ export type Account = {
   createdAt: string;
 };
 
-export type Employee = {
-  id: string;
-  accountId: string;
-  name: string;
-  specialty: string;
-  phone: string;
-  color: string;
-  createdAt: string;
-};
-
 export type Service = {
   id: string;
   accountId: string;
   name: string;
   duration: number;
   price: number;
+  createdAt: string;
+};
+
+export type Employee = {
+  id: string;
+  accountId: string;
+  name: string;
+  color: string;
+  services: Service[];
   createdAt: string;
 };
 

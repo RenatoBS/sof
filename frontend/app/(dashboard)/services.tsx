@@ -1,36 +1,96 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { Service } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
-  const { services, setServices } = useDashboard();
+  const { services, setServices, setEmployees } = useDashboard();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [duration, setDuration] = useState('45');
   const [price, setPrice] = useState('60');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const create = async () => {
+  const isEditing = !!editingId;
+
+  const resetForm = () => {
+    setName('');
+    setDuration('45');
+    setPrice('60');
     setError('');
+    setEditingId(null);
+    setShowForm(false);
+    setLoading(false);
+  };
+
+  const startCreate = () => {
+    setName('');
+    setDuration('45');
+    setPrice('60');
+    setError('');
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const startEdit = (service: Service) => {
+    setEditingId(service.id);
+    setName(service.name);
+    setDuration(String(service.duration));
+    setPrice(String(service.price));
+    setError('');
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    setError('');
+    setLoading(true);
     try {
-      const { service } = await dashboardApi.createService({
+      const body = {
         name: name.trim(),
         duration: parseInt(duration, 10),
         price: parseFloat(price),
-      });
-      setServices((prev) => [...prev, service]);
-      setShowForm(false);
+      };
+      if (editingId) {
+        const { service } = await dashboardApi.updateService(editingId, body);
+        setServices((prev) =>
+          prev.map((s) => (s.id === service.id ? service : s)),
+        );
+        // Keep employee.services in sync when a linked service is renamed/priced
+        setEmployees((prev) =>
+          prev.map((e) => ({
+            ...e,
+            services: (e.services || []).map((s) =>
+              s.id === service.id ? service : s,
+            ),
+          })),
+        );
+      } else {
+        const { service } = await dashboardApi.createService(body);
+        setServices((prev) => [...prev, service]);
+      }
+      resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');
+    } finally {
+      setLoading(false);
     }
   };
 
   const remove = async (id: string) => {
     await dashboardApi.deleteService(id);
     setServices((prev) => prev.filter((s) => s.id !== id));
+    setEmployees((prev) =>
+      prev.map((e) => ({
+        ...e,
+        services: (e.services || []).filter((s) => s.id !== id),
+      })),
+    );
+    if (editingId === id) resetForm();
   };
 
   return (
@@ -44,13 +104,18 @@ export default function ServicesScreen() {
           title={showForm ? 'Cancelar' : 'Adicionar Serviço'}
           variant="dark"
           theme="dashboard"
-          onPress={() => setShowForm((v) => !v)}
+          onPress={() => {
+            if (showForm) resetForm();
+            else startCreate();
+          }}
         />
       </View>
 
       {showForm ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Novo Serviço</Text>
+          <Text style={styles.cardTitle}>
+            {isEditing ? 'Editar Serviço' : 'Novo Serviço'}
+          </Text>
           <SofInput
             label="Nome do Serviço"
             value={name}
@@ -74,12 +139,24 @@ export default function ServicesScreen() {
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
-            <SofButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
+            <SofButton
+              title={
+                loading
+                  ? 'Salvando…'
+                  : isEditing
+                    ? 'Salvar alterações'
+                    : 'Adicionar'
+              }
+              variant="dark"
+              theme="dashboard"
+              onPress={save}
+              disabled={loading}
+            />
             <SofButton
               title="Cancelar"
               variant="light"
               theme="dashboard"
-              onPress={() => setShowForm(false)}
+              onPress={resetForm}
             />
           </View>
         </View>
@@ -92,9 +169,14 @@ export default function ServicesScreen() {
             <Text style={styles.meta}>
               {s.duration} min — {formatCurrency(s.price)}
             </Text>
-            <Pressable onPress={() => remove(s.id)} style={{ marginTop: 16 }}>
-              <Text style={styles.delete}>Remover</Text>
-            </Pressable>
+            <View style={styles.cardActions}>
+              <Pressable onPress={() => startEdit(s)}>
+                <Text style={styles.edit}>Editar</Text>
+              </Pressable>
+              <Pressable onPress={() => remove(s.id)}>
+                <Text style={styles.delete}>Remover</Text>
+              </Pressable>
+            </View>
           </View>
         ))}
       </View>
@@ -136,5 +218,7 @@ const styles = StyleSheet.create({
   },
   name: { fontWeight: '700', fontSize: 16 },
   meta: { fontSize: 14, color: d.muted, marginTop: 4 },
+  cardActions: { flexDirection: 'row', gap: 16, marginTop: 16 },
+  edit: { color: d.accent, fontWeight: '600', fontSize: 14 },
   delete: { color: d.danger, fontWeight: '600', fontSize: 14 },
 });

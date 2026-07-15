@@ -31,19 +31,7 @@ async function main() {
     },
   });
 
-  const employees = await Promise.all(
-    [
-      { name: 'Marcelo Silva', specialty: 'Cortes', phone: '11999990001', color: '#3b82f6' },
-      { name: 'Bruno Costa', specialty: 'Barba', phone: '11999990002', color: '#10b981' },
-      { name: 'Kaique Santos', specialty: 'Coloração', phone: '11999990003', color: '#f59e0b' },
-    ].map((e) =>
-      prisma.employee.create({
-        data: { accountId: account.id, ...e },
-      }),
-    ),
-  );
-
-  const services = await Promise.all(
+  const [corte, barba, corteBarba, coloracao] = await Promise.all(
     [
       { name: 'Corte', duration: 45, price: 60 },
       { name: 'Barba', duration: 30, price: 40 },
@@ -56,23 +44,56 @@ async function main() {
     ),
   );
 
+  const marcelo = await prisma.employee.create({
+    data: {
+      accountId: account.id,
+      name: 'Marcelo Silva',
+      color: '#3b82f6',
+      services: {
+        create: [{ serviceId: corte.id }, { serviceId: corteBarba.id }],
+      },
+    },
+  });
+  await prisma.employee.create({
+    data: {
+      accountId: account.id,
+      name: 'Bruno Costa',
+      color: '#10b981',
+      services: {
+        create: [{ serviceId: barba.id }, { serviceId: corteBarba.id }],
+      },
+    },
+  });
+  await prisma.employee.create({
+    data: {
+      accountId: account.id,
+      name: 'Kaique Santos',
+      color: '#f59e0b',
+      services: {
+        create: [{ serviceId: coloracao.id }],
+      },
+    },
+  });
+
   const today = new Date().toISOString().split('T')[0];
   await prisma.appointment.create({
     data: {
       accountId: account.id,
-      employeeId: employees[0].id,
-      serviceId: services[2].id,
+      employeeId: marcelo.id,
+      serviceId: corteBarba.id,
       clientName: 'Cliente Exemplo',
       clientPhone: '11988887777',
       date: today,
       time: '15:00',
-      price: services[2].price,
+      price: corteBarba.price,
       status: 'confirmed',
       source: 'manual',
     },
   });
 
-  console.log(`[seed] Conta de teste criada (não é exibida na interface): ${email} / ${demoPassword}`);
+  console.log(
+    `[seed] Conta de teste criada (não é exibida na interface): ${email} / ${demoPassword}`,
+  );
 }
 
 main()

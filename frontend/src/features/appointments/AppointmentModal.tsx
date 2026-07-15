@@ -41,6 +41,21 @@ export function AppointmentModal({
     setError('');
   }, [appointment]);
 
+  const selectService = (id: string) => {
+    setServiceId(id);
+    setEmployeeId((current) => {
+      const emp = employees.find((e) => e.id === current);
+      const ok = emp?.services?.some((s) => s.id === id);
+      return ok ? current : '';
+    });
+  };
+
+  const employeesForService = serviceId
+    ? employees.filter((e) =>
+        (e.services || []).some((s) => s.id === serviceId),
+      )
+    : employees;
+
   if (!appointment) return null;
 
   const save = async () => {
@@ -99,21 +114,11 @@ export function AppointmentModal({
               onChangeText={setTime}
               theme="dashboard"
             />
-            <Text style={styles.label}>Profissional</Text>
-            {employees.map((e) => (
-              <Pressable
-                key={e.id}
-                onPress={() => setEmployeeId(e.id)}
-                style={[styles.chip, employeeId === e.id && styles.chipActive]}
-              >
-                <Text>{e.name}</Text>
-              </Pressable>
-            ))}
             <Text style={styles.label}>Serviço</Text>
             {services.map((s) => (
               <Pressable
                 key={s.id}
-                onPress={() => setServiceId(s.id)}
+                onPress={() => selectService(s.id)}
                 style={[styles.chip, serviceId === s.id && styles.chipActive]}
               >
                 <Text>
@@ -121,6 +126,24 @@ export function AppointmentModal({
                 </Text>
               </Pressable>
             ))}
+            <Text style={styles.label}>Profissional</Text>
+            {!serviceId ? (
+              <Text style={styles.hint}>Escolha o serviço primeiro.</Text>
+            ) : employeesForService.length === 0 ? (
+              <Text style={styles.hint}>
+                Nenhum profissional realiza este serviço.
+              </Text>
+            ) : (
+              employeesForService.map((e) => (
+                <Pressable
+                  key={e.id}
+                  onPress={() => setEmployeeId(e.id)}
+                  style={[styles.chip, employeeId === e.id && styles.chipActive]}
+                >
+                  <Text>{e.name}</Text>
+                </Pressable>
+              ))
+            )}
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
           <View style={styles.actions}>
@@ -176,6 +199,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  hint: { color: d.muted, fontSize: 14, marginBottom: 8 },
   error: { color: d.danger },
   actions: { gap: 10, marginTop: 8 },
 });

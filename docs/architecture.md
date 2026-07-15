@@ -62,15 +62,18 @@ Arquivo: `backend/prisma/schema.prisma`
 ```text
 Account
   ├── Employee[]
+  │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Appointment[]  (liga employee + service)
+  ├── Appointment[]  (employeeId + serviceId; employee deve oferecer o serviço)
   ├── CheckoutSession[]
   └── WhatsappSession[]
 ```
 
 Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId`.
 
-`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc.
+`Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
+
+`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N.
 
 Datasource usa:
 

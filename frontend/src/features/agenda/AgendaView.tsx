@@ -165,7 +165,9 @@ export function AgendaView({
                   ]}
                 >
                   <Text style={styles.empName}>{emp.name}</Text>
-                  <Text style={styles.specialty}>{emp.specialty}</Text>
+                  <Text style={styles.specialty} numberOfLines={2}>
+                    {(emp.services || []).map((s) => s.name).join(', ') || '—'}
+                  </Text>
                 </View>
                 {weekDates.map((day) => {
                   const ds = localDateStr(day);
@@ -220,19 +222,19 @@ export function AgendaView({
             {waOn ? 'conectado' : 'modo demo'}
           </Text>
         </Text>
-        <View style={styles.waLog}>
+        <ScrollView style={styles.waLog} contentContainerStyle={styles.waLogInner}>
           {waLog.map((b, i) => (
-            <Text
+            <View
               key={i}
               style={[
                 styles.bubble,
                 b.dir === 'out' ? styles.bubbleOut : styles.bubbleIn,
               ]}
             >
-              {b.text}
-            </Text>
+              <Text style={styles.bubbleText}>{b.text}</Text>
+            </View>
           ))}
-        </View>
+        </ScrollView>
         <View style={styles.waForm}>
           <TextInput
             style={styles.waInput}
@@ -352,18 +354,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: d.line,
     borderRadius: d.radiusSm,
-    padding: 16,
     minHeight: 120,
     maxHeight: 280,
+  },
+  waLogInner: {
+    padding: 16,
     gap: 8,
   },
   bubble: {
     maxWidth: '80%',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 12,
-    overflow: 'hidden',
+  },
+  bubbleText: {
     fontSize: 14,
+    lineHeight: 20,
+    color: d.ink,
   },
   bubbleOut: { backgroundColor: '#dcf8c6', alignSelf: 'flex-end' },
   bubbleIn: {

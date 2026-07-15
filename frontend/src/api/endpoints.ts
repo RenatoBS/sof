@@ -35,13 +35,23 @@ export const checkoutApi = {
 
 export const dashboardApi = {
   employees: () => api<{ employees: Employee[] }>('/employees'),
-  createEmployee: (body: { name: string; specialty: string; phone: string }) =>
+  createEmployee: (body: { name: string; serviceIds: string[] }) =>
     api<{ employee: Employee }>('/employees', { method: 'POST', body }),
+  updateEmployee: (id: string, body: { name: string; serviceIds: string[] }) =>
+    api<{ employee: Employee }>(`/employees/${id}`, {
+      method: 'PUT',
+      body,
+    }),
   deleteEmployee: (id: string) =>
     api<{ ok: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
   services: () => api<{ services: Service[] }>('/services'),
   createService: (body: { name: string; duration: number; price: number }) =>
     api<{ service: Service }>('/services', { method: 'POST', body }),
+  updateService: (
+    id: string,
+    body: { name: string; duration: number; price: number },
+  ) =>
+    api<{ service: Service }>(`/services/${id}`, { method: 'PUT', body }),
   deleteService: (id: string) =>
     api<{ ok: boolean }>(`/services/${id}`, { method: 'DELETE' }),
   appointments: () => api<{ appointments: Appointment[] }>('/appointments'),

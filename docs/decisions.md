@@ -17,6 +17,34 @@ Formato sugerido:
 
 ---
 
+## 2026-07-15 — Edição de serviços no painel
+
+- **Contexto:** Só existia create/delete de serviços; preço/duração/nome precisavam ser alteráveis.  
+- **Decisão:** `PUT /api/services/:id` com os mesmos campos do create; UI reutiliza o formulário em modo edição; ao salvar, sincroniza cópias do serviço embutidas em `employee.services` no estado do front.  
+- **Consequências:** Cards ganham “Editar”; appointments existentes mantêm o `serviceId` e passam a refletir o preço novo só em novos agendamentos (create copia `service.price`).  
+- **Alternativas descartadas:** Recriar serviço e migrar vínculos; editar preço retroativo em appointments antigos.
+
+## 2026-07-15 — Remover telefone do profissional
+
+- **Contexto:** Telefone do profissional não era usado no fluxo de agenda/WhatsApp.  
+- **Decisão:** Dropar `Employee.phone` do schema, API e UI; cadastro fica nome + serviços.  
+- **Consequências:** Migration `20260715234500_employee_drop_phone`.  
+- **Alternativas descartadas:** Manter campo opcional oculto.
+
+## 2026-07-15 — Edição de profissionais no painel
+
+- **Contexto:** Só existia create/delete; era preciso alterar serviços de um profissional já cadastrado.  
+- **Decisão:** `PUT /api/employees/:id` com os mesmos campos do create (`name`, `serviceIds` ≥ 1); replace dos vínculos `EmployeeService` em transaction; UI reutiliza o formulário em modo edição.  
+- **Consequências:** Cards ganham ação “Editar”; lista na agenda/WhatsApp usa os serviços atualizados no próximo fetch.  
+- **Alternativas descartadas:** PATCH parcial; edição só de nome sem mexer nos serviços.
+
+## 2026-07-15 — Profissionais vinculados a serviços (N:N)
+
+- **Contexto:** Especialidade como string livre não refletia o cardápio real nem filtrava quem podia realizar cada serviço.  
+- **Decisão:** Remover `Employee.specialty`; criar `EmployeeService`; cadastro exige ≥ 1 `serviceId` da conta; WhatsApp e modal de agenda filtram profissionais pelo serviço; appointments validam o vínculo.  
+- **Consequências:** Migration `20260715233000_employee_services` com backfill best-effort; API `POST /employees` recebe `serviceIds`; front usa multi-select de chips.  
+- **Alternativas descartadas:** Manter specialty + serviços opcionais; só filtrar no painel sem mudar WhatsApp.
+
 ## 2026-07-15 — Documentação viva obrigatória para agentes
 
 - **Contexto:** Novos agentes precisam entender o monorepo sem depender do histórico de chat.  

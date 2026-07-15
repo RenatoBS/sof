@@ -54,12 +54,15 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 ### Profissionais
 
 - Listagem em cards (cor de identificação).  
-- CRUD: adicionar / remover.  
-- Campos: nome, especialidade, telefone.
+- CRUD: adicionar / **editar** / remover.  
+- Campos: nome e **um ou mais serviços** do cardápio do estabelecimento (obrigatório).  
+- `PUT /api/employees/:id` substitui nome e a lista de serviços.  
+- No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
 
 ### Serviços
 
 - Cardápio (nome, duração, preço).  
+- CRUD: adicionar / **editar** / remover (`PUT /api/services/:id`).  
 - Copy: “Configure seu cardápio de serviços”.
 
 ### Faturamento
@@ -80,7 +83,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 Com credenciais Meta + Phone Number ID na conta:
 
 - Webhook `GET/POST /api/whatsapp/webhook`.  
-- Fluxo conversacional escolhe serviço / profissional / horário e cria `Appointment` (`source=whatsapp`).
+- Fluxo: serviço → profissionais **filtrados pelos serviços que realizam** → data/hora → confirmação → `Appointment` (`source=whatsapp`).
 
 Sem credenciais: simulador no painel cobre o mesmo caminho de domínio para demos.
 
@@ -101,8 +104,8 @@ Arquivo: `backend/prisma/seed.ts`.
 | Health | `GET /api/health` |
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
 | Account | `PUT /api/account`, `GET /api/account/integrations` |
-| Employees | `GET/POST /api/employees`, `DELETE …/:id` |
-| Services | `GET/POST /api/services`, `DELETE …/:id` |
+| Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
+| Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Payments | `POST /api/payments/webhook` |

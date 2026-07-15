@@ -99,12 +99,11 @@ export class WhatsappBotService {
       where: { accountId: account.id },
       orderBy: { createdAt: 'asc' },
     });
-    const employees = await this.prisma.employee.findMany({
+    const employeeCount = await this.prisma.employee.count({
       where: { accountId: account.id },
-      orderBy: { createdAt: 'asc' },
     });
 
-    if (services.length === 0 || employees.length === 0) {
+    if (services.length === 0 || employeeCount === 0) {
       return {
         replies: [
           'Esse salão ainda está configurando o agendamento por aqui. Peça para tentarem de novo em instantes ou contate o número do salão.',
@@ -145,27 +144,64 @@ export class WhatsappBotService {
         };
       }
       const service = services[idx];
+      const employeesForService = await this.prisma.employee.findMany({
+        where: {
+          accountId: account.id,
+          services: { some: { serviceId: service.id } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (employeesForService.length === 0) {
+        await this.saveSession(account.id, customerPhone, {
+          step: 'awaiting_service',
+          data: {},
+        });
+        return {
+          replies: [
+            `Por enquanto nenhum profissional faz ${service.name}. Escolha outro serviço:\n${this.listMenu(services, (s) => s.name)}`,
+          ],
+        };
+      }
       await this.saveSession(account.id, customerPhone, {
         step: 'awaiting_employee',
         data: { serviceId: service.id },
       });
       return {
         replies: [
-          `Combinado: ${service.name}. Com qual profissional?\n${this.listMenu(employees, (e) => `${e.name} — ${e.specialty}`)}`,
+          `Combinado: ${service.name}. Com qual profissional?\n${this.listMenu(employeesForService, (e) => e.name)}`,
         ],
       };
     }
 
     if (step === 'awaiting_employee') {
-      const idx = this.parseChoice(trimmed, employees.length);
-      if (idx === null) {
+      const serviceId = sessionData.serviceId || '';
+      const employeesForService = await this.prisma.employee.findMany({
+        where: {
+          accountId: account.id,
+          services: { some: { serviceId } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (employeesForService.length === 0) {
+        await this.saveSession(account.id, customerPhone, {
+          step: 'awaiting_service',
+          data: {},
+        });
         return {
           replies: [
-            `Não entendi. Responda com o número do profissional:\n${this.listMenu(employees, (e) => e.name)}`,
+            `Nenhum profissional disponível para esse serviço. Escolha outro:\n${this.listMenu(services, (s) => s.name)}`,
           ],
         };
       }
-      const employee = employees[idx];
+      const idx = this.parseChoice(trimmed, employeesForService.length);
+      if (idx === null) {
+        return {
+          replies: [
+            `Não entendi. Responda com o número do profissional:\n${this.listMenu(employeesForService, (e) => e.name)}`,
+          ],
+        };
+      }
+      const employee = employeesForService[idx];
       await this.saveSession(account.id, customerPhone, {
         step: 'awaiting_datetime',
         data: { ...sessionData, employeeId: employee.id },
@@ -187,7 +223,12 @@ export class WhatsappBotService {
         };
       }
       const service = services.find((s) => s.id === sessionData.serviceId);
-      const employee = employees.find((e) => e.id === sessionData.employeeId);
+      const employee = await this.prisma.employee.findFirst({
+        where: {
+          id: sessionData.employeeId,
+          accountId: account.id,
+        },
+      });
       await this.saveSession(account.id, customerPhone, {
         step: 'awaiting_confirmation',
         data: { ...sessionData, ...when },

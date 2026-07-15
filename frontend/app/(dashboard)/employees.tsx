@@ -1,39 +1,86 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function EmployeesScreen() {
-  const { employees, setEmployees } = useDashboard();
+  const { employees, setEmployees, services } = useDashboard();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [specialty, setSpecialty] = useState('');
-  const [phone, setPhone] = useState('');
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const create = async () => {
+  const isEditing = !!editingId;
+
+  const toggleService = (id: string) => {
+    setServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const resetForm = () => {
+    setName('');
+    setServiceIds([]);
     setError('');
+    setEditingId(null);
+    setShowForm(false);
+    setLoading(false);
+  };
+
+  const startCreate = () => {
+    setName('');
+    setServiceIds([]);
+    setError('');
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const startEdit = (employee: Employee) => {
+    setEditingId(employee.id);
+    setName(employee.name);
+    setServiceIds((employee.services || []).map((s) => s.id));
+    setError('');
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    setError('');
+    if (serviceIds.length === 0) {
+      setError('Selecione ao menos um serviço.');
+      return;
+    }
+    setLoading(true);
     try {
-      const { employee } = await dashboardApi.createEmployee({
+      const body = {
         name: name.trim(),
-        specialty: specialty.trim(),
-        phone: phone.trim(),
-      });
-      setEmployees((prev) => [...prev, employee]);
-      setName('');
-      setSpecialty('');
-      setPhone('');
-      setShowForm(false);
+        serviceIds,
+      };
+      if (editingId) {
+        const { employee } = await dashboardApi.updateEmployee(editingId, body);
+        setEmployees((prev) =>
+          prev.map((e) => (e.id === employee.id ? employee : e)),
+        );
+      } else {
+        const { employee } = await dashboardApi.createEmployee(body);
+        setEmployees((prev) => [...prev, employee]);
+      }
+      resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');
+    } finally {
+      setLoading(false);
     }
   };
 
   const remove = async (id: string) => {
     await dashboardApi.deleteEmployee(id);
     setEmployees((prev) => prev.filter((e) => e.id !== id));
+    if (editingId === id) resetForm();
   };
 
   return (
@@ -47,13 +94,18 @@ export default function EmployeesScreen() {
           title={showForm ? 'Cancelar' : 'Adicionar Profissional'}
           variant="dark"
           theme="dashboard"
-          onPress={() => setShowForm((v) => !v)}
+          onPress={() => {
+            if (showForm) resetForm();
+            else startCreate();
+          }}
         />
       </View>
 
       {showForm ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Novo Profissional</Text>
+          <Text style={styles.cardTitle}>
+            {isEditing ? 'Editar Profissional' : 'Novo Profissional'}
+          </Text>
           <View style={styles.formGrid}>
             <SofInput
               label="Nome"
@@ -63,30 +115,53 @@ export default function EmployeesScreen() {
               placeholder="Nome completo"
               autoCapitalize="words"
             />
-            <SofInput
-              label="Especialidade"
-              value={specialty}
-              onChangeText={setSpecialty}
-              theme="dashboard"
-              placeholder="Ex: Cortes"
-            />
-            <SofInput
-              label="Telefone"
-              value={phone}
-              onChangeText={setPhone}
-              theme="dashboard"
-              keyboardType="phone-pad"
-              placeholder="+55 11 9999-9999"
-            />
+            <Text style={styles.label}>Serviços que realiza</Text>
+            {services.length === 0 ? (
+              <Text style={styles.hint}>
+                Cadastre serviços na aba Serviços antes de salvar um
+                profissional.
+              </Text>
+            ) : (
+              <View style={styles.chips}>
+                {services.map((s) => {
+                  const active = serviceIds.includes(s.id);
+                  return (
+                    <Pressable
+                      key={s.id}
+                      onPress={() => toggleService(s.id)}
+                      style={[styles.chip, active && styles.chipActive]}
+                    >
+                      <Text
+                        style={[styles.chipText, active && styles.chipTextActive]}
+                      >
+                        {s.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
-            <SofButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
+            <SofButton
+              title={
+                loading
+                  ? 'Salvando…'
+                  : isEditing
+                    ? 'Salvar alterações'
+                    : 'Adicionar'
+              }
+              variant="dark"
+              theme="dashboard"
+              onPress={save}
+              disabled={services.length === 0 || loading}
+            />
             <SofButton
               title="Cancelar"
               variant="light"
               theme="dashboard"
-              onPress={() => setShowForm(false)}
+              onPress={resetForm}
             />
           </View>
         </View>
@@ -96,16 +171,22 @@ export default function EmployeesScreen() {
         {employees.map((e) => (
           <View key={e.id} style={styles.entity}>
             <View style={styles.rowTop}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{e.name}</Text>
-                <Text style={styles.meta}>{e.specialty || '—'}</Text>
-                {e.phone ? <Text style={styles.meta}>{e.phone}</Text> : null}
+                <Text style={styles.meta}>
+                  {(e.services || []).map((s) => s.name).join(', ') || '—'}
+                </Text>
               </View>
               <View style={[styles.dot, { backgroundColor: e.color }]} />
             </View>
-            <Pressable onPress={() => remove(e.id)}>
-              <Text style={styles.delete}>Remover</Text>
-            </Pressable>
+            <View style={styles.cardActions}>
+              <Pressable onPress={() => startEdit(e)}>
+                <Text style={styles.edit}>Editar</Text>
+              </Pressable>
+              <Pressable onPress={() => remove(e.id)}>
+                <Text style={styles.delete}>Remover</Text>
+              </Pressable>
+            </View>
           </View>
         ))}
       </View>
@@ -134,6 +215,26 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontWeight: '600', marginBottom: 8 },
   formGrid: { gap: 4 },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  hint: { color: d.muted, fontSize: 14, lineHeight: 20, marginBottom: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: d.line,
+    backgroundColor: d.surface,
+  },
+  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  chipText: { fontSize: 14, color: d.ink },
+  chipTextActive: { color: d.accent, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   error: { color: d.danger },
   grid: {
@@ -159,5 +260,7 @@ const styles = StyleSheet.create({
   name: { fontWeight: '700', fontSize: 16 },
   meta: { fontSize: 14, color: d.muted, marginTop: 4 },
   dot: { width: 12, height: 12, borderRadius: 6 },
+  cardActions: { flexDirection: 'row', gap: 16 },
+  edit: { color: d.accent, fontWeight: '600', fontSize: 14 },
   delete: { color: d.danger, fontWeight: '600', fontSize: 14 },
 });

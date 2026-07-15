@@ -53,6 +53,15 @@ export class AppointmentsController {
     });
     if (!service) return { error: 'Serviço inválido.' };
 
+    const link = await this.prisma.employeeService.findUnique({
+      where: {
+        employeeId_serviceId: { employeeId, serviceId },
+      },
+    });
+    if (!link) {
+      return { error: 'Este profissional não realiza esse serviço.' };
+    }
+
     return {
       clientName,
       clientPhone: String(body?.clientPhone || '').trim(),
