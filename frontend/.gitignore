@@ -1,0 +1,21 @@
+# Dependências
+node_modules/
+
+# Build (caso adicione bundler no futuro)
+build/*
+!build/.gitkeep
+dist/
+out/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Cache do serve / bundlers
+.cache/
+.parcel-cache/
+.vite/

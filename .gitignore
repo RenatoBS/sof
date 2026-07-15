@@ -1,7 +1,67 @@
+# Dependências
 node_modules/
+
+# Variáveis de ambiente (nunca commitar segredos)
 .env
+.env.*
+!.env.example
 backend/.env
-*.log
-.DS_Store
+frontend/.env
+
+# Build / artefatos compilados
+build/*
+!build/.gitkeep
+dist/
+out/
+.next/
+.nuxt/
+.output/
 backend/dist/
+frontend/build/*
+!frontend/build/.gitkeep
+frontend/dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# Testes e cobertura
 coverage/
+.nyc_output/
+*.lcov
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cache e temporários
+.cache/
+.temp/
+.tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# SO
+.DS_Store
+Thumbs.db
+
+# IDEs / editores
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-project
+*.sublime-workspace
+
+# Prisma (artefatos gerados do seed)
+backend/prisma/seed.js
+backend/prisma/seed.js.map
+backend/prisma/seed.d.ts
+
+# Docker (volumes locais, se mapeados)
+docker-data/
