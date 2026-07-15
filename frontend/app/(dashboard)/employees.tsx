@@ -1,15 +1,9 @@
 import { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
-import { Button, Input } from '@/src/components/ui';
-import { dashboardColors } from '@/src/theme/dashboard';
+import { SoftButton, SoftInput } from '@/src/components/ui';
+import { d } from '@/src/theme/dashboard';
 
 export default function EmployeesScreen() {
   const { employees, setEmployees } = useDashboard();
@@ -43,49 +37,127 @@ export default function EmployeesScreen() {
   };
 
   return (
-    <ScrollView style={styles.page}>
-      <Text style={styles.title}>Profissionais</Text>
-      <Button
-        title={showForm ? 'Cancelar' : 'Adicionar profissional'}
-        onPress={() => setShowForm((v) => !v)}
-        variant="ghost"
-      />
+    <View style={styles.page}>
+      <View style={styles.head}>
+        <View>
+          <Text style={styles.h2}>Profissionais</Text>
+          <Text style={styles.sub}>Gerencie sua equipe de trabalho</Text>
+        </View>
+        <SoftButton
+          title={showForm ? 'Cancelar' : 'Adicionar Profissional'}
+          variant="dark"
+          theme="dashboard"
+          onPress={() => setShowForm((v) => !v)}
+        />
+      </View>
+
       {showForm ? (
-        <View style={styles.form}>
-          <Input label="Nome" value={name} onChangeText={setName} />
-          <Input label="Especialidade" value={specialty} onChangeText={setSpecialty} />
-          <Input label="Telefone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Novo Profissional</Text>
+          <View style={styles.formGrid}>
+            <SoftInput
+              label="Nome"
+              value={name}
+              onChangeText={setName}
+              theme="dashboard"
+              placeholder="Nome completo"
+              autoCapitalize="words"
+            />
+            <SoftInput
+              label="Especialidade"
+              value={specialty}
+              onChangeText={setSpecialty}
+              theme="dashboard"
+              placeholder="Ex: Cortes"
+            />
+            <SoftInput
+              label="Telefone"
+              value={phone}
+              onChangeText={setPhone}
+              theme="dashboard"
+              keyboardType="phone-pad"
+              placeholder="+55 11 9999-9999"
+            />
+          </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button title="Salvar" onPress={create} />
+          <View style={styles.actions}>
+            <SoftButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
+            <SoftButton
+              title="Cancelar"
+              variant="light"
+              theme="dashboard"
+              onPress={() => setShowForm(false)}
+            />
+          </View>
         </View>
       ) : null}
-      {employees.map((e) => (
-        <View key={e.id} style={styles.card}>
-          <Text style={[styles.name, { color: e.color }]}>{e.name}</Text>
-          <Text style={styles.meta}>{e.specialty}</Text>
-          <Pressable onPress={() => remove(e.id)}>
-            <Text style={styles.delete}>Remover</Text>
-          </Pressable>
-        </View>
-      ))}
-    </ScrollView>
+
+      <View style={styles.grid}>
+        {employees.map((e) => (
+          <View key={e.id} style={styles.entity}>
+            <View style={styles.rowTop}>
+              <View>
+                <Text style={styles.name}>{e.name}</Text>
+                <Text style={styles.meta}>{e.specialty || '—'}</Text>
+                {e.phone ? <Text style={styles.meta}>{e.phone}</Text> : null}
+              </View>
+              <View style={[styles.dot, { backgroundColor: e.color }]} />
+            </View>
+            <Pressable onPress={() => remove(e.id)}>
+              <Text style={styles.delete}>Remover</Text>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: dashboardColors.bg, padding: 16 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
-  form: { marginBottom: 16 },
+  page: { gap: 24 },
+  head: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
+  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
   card: {
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: d.surface,
+    borderRadius: d.radius,
     borderWidth: 1,
-    borderColor: dashboardColors.line,
+    borderColor: d.line,
+    padding: 24,
+    gap: 8,
+  },
+  cardTitle: { fontWeight: '600', marginBottom: 8 },
+  formGrid: { gap: 4 },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  error: { color: d.danger },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 24,
+  },
+  entity: {
+    backgroundColor: d.surface,
+    padding: 24,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.line,
+    minWidth: 280,
+    flexGrow: 1,
+    flexBasis: 280,
+  },
+  rowTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   name: { fontWeight: '700', fontSize: 16 },
-  meta: { color: dashboardColors.muted },
-  delete: { color: dashboardColors.danger, marginTop: 8 },
-  error: { color: dashboardColors.danger },
+  meta: { fontSize: 14, color: d.muted, marginTop: 4 },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  delete: { color: d.danger, fontWeight: '600', fontSize: 14 },
 });

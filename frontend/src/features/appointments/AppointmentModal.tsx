@@ -10,8 +10,8 @@ import {
 import type { Appointment } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
-import { Button, Input } from '@/src/components/ui';
-import { dashboardColors } from '@/src/theme/dashboard';
+import { SoftButton, SoftInput } from '@/src/components/ui';
+import { d } from '@/src/theme/dashboard';
 
 export function AppointmentModal({
   appointment,
@@ -76,23 +76,35 @@ export function AppointmentModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={styles.content}>
           <Text style={styles.title}>Editar agendamento</Text>
-          <ScrollView>
-            <Input label="Cliente" value={clientName} onChangeText={setClientName} />
-            <Input label="Data (AAAA-MM-DD)" value={date} onChangeText={setDate} />
-            <Input label="Horário (HH:MM)" value={time} onChangeText={setTime} />
+          <ScrollView style={{ maxHeight: 420 }}>
+            <SoftInput
+              label="Cliente"
+              value={clientName}
+              onChangeText={setClientName}
+              theme="dashboard"
+            />
+            <SoftInput
+              label="Data (AAAA-MM-DD)"
+              value={date}
+              onChangeText={setDate}
+              theme="dashboard"
+            />
+            <SoftInput
+              label="Horário (HH:MM)"
+              value={time}
+              onChangeText={setTime}
+              theme="dashboard"
+            />
             <Text style={styles.label}>Profissional</Text>
             {employees.map((e) => (
               <Pressable
                 key={e.id}
                 onPress={() => setEmployeeId(e.id)}
-                style={[
-                  styles.chip,
-                  employeeId === e.id && styles.chipActive,
-                ]}
+                style={[styles.chip, employeeId === e.id && styles.chipActive]}
               >
                 <Text>{e.name}</Text>
               </Pressable>
@@ -102,10 +114,7 @@ export function AppointmentModal({
               <Pressable
                 key={s.id}
                 onPress={() => setServiceId(s.id)}
-                style={[
-                  styles.chip,
-                  serviceId === s.id && styles.chipActive,
-                ]}
+                style={[styles.chip, serviceId === s.id && styles.chipActive]}
               >
                 <Text>
                   {s.name} — R$ {s.price}
@@ -114,9 +123,27 @@ export function AppointmentModal({
             ))}
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
-          <Button title="Salvar" onPress={save} disabled={loading} />
-          <Button title="Cancelar agendamento" onPress={remove} variant="ghost" />
-          <Button title="Fechar" onPress={onClose} variant="ghost" />
+          <View style={styles.actions}>
+            <SoftButton
+              title="Salvar"
+              variant="dark"
+              theme="dashboard"
+              onPress={save}
+              disabled={loading}
+            />
+            <SoftButton
+              title="Cancelar agendamento"
+              variant="danger"
+              theme="dashboard"
+              onPress={remove}
+            />
+            <SoftButton
+              title="Fechar"
+              variant="light"
+              theme="dashboard"
+              onPress={onClose}
+            />
+          </View>
         </View>
       </View>
     </Modal>
@@ -126,25 +153,29 @@ export function AppointmentModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
-  sheet: {
+  content: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    padding: 20,
-    maxHeight: '85%',
-    gap: 10,
+    borderRadius: d.radius,
+    padding: 32,
+    width: '100%',
+    maxWidth: 500,
+    gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: dashboardColors.ink },
-  label: { fontWeight: '600', marginTop: 8, marginBottom: 6 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, color: d.ink },
+  label: { fontWeight: '600', marginTop: 8, marginBottom: 6, color: '#334155' },
   chip: {
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
-    borderColor: dashboardColors.line,
-    borderRadius: 8,
+    borderColor: d.line,
+    borderRadius: d.radiusSm,
     marginBottom: 6,
   },
-  chipActive: { borderColor: dashboardColors.accent, backgroundColor: '#eff6ff' },
-  error: { color: dashboardColors.danger },
+  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  error: { color: d.danger },
+  actions: { gap: 10, marginTop: 8 },
 });

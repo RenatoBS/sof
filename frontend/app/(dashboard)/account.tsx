@@ -1,24 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
-import { Button, Input } from '@/src/components/ui';
-import { dashboardColors } from '@/src/theme/dashboard';
+import { SoftButton, SoftInput } from '@/src/components/ui';
+import { d } from '@/src/theme/dashboard';
 
 export default function AccountScreen() {
   const { account, logout } = useAuth();
   const [phoneId, setPhoneId] = useState('');
-  const [integrations, setIntegrations] = useState({
-    mp: false,
-    wa: false,
-  });
+  const [integrations, setIntegrations] = useState({ mp: false, wa: false });
   const [saved, setSaved] = useState('');
 
   useEffect(() => {
-    if (account?.whatsappPhoneNumberId) {
-      setPhoneId(account.whatsappPhoneNumberId);
-    }
+    if (account?.whatsappPhoneNumberId) setPhoneId(account.whatsappPhoneNumberId);
     dashboardApi.integrations().then((data) => {
       setIntegrations({
         mp: data.mercadoPago.configured,
@@ -27,49 +22,87 @@ export default function AccountScreen() {
     });
   }, [account]);
 
-  const save = async () => {
-    await dashboardApi.updateAccount({ whatsappPhoneNumberId: phoneId.trim() });
-    setSaved('Salvo!');
-    setTimeout(() => setSaved(''), 2000);
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/');
-  };
-
   if (!account) return null;
 
   return (
-    <ScrollView style={styles.page}>
-      <Text style={styles.title}>Conta</Text>
-      <Text style={styles.line}>Negócio: {account.businessName}</Text>
-      <Text style={styles.line}>E-mail: {account.email}</Text>
-      <Text style={styles.line}>
-        Plano: {account.plan} — R$ {account.planPrice}
-      </Text>
-      <Text style={styles.line}>
-        Mercado Pago: {integrations.mp ? 'configurado' : 'demo'}
-      </Text>
-      <Text style={styles.line}>
-        WhatsApp API: {integrations.wa ? 'configurado' : 'desligado'}
-      </Text>
-      <Input
-        label="WhatsApp Phone Number ID"
-        value={phoneId}
-        onChangeText={setPhoneId}
-        placeholder="ID do número na Meta"
+    <View style={styles.page}>
+      <View>
+        <Text style={styles.h2}>Conta</Text>
+        <Text style={styles.sub}>Dados da assinatura e integrações</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.line}>
+          <Text style={styles.label}>Negócio: </Text>
+          {account.businessName}
+        </Text>
+        <Text style={styles.line}>
+          <Text style={styles.label}>E-mail: </Text>
+          {account.email}
+        </Text>
+        <Text style={styles.line}>
+          <Text style={styles.label}>Plano: </Text>
+          {account.plan} — R$ {account.planPrice}
+        </Text>
+        <Text style={styles.line}>
+          <Text style={styles.label}>Mercado Pago: </Text>
+          {integrations.mp ? 'configurado' : 'modo demonstração'}
+        </Text>
+        <Text style={styles.line}>
+          <Text style={styles.label}>WhatsApp API: </Text>
+          {integrations.wa ? 'configurado' : 'desligado'}
+        </Text>
+      </View>
+
+      <View style={styles.card}>
+        <SoftInput
+          label="WhatsApp Phone Number ID"
+          value={phoneId}
+          onChangeText={setPhoneId}
+          theme="dashboard"
+          placeholder="ID do número na Meta"
+        />
+        {saved ? <Text style={styles.saved}>{saved}</Text> : null}
+        <SoftButton
+          title="Salvar"
+          variant="dark"
+          theme="dashboard"
+          onPress={async () => {
+            await dashboardApi.updateAccount({
+              whatsappPhoneNumberId: phoneId.trim(),
+            });
+            setSaved('Salvo!');
+            setTimeout(() => setSaved(''), 2000);
+          }}
+        />
+      </View>
+
+      <SoftButton
+        title="Sair"
+        variant="light"
+        theme="dashboard"
+        onPress={async () => {
+          await logout();
+          router.replace('/');
+        }}
       />
-      {saved ? <Text style={styles.saved}>{saved}</Text> : null}
-      <Button title="Salvar" onPress={save} />
-      <Button title="Sair" onPress={handleLogout} variant="ghost" />
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: dashboardColors.bg, padding: 16 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
-  line: { marginBottom: 8, color: dashboardColors.ink },
-  saved: { color: dashboardColors.success, marginBottom: 8 },
+  page: { gap: 24, maxWidth: 560 },
+  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
+  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
+  card: {
+    backgroundColor: d.surface,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 24,
+    gap: 12,
+  },
+  line: { fontSize: 15, color: d.ink, marginBottom: 4 },
+  label: { fontWeight: '600' },
+  saved: { color: '#0d9c53', fontWeight: '600' },
 });

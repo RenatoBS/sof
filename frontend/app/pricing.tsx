@@ -1,26 +1,36 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { MarketingNav } from '@/src/components/MarketingNav';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MarketingNav, SiteFooter } from '@/src/components/MarketingNav';
+import { Eyebrow, Wrap } from '@/src/components/ui';
 import {
   CheckoutModal,
   PricingCards,
+  PLANS,
 } from '@/src/features/marketing/CheckoutModal';
-import { marketingColors } from '@/src/theme/marketing';
+import { m } from '@/src/theme/marketing';
 
 export default function PricingScreen() {
-  const [checkout, setCheckout] = useState<{
-    name: string;
-    price: number;
-  } | null>(null);
+  const [checkout, setCheckout] = useState<(typeof PLANS)[number] | null>(null);
 
   return (
     <ScrollView style={styles.page}>
       <MarketingNav active="pricing" />
-      <Text style={styles.title}>Planos</Text>
-      <Text style={styles.sub}>Escolha o plano ideal para o seu negócio.</Text>
-      <PricingCards
-        onSelect={(plan) => setCheckout({ name: plan.name, price: plan.price })}
-      />
+      <View style={styles.section}>
+        <Wrap>
+          <View style={styles.head}>
+            <Eyebrow>Planos</Eyebrow>
+            <Text style={styles.h2}>
+              Um preço honesto para cada tamanho de operação.
+            </Text>
+            <Text style={styles.p}>
+              Comece pequeno e mude de plano quando fizer sentido. Sem fidelidade,
+              cancela quando quiser.
+            </Text>
+          </View>
+          <PricingCards onSelect={setCheckout} />
+        </Wrap>
+      </View>
+      <SiteFooter />
       <CheckoutModal
         visible={!!checkout}
         planName={checkout?.name || ''}
@@ -32,7 +42,15 @@ export default function PricingScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: marketingColors.paper, padding: 20 },
-  title: { fontSize: 28, fontWeight: '700', color: marketingColors.ink },
-  sub: { color: marketingColors.muted, marginBottom: 20 },
+  page: { flex: 1, backgroundColor: m.paper },
+  section: { paddingTop: 80, paddingBottom: 64 },
+  head: { maxWidth: 520, marginBottom: 48, gap: 14 },
+  h2: {
+    fontFamily: m.fonts.display,
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -0.7,
+    color: m.ink,
+  },
+  p: { color: m.muted, fontSize: 17, lineHeight: 26 },
 });

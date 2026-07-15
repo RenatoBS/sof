@@ -1,39 +1,66 @@
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { marketingColors } from '@/src/theme/marketing';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { SoftButton } from '@/src/components/ui';
+import { m } from '@/src/theme/marketing';
+
+export function Wordmark({ onPress }: { onPress?: () => void }) {
+  return (
+    <Pressable onPress={onPress || (() => router.push('/'))} style={styles.wordmark}>
+      <Text style={styles.wordmarkText}>soft</Text>
+      <View style={styles.dot} />
+    </Pressable>
+  );
+}
 
 export function MarketingNav({ active }: { active?: string }) {
-  const items = [
-    { href: '/', label: 'Início', key: 'home' },
-    { href: '/pricing', label: 'Planos', key: 'pricing' },
-    { href: '/about', label: 'Quem somos', key: 'about' },
-    { href: '/login', label: 'Entrar', key: 'login' },
-  ] as const;
+  const { width } = useWindowDimensions();
+  const compact = width < 860;
 
   return (
     <View style={styles.nav}>
-      <Link href="/" asChild>
-        <Pressable>
-          <Text style={styles.logo}>
-            soft<Text style={styles.dot}>.</Text>
-          </Text>
-        </Pressable>
-      </Link>
-      <View style={styles.links}>
-        {items.map((item) => (
-          <Link key={item.key} href={item.href} asChild>
-            <Pressable>
-              <Text
-                style={[
-                  styles.link,
-                  active === item.key && styles.linkActive,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
-          </Link>
-        ))}
+      <View style={styles.inner}>
+        <Wordmark />
+        {!compact ? (
+          <View style={styles.links}>
+            {[
+              { key: 'home', label: 'Início', href: '/' },
+              { key: 'pricing', label: 'Planos', href: '/pricing' },
+              { key: 'about', label: 'Quem somos', href: '/about' },
+            ].map((item) => (
+              <Pressable key={item.key} onPress={() => router.push(item.href as '/')}>
+                <Text style={[styles.link, active === item.key && styles.linkActive]}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        <View style={styles.cta}>
+          <SoftButton title="Entrar" variant="ghost" onPress={() => router.push('/login')} />
+          <SoftButton title="Começar" variant="solid" onPress={() => router.push('/pricing')} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function SiteFooter() {
+  return (
+    <View style={styles.footer}>
+      <View style={styles.footerInner}>
+        <Wordmark />
+        <View style={styles.footerLinks}>
+          <Pressable onPress={() => router.push('/pricing')}>
+            <Text style={styles.footerLink}>Planos</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/about')}>
+            <Text style={styles.footerLink}>Quem somos</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/login')}>
+            <Text style={styles.footerLink}>Entrar</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.fine}>© 2026 Soft. Feito com calma.</Text>
       </View>
     </View>
   );
@@ -41,18 +68,58 @@ export function MarketingNav({ active }: { active?: string }) {
 
 const styles = StyleSheet.create({
   nav: {
+    backgroundColor: 'rgba(244,244,246,0.92)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+    zIndex: 50,
+  },
+  inner: {
+    maxWidth: m.wrap,
+    width: '100%',
+    alignSelf: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: marketingColors.line,
-    backgroundColor: marketingColors.paper,
+    gap: 16,
   },
-  logo: { fontSize: 22, fontWeight: '700', color: marketingColors.ink },
-  dot: { color: marketingColors.accent },
-  links: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
-  link: { color: marketingColors.muted, fontSize: 14, fontWeight: '500' },
-  linkActive: { color: marketingColors.accent },
+  wordmark: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wordmarkText: {
+    fontFamily: m.fonts.displayBold,
+    fontSize: 24,
+    letterSpacing: -0.7,
+    color: m.ink,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: m.accent,
+    marginBottom: 2,
+  },
+  links: { flexDirection: 'row', gap: 32, flex: 1, justifyContent: 'center' },
+  link: {
+    color: m.muted,
+    fontSize: 15,
+    fontFamily: m.fonts.bodyMedium,
+  },
+  linkActive: { color: m.ink },
+  cta: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: m.line,
+    paddingVertical: 40,
+    marginTop: 40,
+  },
+  footerInner: {
+    maxWidth: m.wrap,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 28,
+    gap: 16,
+  },
+  footerLinks: { flexDirection: 'row', gap: 24 },
+  footerLink: { color: m.muted, fontSize: 14 },
+  fine: { color: m.muted, fontSize: 13 },
 });

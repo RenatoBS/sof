@@ -4,22 +4,106 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { checkoutApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { setToken } from '@/src/auth/tokenStorage';
-import { Button, Input } from '@/src/components/ui';
-import { marketingColors } from '@/src/theme/marketing';
+import { SoftButton, SoftInput } from '@/src/components/ui';
+import { m } from '@/src/theme/marketing';
 
-const PLANS = [
-  { name: 'Essencial', price: 99 },
-  { name: 'Estúdio', price: 197 },
-  { name: 'Rede', price: 249 },
+export const PLANS = [
+  {
+    name: 'Essencial',
+    price: 99,
+    desc: 'Para quem está começando.',
+    featured: false,
+    features: [
+      'Até 3 profissionais',
+      '1 número de WhatsApp',
+      'Agendamentos ilimitados',
+      'Painel de agenda',
+      'Suporte por e-mail',
+    ],
+  },
+  {
+    name: 'Estúdio',
+    price: 197,
+    desc: 'Para equipes que já giram.',
+    featured: true,
+    features: [
+      'Até 7 profissionais',
+      '2 números de WhatsApp',
+      'Lembrete por SMS',
+      'Relatório de faturamento',
+      'Suporte prioritário',
+    ],
+  },
+  {
+    name: 'Rede',
+    price: 249,
+    desc: 'Para várias unidades.',
+    featured: false,
+    features: [
+      'A partir de 8 profissionais',
+      'Vários números de WhatsApp',
+      'Relatório por unidade',
+      'Integrações sob medida',
+      'Suporte dedicado',
+    ],
+  },
 ] as const;
+
+export function PricingCards({
+  onSelect,
+}: {
+  onSelect: (plan: (typeof PLANS)[number]) => void;
+}) {
+  const { width } = useWindowDimensions();
+  const stacked = width < 900;
+
+  return (
+    <View style={[styles.grid, stacked && { flexDirection: 'column' }]}>
+      {PLANS.map((plan) => (
+        <View
+          key={plan.name}
+          style={[
+            styles.plan,
+            plan.featured && styles.featured,
+            plan.featured && m.shadow.lift,
+            { flex: stacked ? undefined : 1 },
+          ]}
+        >
+          {plan.featured ? <Text style={styles.tag}>Mais escolhido</Text> : null}
+          <Text style={styles.planName}>{plan.name}</Text>
+          <Text style={styles.planDesc}>{plan.desc}</Text>
+          <Text style={styles.price}>
+            R$ {plan.price}
+            <Text style={styles.per}> / mês</Text>
+          </Text>
+          <View style={styles.list}>
+            {plan.features.map((f) => (
+              <Text key={f} style={styles.li}>
+                ✓  {f}
+              </Text>
+            ))}
+          </View>
+          <SoftButton
+            title={`Assinar ${plan.name}`}
+            variant={plan.featured ? 'accent' : 'solid'}
+            block
+            onPress={() => onSelect(plan)}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export function CheckoutModal({
   visible,
@@ -80,18 +164,15 @@ export function CheckoutModal({
     try {
       const data = await checkoutApi.create(planName, name.trim(), email.trim());
       if (data.mode === 'redirect' && data.initPoint) {
-        if (Platform.OS === 'web') {
-          window.location.href = data.initPoint;
-        } else {
-          await Linking.openURL(data.initPoint);
-        }
+        if (Platform.OS === 'web') window.location.href = data.initPoint;
+        else await Linking.openURL(data.initPoint);
         return;
       }
       if (data.token) {
         await setToken(data.token);
         await refreshMe();
-        router.replace('/(dashboard)/agenda');
         handleClose();
+        router.replace('/(dashboard)/agenda');
         return;
       }
       pollStatus(data.sessionId);
@@ -102,46 +183,86 @@ export function CheckoutModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <Pressable onPress={handleClose} style={styles.close}>
-            <Text style={styles.closeText}>✕</Text>
-          </Pressable>
+        <View style={[styles.modalCard, m.shadow.lift]}>
+          <View style={styles.modalTop}>
+            <Text style={styles.modalTitle}>Finalizar assinatura</Text>
+            <Pressable onPress={handleClose}>
+              <Text style={styles.close}>×</Text>
+            </Pressable>
+          </View>
 
           {!success ? (
             <>
-              <Text style={styles.title}>Assinar plano {planName}</Text>
-              <Text style={styles.price}>R$ {price.toFixed(2).replace('.', ',')}/mês</Text>
-              <Input label="Nome completo" value={name} onChangeText={setName} />
-              <Input
+              <View style={styles.summary}>
+                <View style={styles.summaryRow}>
+                  <Text>Plano {planName}</Text>
+                  <Text>R$ {price.toFixed(2).replace('.', ',')}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={{ color: m.muted }}>Cobrança mensal</Text>
+                  <Text style={{ color: m.muted }}>renovação automática</Text>
+                </View>
+                <View style={[styles.summaryRow, styles.summaryTotal]}>
+                  <Text style={styles.total}>Total hoje</Text>
+                  <Text style={styles.total}>
+                    R$ {price.toFixed(2).replace('.', ',')}
+                  </Text>
+                </View>
+              </View>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <SoftInput
+                label="Nome completo"
+                value={name}
+                onChangeText={setName}
+                placeholder="Nome do responsável pela conta"
+                autoCapitalize="words"
+              />
+              <SoftInput
                 label="E-mail"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
+                placeholder="Onde você acessa o painel"
               />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <Button
-                title={loading ? 'Processando…' : 'Continuar'}
-                onPress={submit}
+              <SoftButton
+                title={loading ? 'Processando…' : 'Continuar para o pagamento'}
                 variant="accent"
+                block
                 disabled={loading || !name || !email}
+                onPress={submit}
               />
+              <Text style={styles.payNote}>
+                Você será direcionado ao ambiente seguro do Mercado Pago para
+                concluir o pagamento.
+              </Text>
             </>
           ) : (
             <>
-              <Text style={styles.title}>Conta criada!</Text>
-              <Text style={styles.muted}>E-mail: {success.email}</Text>
-              {success.tempPassword ? (
-                <Text style={styles.muted}>Senha: {success.tempPassword}</Text>
-              ) : null}
-              <Button
+              <Text style={{ color: m.muted, marginBottom: 12 }}>
+                Assinatura confirmada. Guarde seu acesso:
+              </Text>
+              <View style={styles.creds}>
+                <View style={styles.summaryRow}>
+                  <Text>E-mail</Text>
+                  <Text style={styles.credV}>{success.email}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text>Senha</Text>
+                  <Text style={styles.credV}>
+                    {success.tempPassword || '(já entregue)'}
+                  </Text>
+                </View>
+              </View>
+              <SoftButton
                 title="Ir para o painel"
+                variant="accent"
+                block
                 onPress={() => {
                   handleClose();
                   router.push('/login');
                 }}
-                variant="accent"
               />
             </>
           )}
@@ -151,55 +272,105 @@ export function CheckoutModal({
   );
 }
 
-export function PricingCards({
-  onSelect,
-}: {
-  onSelect: (plan: (typeof PLANS)[number]) => void;
-}) {
-  return (
-    <View style={styles.grid}>
-      {PLANS.map((plan) => (
-        <View key={plan.name} style={styles.card}>
-          <Text style={styles.planName}>{plan.name}</Text>
-          <Text style={styles.planPrice}>
-            R$ {plan.price.toFixed(2).replace('.', ',')}
-          </Text>
-          <Text style={styles.muted}>/mês</Text>
-          <Button title="Começar" onPress={() => onSelect(plan)} variant="accent" />
-        </View>
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
+  grid: { flexDirection: 'row', gap: 20, alignItems: 'flex-start' },
+  plan: {
+    backgroundColor: m.surface,
+    borderWidth: 1,
+    borderColor: m.line,
+    borderRadius: m.radius,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
+  },
+  featured: { borderColor: m.accent },
+  tag: {
+    alignSelf: 'flex-start',
+    fontFamily: m.fonts.display,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: m.accentInk,
+    backgroundColor: m.accentSoft,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  planName: {
+    fontFamily: m.fonts.display,
+    fontSize: 21,
+    color: m.ink,
+    marginBottom: 6,
+  },
+  planDesc: { color: m.muted, fontSize: 15, marginBottom: 20 },
+  price: {
+    fontFamily: m.fonts.displayBold,
+    fontSize: 42,
+    letterSpacing: -1,
+    color: m.ink,
+  },
+  per: {
+    fontFamily: m.fonts.body,
+    fontSize: 15,
+    fontWeight: '400',
+    color: m.muted,
+  },
+  list: { marginVertical: 24, gap: 10 },
+  li: { fontSize: 15, color: m.ink, lineHeight: 22 },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    gap: 12,
-  },
-  close: { alignSelf: 'flex-end' },
-  closeText: { fontSize: 20, color: marketingColors.muted },
-  title: { fontSize: 22, fontWeight: '700', color: marketingColors.ink },
-  price: { fontSize: 18, color: marketingColors.accent, fontWeight: '600' },
-  muted: { color: marketingColors.muted },
-  error: { color: '#ef4444' },
-  grid: { gap: 16 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: 'rgba(35,35,41,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
-    borderWidth: 1,
-    borderColor: marketingColors.line,
+  },
+  modalCard: {
+    backgroundColor: m.surface,
+    borderRadius: m.radius,
+    padding: 28,
+    width: '100%',
+    maxWidth: 440,
+  },
+  modalTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontFamily: m.fonts.display,
+    fontSize: 22,
+    color: m.ink,
+  },
+  close: { fontSize: 28, color: m.muted, lineHeight: 28 },
+  summary: {
+    backgroundColor: m.paper,
+    borderRadius: m.radiusSm,
+    padding: 16,
+    marginBottom: 16,
     gap: 8,
   },
-  planName: { fontSize: 18, fontWeight: '700', color: marketingColors.ink },
-  planPrice: { fontSize: 28, fontWeight: '700', color: marketingColors.accent },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  summaryTotal: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: m.line,
+  },
+  total: { fontWeight: '700', color: m.ink },
+  error: { color: m.danger, marginBottom: 10 },
+  payNote: { marginTop: 12, fontSize: 13, color: m.muted, textAlign: 'center' },
+  creds: {
+    backgroundColor: m.paper,
+    borderRadius: m.radiusSm,
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
+  credV: { fontFamily: m.fonts.display, fontWeight: '600' },
 });

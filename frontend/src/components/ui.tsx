@@ -1,39 +1,58 @@
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type TextInputProps,
 } from 'react-native';
-import { marketingColors } from '@/src/theme/marketing';
+import { m } from '@/src/theme/marketing';
+import { d } from '@/src/theme/dashboard';
 
-export function Button({
+type BtnVariant = 'solid' | 'accent' | 'ghost' | 'light' | 'dark' | 'danger';
+
+export function SoftButton({
   title,
   onPress,
-  variant = 'primary',
+  variant = 'solid',
+  large,
+  block,
   disabled,
+  theme = 'marketing',
 }: {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'ghost' | 'accent';
+  variant?: BtnVariant;
+  large?: boolean;
+  block?: boolean;
   disabled?: boolean;
+  theme?: 'marketing' | 'dashboard';
 }) {
+  const isDash = theme === 'dashboard';
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={[
-        styles.btn,
-        variant === 'ghost' && styles.ghost,
-        variant === 'accent' && styles.accent,
-        disabled && styles.disabled,
+        isDash ? dashBtn.base : mktBtn.base,
+        large && mktBtn.lg,
+        block && { width: '100%' },
+        variant === 'solid' && (isDash ? dashBtn.dark : mktBtn.solid),
+        variant === 'accent' && mktBtn.accent,
+        variant === 'ghost' && mktBtn.ghost,
+        variant === 'light' && dashBtn.light,
+        variant === 'dark' && dashBtn.dark,
+        variant === 'danger' && dashBtn.danger,
+        disabled && { opacity: 0.6 },
       ]}
     >
       <Text
         style={[
-          styles.btnText,
-          variant === 'ghost' && styles.ghostText,
+          isDash ? dashBtn.text : mktBtn.text,
+          (variant === 'ghost' || variant === 'light') && {
+            color: isDash ? '#475569' : m.ink,
+          },
+          variant === 'danger' && { color: d.danger },
         ]}
       >
         {title}
@@ -42,83 +61,109 @@ export function Button({
   );
 }
 
-export function Input({
+export function SoftInput({
   label,
-  value,
-  onChangeText,
-  secureTextEntry,
-  keyboardType,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
-  placeholder?: string;
-}) {
+  theme = 'marketing',
+  ...props
+}: { label: string; theme?: 'marketing' | 'dashboard' } & TextInputProps) {
+  const isDash = theme === 'dashboard';
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={field.wrap}>
+      <Text style={[field.label, isDash && field.labelDash]}>{label}</Text>
       <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        placeholder={placeholder}
-        placeholderTextColor={marketingColors.muted}
-        autoCapitalize="none"
+        {...props}
+        placeholderTextColor={isDash ? '#94a3b8' : m.muted}
+        style={[field.input, isDash && field.inputDash, props.style]}
+        autoCapitalize={props.autoCapitalize ?? 'none'}
       />
     </View>
   );
 }
 
-export function LoadingGate({ loading }: { loading: boolean }) {
-  if (!loading) return null;
-  return (
-    <View style={styles.loading}>
-      <ActivityIndicator color={marketingColors.accent} />
-      <Text style={styles.loadingText}>Carregando…</Text>
-    </View>
-  );
+export function Eyebrow({ children }: { children: string }) {
+  return <Text style={field.eyebrow}>{children}</Text>;
 }
 
-const styles = StyleSheet.create({
-  btn: {
-    backgroundColor: marketingColors.ink,
-    paddingVertical: 14,
+export function Wrap({ children }: { children: React.ReactNode }) {
+  return <View style={field.wrapMax}>{children}</View>;
+}
+
+const mktBtn = StyleSheet.create({
+  base: {
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lg: { paddingVertical: 14, paddingHorizontal: 27 },
+  solid: { backgroundColor: m.ink },
+  accent: { backgroundColor: m.accent },
+  ghost: { backgroundColor: 'transparent' },
+  text: {
+    fontFamily: m.fonts.bodyMedium,
+    fontSize: 15,
+    color: '#fff',
+    fontWeight: '500',
+  },
+});
+
+const dashBtn = StyleSheet.create({
+  base: {
+    paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: d.radiusSm,
     alignItems: 'center',
   },
-  accent: { backgroundColor: marketingColors.accent },
-  ghost: {
-    backgroundColor: 'transparent',
+  dark: { backgroundColor: d.ink },
+  light: {
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
-    borderColor: marketingColors.line,
+    borderColor: d.line,
   },
-  disabled: { opacity: 0.6 },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  ghostText: { color: marketingColors.ink },
-  field: { gap: 6, marginBottom: 14 },
-  label: { fontSize: 13, color: marketingColors.muted, fontWeight: '500' },
+  danger: { backgroundColor: d.dangerSoft },
+  text: { fontSize: 14, fontWeight: '600', color: '#fff' },
+});
+
+const field = StyleSheet.create({
+  wrap: { marginBottom: 18, gap: 8 },
+  label: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: m.muted,
+    fontFamily: m.fonts.bodyMedium,
+  },
+  labelDash: { fontSize: 14, fontWeight: '600', color: '#334155' },
   input: {
     borderWidth: 1,
-    borderColor: marketingColors.line,
-    borderRadius: 10,
+    borderColor: m.line,
+    borderRadius: m.radiusSm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: marketingColors.ink,
-    backgroundColor: '#fff',
+    color: m.ink,
+    backgroundColor: m.surface,
+    fontFamily: m.fonts.body,
   },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    padding: 24,
+  inputDash: {
+    borderColor: '#cbd5e1',
+    borderRadius: d.radiusSm,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 14,
   },
-  loadingText: { color: marketingColors.muted },
+  eyebrow: {
+    fontFamily: m.fonts.display,
+    fontSize: 12.5,
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
+    color: m.accentInk,
+    fontWeight: '600',
+  },
+  wrapMax: {
+    width: '100%',
+    maxWidth: m.wrap,
+    alignSelf: 'center',
+    paddingHorizontal: 28,
+  },
 });

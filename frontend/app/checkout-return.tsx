@@ -2,8 +2,9 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { checkoutApi } from '@/src/api/endpoints';
-import { Button } from '@/src/components/ui';
-import { marketingColors } from '@/src/theme/marketing';
+import { MarketingNav } from '@/src/components/MarketingNav';
+import { SoftButton } from '@/src/components/ui';
+import { m } from '@/src/theme/marketing';
 
 export default function CheckoutReturnScreen() {
   const { ref } = useLocalSearchParams<{ ref?: string }>();
@@ -39,22 +40,50 @@ export default function CheckoutReturnScreen() {
 
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>Retorno do checkout</Text>
-      <Text style={styles.status}>{status}</Text>
-      {creds ? (
-        <>
-          <Text>E-mail: {creds.email}</Text>
-          {creds.password ? <Text>Senha: {creds.password}</Text> : null}
-        </>
-      ) : null}
-      <Button title="Ir para o login" onPress={() => router.replace('/login')} />
-      <Button title="Voltar ao início" onPress={() => router.replace('/')} variant="ghost" />
+      <MarketingNav />
+      <View style={[styles.card, m.shadow.soft]}>
+        <Text style={styles.title}>Retorno do checkout</Text>
+        <Text style={styles.status}>{status}</Text>
+        {creds ? (
+          <View style={styles.creds}>
+            <Text>E-mail: {creds.email}</Text>
+            {creds.password ? <Text>Senha: {creds.password}</Text> : null}
+          </View>
+        ) : null}
+        <SoftButton
+          title="Ir para o login"
+          variant="accent"
+          block
+          onPress={() => router.replace('/login')}
+        />
+        <SoftButton
+          title="Voltar ao início"
+          variant="ghost"
+          block
+          onPress={() => router.replace('/')}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, padding: 24, gap: 12, backgroundColor: marketingColors.paper },
-  title: { fontSize: 24, fontWeight: '700' },
-  status: { color: marketingColors.muted },
+  page: { flex: 1, backgroundColor: m.paper },
+  card: {
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
+    marginTop: 64,
+    backgroundColor: m.surface,
+    borderRadius: m.radius,
+    padding: 32,
+    gap: 14,
+  },
+  title: {
+    fontFamily: m.fonts.display,
+    fontSize: 24,
+    color: m.ink,
+  },
+  status: { color: m.muted },
+  creds: { gap: 6, backgroundColor: m.paper, padding: 14, borderRadius: 12 },
 });

@@ -1,24 +1,49 @@
+import {
+  HankenGrotesk_400Regular,
+  HankenGrotesk_600SemiBold,
+  HankenGrotesk_700Bold,
+  useFonts,
+} from '@expo-google-fonts/hanken-grotesk';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+} from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AuthProvider } from '@/src/auth/AuthProvider';
 import { ToastProvider, useToast } from '@/src/context/ToastContext';
-import { marketingColors } from '@/src/theme/marketing';
+import { m } from '@/src/theme/marketing';
 
 SplashScreen.preventAutoHideAsync();
 
 export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
+  const [loaded] = useFonts({
+    HankenGrotesk_400Regular,
+    HankenGrotesk_600SemiBold,
+    HankenGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+  });
+
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (loaded) SplashScreen.hideAsync();
+  }, [loaded]);
+
+  if (!loaded) return null;
 
   return (
     <AuthProvider>
       <ToastProvider>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: m.paper },
+          }}
+        >
           <Stack.Screen name="index" />
           <Stack.Screen name="pricing" />
           <Stack.Screen name="about" />
@@ -46,12 +71,13 @@ const styles = StyleSheet.create({
   toast: {
     position: 'absolute',
     bottom: 24,
-    left: 24,
     right: 24,
-    backgroundColor: marketingColors.ink,
-    padding: 14,
-    borderRadius: 10,
+    backgroundColor: '#1a202c',
+    paddingVertical: 14,
+    paddingHorizontal: 19,
+    borderRadius: 8,
+    maxWidth: 320,
     zIndex: 999,
   },
-  toastText: { color: '#fff', textAlign: 'center' },
+  toastText: { color: '#fff', fontSize: 14 },
 });

@@ -6,12 +6,13 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import type { Appointment } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
-import { useDashboard } from '@/src/context/DashboardContext';
-import { Button } from '@/src/components/ui';
-import { dashboardColors } from '@/src/theme/dashboard';
+import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
+import { SoftButton } from '@/src/components/ui';
+import { d } from '@/src/theme/dashboard';
 
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -26,8 +27,9 @@ function localDateStr(date: Date) {
 function getWeekDates(offset: number) {
   const today = new Date();
   const first = today.getDate() - today.getDay() + offset * 7;
-  return Array.from({ length: 7 }, (_, i) =>
-    new Date(today.getFullYear(), today.getMonth(), first + i),
+  return Array.from(
+    { length: 7 },
+    (_, i) => new Date(today.getFullYear(), today.getMonth(), first + i),
   );
 }
 
@@ -36,6 +38,8 @@ export function AgendaView({
 }: {
   onSelectAppointment: (a: Appointment) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const colW = Math.max(110, Math.min(140, (width - 220) / 7));
   const { employees, appointments, getService, loadAll } = useDashboard();
   const [weekOffset, setWeekOffset] = useState(0);
   const [waPhone, setWaPhone] = useState('5511999990000');
@@ -44,23 +48,16 @@ export function AgendaView({
     [],
   );
   const [waLoading, setWaLoading] = useState(false);
-  const [integrations, setIntegrations] = useState({
-    whatsapp: false,
-    linked: '',
-  });
+  const [waOn, setWaOn] = useState(false);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
-
-  const refreshIntegrations = async () => {
-    const data = await dashboardApi.integrations();
-    setIntegrations({
-      whatsapp: data.whatsapp.configured,
-      linked: data.whatsapp.linkedPhoneNumberId,
-    });
-  };
+  const todayStr = localDateStr(new Date());
 
   useEffect(() => {
-    refreshIntegrations().catch(() => undefined);
+    dashboardApi
+      .integrations()
+      .then((data) => setWaOn(data.whatsapp.configured))
+      .catch(() => undefined);
   }, []);
 
   const simulateWa = async () => {
@@ -80,79 +77,149 @@ export function AgendaView({
     }
   };
 
-  if (employees.length === 0) {
-    return (
-      <Text style={styles.empty}>
-        Cadastre profissionais e serviços para ver a agenda.
-      </Text>
-    );
-  }
-
   return (
-    <ScrollView style={styles.wrap}>
-      <View style={styles.weekNav}>
-        <Button title="◀" onPress={() => setWeekOffset((w) => w - 1)} variant="ghost" />
-        <Text style={styles.weekLabel}>
-          {weekDates[0].toLocaleDateString('pt-BR')} —{' '}
-          {weekDates[6].toLocaleDateString('pt-BR')}
-        </Text>
-        <Button title="▶" onPress={() => setWeekOffset((w) => w + 1)} variant="ghost" />
-        <Button title="Hoje" onPress={() => setWeekOffset(0)} variant="ghost" />
+    <View style={{ gap: 32 }}>
+      <View style={styles.panelHead}>
+        <View>
+          <Text style={styles.h2}>Agenda Semanal</Text>
+          <Text style={styles.sub}>
+            {weekDates[0].toLocaleDateString('pt-BR')} a{' '}
+            {weekDates[6].toLocaleDateString('pt-BR')} — clique em qualquer
+            agendamento para editar
+          </Text>
+        </View>
+        <View style={styles.toolbar}>
+          <SoftButton
+            title="Semana Anterior"
+            variant="light"
+            theme="dashboard"
+            onPress={() => setWeekOffset((w) => w - 1)}
+          />
+          <SoftButton
+            title="Hoje"
+            variant="light"
+            theme="dashboard"
+            onPress={() => setWeekOffset(0)}
+          />
+          <SoftButton
+            title="Próxima Semana"
+            variant="light"
+            theme="dashboard"
+            onPress={() => setWeekOffset((w) => w + 1)}
+          />
+        </View>
       </View>
 
-      {employees.map((emp) => (
-        <View key={emp.id} style={styles.empBlock}>
-          <Text style={[styles.empName, { color: emp.color }]}>{emp.name}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.grid}>
-              {weekDates.map((d) => {
-                const dateStr = localDateStr(d);
-                const dayAppts = appointments
-                  .filter(
-                    (a) => a.employeeId === emp.id && a.date === dateStr,
-                  )
-                  .sort((a, b) => a.time.localeCompare(b.time));
+      {employees.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>
+            Nenhum profissional cadastrado ainda. Adicione um na aba Profissionais.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View>
+            <View style={styles.headerRow}>
+              <View style={[styles.corner, { width: 150 }]}>
+                <Text style={styles.headerText}>Profissional</Text>
+              </View>
+              {weekDates.map((day) => {
+                const ds = localDateStr(day);
+                const isToday = ds === todayStr;
                 return (
-                  <View key={dateStr} style={styles.dayCol}>
-                    <Text style={styles.dayHead}>
-                      {DOW[d.getDay()]} {d.getDate()}/{d.getMonth() + 1}
+                  <View
+                    key={ds}
+                    style={[
+                      styles.dayHeader,
+                      { width: colW },
+                      isToday && styles.dayHeaderToday,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dow,
+                        isToday && { color: '#fff' },
+                      ]}
+                    >
+                      {DOW[day.getDay()]}
                     </Text>
-                    {dayAppts.map((appt) => (
-                      <Pressable
-                        key={appt.id}
-                        style={[
-                          styles.appt,
-                          appt.source === 'whatsapp' && styles.apptWa,
-                        ]}
-                        onPress={() => onSelectAppointment(appt)}
-                      >
-                        <Text style={styles.apptTime}>{appt.time}</Text>
-                        <Text style={styles.apptClient}>{appt.clientName}</Text>
-                        <Text style={styles.apptSvc}>
-                          {getService(appt.serviceId)?.name}
-                        </Text>
-                      </Pressable>
-                    ))}
+                    <Text
+                      style={[
+                        styles.dom,
+                        isToday && { color: '#fff' },
+                      ]}
+                    >
+                      {day.getDate()}
+                    </Text>
                   </View>
                 );
               })}
             </View>
-          </ScrollView>
-        </View>
-      ))}
 
-      <View style={styles.waBox}>
-        <Text style={styles.waTitle}>Simulador WhatsApp</Text>
-        <Text style={styles.waStatus}>
-          Bot: {integrations.whatsapp ? 'configurado' : 'demo'} | Phone ID:{' '}
-          {integrations.linked || 'não vinculado'}
+            {employees.map((emp) => (
+              <View key={emp.id} style={styles.row}>
+                <View
+                  style={[
+                    styles.empCell,
+                    { width: 150, borderLeftColor: emp.color || d.accent },
+                  ]}
+                >
+                  <Text style={styles.empName}>{emp.name}</Text>
+                  <Text style={styles.specialty}>{emp.specialty}</Text>
+                </View>
+                {weekDates.map((day) => {
+                  const ds = localDateStr(day);
+                  const dayAppts = appointments
+                    .filter((a) => a.employeeId === emp.id && a.date === ds)
+                    .sort((a, b) => a.time.localeCompare(b.time));
+                  return (
+                    <View
+                      key={ds}
+                      style={[
+                        styles.cell,
+                        { width: colW, borderLeftColor: emp.color || d.accent },
+                      ]}
+                    >
+                      {dayAppts.map((appt) => (
+                        <Pressable
+                          key={appt.id}
+                          onPress={() => onSelectAppointment(appt)}
+                          style={[
+                            styles.appt,
+                            appt.source === 'whatsapp' && styles.apptWa,
+                          ]}
+                        >
+                          <Text style={styles.apptTime}>{appt.time}</Text>
+                          <Text style={styles.apptClient}>{appt.clientName}</Text>
+                          <Text style={styles.apptSvc}>
+                            {getService(appt.serviceId)?.name}
+                          </Text>
+                          <Text style={styles.apptPrice}>
+                            {formatCurrency(appt.price)}
+                          </Text>
+                          {appt.source === 'whatsapp' ? (
+                            <Text style={styles.waBadge}>WhatsApp</Text>
+                          ) : null}
+                        </Pressable>
+                      ))}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Bot do WhatsApp — simulador</Text>
+        <Text style={styles.cardDesc}>
+          Em produção, os agendamentos chegam de verdade pelo WhatsApp do cliente e
+          caem aqui na hora.{' '}
+          <Text style={[styles.waStatus, waOn ? styles.waOn : styles.waOff]}>
+            {waOn ? 'conectado' : 'modo demo'}
+          </Text>
         </Text>
-        <TextInput
-          style={styles.waInput}
-          value={waPhone}
-          onChangeText={setWaPhone}
-          placeholder="Telefone"
-        />
         <View style={styles.waLog}>
           {waLog.map((b, i) => (
             <Text
@@ -166,76 +233,154 @@ export function AgendaView({
             </Text>
           ))}
         </View>
-        <TextInput
-          style={styles.waInput}
-          value={waMessage}
-          onChangeText={setWaMessage}
-          placeholder="Mensagem"
-        />
-        <Button
-          title={waLoading ? '…' : 'Enviar'}
-          onPress={simulateWa}
-          variant="accent"
-        />
+        <View style={styles.waForm}>
+          <TextInput
+            style={styles.waInput}
+            value={waPhone}
+            onChangeText={setWaPhone}
+            placeholder="Telefone do cliente"
+          />
+          <TextInput
+            style={[styles.waInput, { flex: 1 }]}
+            value={waMessage}
+            onChangeText={setWaMessage}
+            placeholder="Mensagem (ex.: oi)"
+          />
+          <SoftButton
+            title={waLoading ? '…' : 'Enviar'}
+            variant="dark"
+            theme="dashboard"
+            onPress={simulateWa}
+          />
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1 },
-  empty: { color: dashboardColors.muted, padding: 16 },
-  weekNav: {
+  panelHead: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     flexWrap: 'wrap',
+    gap: 16,
   },
-  weekLabel: { fontWeight: '600', color: dashboardColors.ink },
-  empBlock: { marginBottom: 16, paddingHorizontal: 12 },
-  empName: { fontWeight: '700', marginBottom: 8 },
-  grid: { flexDirection: 'row', gap: 8 },
-  dayCol: {
-    width: 120,
-    backgroundColor: dashboardColors.card,
-    borderRadius: 8,
-    padding: 8,
+  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
+  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
+  toolbar: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  empty: {
+    backgroundColor: d.surface,
+    padding: 48,
+    borderRadius: d.radius,
     borderWidth: 1,
-    borderColor: dashboardColors.line,
+    borderColor: d.line,
+    alignItems: 'center',
   },
-  dayHead: { fontWeight: '600', marginBottom: 8, fontSize: 12 },
-  appt: {
-    backgroundColor: '#eff6ff',
-    borderRadius: 6,
-    padding: 6,
-    marginBottom: 6,
+  emptyText: { color: d.muted },
+  headerRow: { flexDirection: 'row', gap: 1, backgroundColor: d.line },
+  corner: {
+    backgroundColor: d.ink,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  dayHeader: {
+    backgroundColor: '#f1f5f9',
+    padding: 16,
+    alignItems: 'center',
+  },
+  dayHeaderToday: { backgroundColor: d.ink },
+  dow: { fontWeight: '600', fontSize: 14, color: d.ink },
+  dom: { fontSize: 18, fontWeight: '700', marginTop: 4, color: d.ink },
+  row: { flexDirection: 'row', gap: 1, backgroundColor: d.line },
+  empCell: {
+    backgroundColor: '#f8fafc',
+    padding: 16,
     borderLeftWidth: 3,
-    borderLeftColor: dashboardColors.accent,
   },
-  apptWa: { borderLeftColor: dashboardColors.waGreen },
-  apptTime: { fontWeight: '700', fontSize: 12 },
-  apptClient: { fontSize: 12 },
-  apptSvc: { fontSize: 11, color: dashboardColors.muted },
-  waBox: {
-    margin: 12,
+  empName: { fontWeight: '600', fontSize: 14 },
+  specialty: { fontSize: 11, color: d.muted, marginTop: 4 },
+  cell: {
+    backgroundColor: '#fff',
     padding: 12,
-    backgroundColor: dashboardColors.card,
-    borderRadius: 12,
+    minHeight: 150,
     gap: 8,
-    borderWidth: 1,
-    borderColor: dashboardColors.line,
+    borderLeftWidth: 2,
   },
-  waTitle: { fontWeight: '700' },
-  waStatus: { color: dashboardColors.muted, fontSize: 12 },
+  appt: {
+    backgroundColor: '#f1f5f9',
+    borderLeftWidth: 3,
+    borderLeftColor: d.accent,
+    padding: 8,
+    borderRadius: d.radiusSm,
+  },
+  apptWa: { borderLeftColor: d.waGreen },
+  apptTime: { fontWeight: '600', fontSize: 12 },
+  apptClient: { color: '#475569', marginTop: 4, fontSize: 12 },
+  apptSvc: { color: '#94a3b8', fontSize: 11, marginTop: 4 },
+  apptPrice: { fontWeight: '600', marginTop: 4, fontSize: 12 },
+  waBadge: {
+    fontSize: 10,
+    color: d.waGreenText,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: d.surface,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 32,
+    gap: 12,
+  },
+  cardTitle: { fontWeight: '600', fontSize: 16, marginBottom: 4 },
+  cardDesc: { color: d.muted, fontSize: 14, marginBottom: 8 },
+  waStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  waOn: { color: d.waGreenText, backgroundColor: '#e7f9ef' },
+  waOff: { color: '#94a3b8', backgroundColor: '#f1f5f9' },
+  waLog: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: d.radiusSm,
+    padding: 16,
+    minHeight: 120,
+    maxHeight: 280,
+    gap: 8,
+  },
+  bubble: {
+    maxWidth: '80%',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    fontSize: 14,
+  },
+  bubbleOut: { backgroundColor: '#dcf8c6', alignSelf: 'flex-end' },
+  bubbleIn: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: d.line,
+    alignSelf: 'flex-start',
+  },
+  waForm: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', alignItems: 'center' },
   waInput: {
     borderWidth: 1,
-    borderColor: dashboardColors.line,
-    borderRadius: 8,
-    padding: 10,
+    borderColor: '#cbd5e1',
+    borderRadius: d.radiusSm,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    minWidth: 160,
+    backgroundColor: '#fff',
   },
-  waLog: { minHeight: 80, gap: 6 },
-  bubble: { padding: 8, borderRadius: 8, maxWidth: '90%' },
-  bubbleOut: { alignSelf: 'flex-end', backgroundColor: '#dcf8c6' },
-  bubbleIn: { alignSelf: 'flex-start', backgroundColor: '#fff' },
 });

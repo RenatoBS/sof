@@ -1,11 +1,14 @@
-export const dashboardColors = {
-  bg: '#f8fafc',
-  ink: '#0f172a',
+export const d = {
+  ink: '#1a202c',
   muted: '#64748b',
-  accent: '#3b82f6',
   line: '#e2e8f0',
-  card: '#ffffff',
-  danger: '#ef4444',
-  success: '#10b981',
-  waGreen: '#25d366',
+  paper: '#fafbfc',
+  surface: '#ffffff',
+  accent: '#3b82f6',
+  danger: '#dc2626',
+  dangerSoft: '#fee2e2',
+  waGreen: '#25D366',
+  waGreenText: '#0d9c53',
+  radius: 12,
+  radiusSm: 8,
 };
