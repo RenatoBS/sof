@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { checkoutApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { setToken } from '@/src/auth/tokenStorage';
+import { FeatureIcon } from '@/src/components/FeatureIcon';
 import { SoftButton, SoftInput } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
@@ -88,9 +89,10 @@ export function PricingCards({
           </Text>
           <View style={styles.list}>
             {plan.features.map((f) => (
-              <Text key={f} style={styles.li}>
-                ✓  {f}
-              </Text>
+              <View key={f} style={styles.liRow}>
+                <FeatureIcon name="check" />
+                <Text style={styles.li}>{f}</Text>
+              </View>
             ))}
           </View>
           <SoftButton
@@ -318,7 +320,8 @@ const styles = StyleSheet.create({
     color: m.muted,
   },
   list: { marginVertical: 24, gap: 10 },
-  li: { fontSize: 15, color: m.ink, lineHeight: 22 },
+  liRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  li: { fontSize: 15, color: m.ink, lineHeight: 22, flex: 1 },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(35,35,41,0.45)',

@@ -1,4 +1,4 @@
-# Soft API (NestJS + Prisma)
+# Sof API (NestJS + Prisma)
 
 ```bash
 # na raiz do monorepo

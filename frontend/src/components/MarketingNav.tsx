@@ -6,7 +6,7 @@ import { m } from '@/src/theme/marketing';
 export function Wordmark({ onPress }: { onPress?: () => void }) {
   return (
     <Pressable onPress={onPress || (() => router.push('/'))} style={styles.wordmark}>
-      <Text style={styles.wordmarkText}>soft</Text>
+      <Text style={styles.wordmarkText}>sof</Text>
       <View style={styles.dot} />
     </Pressable>
   );
@@ -60,7 +60,7 @@ export function SiteFooter() {
             <Text style={styles.footerLink}>Entrar</Text>
           </Pressable>
         </View>
-        <Text style={styles.fine}>© 2026 Soft. Feito com calma.</Text>
+        <Text style={styles.fine}>© 2026 Sof. Feito com calma.</Text>
       </View>
     </View>
   );
@@ -117,9 +117,13 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: 28,
-    gap: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 18,
   },
-  footerLinks: { flexDirection: 'row', gap: 24 },
+  footerLinks: { flexDirection: 'row', gap: 22 },
   footerLink: { color: m.muted, fontSize: 14 },
-  fine: { color: m.muted, fontSize: 13 },
+  fine: { color: m.muted, fontSize: 14 },
 });

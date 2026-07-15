@@ -9,7 +9,7 @@ export function SoftChatCard() {
           <Text style={styles.avatarText}>S</Text>
         </View>
         <View>
-          <Text style={styles.name}>Soft</Text>
+          <Text style={styles.name}>Sof</Text>
           <Text style={styles.status}>online</Text>
         </View>
       </View>

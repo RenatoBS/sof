@@ -128,21 +128,22 @@ const dashBtn = StyleSheet.create({
 const field = StyleSheet.create({
   wrap: { marginBottom: 18, gap: 8 },
   label: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '500',
-    color: m.muted,
+    color: m.ink,
     fontFamily: m.fonts.bodyMedium,
+    marginBottom: 7,
   },
-  labelDash: { fontSize: 14, fontWeight: '600', color: '#334155' },
+  labelDash: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderColor: m.line,
     borderRadius: m.radiusSm,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
     fontSize: 15,
     color: m.ink,
-    backgroundColor: m.surface,
+    backgroundColor: m.paper,
     fontFamily: m.fonts.body,
   },
   inputDash: {

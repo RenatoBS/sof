@@ -1,4 +1,4 @@
-# Soft — agendamento pelo WhatsApp
+# Sof — agendamento pelo WhatsApp
 
 Site institucional + checkout + dashboard em **Expo (Web, iOS, Android)** com API **NestJS + Prisma + PostgreSQL**.
 

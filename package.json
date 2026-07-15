@@ -1,7 +1,7 @@
 {
-  "name": "soft-agendamento",
+  "name": "sof-agendamento",
   "private": true,
-  "description": "Soft — monorepo Expo + NestJS",
+  "description": "Sof — monorepo Expo + NestJS",
   "scripts": {
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",

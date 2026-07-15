@@ -55,7 +55,7 @@ async function bootstrap() {
       config.get<string>('whatsapp.phoneNumberId'),
   );
 
-  console.log(`Soft API rodando em http://localhost:${port}`);
+  console.log(`Sof API rodando em http://localhost:${port}`);
   if (!mpConfigured) {
     console.log(
       '[mercadopago] Modo demonstração ativo — configure MP_ACCESS_TOKEN no .env para cobrar de verdade.',

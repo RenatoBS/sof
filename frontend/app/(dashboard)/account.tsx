@@ -24,43 +24,70 @@ export default function AccountScreen() {
 
   if (!account) return null;
 
+  const since = account.createdAt
+    ? new Date(account.createdAt).toLocaleDateString('pt-BR')
+    : '—';
+
   return (
     <View style={styles.page}>
       <View>
-        <Text style={styles.h2}>Conta</Text>
-        <Text style={styles.sub}>Dados da assinatura e integrações</Text>
+        <Text style={styles.h2}>Sua conta</Text>
+        <Text style={styles.sub}>Plano, credenciais e integrações</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.line}>
-          <Text style={styles.label}>Negócio: </Text>
-          {account.businessName}
-        </Text>
-        <Text style={styles.line}>
-          <Text style={styles.label}>E-mail: </Text>
-          {account.email}
-        </Text>
-        <Text style={styles.line}>
-          <Text style={styles.label}>Plano: </Text>
-          {account.plan} — R$ {account.planPrice}
-        </Text>
-        <Text style={styles.line}>
-          <Text style={styles.label}>Mercado Pago: </Text>
-          {integrations.mp ? 'configurado' : 'modo demonstração'}
-        </Text>
-        <Text style={styles.line}>
-          <Text style={styles.label}>WhatsApp API: </Text>
-          {integrations.wa ? 'configurado' : 'desligado'}
+        <Text style={styles.cardTitle}>Assinatura</Text>
+        <View style={styles.metaGrid}>
+          <View style={styles.meta}>
+            <Text style={styles.metaLabel}>Plano</Text>
+            <Text style={styles.metaValue}>
+              {account.plan}
+              {account.planPrice != null ? ` — R$ ${account.planPrice}` : ''}
+            </Text>
+          </View>
+          <View style={styles.meta}>
+            <Text style={styles.metaLabel}>E-mail</Text>
+            <Text style={styles.metaValue}>{account.email}</Text>
+          </View>
+          <View style={styles.meta}>
+            <Text style={styles.metaLabel}>Assinante desde</Text>
+            <Text style={styles.metaValue}>{since}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Gateway de pagamento — Mercado Pago</Text>
+        <Text style={styles.help}>
+          Status:{' '}
+          <Text style={[styles.badge, integrations.mp ? styles.on : styles.off]}>
+            {integrations.mp ? 'configurado' : 'modo demonstração'}
+          </Text>
+          . Para receber de verdade, configure{' '}
+          <Text style={styles.code}>MP_ACCESS_TOKEN</Text>,{' '}
+          <Text style={styles.code}>MP_PUBLIC_KEY</Text> e{' '}
+          <Text style={styles.code}>MP_WEBHOOK_SECRET</Text> nas variáveis de
+          ambiente do servidor.
         </Text>
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Bot do WhatsApp</Text>
+        <Text style={[styles.help, { marginBottom: 16 }]}>
+          Status do bot:{' '}
+          <Text style={[styles.badge, integrations.wa ? styles.on : styles.off]}>
+            {integrations.wa ? 'ligado' : 'desligado'}
+          </Text>
+          . Configure as variáveis do WhatsApp no servidor e informe abaixo o{' '}
+          <Text style={{ fontWeight: '700' }}>Phone Number ID</Text> da Meta
+          para ligar esse número a este painel.
+        </Text>
         <SoftInput
           label="WhatsApp Phone Number ID"
           value={phoneId}
           onChangeText={setPhoneId}
           theme="dashboard"
-          placeholder="ID do número na Meta"
+          placeholder="Ex: 123456789012345"
         />
         {saved ? <Text style={styles.saved}>{saved}</Text> : null}
         <SoftButton
@@ -77,21 +104,24 @@ export default function AccountScreen() {
         />
       </View>
 
-      <SoftButton
-        title="Sair"
-        variant="light"
-        theme="dashboard"
-        onPress={async () => {
-          await logout();
-          router.replace('/');
-        }}
-      />
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Sair da conta</Text>
+        <SoftButton
+          title="Sair"
+          variant="danger"
+          theme="dashboard"
+          onPress={async () => {
+            await logout();
+            router.replace('/');
+          }}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24, maxWidth: 560 },
+  page: { gap: 24, maxWidth: 720 },
   h2: { fontSize: 30, fontWeight: '700', color: d.ink },
   sub: { color: d.muted, fontSize: 14, marginTop: 8 },
   card: {
@@ -102,7 +132,29 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 12,
   },
-  line: { fontSize: 15, color: d.ink, marginBottom: 4 },
-  label: { fontWeight: '600' },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+    marginBottom: 4,
+  },
+  metaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 24,
+  },
+  meta: { minWidth: 160, flexGrow: 1, flexBasis: 160 },
+  metaLabel: { color: d.muted, fontSize: 13, marginBottom: 4 },
+  metaValue: { fontWeight: '700', fontSize: 15, color: d.ink },
+  help: { color: d.muted, fontSize: 14, lineHeight: 22 },
+  badge: { fontWeight: '700' },
+  on: { color: '#0d9c53' },
+  off: { color: '#94a3b8' },
+  code: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    color: d.ink,
+    backgroundColor: '#f1f5f9',
+  },
   saved: { color: '#0d9c53', fontWeight: '600' },
 });

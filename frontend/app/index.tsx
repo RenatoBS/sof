@@ -8,31 +8,38 @@ import {
 } from 'react-native';
 import { MarketingNav, SiteFooter } from '@/src/components/MarketingNav';
 import { SoftChatCard } from '@/src/components/SoftChatCard';
+import { FeatureIcon } from '@/src/components/FeatureIcon';
 import { Eyebrow, SoftButton, Wrap } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
 const FEATURES = [
   {
+    icon: 'chat',
     title: 'Agenda pelo WhatsApp',
     body: 'O cliente marca conversando. Sem baixar app, sem criar conta, sem senha.',
   },
   {
+    icon: 'calendar',
     title: 'A semana inteira numa tela',
     body: 'Todos os profissionais, os sete dias, lado a lado. Clicou, editou.',
   },
   {
+    icon: 'bell',
     title: 'Lembrete automático',
     body: 'Um aviso por SMS uma hora antes. Menos falta, sem ninguém precisar lembrar.',
   },
   {
+    icon: 'chart',
     title: 'Faturamento sem planilha',
     body: 'Quanto entrou no dia, na semana, no mês. Já somado, já pronto.',
   },
   {
+    icon: 'phone',
     title: 'Funciona no celular',
     body: 'A mesma experiência no telefone, no tablet ou no computador do balcão.',
   },
   {
+    icon: 'heart',
     title: 'Suporte de gente',
     body: 'Quando algo trava, alguém responde. Sem robô, sem fila infinita.',
   },
@@ -73,7 +80,7 @@ export default function HomeScreen() {
                 Agendar{'\n'}devia ser leve.
               </Text>
               <Text style={styles.lead}>
-                A Soft cuida da agenda do seu salão direto no WhatsApp, com um
+                A Sof cuida da agenda do seu salão direto no WhatsApp, com um
                 painel que a equipe inteira entende em segundos.
               </Text>
               <View style={styles.actions}>
@@ -102,7 +109,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <Wrap>
           <View style={styles.sectionHead}>
-            <Eyebrow>O que a Soft faz</Eyebrow>
+            <Eyebrow>O que a Sof faz</Eyebrow>
             <Text style={styles.h2}>Tudo o que o dia a dia pede. Nada além.</Text>
             <Text style={styles.sectionP}>
               Sem tela cheia de botão, sem manual. As coisas ficam onde você espera
@@ -112,7 +119,9 @@ export default function HomeScreen() {
           <View style={[styles.featureGrid, !twoCol && { flexDirection: 'column' }]}>
             {FEATURES.map((f) => (
               <View key={f.title} style={[styles.feature, m.shadow.soft]}>
-                <View style={styles.mark} />
+                <View style={styles.mark}>
+                  <FeatureIcon name={f.icon} />
+                </View>
                 <Text style={styles.featureTitle}>{f.title}</Text>
                 <Text style={styles.featureBody}>{f.body}</Text>
               </View>
@@ -195,6 +204,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: m.accentSoft,
     marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   featureTitle: {
     fontFamily: m.fonts.display,

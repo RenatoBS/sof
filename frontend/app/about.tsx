@@ -37,7 +37,7 @@ export default function AboutScreen() {
             <View style={{ flex: 1, gap: 16 }}>
               <Eyebrow>Quem somos</Eyebrow>
               <Text style={styles.lead}>
-                A Soft nasceu de uma ideia simples: bom software não deveria pedir
+                A Sof nasceu de uma ideia simples: bom software não deveria pedir
                 esforço de quem usa.
               </Text>
             </View>

@@ -38,7 +38,7 @@ export default function ServicesScreen() {
       <View style={styles.head}>
         <View>
           <Text style={styles.h2}>Serviços</Text>
-          <Text style={styles.sub}>Catálogo de serviços oferecidos</Text>
+          <Text style={styles.sub}>Configure seu cardápio de serviços</Text>
         </View>
         <SoftButton
           title={showForm ? 'Cancelar' : 'Adicionar Serviço'}
@@ -52,21 +52,21 @@ export default function ServicesScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Novo Serviço</Text>
           <SoftInput
-            label="Nome"
+            label="Nome do Serviço"
             value={name}
             onChangeText={setName}
             theme="dashboard"
             placeholder="Ex: Corte"
           />
           <SoftInput
-            label="Duração (min)"
+            label="Duração (minutos)"
             value={duration}
             onChangeText={setDuration}
             theme="dashboard"
             keyboardType="numeric"
           />
           <SoftInput
-            label="Preço"
+            label="Preço (R$)"
             value={price}
             onChangeText={setPrice}
             theme="dashboard"

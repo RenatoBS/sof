@@ -130,7 +130,7 @@ export class WhatsappBotService {
       });
       return {
         replies: [
-          `Oi! Aqui é a Soft, do ${account.businessName}. Qual serviço você quer agendar?\n${this.listMenu(services, (s) => `${s.name} (${s.duration}min)`)}\n\nResponda com o número da opção.`,
+          `Oi! Aqui é a Sof, do ${account.businessName}. Qual serviço você quer agendar?\n${this.listMenu(services, (s) => `${s.name} (${s.duration}min)`)}\n\nResponda com o número da opção.`,
         ],
       };
     }

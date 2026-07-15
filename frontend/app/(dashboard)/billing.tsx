@@ -65,14 +65,14 @@ export default function BillingScreen() {
     <View style={styles.page}>
       <View>
         <Text style={styles.h2}>Faturamento</Text>
-        <Text style={styles.sub}>Receita dos agendamentos confirmados</Text>
+        <Text style={styles.sub}>Acompanhe a receita de seus serviços</Text>
       </View>
 
       <View style={styles.statGrid}>
         {[
           { label: 'Hoje', value: stats.day },
-          { label: 'Esta semana', value: stats.week },
-          { label: 'Este mês', value: stats.month },
+          { label: 'Esta Semana', value: stats.week },
+          { label: 'Este Mês', value: stats.month },
         ].map((s) => (
           <View key={s.label} style={styles.stat}>
             <Text style={styles.statLabel}>{s.label}</Text>
@@ -82,6 +82,7 @@ export default function BillingScreen() {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Agendamentos Confirmados</Text>
         {rows.length === 0 ? (
           <Text style={styles.empty}>Nenhum agendamento confirmado</Text>
         ) : (
@@ -132,6 +133,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: d.line,
     overflow: 'hidden',
+    paddingTop: 8,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   empty: { padding: 32, textAlign: 'center', color: d.muted },
   row: {

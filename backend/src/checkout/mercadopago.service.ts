@@ -40,8 +40,8 @@ export class MercadoPagoService {
       items: [
         {
           id: `plan-${planName}`,
-          title: `Assinatura Soft — Plano ${planName}`,
-          description: 'Assinatura mensal do painel de agendamentos Soft.',
+          title: `Assinatura Sof — Plano ${planName}`,
+          description: 'Assinatura mensal do painel de agendamentos Sof.',
           quantity: 1,
           currency_id: 'BRL',
           unit_price: price,
@@ -56,7 +56,7 @@ export class MercadoPagoService {
       },
       auto_return: 'approved',
       notification_url: `${this.apiPublicUrl()}/api/payments/webhook`,
-      statement_descriptor: 'SOFT AGENDAMENTO',
+      statement_descriptor: 'SOF AGENDAMENTO',
     };
 
     const resp = await fetch(`${API_BASE}/checkout/preferences`, {
