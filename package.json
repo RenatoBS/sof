@@ -1,13 +1,14 @@
 {
   "name": "soft-agendamento",
   "private": true,
-  "description": "Soft — monorepo frontend estático + backend NestJS",
+  "description": "Soft — monorepo Expo + NestJS",
   "scripts": {
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "backend:dev": "npm run start:dev --prefix backend",
     "backend:migrate": "npm run prisma:migrate --prefix backend",
     "backend:seed": "npm run prisma:seed --prefix backend",
-    "frontend:start": "npm start --prefix frontend"
+    "frontend:dev": "npm run start --prefix frontend",
+    "frontend:web": "npm run web --prefix frontend"
   }
 }

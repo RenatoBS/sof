@@ -64,4 +64,6 @@ backend/prisma/seed.js.map
 backend/prisma/seed.d.ts
 
 # Docker (volumes locais, se mapeados)
-docker-data/
+.expo/
+frontend/.expo/
+frontend/web-build/

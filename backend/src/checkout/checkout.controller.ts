@@ -114,7 +114,7 @@ export class CheckoutController {
       jwtToken,
       cookieOptions(this.config.get<boolean>('isProd') === true),
     );
-    return { mode: 'dev-approved', sessionId: session.id };
+    return { mode: 'dev-approved', sessionId: session.id, token: jwtToken };
   }
 
   @Get('status/:sessionId')

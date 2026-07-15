@@ -50,9 +50,9 @@ export class MercadoPagoService {
       payer: { email: payerEmail },
       external_reference: sessionId,
       back_urls: {
-        success: `${publicUrl}/checkout-retorno.html?ref=${sessionId}`,
-        pending: `${publicUrl}/checkout-retorno.html?ref=${sessionId}`,
-        failure: `${publicUrl}/checkout-retorno.html?ref=${sessionId}`,
+        success: `${publicUrl}/checkout-return?ref=${sessionId}`,
+        pending: `${publicUrl}/checkout-return?ref=${sessionId}`,
+        failure: `${publicUrl}/checkout-return?ref=${sessionId}`,
       },
       auto_return: 'approved',
       notification_url: `${this.apiPublicUrl()}/api/payments/webhook`,

@@ -72,7 +72,7 @@ export class AuthController {
       jwtToken,
       cookieOptions(this.config.get<boolean>('isProd') === true),
     );
-    return { account: publicAccount(account) };
+    return { account: publicAccount(account), token: jwtToken };
   }
 
   @Post('logout')

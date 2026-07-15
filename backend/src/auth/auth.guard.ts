@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import type { Account } from '@prisma/client';
-import { COOKIE_NAME, verifyToken } from '../common/token';
+import { extractAccountIdFromRequest } from '../common/auth-request';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type AuthedRequest = Request & { account: Account };
@@ -21,9 +21,10 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AuthedRequest>();
-    const raw = req.cookies?.[COOKIE_NAME] as string | undefined;
-    const accountId =
-      raw && verifyToken(raw, this.config.getOrThrow<string>('jwtSecret'));
+    const accountId = extractAccountIdFromRequest(
+      req,
+      this.config.getOrThrow<string>('jwtSecret'),
+    );
     if (!accountId) {
       throw new UnauthorizedException({ error: 'Não autenticado.' });
     }

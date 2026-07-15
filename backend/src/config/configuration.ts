@@ -5,6 +5,17 @@ function bool(value: string | undefined, fallback: boolean) {
   return value === 'true' || value === '1';
 }
 
+function parseCorsOrigins(value: string | undefined): string[] {
+  const raw =
+    value ||
+    process.env.PUBLIC_URL ||
+    'http://localhost:5500,http://localhost:8081';
+  return raw
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+}
+
 export default () => {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isProd = nodeEnv === 'production';
@@ -24,15 +35,11 @@ export default () => {
 
   return {
     port: parseInt(process.env.PORT || '3001', 10),
-    publicUrl: (process.env.PUBLIC_URL || 'http://localhost:5500').replace(
+    publicUrl: (process.env.PUBLIC_URL || 'http://localhost:8081').replace(
       /\/+$/,
       '',
     ),
-    corsOrigin: (
-      process.env.CORS_ORIGIN ||
-      process.env.PUBLIC_URL ||
-      'http://localhost:5500'
-    ).replace(/\/+$/, ''),
+    corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
     nodeEnv,
     isProd,
     jwtSecret,
