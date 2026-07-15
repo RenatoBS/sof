@@ -7,7 +7,7 @@ Site institucional + checkout + dashboard em **Expo (Web, iOS, Android)** com AP
 ```
 backend/           NestJS + Prisma (API em /api/*)
 frontend/          Expo + expo-router (RN + Web)
-docker-compose.yml PostgreSQL 16
+docker-compose.yml PostgreSQL 16 (dev local)
 ```
 
 ## Como rodar
@@ -54,14 +54,15 @@ Configure `EXPO_PUBLIC_API_URL=http://localhost:3001` no `.env`.
 
 - **Web:** cookie `sof_session` + token no `localStorage` (SSE)
 - **iOS/Android:** `Authorization: Bearer` com token no SecureStore
-- Login retorna `{ account, token }` — mobile usa o token; web usa cookie + token
+- Login retorna `{ account, token }` — web e mobile usam Bearer; cookie ajuda no mesmo domínio
 
 ## Variáveis principais
 
 | Onde | Variável | Uso |
 |------|----------|-----|
-| backend | `DATABASE_URL` | Postgres |
-| backend | `CORS_ORIGIN` | Origens Expo (ex.: `http://localhost:8081`) |
+| backend | `DATABASE_URL` | Postgres (pooler em Supabase ok) |
+| backend | `DIRECT_URL` | Postgres direto (migrations Prisma) |
+| backend | `CORS_ORIGIN` | Origens do front |
 | backend | `PUBLIC_URL` | URL do frontend (retorno Mercado Pago) |
 | frontend | `EXPO_PUBLIC_API_URL` | URL da API |
 
@@ -72,3 +73,32 @@ npm run db:up
 npm run backend:dev
 npm run frontend:web
 ```
+
+## Deploy Heroku (API + front web)
+
+Dois apps no monorepo:
+
+| App | Base | URL |
+|-----|------|-----|
+| `sof-agendamento-api` | `backend/` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
+| `sof-agendamento-web` | `frontend/` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
+
+Buildpacks (nessa ordem): monorepo (`APP_BASE`) + `heroku/nodejs`.
+
+Banco: usar `DATABASE_URL` / `DIRECT_URL` já existentes (ex.: Supabase) — **não** exige add-on Heroku Postgres.
+
+```bash
+# remotes (uma vez)
+heroku git:remote -a sof-agendamento-api -r heroku-api
+heroku git:remote -a sof-agendamento-web -r heroku-web
+
+# deploy da branch atual → main do Heroku
+git push heroku-api HEAD:main
+git push heroku-web HEAD:main
+
+# seed opcional
+heroku run -a sof-agendamento-api npx prisma db seed
+```
+
+Variáveis críticas no API: `JWT_SECRET`, `PUBLIC_URL`, `CORS_ORIGIN`, `API_PUBLIC_URL`, `DATABASE_URL`, `DIRECT_URL`.  
+No web: `EXPO_PUBLIC_API_URL` (precisa estar setada **antes** do build).
