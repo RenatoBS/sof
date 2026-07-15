@@ -20,7 +20,8 @@ export function cookieOptions(isProd: boolean) {
   return {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax' as const,
+    // Cross-origin front/API em hosts diferentes (ex.: Heroku) exige None+Secure
+    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',
   };

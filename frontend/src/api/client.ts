@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { getToken } from '@/src/auth/tokenStorage';
 
 const API_BASE =
@@ -27,7 +26,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
 
   const token = options.auth !== false ? await getToken() : null;
-  if (token && Platform.OS !== 'web') {
+  if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
@@ -35,7 +34,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     method: options.method || 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    credentials: Platform.OS === 'web' ? 'include' : 'omit',
+    credentials: 'include',
   });
 
   let data: { error?: string } | null = null;
