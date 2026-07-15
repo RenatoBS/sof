@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-15 — Bloquear horário ocupado do profissional
+
+- **Contexto:** O simulador/WhatsApp e o create de appointments permitiam marcar o mesmo profissional no mesmo intervalo.  
+- **Decisão:** Helper `schedule-conflict` com overlap por duração do serviço; API `POST/PUT /api/appointments` rejeita conflito; bot WA em `awaiting_datetime` e na confirmação sugere horários livres e mantém o passo até o cliente escolher outro.  
+- **Consequências:** Só `status=confirmed` ocupa agenda; update exclui o próprio appointment do check; sugestões no dia atual (janela comercial fixa 09–18).  
+- **Alternativas descartadas:** Só validar na API sem UX no bot; travar o dia inteiro sem sugestões; considerar `cancelled` como ocupado.
+
 ## 2026-07-15 — Scripts npm de deploy Heroku
 
 - **Contexto:** Deploy de dois apps exigia lembrar remotes e dois `git push`.  

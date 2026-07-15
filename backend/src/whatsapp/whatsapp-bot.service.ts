@@ -3,6 +3,11 @@ import { Account, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../events/realtime.service';
 import { serializeDates } from '../common/public-shapes';
+import {
+  hasScheduleConflict,
+  listBusySlots,
+  suggestFreeTimes,
+} from '../appointments/schedule-conflict';
 
 type SessionData = {
   serviceId?: string;
@@ -229,13 +234,43 @@ export class WhatsappBotService {
           accountId: account.id,
         },
       });
+      if (!service || !employee || !sessionData.employeeId) {
+        await this.resetSession(account.id, customerPhone);
+        return {
+          replies: ['Vamos recomeçar — qual serviço você quer agendar?'],
+        };
+      }
+
+      const busy = await listBusySlots(this.prisma, {
+        accountId: account.id,
+        employeeId: sessionData.employeeId,
+        date: when.date,
+      });
+      if (hasScheduleConflict(busy, when.time, service.duration)) {
+        const suggestions = suggestFreeTimes(busy, service.duration);
+        const dateLabel = when.date.split('-').reverse().join('/');
+        const tip =
+          suggestions.length > 0
+            ? ` Horários livres com ${employee.name} em ${dateLabel}: ${suggestions.join(', ')}. Ou me diga outra data/horário.`
+            : ' Me diga outra data e horário no formato dd/mm hh:mm.';
+        await this.saveSession(account.id, customerPhone, {
+          step: 'awaiting_datetime',
+          data: sessionData,
+        });
+        return {
+          replies: [
+            `${employee.name} já tem compromisso nesse horário.${tip}`,
+          ],
+        };
+      }
+
       await this.saveSession(account.id, customerPhone, {
         step: 'awaiting_confirmation',
         data: { ...sessionData, ...when },
       });
       return {
         replies: [
-          `Fechar ${service?.name} com ${employee?.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}? (responda sim ou não)`,
+          `Fechar ${service.name} com ${employee.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}? (responda sim ou não)`,
         ],
       };
     }
@@ -247,6 +282,28 @@ export class WhatsappBotService {
         if (!service || !employeeId || !date || !time || !serviceId) {
           await this.resetSession(account.id, customerPhone);
           return { replies: ['Vamos recomeçar — qual serviço você quer agendar?'] };
+        }
+
+        const busy = await listBusySlots(this.prisma, {
+          accountId: account.id,
+          employeeId,
+          date,
+        });
+        if (hasScheduleConflict(busy, time, service.duration)) {
+          const suggestions = suggestFreeTimes(busy, service.duration);
+          const tip =
+            suggestions.length > 0
+              ? ` Sugestões: ${suggestions.join(', ')}. Ou envie outra data/horário (dd/mm hh:mm).`
+              : ' Envie outra data e horário (dd/mm hh:mm).';
+          await this.saveSession(account.id, customerPhone, {
+            step: 'awaiting_datetime',
+            data: { serviceId, employeeId },
+          });
+          return {
+            replies: [
+              `Esse horário acabou de ser preenchido.${tip}`,
+            ],
+          };
         }
 
         const appointment = await this.prisma.appointment.create({

@@ -83,7 +83,9 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 Com credenciais Meta + Phone Number ID na conta:
 
 - Webhook `GET/POST /api/whatsapp/webhook`.  
-- Fluxo: serviço → profissionais **filtrados pelos serviços que realizam** → data/hora → confirmação → `Appointment` (`source=whatsapp`).
+- Fluxo: serviço → profissionais **filtrados pelos serviços que realizam** → data/hora → confirmação → `Appointment` (`source=whatsapp`).  
+- **Conflito de agenda:** se o profissional já tem um horário confirmado que se sobrepõe (pela duração do serviço), o bot recusa, sugere até 3 horários livres no dia (09:00–18:00, passo 30 min) e pede outra data/hora; na confirmação há checagem de novo (corrida entre clientes).  
+- Create/update na API de appointments aplicam a mesma regra (painel e bot).
 
 Sem credenciais: simulador no painel cobre o mesmo caminho de domínio para demos.
 

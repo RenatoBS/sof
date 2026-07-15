@@ -73,7 +73,7 @@ Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`,
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N.
+`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N e conflito de agenda do profissional (overlap por duração do serviço; ver `appointments/schedule-conflict.ts`).
 
 Datasource usa:
 

@@ -17,6 +17,10 @@ import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
 import { RealtimeService } from '../events/realtime.service';
+import {
+  hasScheduleConflict,
+  listBusySlots,
+} from './schedule-conflict';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
@@ -32,6 +36,7 @@ export class AppointmentsController {
   private async validatePayload(
     body: Record<string, unknown>,
     account: Account,
+    excludeAppointmentId?: string,
   ) {
     const clientName = String(body?.clientName || '').trim();
     const date = String(body?.date || '');
@@ -60,6 +65,19 @@ export class AppointmentsController {
     });
     if (!link) {
       return { error: 'Este profissional não realiza esse serviço.' };
+    }
+
+    const busy = await listBusySlots(this.prisma, {
+      accountId: account.id,
+      employeeId,
+      date,
+      excludeAppointmentId,
+    });
+    if (hasScheduleConflict(busy, time, service.duration)) {
+      return {
+        error:
+          'Este profissional já tem um agendamento nesse horário. Escolha outro horário.',
+      };
     }
 
     return {
@@ -129,6 +147,7 @@ export class AppointmentsController {
     const parsed = await this.validatePayload(
       { ...serializeDates(existing), ...body },
       req.account,
+      existing.id,
     );
     if ('error' in parsed && parsed.error) {
       throw new BadRequestException({ error: parsed.error });
