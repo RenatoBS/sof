@@ -1,0 +1,32 @@
+---
+description: Obriga manter AGENTS.md e docs/ atualizados a cada mudança relevante no Sof
+alwaysApply: true
+---
+
+# Documentação viva — Sof
+
+Antes de qualquer tarefa: leia [`AGENTS.md`](AGENTS.md) (documento central).
+
+## Obrigatório ao mudar o projeto
+
+Na **mesma** sessão em que alterar código relevante, atualize a documentação:
+
+| Mudança | Arquivo |
+|---------|---------|
+| Arquitetura, módulos, auth, schema, SSE | `docs/architecture.md` |
+| Comportamento de produto / APIs de feature | `docs/features.md` |
+| Setup local, portas, seed, troubleshooting | `docs/local-development.md` |
+| Heroku, Supabase, envs de prod, Procfile | `docs/deployment.md` |
+| Qualquer decisão com trade-off | **nova entrada no topo** de `docs/decisions.md` |
+| Mapa/resumo do repo | `AGENTS.md` se o índice ou resumo ficar obsoleto |
+
+## Regras
+
+- A documentação **deve crescer** com o projeto — não deixar só no chat ou na mensagem de commit.
+- Nunca documentar segredos (senhas, tokens, connection strings completas).
+- Marca: **Sof** (não Soft).
+- Não editar o plano em `.cursor/plans/` como substituto desta pasta `docs/`.
+
+## Checklist de fim de tarefa
+
+Confirme o checklist em `AGENTS.md` antes de considerar a tarefa concluída.

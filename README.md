@@ -2,6 +2,20 @@
 
 Site institucional + checkout + dashboard em **Expo (Web, iOS, Android)** com API **NestJS + Prisma + PostgreSQL**.
 
+## Documentação (obrigatória / viva)
+
+Para agentes de IA e visão completa do projeto, comece por:
+
+**→ [`AGENTS.md`](AGENTS.md)** (documento central — deve crescer com cada mudança)
+
+| Doc | Conteúdo |
+|-----|----------|
+| [`docs/architecture.md`](docs/architecture.md) | Arquitetura |
+| [`docs/features.md`](docs/features.md) | Features |
+| [`docs/local-development.md`](docs/local-development.md) | Dev local |
+| [`docs/deployment.md`](docs/deployment.md) | Deploy |
+| [`docs/decisions.md`](docs/decisions.md) | Decisões (ADR) |
+
 ## Estrutura
 
 ```
