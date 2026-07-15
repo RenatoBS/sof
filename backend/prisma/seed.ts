@@ -11,7 +11,7 @@ function bool(value: string | undefined, fallback: boolean) {
 async function main() {
   if (!bool(process.env.SEED_DEMO_ENABLED, true)) return;
 
-  const email = (process.env.SEED_DEMO_EMAIL || 'demo@soft.com').toLowerCase();
+  const email = (process.env.SEED_DEMO_EMAIL || 'demo@sof.com').toLowerCase();
   const demoPassword = process.env.SEED_DEMO_PASSWORD || 'demo123';
 
   const existing = await prisma.account.findUnique({ where: { email } });

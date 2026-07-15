@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { SoftButton } from '@/src/components/ui';
+import { SofButton } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
 export function Wordmark({ onPress }: { onPress?: () => void }) {
@@ -36,8 +36,8 @@ export function MarketingNav({ active }: { active?: string }) {
           </View>
         ) : null}
         <View style={styles.cta}>
-          <SoftButton title="Entrar" variant="ghost" onPress={() => router.push('/login')} />
-          <SoftButton title="Começar" variant="solid" onPress={() => router.push('/pricing')} />
+          <SofButton title="Entrar" variant="ghost" onPress={() => router.push('/login')} />
+          <SofButton title="Começar" variant="solid" onPress={() => router.push('/pricing')} />
         </View>
       </View>
     </View>

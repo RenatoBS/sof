@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
-import { SoftButton, SoftInput } from '@/src/components/ui';
+import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function AccountScreen() {
@@ -82,7 +82,7 @@ export default function AccountScreen() {
           <Text style={{ fontWeight: '700' }}>Phone Number ID</Text> da Meta
           para ligar esse número a este painel.
         </Text>
-        <SoftInput
+        <SofInput
           label="WhatsApp Phone Number ID"
           value={phoneId}
           onChangeText={setPhoneId}
@@ -90,7 +90,7 @@ export default function AccountScreen() {
           placeholder="Ex: 123456789012345"
         />
         {saved ? <Text style={styles.saved}>{saved}</Text> : null}
-        <SoftButton
+        <SofButton
           title="Salvar"
           variant="dark"
           theme="dashboard"
@@ -106,7 +106,7 @@ export default function AccountScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Sair da conta</Text>
-        <SoftButton
+        <SofButton
           title="Sair"
           variant="danger"
           theme="dashboard"

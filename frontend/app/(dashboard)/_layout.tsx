@@ -12,7 +12,7 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { DashboardProvider, useDashboard } from '@/src/context/DashboardContext';
 import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
-import { SoftButton } from '@/src/components/ui';
+import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 import type { Appointment } from '@/src/api/types';
 
@@ -76,7 +76,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
             <Text style={styles.biz}>{account.businessName}</Text>
             <Text style={styles.email}>{account.email}</Text>
           </View>
-          <SoftButton
+          <SofButton
             title="Sair"
             variant="light"
             theme="dashboard"

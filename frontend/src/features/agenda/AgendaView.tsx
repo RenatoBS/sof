@@ -11,7 +11,7 @@ import {
 import type { Appointment } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
-import { SoftButton } from '@/src/components/ui';
+import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -89,19 +89,19 @@ export function AgendaView({
           </Text>
         </View>
         <View style={styles.toolbar}>
-          <SoftButton
+          <SofButton
             title="Semana Anterior"
             variant="light"
             theme="dashboard"
             onPress={() => setWeekOffset((w) => w - 1)}
           />
-          <SoftButton
+          <SofButton
             title="Hoje"
             variant="light"
             theme="dashboard"
             onPress={() => setWeekOffset(0)}
           />
-          <SoftButton
+          <SofButton
             title="Próxima Semana"
             variant="light"
             theme="dashboard"
@@ -246,7 +246,7 @@ export function AgendaView({
             onChangeText={setWaMessage}
             placeholder="Mensagem (ex.: oi)"
           />
-          <SoftButton
+          <SofButton
             title={waLoading ? '…' : 'Enviar'}
             variant="dark"
             theme="dashboard"

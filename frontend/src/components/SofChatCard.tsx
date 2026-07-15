@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { m } from '@/src/theme/marketing';
 
-export function SoftChatCard() {
+export function SofChatCard() {
   return (
     <View style={[styles.card, m.shadow.lift]}>
       <View style={styles.head}>

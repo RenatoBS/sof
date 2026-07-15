@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: soft-agendamento-api
+    name: sof-agendamento-api
     runtime: node
     plan: starter
     rootDir: backend

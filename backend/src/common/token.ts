@@ -1,6 +1,6 @@
 import { sign as jwtSign, verify as jwtVerify } from 'jsonwebtoken';
 
-export const COOKIE_NAME = 'soft_session';
+export const COOKIE_NAME = 'sof_session';
 export const EXPIRES_IN = '30d';
 
 export function signToken(accountId: string, jwtSecret: string) {

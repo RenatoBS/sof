@@ -18,7 +18,7 @@ docker-compose.yml PostgreSQL 16
 docker compose up -d
 ```
 
-Postgres em `localhost:5433` (usuário/senha/db: `soft`).
+Postgres em `localhost:5433` (usuário/senha/db: `sof`).
 
 ### 2. Backend
 
@@ -47,12 +47,12 @@ Configure `EXPO_PUBLIC_API_URL=http://localhost:3001` no `.env`.
 
 ### Conta de teste
 
-- e-mail: `demo@soft.com`
+- e-mail: `demo@sof.com`
 - senha: valor de `SEED_DEMO_PASSWORD` no `backend/.env`
 
 ## Auth cross-platform
 
-- **Web:** cookie `soft_session` + token no `localStorage` (SSE)
+- **Web:** cookie `sof_session` + token no `localStorage` (SSE)
 - **iOS/Android:** `Authorization: Bearer` com token no SecureStore
 - Login retorna `{ account, token }` — mobile usa o token; web usa cookie + token
 

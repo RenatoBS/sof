@@ -7,9 +7,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { MarketingNav, SiteFooter } from '@/src/components/MarketingNav';
-import { SoftChatCard } from '@/src/components/SoftChatCard';
+import { SofChatCard } from '@/src/components/SofChatCard';
 import { FeatureIcon } from '@/src/components/FeatureIcon';
-import { Eyebrow, SoftButton, Wrap } from '@/src/components/ui';
+import { Eyebrow, SofButton, Wrap } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
 const FEATURES = [
@@ -84,13 +84,13 @@ export default function HomeScreen() {
                 painel que a equipe inteira entende em segundos.
               </Text>
               <View style={styles.actions}>
-                <SoftButton
+                <SofButton
                   title="Ver planos"
                   variant="accent"
                   large
                   onPress={() => router.push('/pricing')}
                 />
-                <SoftButton
+                <SofButton
                   title="Como funciona"
                   variant="ghost"
                   large
@@ -100,7 +100,7 @@ export default function HomeScreen() {
               <Text style={styles.note}>A partir de R$ 99 por mês. Sem fidelidade.</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <SoftChatCard />
+              <SofChatCard />
             </View>
           </View>
         </Wrap>

@@ -15,7 +15,7 @@ import { checkoutApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { setToken } from '@/src/auth/tokenStorage';
 import { FeatureIcon } from '@/src/components/FeatureIcon';
-import { SoftButton, SoftInput } from '@/src/components/ui';
+import { SofButton, SofInput } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
 export const PLANS = [
@@ -95,7 +95,7 @@ export function PricingCards({
               </View>
             ))}
           </View>
-          <SoftButton
+          <SofButton
             title={`Assinar ${plan.name}`}
             variant={plan.featured ? 'accent' : 'solid'}
             block
@@ -214,21 +214,21 @@ export function CheckoutModal({
                 </View>
               </View>
               {error ? <Text style={styles.error}>{error}</Text> : null}
-              <SoftInput
+              <SofInput
                 label="Nome completo"
                 value={name}
                 onChangeText={setName}
                 placeholder="Nome do responsável pela conta"
                 autoCapitalize="words"
               />
-              <SoftInput
+              <SofInput
                 label="E-mail"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 placeholder="Onde você acessa o painel"
               />
-              <SoftButton
+              <SofButton
                 title={loading ? 'Processando…' : 'Continuar para o pagamento'}
                 variant="accent"
                 block
@@ -257,7 +257,7 @@ export function CheckoutModal({
                   </Text>
                 </View>
               </View>
-              <SoftButton
+              <SofButton
                 title="Ir para o painel"
                 variant="accent"
                 block

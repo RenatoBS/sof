@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
-import { SoftButton, SoftInput } from '@/src/components/ui';
+import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
@@ -40,7 +40,7 @@ export default function ServicesScreen() {
           <Text style={styles.h2}>Serviços</Text>
           <Text style={styles.sub}>Configure seu cardápio de serviços</Text>
         </View>
-        <SoftButton
+        <SofButton
           title={showForm ? 'Cancelar' : 'Adicionar Serviço'}
           variant="dark"
           theme="dashboard"
@@ -51,21 +51,21 @@ export default function ServicesScreen() {
       {showForm ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Novo Serviço</Text>
-          <SoftInput
+          <SofInput
             label="Nome do Serviço"
             value={name}
             onChangeText={setName}
             theme="dashboard"
             placeholder="Ex: Corte"
           />
-          <SoftInput
+          <SofInput
             label="Duração (minutos)"
             value={duration}
             onChangeText={setDuration}
             theme="dashboard"
             keyboardType="numeric"
           />
-          <SoftInput
+          <SofInput
             label="Preço (R$)"
             value={price}
             onChangeText={setPrice}
@@ -74,8 +74,8 @@ export default function ServicesScreen() {
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
-            <SoftButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
-            <SoftButton
+            <SofButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
+            <SofButton
               title="Cancelar"
               variant="light"
               theme="dashboard"

@@ -57,7 +57,7 @@ export default () => {
     },
     demoAccount: {
       enabled: bool(process.env.SEED_DEMO_ENABLED, true),
-      email: process.env.SEED_DEMO_EMAIL || 'demo@soft.com',
+      email: process.env.SEED_DEMO_EMAIL || 'demo@sof.com',
       password: process.env.SEED_DEMO_PASSWORD || 'demo123',
     },
   };

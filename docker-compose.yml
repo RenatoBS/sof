@@ -1,21 +1,21 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: soft-postgres
+    container_name: sof-postgres
     restart: unless-stopped
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: soft
-      POSTGRES_PASSWORD: soft
-      POSTGRES_DB: soft
+      POSTGRES_USER: sof
+      POSTGRES_PASSWORD: sof
+      POSTGRES_DB: sof
     volumes:
-      - soft_pg_data:/var/lib/postgresql/data
+      - sof_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U soft -d soft"]
+      test: ["CMD-SHELL", "pg_isready -U sof -d sof"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  soft_pg_data:
+  sof_pg_data:

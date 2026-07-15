@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-const KEY = 'soft_token';
+const KEY = 'sof_token';
 
 export async function getToken(): Promise<string | null> {
   if (Platform.OS === 'web') {

@@ -11,7 +11,7 @@ import { d } from '@/src/theme/dashboard';
 
 type BtnVariant = 'solid' | 'accent' | 'ghost' | 'light' | 'dark' | 'danger';
 
-export function SoftButton({
+export function SofButton({
   title,
   onPress,
   variant = 'solid',
@@ -61,7 +61,7 @@ export function SoftButton({
   );
 }
 
-export function SoftInput({
+export function SofInput({
   label,
   theme = 'marketing',
   ...props

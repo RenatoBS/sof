@@ -10,7 +10,7 @@ import {
 import type { Appointment } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
-import { SoftButton, SoftInput } from '@/src/components/ui';
+import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export function AppointmentModal({
@@ -81,19 +81,19 @@ export function AppointmentModal({
         <View style={styles.content}>
           <Text style={styles.title}>Editar agendamento</Text>
           <ScrollView style={{ maxHeight: 420 }}>
-            <SoftInput
+            <SofInput
               label="Cliente"
               value={clientName}
               onChangeText={setClientName}
               theme="dashboard"
             />
-            <SoftInput
+            <SofInput
               label="Data (AAAA-MM-DD)"
               value={date}
               onChangeText={setDate}
               theme="dashboard"
             />
-            <SoftInput
+            <SofInput
               label="Horário (HH:MM)"
               value={time}
               onChangeText={setTime}
@@ -124,20 +124,20 @@ export function AppointmentModal({
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
           <View style={styles.actions}>
-            <SoftButton
+            <SofButton
               title="Salvar"
               variant="dark"
               theme="dashboard"
               onPress={save}
               disabled={loading}
             />
-            <SoftButton
+            <SofButton
               title="Cancelar agendamento"
               variant="danger"
               theme="dashboard"
               onPress={remove}
             />
-            <SoftButton
+            <SofButton
               title="Fechar"
               variant="light"
               theme="dashboard"

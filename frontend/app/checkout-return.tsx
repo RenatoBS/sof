@@ -2,7 +2,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { checkoutApi } from '@/src/api/endpoints';
-import { SoftButton } from '@/src/components/ui';
+import { SofButton } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
 type Phase = 'waiting' | 'approved' | 'failed';
@@ -81,7 +81,7 @@ export default function CheckoutReturnScreen() {
                 </View>
               ) : null}
             </View>
-            <SoftButton
+            <SofButton
               title="Ir para o login"
               variant="accent"
               block
@@ -96,7 +96,7 @@ export default function CheckoutReturnScreen() {
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
             </View>
-            <SoftButton
+            <SofButton
               title="Voltar ao início"
               variant="ghost"
               block

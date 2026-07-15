@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MarketingNav, SiteFooter } from '@/src/components/MarketingNav';
-import { SoftButton, SoftInput } from '@/src/components/ui';
+import { SofButton, SofInput } from '@/src/components/ui';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { m } from '@/src/theme/marketing';
 
@@ -34,21 +34,21 @@ export default function LoginScreen() {
           <Text style={styles.h2}>Entrar</Text>
           <Text style={styles.sub}>Acesse o painel da sua conta.</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <SoftInput
+          <SofInput
             label="E-mail"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             placeholder="voce@salao.com"
           />
-          <SoftInput
+          <SofInput
             label="Senha"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             placeholder="Sua senha"
           />
-          <SoftButton
+          <SofButton
             title={loading ? 'Entrando…' : 'Entrar no painel'}
             variant="accent"
             block

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
-import { SoftButton, SoftInput } from '@/src/components/ui';
+import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function EmployeesScreen() {
@@ -43,7 +43,7 @@ export default function EmployeesScreen() {
           <Text style={styles.h2}>Profissionais</Text>
           <Text style={styles.sub}>Gerencie sua equipe de trabalho</Text>
         </View>
-        <SoftButton
+        <SofButton
           title={showForm ? 'Cancelar' : 'Adicionar Profissional'}
           variant="dark"
           theme="dashboard"
@@ -55,7 +55,7 @@ export default function EmployeesScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Novo Profissional</Text>
           <View style={styles.formGrid}>
-            <SoftInput
+            <SofInput
               label="Nome"
               value={name}
               onChangeText={setName}
@@ -63,14 +63,14 @@ export default function EmployeesScreen() {
               placeholder="Nome completo"
               autoCapitalize="words"
             />
-            <SoftInput
+            <SofInput
               label="Especialidade"
               value={specialty}
               onChangeText={setSpecialty}
               theme="dashboard"
               placeholder="Ex: Cortes"
             />
-            <SoftInput
+            <SofInput
               label="Telefone"
               value={phone}
               onChangeText={setPhone}
@@ -81,8 +81,8 @@ export default function EmployeesScreen() {
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
-            <SoftButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
-            <SoftButton
+            <SofButton title="Adicionar" variant="dark" theme="dashboard" onPress={create} />
+            <SofButton
               title="Cancelar"
               variant="light"
               theme="dashboard"
