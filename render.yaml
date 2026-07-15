@@ -1,31 +1,30 @@
 services:
   - type: web
-    name: soft-agendamento
+    name: soft-agendamento-api
     runtime: node
     plan: starter
-    buildCommand: npm install
-    startCommand: npm start
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run start:prod
     autoDeploy: true
     healthCheckPath: /api/health
-    disk:
-      name: soft-data
-      mountPath: /opt/render/project/src/server/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: DATABASE_URL
+        sync: false
       - key: PUBLIC_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: API_PUBLIC_URL
         sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: SEED_DEMO_ENABLED
-        value: "true"
-      - key: SEED_DEMO_EMAIL
-        sync: false
-      - key: SEED_DEMO_PASSWORD
-        sync: false
+        value: "false"
       - key: MP_ACCESS_TOKEN
         sync: false
       - key: MP_PUBLIC_KEY

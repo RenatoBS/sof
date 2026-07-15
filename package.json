@@ -1,24 +1,13 @@
 {
   "name": "soft-agendamento",
-  "version": "1.0.0",
   "private": true,
-  "description": "Soft — agendamento pelo WhatsApp. Site institucional, checkout Mercado Pago e dashboard de agendamentos.",
-  "type": "commonjs",
-  "main": "server/index.js",
+  "description": "Soft — monorepo frontend estático + backend NestJS",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.6",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.2.0",
-    "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "backend:dev": "npm run start:dev --prefix backend",
+    "backend:migrate": "npm run prisma:migrate --prefix backend",
+    "backend:seed": "npm run prisma:seed --prefix backend",
+    "frontend:start": "npm start --prefix frontend"
   }
 }

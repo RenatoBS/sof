@@ -1,0 +1,7 @@
+{
+  "name": "soft-frontend",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve -p 5500 ."
+  }
+}
