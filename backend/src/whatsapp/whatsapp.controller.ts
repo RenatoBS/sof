@@ -19,6 +19,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
+import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
 
 type MetaWebhookBody = {
   entry?: Array<{
@@ -42,8 +43,13 @@ type UazapiWebhookBody = {
   owner?: string;
   token?: string;
   message?: {
+    id?: string;
+    messageid?: string;
+    messageId?: string;
+    key?: { id?: string };
     fromMe?: boolean;
     wasSentByApi?: boolean;
+    source?: string;
     isGroup?: boolean;
     text?: string;
     type?: string;
@@ -123,6 +129,7 @@ export class WhatsappController {
 
   private async processUazapiWebhook(body: UazapiWebhookBody) {
     const event = String(body?.EventType || body?.event || '').toLowerCase();
+    // Só mensagens novas — ignora updates/acks/connection que o Uazapi às vezes reenvia.
     if (event && event !== 'messages' && event !== 'message') {
       return;
     }
@@ -130,6 +137,7 @@ export class WhatsappController {
     const message = body?.message;
     if (!message) return;
     if (message.fromMe || message.wasSentByApi) return;
+    if (message.source === 'api' || message.source === 'system') return;
     if (message.isGroup || body?.chat?.wa_isGroup) return;
 
     const text = String(message.text || '').trim();
@@ -151,6 +159,24 @@ export class WhatsappController {
     );
     if (!customerPhone) return;
 
+    const messageId =
+      message.id ||
+      message.messageid ||
+      message.messageId ||
+      message.key?.id ||
+      '';
+    const dedupeKey = webhookDedupeKey({
+      messageId,
+      token: body?.token,
+      phone: customerPhone,
+      text,
+      event,
+    });
+    if (isDuplicateWebhook(dedupeKey)) {
+      console.warn(`[whatsapp] Webhook duplicado ignorado (${dedupeKey.slice(0, 48)})`);
+      return;
+    }
+
     const account = await this.resolveAccount({
       instanceKey: this.api.instanceKey(),
       owner: body?.owner,
@@ -158,7 +184,7 @@ export class WhatsappController {
     });
     if (!account) {
       console.warn(
-        '[whatsapp] Conta não encontrada para a instância Whazap — pareie o WhatsApp em Conta.',
+        '[whatsapp] Conta não encontrada para a instância Uazapi — pareie o WhatsApp em Conta.',
       );
       return;
     }

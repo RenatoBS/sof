@@ -408,6 +408,8 @@ export class WhatsappApiService {
         excludeMessages: ['wasSentByApi', 'fromMe', 'isGroupYes'],
         addUrlEvents: false,
         addUrlTypesMessages: false,
+        // Evita empilhar vários webhooks iguais (causa envio duplicado).
+        action: 'replace',
       }),
     });
     if (!resp.ok) {

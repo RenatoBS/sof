@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-16 — Deduplicação de webhook Uazapi
+
+- **Contexto:** Uazapi POSTava o mesmo evento em pares (~1 ms); bot respondia duas vezes. Possível empilhamento de webhooks sem `action: replace`.  
+- **Decisão:** Ignorar eventos repetidos por `message.id` (fallback fingerprint); configurar webhook com `action: 'replace'`.  
+- **Consequências:** Em multi-dyno a dedupe em memória não é compartilhada — ok com 1 dyno Heroku.  
+- **Alternativas descartadas:** Persistência Redis só para dedupe.
+
 ## 2026-07-16 — Limpeza de envs não usadas (Uazapi + Stripe)
 
 - **Contexto:** `.env` e Heroku acumulavam vars Meta (`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`) e `STRIPE_PUBLISHABLE_KEY` que o runtime não lê (Checkout usa só secret + webhook).  
