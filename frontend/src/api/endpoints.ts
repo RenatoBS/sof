@@ -2,6 +2,7 @@ import { api } from '@/src/api/client';
 import type {
   Account,
   Appointment,
+  Client,
   Employee,
   EmployeeSession,
   OpeningHours,
@@ -82,6 +83,7 @@ export const dashboardApi = {
     name: string;
     email: string;
     serviceIds: string[];
+    color?: string;
   }) =>
     api<{ employee: Employee; temporaryPassword: string }>('/employees', {
       method: 'POST',
@@ -93,6 +95,7 @@ export const dashboardApi = {
       name: string;
       email: string;
       serviceIds: string[];
+      color?: string;
       resetPassword?: boolean;
     },
   ) =>
@@ -115,11 +118,19 @@ export const dashboardApi = {
     api<{ service: Service }>(`/services/${id}`, { method: 'PUT', body }),
   deleteService: (id: string) =>
     api<{ ok: boolean }>(`/services/${id}`, { method: 'DELETE' }),
+  clients: () => api<{ clients: Client[] }>('/clients'),
+  createClient: (body: { name: string; phone: string }) =>
+    api<{ client: Client }>('/clients', { method: 'POST', body }),
+  updateClient: (id: string, body: { name: string; phone: string }) =>
+    api<{ client: Client }>(`/clients/${id}`, { method: 'PUT', body }),
+  deleteClient: (id: string) =>
+    api<{ ok: boolean }>(`/clients/${id}`, { method: 'DELETE' }),
   appointments: () => api<{ appointments: Appointment[] }>('/appointments'),
   updateAppointment: (
     id: string,
     body: {
-      clientName: string;
+      clientId?: string;
+      clientName?: string;
       clientPhone?: string;
       date: string;
       time: string;

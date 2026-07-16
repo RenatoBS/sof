@@ -27,9 +27,24 @@ const COLORS = [
   '#ef4444',
   '#8b5cf6',
   '#ec4899',
-];
+] as const;
+
+const COLOR_SET = new Set<string>(COLORS);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseColor(raw: unknown, fallback: string): string {
+  const color = String(raw || '')
+    .trim()
+    .toLowerCase();
+  if (!color) return fallback;
+  if (!COLOR_SET.has(color)) {
+    throw new BadRequestException({
+      error: 'Cor inválida. Escolha uma das cores disponíveis.',
+    });
+  }
+  return color;
+}
 
 const employeeInclude = {
   services: {
@@ -153,7 +168,13 @@ export class EmployeesController {
   @Post()
   async create(
     @Req() req: AuthedRequest,
-    @Body() body: { name?: string; email?: string; serviceIds?: unknown },
+    @Body()
+    body: {
+      name?: string;
+      email?: string;
+      serviceIds?: unknown;
+      color?: string;
+    },
   ) {
     const { name, email, serviceIds } = await this.validatePayload(
       req.account.id,
@@ -174,6 +195,7 @@ export class EmployeesController {
     const count = await this.prisma.employee.count({
       where: { accountId: req.account.id },
     });
+    const color = parseColor(body?.color, COLORS[count % COLORS.length]);
     const employee = await this.prisma.employee.create({
       data: {
         accountId: req.account.id,
@@ -181,7 +203,7 @@ export class EmployeesController {
         email,
         passwordHash,
         mustChangePassword: true,
-        color: COLORS[count % COLORS.length],
+        color,
         services: {
           create: serviceIds.map((serviceId) => ({ serviceId })),
         },
@@ -203,6 +225,7 @@ export class EmployeesController {
       name?: string;
       email?: string;
       serviceIds?: unknown;
+      color?: string;
       resetPassword?: boolean;
     },
   ) {
@@ -226,6 +249,7 @@ export class EmployeesController {
 
     await this.assertEmailAvailable(email, existing.id);
 
+    const color = parseColor(body?.color, existing.color);
     const resetPassword = body?.resetPassword === true;
     let temporaryPassword: string | undefined;
     let passwordHash: string | undefined;
@@ -243,6 +267,7 @@ export class EmployeesController {
         data: {
           name,
           email,
+          color,
           ...(passwordHash
             ? { passwordHash, mustChangePassword: true }
             : {}),

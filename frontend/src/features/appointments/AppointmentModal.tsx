@@ -9,7 +9,10 @@ import {
 } from 'react-native';
 import type { Appointment } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
-import { useDashboard } from '@/src/context/DashboardContext';
+import {
+  formatPhone,
+  useDashboard,
+} from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
@@ -22,8 +25,8 @@ export function AppointmentModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { employees, services, setAppointments } = useDashboard();
-  const [clientName, setClientName] = useState('');
+  const { employees, services, clients, setAppointments } = useDashboard();
+  const [clientId, setClientId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [employeeId, setEmployeeId] = useState('');
@@ -33,13 +36,23 @@ export function AppointmentModal({
 
   useEffect(() => {
     if (!appointment) return;
-    setClientName(appointment.clientName);
+    const matched =
+      appointment.clientId ||
+      clients.find(
+        (c) =>
+          c.phone === appointment.clientPhone ||
+          c.name === appointment.clientName,
+      )?.id ||
+      '';
+    setClientId(matched);
     setDate(appointment.date);
     setTime(appointment.time);
     setEmployeeId(appointment.employeeId);
     setServiceId(appointment.serviceId);
     setError('');
-  }, [appointment]);
+  }, [appointment, clients]);
+
+  const selectedClient = clients.find((c) => c.id === clientId);
 
   const selectService = (id: string) => {
     setServiceId(id);
@@ -59,12 +72,16 @@ export function AppointmentModal({
   if (!appointment) return null;
 
   const save = async () => {
+    if (!clientId) {
+      setError('Selecione um cliente.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const { appointment: updated } = await dashboardApi.updateAppointment(
         appointment.id,
-        { clientName, date, time, employeeId, serviceId },
+        { clientId, date, time, employeeId, serviceId },
       );
       setAppointments((prev) =>
         prev.map((a) => (a.id === updated.id ? updated : a)),
@@ -96,12 +113,29 @@ export function AppointmentModal({
         <View style={styles.content}>
           <Text style={styles.title}>Editar agendamento</Text>
           <ScrollView style={{ maxHeight: 420 }}>
-            <SofInput
-              label="Cliente"
-              value={clientName}
-              onChangeText={setClientName}
-              theme="dashboard"
-            />
+            <Text style={styles.label}>Cliente</Text>
+            {clients.length === 0 ? (
+              <Text style={styles.hint}>
+                Cadastre clientes na aba Clientes para vincular ao agendamento.
+              </Text>
+            ) : (
+              clients.map((c) => (
+                <Pressable
+                  key={c.id}
+                  onPress={() => setClientId(c.id)}
+                  style={[styles.chip, clientId === c.id && styles.chipActive]}
+                >
+                  <Text>
+                    {c.name} — {formatPhone(c.phone)}
+                  </Text>
+                </Pressable>
+              ))
+            )}
+            {selectedClient ? (
+              <Text style={styles.phoneHint}>
+                Telefone: {formatPhone(selectedClient.phone)}
+              </Text>
+            ) : null}
             <SofInput
               label="Data (AAAA-MM-DD)"
               value={date}
@@ -152,7 +186,7 @@ export function AppointmentModal({
               variant="dark"
               theme="dashboard"
               onPress={save}
-              disabled={loading}
+              disabled={loading || clients.length === 0}
             />
             <SofButton
               title="Cancelar agendamento"
@@ -200,6 +234,7 @@ const styles = StyleSheet.create({
   },
   chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
   hint: { color: d.muted, fontSize: 14, marginBottom: 8 },
+  phoneHint: { color: d.muted, fontSize: 13, marginBottom: 8 },
   error: { color: d.danger },
   actions: { gap: 10, marginTop: 8 },
 });

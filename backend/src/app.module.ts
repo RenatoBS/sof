@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { AccountModule } from './account/account.module';
 import { EmployeesModule } from './employees/employees.module';
 import { ServicesModule } from './services/services.module';
+import { ClientsModule } from './clients/clients.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -33,6 +34,7 @@ import { HealthController } from './health/health.controller';
     AccountModule,
     EmployeesModule,
     ServicesModule,
+    ClientsModule,
     AppointmentsModule,
     CheckoutModule,
     PaymentsModule,

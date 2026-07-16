@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@/src/auth/AuthProvider';
+import { dashboardApi } from '@/src/api/endpoints';
 import { DashboardProvider, useDashboard } from '@/src/context/DashboardContext';
 import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
@@ -20,13 +21,14 @@ const TABS = [
   { href: '/(dashboard)/agenda', label: 'Agenda', match: 'agenda' },
   { href: '/(dashboard)/employees', label: 'Profissionais', match: 'employees' },
   { href: '/(dashboard)/services', label: 'Serviços', match: 'services' },
+  { href: '/(dashboard)/clients', label: 'Clientes', match: 'clients' },
   { href: '/(dashboard)/billing', label: 'Faturamento', match: 'billing' },
   { href: '/(dashboard)/account', label: 'Conta', match: 'account' },
 ] as const;
 
 function DashboardChrome({ children }: { children: React.ReactNode }) {
   const { account, loading, logout } = useAuth();
-  const { loadAll, setAppointments } = useDashboard();
+  const { loadAll, setAppointments, setClients } = useDashboard();
   const { showToast } = useToast();
   const pathname = usePathname();
 
@@ -44,6 +46,10 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         if (appointment.source === 'whatsapp') {
           showToast('Novo agendamento via WhatsApp!');
         }
+        dashboardApi
+          .clients()
+          .then((res) => setClients(res.clients))
+          .catch(() => undefined);
       },
       onUpdated: (appointment: Appointment) => {
         setAppointments((prev) => {

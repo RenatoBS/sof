@@ -24,6 +24,7 @@ model Account {
 
   employees        Employee[]
   services         Service[]
+  clients          Client[]
   appointments     Appointment[]
   checkoutSessions CheckoutSession[]
   whatsappSessions WhatsappSession[]
@@ -72,11 +73,26 @@ model EmployeeService {
   @@index([serviceId])
 }
 
+model Client {
+  id        String   @id @default(cuid())
+  accountId String
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@unique([accountId, phone])
+  @@index([accountId])
+}
+
 model Appointment {
   id          String   @id @default(cuid())
   accountId   String
   employeeId  String
   serviceId   String
+  clientId    String?
   clientName  String
   clientPhone String   @default("")
   date        String
@@ -89,10 +105,12 @@ model Appointment {
   account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   service  Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  client   Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([accountId])
   @@index([employeeId])
   @@index([serviceId])
+  @@index([clientId])
 }
 
 model CheckoutSession {

@@ -6,12 +6,22 @@ import { useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
+const EMPLOYEE_COLORS = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+] as const;
+
 export default function EmployeesScreen() {
   const { employees, setEmployees, services } = useDashboard();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [color, setColor] = useState<string>(EMPLOYEE_COLORS[0]);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [resetPassword, setResetPassword] = useState(false);
   const [error, setError] = useState('');
@@ -19,6 +29,9 @@ export default function EmployeesScreen() {
   const [tempPassword, setTempPassword] = useState('');
 
   const isEditing = !!editingId;
+
+  const nextDefaultColor = () =>
+    EMPLOYEE_COLORS[employees.length % EMPLOYEE_COLORS.length];
 
   const toggleService = (id: string) => {
     setServiceIds((prev) =>
@@ -29,6 +42,7 @@ export default function EmployeesScreen() {
   const resetForm = () => {
     setName('');
     setEmail('');
+    setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
     setError('');
@@ -40,6 +54,7 @@ export default function EmployeesScreen() {
   const startCreate = () => {
     setName('');
     setEmail('');
+    setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
     setError('');
@@ -52,6 +67,7 @@ export default function EmployeesScreen() {
     setEditingId(employee.id);
     setName(employee.name);
     setEmail(employee.email || '');
+    setColor((employee.color || EMPLOYEE_COLORS[0]).toLowerCase());
     setServiceIds((employee.services || []).map((s) => s.id));
     setResetPassword(false);
     setError('');
@@ -75,6 +91,7 @@ export default function EmployeesScreen() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         serviceIds,
+        color,
       };
       if (editingId) {
         const { employee, temporaryPassword } = await dashboardApi.updateEmployee(
@@ -174,6 +191,26 @@ export default function EmployeesScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            <Text style={styles.label}>Cor na agenda</Text>
+            <View style={styles.colorRow}>
+              {EMPLOYEE_COLORS.map((c) => {
+                const active = color === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => setColor(c)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Selecionar cor ${c}`}
+                    accessibilityState={{ selected: active }}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: c },
+                      active && styles.colorSwatchActive,
+                    ]}
+                  />
+                );
+              })}
+            </View>
             <Text style={styles.label}>Serviços que realiza</Text>
             {services.length === 0 ? (
               <Text style={styles.hint}>
@@ -313,6 +350,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: d.ink,
     fontFamily: 'monospace',
+  },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorSwatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorSwatchActive: {
+    borderColor: d.ink,
+    transform: [{ scale: 1.08 }],
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {

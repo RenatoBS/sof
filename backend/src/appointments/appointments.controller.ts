@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
+import { isValidPhone, normalizePhone } from '../common/phone';
 import { RealtimeService } from '../events/realtime.service';
 import {
   checkWithinOpeningHours,
@@ -36,20 +37,66 @@ export class AppointmentsController {
     private readonly realtime: RealtimeService,
   ) {}
 
+  private async resolveClient(
+    accountId: string,
+    body: Record<string, unknown>,
+  ): Promise<{ clientId: string; clientName: string; clientPhone: string } | { error: string }> {
+    const clientIdRaw = String(body?.clientId || '').trim();
+    if (clientIdRaw) {
+      const client = await this.prisma.client.findFirst({
+        where: { id: clientIdRaw, accountId },
+      });
+      if (!client) return { error: 'Cliente inválido.' };
+      return {
+        clientId: client.id,
+        clientName: client.name,
+        clientPhone: client.phone,
+      };
+    }
+
+    const clientName = String(body?.clientName || '').trim();
+    const clientPhone = normalizePhone(body?.clientPhone);
+    if (!clientName) return { error: 'Informe o nome do cliente.' };
+    if (!isValidPhone(clientPhone)) {
+      return {
+        error: 'Informe o telefone do cliente com DDD (somente números).',
+      };
+    }
+
+    const client = await this.prisma.client.upsert({
+      where: {
+        accountId_phone: { accountId, phone: clientPhone },
+      },
+      create: {
+        accountId,
+        name: clientName,
+        phone: clientPhone,
+      },
+      update: { name: clientName },
+    });
+
+    return {
+      clientId: client.id,
+      clientName: client.name,
+      clientPhone: client.phone,
+    };
+  }
+
   private async validatePayload(
     body: Record<string, unknown>,
     account: Account,
     excludeAppointmentId?: string,
   ) {
-    const clientName = String(body?.clientName || '').trim();
     const date = String(body?.date || '');
     const time = String(body?.time || '');
     const employeeId = String(body?.employeeId || '');
     const serviceId = String(body?.serviceId || '');
 
-    if (!clientName) return { error: 'Informe o nome do cliente.' };
     if (!DATE_RE.test(date)) return { error: 'Data inválida.' };
     if (!TIME_RE.test(time)) return { error: 'Horário inválido.' };
+
+    const clientResolved = await this.resolveClient(account.id, body);
+    if ('error' in clientResolved) return clientResolved;
 
     const employee = await this.prisma.employee.findFirst({
       where: { id: employeeId, accountId: account.id },
@@ -101,8 +148,7 @@ export class AppointmentsController {
     }
 
     return {
-      clientName,
-      clientPhone: String(body?.clientPhone || '').trim(),
+      ...clientResolved,
       date,
       time,
       employeeId,
@@ -127,6 +173,7 @@ export class AppointmentsController {
       throw new BadRequestException({ error: parsed.error });
     }
     const data = parsed as {
+      clientId: string;
       clientName: string;
       clientPhone: string;
       date: string;
@@ -173,6 +220,7 @@ export class AppointmentsController {
       throw new BadRequestException({ error: parsed.error });
     }
     const data = parsed as {
+      clientId: string;
       clientName: string;
       clientPhone: string;
       date: string;

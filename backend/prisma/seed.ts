@@ -90,13 +90,21 @@ async function main() {
   });
 
   const today = new Date().toISOString().split('T')[0];
+  const demoClient = await prisma.client.create({
+    data: {
+      accountId: account.id,
+      name: 'Cliente Exemplo',
+      phone: '11988887777',
+    },
+  });
   await prisma.appointment.create({
     data: {
       accountId: account.id,
       employeeId: marcelo.id,
       serviceId: corteBarba.id,
-      clientName: 'Cliente Exemplo',
-      clientPhone: '11988887777',
+      clientId: demoClient.id,
+      clientName: demoClient.name,
+      clientPhone: demoClient.phone,
       date: today,
       time: '15:00',
       price: corteBarba.price,

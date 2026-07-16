@@ -51,11 +51,20 @@ export type EmployeeSession = {
   createdAt: string;
 };
 
+export type Client = {
+  id: string;
+  accountId: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+};
+
 export type Appointment = {
   id: string;
   accountId: string;
   employeeId: string;
   serviceId: string;
+  clientId?: string | null;
   clientName: string;
   clientPhone: string;
   date: string;

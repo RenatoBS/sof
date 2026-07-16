@@ -3,6 +3,7 @@ import { Account, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../events/realtime.service';
 import { serializeDates } from '../common/public-shapes';
+import { normalizePhone } from '../common/phone';
 import {
   checkWithinOpeningHours,
   formatOpeningHoursSummary,
@@ -17,6 +18,8 @@ import {
 } from '../appointments/schedule-conflict';
 
 type SessionData = {
+  clientId?: string;
+  clientName?: string;
   serviceId?: string;
   employeeId?: string;
   date?: string;
@@ -105,6 +108,33 @@ export class WhatsappBotService {
     });
   }
 
+  private async findClient(accountId: string, phone: string) {
+    const normalized = normalizePhone(phone);
+    if (!normalized) return null;
+    return this.prisma.client.findUnique({
+      where: {
+        accountId_phone: { accountId, phone: normalized },
+      },
+    });
+  }
+
+  private async startBooking(
+    account: Account,
+    customerPhone: string,
+    client: { id: string; name: string },
+    services: { id: string; name: string; duration: number }[],
+  ) {
+    await this.saveSession(account.id, customerPhone, {
+      step: 'awaiting_service',
+      data: { clientId: client.id, clientName: client.name },
+    });
+    return {
+      replies: [
+        `Oi, ${client.name}! Aqui é a Sof, do ${account.businessName}. Qual serviço você quer agendar?\n${this.listMenu(services, (s) => `${s.name} (${s.duration}min)`)}\n\nResponda com o número da opção.`,
+      ],
+    };
+  }
+
   async handleIncomingMessage({
     account,
     customerPhone,
@@ -116,9 +146,10 @@ export class WhatsappBotService {
   }) {
     const trimmed = String(text || '').trim();
     const lower = trimmed.toLowerCase();
+    const phone = normalizePhone(customerPhone) || customerPhone;
 
     if (lower === 'cancelar') {
-      await this.resetSession(account.id, customerPhone);
+      await this.resetSession(account.id, phone);
       return {
         replies: [
           'Combinado, cancelei o que estava em andamento. É só chamar de novo quando quiser marcar um horário.',
@@ -146,7 +177,7 @@ export class WhatsappBotService {
       where: {
         accountId_customerPhone: {
           accountId: account.id,
-          customerPhone,
+          customerPhone: phone,
         },
       },
     });
@@ -154,15 +185,45 @@ export class WhatsappBotService {
     const sessionData = (session?.data || {}) as SessionData;
 
     if (step === 'start') {
-      await this.saveSession(account.id, customerPhone, {
-        step: 'awaiting_service',
+      const existingClient = await this.findClient(account.id, phone);
+      if (existingClient) {
+        return this.startBooking(
+          account,
+          phone,
+          existingClient,
+          services,
+        );
+      }
+      await this.saveSession(account.id, phone, {
+        step: 'awaiting_name',
         data: {},
       });
       return {
         replies: [
-          `Oi! Aqui é a Sof, do ${account.businessName}. Qual serviço você quer agendar?\n${this.listMenu(services, (s) => `${s.name} (${s.duration}min)`)}\n\nResponda com o número da opção.`,
+          `Oi! Aqui é a Sof, do ${account.businessName}. Para começar, qual é o seu nome?`,
         ],
       };
+    }
+
+    if (step === 'awaiting_name') {
+      const name = trimmed.replace(/\s+/g, ' ');
+      if (name.length < 2) {
+        return {
+          replies: ['Me diga seu nome completo (ou como prefere ser chamado).'],
+        };
+      }
+      const client = await this.prisma.client.upsert({
+        where: {
+          accountId_phone: { accountId: account.id, phone },
+        },
+        create: {
+          accountId: account.id,
+          name,
+          phone,
+        },
+        update: { name },
+      });
+      return this.startBooking(account, phone, client, services);
     }
 
     if (step === 'awaiting_service') {
@@ -183,9 +244,12 @@ export class WhatsappBotService {
         orderBy: { createdAt: 'asc' },
       });
       if (employeesForService.length === 0) {
-        await this.saveSession(account.id, customerPhone, {
+        await this.saveSession(account.id, phone, {
           step: 'awaiting_service',
-          data: {},
+          data: {
+            clientId: sessionData.clientId,
+            clientName: sessionData.clientName,
+          },
         });
         return {
           replies: [
@@ -193,9 +257,13 @@ export class WhatsappBotService {
           ],
         };
       }
-      await this.saveSession(account.id, customerPhone, {
+      await this.saveSession(account.id, phone, {
         step: 'awaiting_employee',
-        data: { serviceId: service.id },
+        data: {
+          clientId: sessionData.clientId,
+          clientName: sessionData.clientName,
+          serviceId: service.id,
+        },
       });
       return {
         replies: [
@@ -214,9 +282,12 @@ export class WhatsappBotService {
         orderBy: { createdAt: 'asc' },
       });
       if (employeesForService.length === 0) {
-        await this.saveSession(account.id, customerPhone, {
+        await this.saveSession(account.id, phone, {
           step: 'awaiting_service',
-          data: {},
+          data: {
+            clientId: sessionData.clientId,
+            clientName: sessionData.clientName,
+          },
         });
         return {
           replies: [
@@ -233,7 +304,7 @@ export class WhatsappBotService {
         };
       }
       const employee = employeesForService[idx];
-      await this.saveSession(account.id, customerPhone, {
+      await this.saveSession(account.id, phone, {
         step: 'awaiting_datetime',
         data: { ...sessionData, employeeId: employee.id },
       });
@@ -262,7 +333,7 @@ export class WhatsappBotService {
         },
       });
       if (!service || !employee || !sessionData.employeeId) {
-        await this.resetSession(account.id, customerPhone);
+        await this.resetSession(account.id, phone);
         return {
           replies: ['Vamos recomeçar — qual serviço você quer agendar?'],
         };
@@ -275,7 +346,7 @@ export class WhatsappBotService {
         service.duration,
       );
       if (!hoursCheck.ok) {
-        await this.saveSession(account.id, customerPhone, {
+        await this.saveSession(account.id, phone, {
           step: 'awaiting_datetime',
           data: sessionData,
         });
@@ -325,7 +396,7 @@ export class WhatsappBotService {
           suggestions.length > 0
             ? ` Horários livres com ${employee.name} em ${dateLabel}: ${suggestions.join(', ')}. Ou me diga outra data/horário.`
             : ' Me diga outra data e horário no formato dd/mm hh:mm.';
-        await this.saveSession(account.id, customerPhone, {
+        await this.saveSession(account.id, phone, {
           step: 'awaiting_datetime',
           data: sessionData,
         });
@@ -336,7 +407,7 @@ export class WhatsappBotService {
         };
       }
 
-      await this.saveSession(account.id, customerPhone, {
+      await this.saveSession(account.id, phone, {
         step: 'awaiting_confirmation',
         data: { ...sessionData, ...when },
       });
@@ -349,10 +420,10 @@ export class WhatsappBotService {
 
     if (step === 'awaiting_confirmation') {
       if (AFFIRMATIVE.includes(lower)) {
-        const { serviceId, employeeId, date, time } = sessionData;
+        const { serviceId, employeeId, date, time, clientId } = sessionData;
         const service = services.find((s) => s.id === serviceId);
         if (!service || !employeeId || !date || !time || !serviceId) {
-          await this.resetSession(account.id, customerPhone);
+          await this.resetSession(account.id, phone);
           return { replies: ['Vamos recomeçar — qual serviço você quer agendar?'] };
         }
 
@@ -363,9 +434,14 @@ export class WhatsappBotService {
           service.duration,
         );
         if (!hoursCheck.ok) {
-          await this.saveSession(account.id, customerPhone, {
+          await this.saveSession(account.id, phone, {
             step: 'awaiting_datetime',
-            data: { serviceId, employeeId },
+            data: {
+              clientId: sessionData.clientId,
+              clientName: sessionData.clientName,
+              serviceId,
+              employeeId,
+            },
           });
           return {
             replies: [
@@ -392,9 +468,14 @@ export class WhatsappBotService {
             suggestions.length > 0
               ? ` Sugestões: ${suggestions.join(', ')}. Ou envie outra data/horário (dd/mm hh:mm).`
               : ' Envie outra data e horário (dd/mm hh:mm).';
-          await this.saveSession(account.id, customerPhone, {
+          await this.saveSession(account.id, phone, {
             step: 'awaiting_datetime',
-            data: { serviceId, employeeId },
+            data: {
+              clientId: sessionData.clientId,
+              clientName: sessionData.clientName,
+              serviceId,
+              employeeId,
+            },
           });
           return {
             replies: [
@@ -403,13 +484,35 @@ export class WhatsappBotService {
           };
         }
 
+        let client =
+          clientId
+            ? await this.prisma.client.findFirst({
+                where: { id: clientId, accountId: account.id },
+              })
+            : null;
+        if (!client) {
+          client = await this.findClient(account.id, phone);
+        }
+        if (!client) {
+          client = await this.prisma.client.create({
+            data: {
+              accountId: account.id,
+              name:
+                sessionData.clientName ||
+                `Cliente WhatsApp ${phone.slice(-4)}`,
+              phone,
+            },
+          });
+        }
+
         const appointment = await this.prisma.appointment.create({
           data: {
             accountId: account.id,
             employeeId,
             serviceId,
-            clientName: `Cliente WhatsApp ${customerPhone.slice(-4)}`,
-            clientPhone: customerPhone,
+            clientId: client.id,
+            clientName: client.name,
+            clientPhone: client.phone,
             date,
             time,
             price: service.price,
@@ -417,7 +520,7 @@ export class WhatsappBotService {
             source: 'whatsapp',
           },
         });
-        await this.resetSession(account.id, customerPhone);
+        await this.resetSession(account.id, phone);
         const shaped = serializeDates(appointment);
         this.realtime.broadcast(account.id, 'appointment:created', {
           appointment: shaped,
@@ -430,7 +533,7 @@ export class WhatsappBotService {
         };
       }
       if (NEGATIVE.includes(lower)) {
-        await this.resetSession(account.id, customerPhone);
+        await this.resetSession(account.id, phone);
         return {
           replies: [
             'Sem problemas, não marquei nada. É só chamar de novo quando quiser agendar.',
@@ -442,7 +545,7 @@ export class WhatsappBotService {
       };
     }
 
-    await this.resetSession(account.id, customerPhone);
+    await this.resetSession(account.id, phone);
     return { replies: ['Vamos recomeçar — qual serviço você quer agendar?'] };
   }
 }
