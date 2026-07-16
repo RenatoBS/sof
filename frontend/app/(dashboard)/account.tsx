@@ -195,15 +195,15 @@ export default function AccountScreen() {
             {integrations.wa ? 'ligado' : 'desligado'}
           </Text>
           . Configure as variáveis do WhatsApp no servidor e informe abaixo o{' '}
-          <Text style={{ fontWeight: '700' }}>Phone Number ID</Text> da Meta
-          para ligar esse número a este painel.
+          <Text style={{ fontWeight: '700' }}>Instance ID</Text> (Whazap/Uazapi)
+          ou Phone Number ID (Meta) para ligar esse número a este painel.
         </Text>
         <SofInput
-          label="WhatsApp Phone Number ID"
+          label="WhatsApp Instance / Phone Number ID"
           value={phoneId}
           onChangeText={setPhoneId}
           theme="dashboard"
-          placeholder="Ex: 123456789012345"
+          placeholder="Ex: r67c1326ccc1540"
         />
         {saved ? <Text style={styles.saved}>{saved}</Text> : null}
         <SofButton

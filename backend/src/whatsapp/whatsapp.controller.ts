@@ -20,6 +20,45 @@ import type { AuthedRequest } from '../auth/auth.guard';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 
+type MetaWebhookBody = {
+  entry?: Array<{
+    changes?: Array<{
+      value?: {
+        metadata?: { phone_number_id?: string };
+        messages?: Array<{
+          type?: string;
+          from?: string;
+          text?: { body?: string };
+        }>;
+      };
+    }>;
+  }>;
+};
+
+type UazapiWebhookBody = {
+  EventType?: string;
+  event?: string;
+  BaseUrl?: string;
+  owner?: string;
+  token?: string;
+  message?: {
+    fromMe?: boolean;
+    wasSentByApi?: boolean;
+    isGroup?: boolean;
+    text?: string;
+    type?: string;
+    messageType?: string;
+    sender?: string;
+    sender_pn?: string;
+    chatid?: string;
+  };
+  chat?: {
+    phone?: string;
+    wa_chatid?: string;
+    wa_isGroup?: boolean;
+  };
+};
+
 @Controller('api/whatsapp')
 export class WhatsappController {
   constructor(
@@ -56,13 +95,12 @@ export class WhatsappController {
       );
       throw new UnauthorizedException();
     }
-    if (skipped) {
+    if (skipped && this.api.provider() === 'meta') {
       console.warn(
         '[whatsapp] WHATSAPP_APP_SECRET não configurado — assinatura não verificada.',
       );
     }
 
-    // Responde 200 via HttpCode; processa o resto sem bloquear a Meta.
     setImmediate(() => {
       void this.processWebhook(req.body).catch((err) => {
         console.error('[whatsapp] Erro processando webhook:', err);
@@ -70,20 +108,74 @@ export class WhatsappController {
     });
   }
 
-  private async processWebhook(body: {
-    entry?: Array<{
-      changes?: Array<{
-        value?: {
-          metadata?: { phone_number_id?: string };
-          messages?: Array<{
-            type?: string;
-            from?: string;
-            text?: { body?: string };
-          }>;
-        };
-      }>;
-    }>;
-  }) {
+  private async processWebhook(body: MetaWebhookBody & UazapiWebhookBody) {
+    if (this.api.provider() === 'uazapi' || this.isUazapiPayload(body)) {
+      await this.processUazapiWebhook(body);
+      return;
+    }
+    await this.processMetaWebhook(body);
+  }
+
+  private isUazapiPayload(body: UazapiWebhookBody) {
+    const event = body?.EventType || body?.event;
+    return Boolean(event || body?.message?.chatid || body?.BaseUrl);
+  }
+
+  private async processUazapiWebhook(body: UazapiWebhookBody) {
+    const event = String(body?.EventType || body?.event || '').toLowerCase();
+    if (event && event !== 'messages' && event !== 'message') {
+      return;
+    }
+
+    const message = body?.message;
+    if (!message) return;
+    if (message.fromMe || message.wasSentByApi) return;
+    if (message.isGroup || body?.chat?.wa_isGroup) return;
+
+    const text = String(message.text || '').trim();
+    const isText =
+      !message.type ||
+      message.type === 'text' ||
+      message.messageType === 'Conversation' ||
+      message.messageType === 'conversation' ||
+      Boolean(text);
+    if (!isText || !text) return;
+
+    const customerPhone = this.extractPhone(
+      message.sender_pn ||
+        body?.chat?.phone ||
+        message.sender ||
+        message.chatid ||
+        body?.chat?.wa_chatid ||
+        '',
+    );
+    if (!customerPhone) return;
+
+    const account = await this.resolveAccount({
+      instanceKey: this.api.instanceKey(),
+      owner: body?.owner,
+      token: body?.token,
+    });
+    if (!account) {
+      console.warn(
+        '[whatsapp] Conta não encontrada para a instância Whazap — salve o Instance ID em Conta.',
+      );
+      return;
+    }
+
+    const { replies } = await this.bot.handleIncomingMessage({
+      account,
+      customerPhone,
+      text,
+    });
+    for (const reply of replies) {
+      await this.api.sendText(customerPhone, reply).catch((err) => {
+        console.error('[whatsapp] Falha ao enviar resposta:', err.message);
+      });
+    }
+  }
+
+  private async processMetaWebhook(body: MetaWebhookBody) {
     const entries = body?.entry || [];
     for (const entry of entries) {
       for (const change of entry.changes || []) {
@@ -112,6 +204,46 @@ export class WhatsappController {
         }
       }
     }
+  }
+
+  private extractPhone(raw: string) {
+    const digits = String(raw || '').replace(/\D/g, '');
+    return digits || '';
+  }
+
+  private async resolveAccount(opts: {
+    instanceKey: string;
+    owner?: string;
+    token?: string;
+  }) {
+    const keys = [
+      opts.instanceKey,
+      this.extractPhone(opts.owner || ''),
+      opts.token,
+    ].filter(Boolean);
+
+    for (const key of keys) {
+      const account = await this.prisma.account.findFirst({
+        where: { whatsappPhoneNumberId: key },
+      });
+      if (account) return account;
+    }
+
+    // Instância única: se o token do webhook bate com o .env, usa a conta
+    // que já tem qualquer ID ligado; senão a primeira conta (dev).
+    const envToken = this.config.get<string>('whatsapp.token') || '';
+    if (opts.token && envToken && opts.token === envToken) {
+      if (opts.instanceKey) {
+        const linked = await this.prisma.account.findFirst({
+          where: { whatsappPhoneNumberId: opts.instanceKey },
+        });
+        if (linked) return linked;
+      }
+      return this.prisma.account.findFirst({
+        where: { whatsappPhoneNumberId: { not: '' } },
+      });
+    }
+    return null;
   }
 
   @Post('simulate')

@@ -50,7 +50,11 @@ export default () => {
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     },
     whatsapp: {
+      // meta | uazapi (Whazap usa a engine Uazapi)
+      provider: (process.env.WHATSAPP_PROVIDER || 'meta').toLowerCase(),
+      baseUrl: (process.env.WHATSAPP_BASE_URL || '').replace(/\/+$/, ''),
       token: process.env.WHATSAPP_TOKEN || '',
+      // Meta: Phone Number ID · Uazapi/Whazap: Instance ID
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
       verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
       appSecret: process.env.WHATSAPP_APP_SECRET || '',

@@ -50,10 +50,19 @@ async function bootstrap() {
   await app.listen(port);
 
   const stripeConfigured = Boolean(config.get<string>('stripe.secretKey'));
-  const waConfigured = Boolean(
-    config.get<string>('whatsapp.token') &&
-      config.get<string>('whatsapp.phoneNumberId'),
-  );
+  const waProvider = (
+    config.get<string>('whatsapp.provider') || 'meta'
+  ).toLowerCase();
+  const waConfigured =
+    waProvider === 'uazapi' || waProvider === 'whazap'
+      ? Boolean(
+          config.get<string>('whatsapp.token') &&
+            config.get<string>('whatsapp.baseUrl'),
+        )
+      : Boolean(
+          config.get<string>('whatsapp.token') &&
+            config.get<string>('whatsapp.phoneNumberId'),
+        );
 
   console.log(`Sof API rodando em http://localhost:${port}`);
   if (!stripeConfigured) {
@@ -63,8 +72,10 @@ async function bootstrap() {
   }
   if (!waConfigured) {
     console.log(
-      '[whatsapp] Bot desativado — configure WHATSAPP_TOKEN e WHATSAPP_PHONE_NUMBER_ID no .env.',
+      '[whatsapp] Bot desativado — configure WHATSAPP_PROVIDER=uazapi, WHATSAPP_BASE_URL e WHATSAPP_TOKEN (ou Meta).',
     );
+  } else {
+    console.log(`[whatsapp] Provedor ativo: ${waProvider}`);
   }
 }
 

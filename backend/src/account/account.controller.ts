@@ -64,12 +64,21 @@ export class AccountController {
   @Get('integrations')
   integrations(@Req() req: AuthedRequest) {
     const stripeKey = this.config.get<string>('stripe.secretKey') || '';
+    const waProvider = (
+      this.config.get<string>('whatsapp.provider') || 'meta'
+    ).toLowerCase();
     const waToken = this.config.get<string>('whatsapp.token') || '';
     const waPhone = this.config.get<string>('whatsapp.phoneNumberId') || '';
+    const waBase = this.config.get<string>('whatsapp.baseUrl') || '';
+    const waConfigured =
+      waProvider === 'uazapi' || waProvider === 'whazap'
+        ? Boolean(waToken && waBase)
+        : Boolean(waToken && waPhone);
     return {
       stripe: { configured: Boolean(stripeKey) },
       whatsapp: {
-        configured: Boolean(waToken && waPhone),
+        configured: waConfigured,
+        provider: waProvider === 'whazap' ? 'uazapi' : waProvider,
         linkedPhoneNumberId: req.account.whatsappPhoneNumberId || '',
       },
     };

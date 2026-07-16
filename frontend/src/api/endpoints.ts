@@ -136,7 +136,11 @@ export const dashboardApi = {
   integrations: () =>
     api<{
       stripe: { configured: boolean };
-      whatsapp: { configured: boolean; linkedPhoneNumberId: string };
+      whatsapp: {
+        configured: boolean;
+        provider?: string;
+        linkedPhoneNumberId: string;
+      };
     }>('/account/integrations'),
   updateAccount: (body: {
     whatsappPhoneNumberId?: string;
