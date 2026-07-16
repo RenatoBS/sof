@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-07-16 — Login unificado conta + profissional
+
+- **Contexto:** Duas telas de login confundiam o fluxo.  
+- **Decisão:** Um único `/login`; tenta `POST /api/auth/login` e, se o e-mail não existir na conta, tenta `POST /api/employee-auth/login`; redireciona ao painel ou à agenda do profissional. `/profissional/login` vira redirect.  
+- **Consequências:** Copy e gates apontam só para `/login`.  
+- **Alternativas descartadas:** Toggle Empresa/Profissional; manter duas URLs.
+
+## 2026-07-16 — Login do profissional (agenda própria)
+
+- **Contexto:** Só o dono da conta tinha acesso; profissionais precisavam ver a própria agenda e cancelar horários.  
+- **Decisão:** `Employee.email` (único), `passwordHash`, `mustChangePassword`; JWT com `role: employee` + cookie `sof_employee_session`; portal `/(profissional)/*`; create gera senha temporária; 1º acesso força troca de senha; cancelamento do profissional marca `status=cancelled` (libera slot). Login unificado em `/login` (tenta conta, depois profissional se o e-mail não existir na conta).  
+- **Consequências:** Cadastro de profissional exige e-mail; painel mostra senha gerada uma vez; endpoints `/api/employee-auth/*` e `/api/employee/appointments`.  
+- **Alternativas descartadas:** Telas de login separadas; mesmo login da conta com role; hard delete no cancelamento do profissional; senha escolhida pelo dono sem geração automática.
+
 ## 2026-07-16 — Horário de funcionamento semanal da conta
 
 - **Contexto:** Sugestões e agendamentos usavam janela fixa 09–18; o estabelecimento precisava escolher dias/horários.  

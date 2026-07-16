@@ -30,11 +30,14 @@ model Account {
 }
 
 model Employee {
-  id        String   @id @default(cuid())
-  accountId String
-  name      String
-  color     String
-  createdAt DateTime @default(now())
+  id                 String   @id @default(cuid())
+  accountId          String
+  name               String
+  email              String?  @unique
+  passwordHash       String?
+  mustChangePassword Boolean  @default(true)
+  color              String
+  createdAt          DateTime @default(now())
 
   account      Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments Appointment[]

@@ -46,9 +46,12 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         }
       },
       onUpdated: (appointment: Appointment) => {
-        setAppointments((prev) =>
-          prev.map((a) => (a.id === appointment.id ? appointment : a)),
-        );
+        setAppointments((prev) => {
+          if (appointment.status && appointment.status !== 'confirmed') {
+            return prev.filter((a) => a.id !== appointment.id);
+          }
+          return prev.map((a) => (a.id === appointment.id ? appointment : a));
+        });
       },
       onDeleted: (appointmentId: string) => {
         setAppointments((prev) => prev.filter((a) => a.id !== appointmentId));

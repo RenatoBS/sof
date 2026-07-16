@@ -172,7 +172,12 @@ export function AgendaView({
                 {weekDates.map((day) => {
                   const ds = localDateStr(day);
                   const dayAppts = appointments
-                    .filter((a) => a.employeeId === emp.id && a.date === ds)
+                    .filter(
+                      (a) =>
+                        a.status === 'confirmed' &&
+                        a.employeeId === emp.id &&
+                        a.date === ds,
+                    )
                     .sort((a, b) => a.time.localeCompare(b.time));
                   return (
                     <View

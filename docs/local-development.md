@@ -63,6 +63,7 @@ npm run web          # http://localhost:8081
 
 - Email: `demo@sof.com` (ou `SEED_DEMO_EMAIL`)  
 - Senha: valor de `SEED_DEMO_PASSWORD` no `backend/.env`  
+- Profissional demo (após seed): `marcelo@demo.sof` / mesma senha — em `/login` (troca no 1º acesso)  
 
 Não commitar `.env`.
 

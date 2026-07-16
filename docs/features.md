@@ -19,7 +19,7 @@ Sof ajuda salões/barbearias a:
 | Landing | `/` | Hero, chat mock Sof, features com ícones SVG, passos |
 | Planos | `/pricing` | Essencial / Estúdio / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
-| Entrar | `/login` | Credenciais → dashboard |
+| Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
 | Nav / footer | global | Wordmark `sof`, CTAs |
 
 Copy e tokens devem permanecer alinhados à marca Sof.
@@ -55,9 +55,17 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 - Listagem em cards (cor de identificação).  
 - CRUD: adicionar / **editar** / remover.  
-- Campos: nome e **um ou mais serviços** do cardápio do estabelecimento (obrigatório).  
-- `PUT /api/employees/:id` substitui nome e a lista de serviços.  
+- Campos: nome, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
+- Ao criar (ou resetar senha), o painel gera senha temporária e exibe uma vez; no 1º login o profissional troca a senha.  
+- `PUT /api/employees/:id` substitui nome, e-mail e a lista de serviços (`resetPassword` opcional).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
+
+### Área do profissional
+
+- Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
+- Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional.  
+- Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
+- Se `mustChangePassword`, redireciona para `/(profissional)/trocar-senha`.
 
 ### Serviços
 
@@ -98,6 +106,7 @@ Quando `SEED_DEMO_ENABLED=true`, o seed cria (ou recria padrão de demo):
 - Email: `SEED_DEMO_EMAIL` (default `demo@sof.com`)  
 - Senha: `SEED_DEMO_PASSWORD`  
 - Negócio exemplo “Santa Madalena”, plano Estúdio, profissionais/serviços/agendamento de exemplo  
+- Login profissional demo: `marcelo@demo.sof` (mesma senha do demo; troca no 1º acesso em `/login`)  
 
 Arquivo: `backend/prisma/seed.ts`.
 
@@ -107,6 +116,8 @@ Arquivo: `backend/prisma/seed.ts`.
 |------|-------------------|
 | Health | `GET /api/health` |
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
+| Employee auth | `POST /api/employee-auth/login`, `logout`, `GET me`, `POST change-password` |
+| Employee portal | `GET /api/employee/appointments`, `POST …/:id/cancel` |
 | Account | `PUT /api/account`, `GET /api/account/integrations` |
 | Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |

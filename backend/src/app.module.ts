@@ -13,6 +13,7 @@ import { CheckoutModule } from './checkout/checkout.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { EventsModule } from './events/events.module';
+import { EmployeePortalModule } from './employee-portal/employee-portal.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -37,6 +38,7 @@ import { HealthController } from './health/health.controller';
     PaymentsModule,
     WhatsappModule,
     EventsModule,
+    EmployeePortalModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -46,10 +46,16 @@ async function main() {
     ),
   );
 
+  const employeePassword = demoPassword;
+  const employeePasswordHash = await bcrypt.hash(employeePassword, 12);
+
   const marcelo = await prisma.employee.create({
     data: {
       accountId: account.id,
       name: 'Marcelo Silva',
+      email: 'marcelo@demo.sof',
+      passwordHash: employeePasswordHash,
+      mustChangePassword: true,
       color: '#3b82f6',
       services: {
         create: [{ serviceId: corte.id }, { serviceId: corteBarba.id }],
@@ -60,6 +66,9 @@ async function main() {
     data: {
       accountId: account.id,
       name: 'Bruno Costa',
+      email: 'bruno@demo.sof',
+      passwordHash: employeePasswordHash,
+      mustChangePassword: true,
       color: '#10b981',
       services: {
         create: [{ serviceId: barba.id }, { serviceId: corteBarba.id }],
@@ -70,6 +79,9 @@ async function main() {
     data: {
       accountId: account.id,
       name: 'Kaique Santos',
+      email: 'kaique@demo.sof',
+      passwordHash: employeePasswordHash,
+      mustChangePassword: true,
       color: '#f59e0b',
       services: {
         create: [{ serviceId: coloracao.id }],
@@ -95,6 +107,9 @@ async function main() {
 
   console.log(
     `[seed] Conta de teste criada (não é exibida na interface): ${email} / ${demoPassword}`,
+  );
+  console.log(
+    `[seed] Login profissional (ex.): marcelo@demo.sof / ${employeePassword} (troca de senha no 1º acesso)`,
   );
 }
 

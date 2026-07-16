@@ -3,6 +3,7 @@ import type {
   Account,
   Appointment,
   Employee,
+  EmployeeSession,
   OpeningHours,
   Service,
 } from '@/src/api/types';
@@ -16,6 +17,42 @@ export const authApi = {
     }),
   me: () => api<{ account: Account }>('/auth/me'),
   logout: () => api<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+};
+
+export const employeeAuthApi = {
+  login: (email: string, password: string) =>
+    api<{ employee: EmployeeSession; token: string }>('/employee-auth/login', {
+      method: 'POST',
+      body: { email, password },
+      auth: false,
+    }),
+  me: () =>
+    api<{ employee: EmployeeSession }>('/employee-auth/me', {
+      auth: 'employee',
+    }),
+  logout: () =>
+    api<{ ok: boolean }>('/employee-auth/logout', {
+      method: 'POST',
+      auth: 'employee',
+    }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api<{ employee: EmployeeSession }>('/employee-auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      auth: 'employee',
+    }),
+};
+
+export const employeeApi = {
+  appointments: () =>
+    api<{ appointments: Appointment[] }>('/employee/appointments', {
+      auth: 'employee',
+    }),
+  cancelAppointment: (id: string) =>
+    api<{ appointment: Appointment }>(`/employee/appointments/${id}/cancel`, {
+      method: 'POST',
+      auth: 'employee',
+    }),
 };
 
 export const checkoutApi = {
@@ -41,13 +78,31 @@ export const checkoutApi = {
 
 export const dashboardApi = {
   employees: () => api<{ employees: Employee[] }>('/employees'),
-  createEmployee: (body: { name: string; serviceIds: string[] }) =>
-    api<{ employee: Employee }>('/employees', { method: 'POST', body }),
-  updateEmployee: (id: string, body: { name: string; serviceIds: string[] }) =>
-    api<{ employee: Employee }>(`/employees/${id}`, {
-      method: 'PUT',
+  createEmployee: (body: {
+    name: string;
+    email: string;
+    serviceIds: string[];
+  }) =>
+    api<{ employee: Employee; temporaryPassword: string }>('/employees', {
+      method: 'POST',
       body,
     }),
+  updateEmployee: (
+    id: string,
+    body: {
+      name: string;
+      email: string;
+      serviceIds: string[];
+      resetPassword?: boolean;
+    },
+  ) =>
+    api<{ employee: Employee; temporaryPassword?: string }>(
+      `/employees/${id}`,
+      {
+        method: 'PUT',
+        body,
+      },
+    ),
   deleteEmployee: (id: string) =>
     api<{ ok: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
   services: () => api<{ services: Service[] }>('/services'),

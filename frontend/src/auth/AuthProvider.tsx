@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import type { Account } from '@/src/api/types';
 import { authApi } from '@/src/api/endpoints';
-import { setToken, getToken } from '@/src/auth/tokenStorage';
+import { setToken, getToken, setEmployeeToken } from '@/src/auth/tokenStorage';
 
 type AuthContextValue = {
   account: Account | null;
@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const { account: acc, token } = await authApi.login(email, password);
+      await setEmployeeToken(null);
       await setSession(acc, token);
     },
     [setSession],

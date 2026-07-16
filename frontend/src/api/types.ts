@@ -33,8 +33,21 @@ export type Employee = {
   id: string;
   accountId: string;
   name: string;
+  email: string;
+  mustChangePassword: boolean;
   color: string;
   services: Service[];
+  createdAt: string;
+};
+
+export type EmployeeSession = {
+  id: string;
+  accountId: string;
+  name: string;
+  email: string;
+  color: string;
+  mustChangePassword: boolean;
+  businessName: string;
   createdAt: string;
 };
 

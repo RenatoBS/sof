@@ -13,6 +13,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AuthProvider } from '@/src/auth/AuthProvider';
+import { EmployeeAuthProvider } from '@/src/auth/EmployeeAuthProvider';
 import { ToastProvider, useToast } from '@/src/context/ToastContext';
 import { m } from '@/src/theme/marketing';
 
@@ -37,22 +38,26 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ToastProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: m.paper },
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="pricing" />
-          <Stack.Screen name="about" />
-          <Stack.Screen name="login" />
-          <Stack.Screen name="checkout-return" />
-          <Stack.Screen name="(dashboard)" />
-        </Stack>
-        <ToastBanner />
-      </ToastProvider>
+      <EmployeeAuthProvider>
+        <ToastProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: m.paper },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="pricing" />
+            <Stack.Screen name="about" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="profissional/login" />
+            <Stack.Screen name="checkout-return" />
+            <Stack.Screen name="(dashboard)" />
+            <Stack.Screen name="(profissional)" />
+          </Stack>
+          <ToastBanner />
+        </ToastProvider>
+      </EmployeeAuthProvider>
     </AuthProvider>
   );
 }

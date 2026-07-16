@@ -71,9 +71,11 @@ Account
 
 Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId`, `openingHours` (JSON 7 dias, 0=domingo).
 
+`Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
+
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N, o **expediente da conta** (`account/opening-hours.ts`) e conflito de agenda do profissional (overlap por duração; `appointments/schedule-conflict.ts`).
+`Appointment`: data/hora, cliente, preço, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N, o **expediente da conta** (`account/opening-hours.ts`) e conflito de agenda do profissional (overlap por duração; `appointments/schedule-conflict.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
 
 Datasource usa:
 
@@ -112,19 +114,24 @@ URLs:
 | `/` | Landing |
 | `/pricing` | Planos + checkout modal |
 | `/about` | Quem somos |
-| `/login` | Entrar |
+| `/login` | Entrar (conta ou profissional) |
 | `/checkout-return` | Retorno MP |
 | `/(dashboard)/agenda` | Agenda semanal + simulador WA |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
 | `/(dashboard)/billing` | Faturamento |
 | `/(dashboard)/account` | Conta / horários / integrações |
+| `/profissional/login` | Redirect → `/login` |
+| `/(profissional)/agenda` | Agenda do profissional |
+| `/(profissional)/trocar-senha` | Troca de senha (obrigatória no 1º acesso) |
 
-Gate do dashboard: sem `account` → redirect `/login` (`(dashboard)/_layout.tsx`).
+Gate do dashboard: sem `account` → redirect `/login` (`(dashboard)/_layout.tsx`).  
+Gate do portal profissional: sem sessão employee → `/login`; com `mustChangePassword` → `trocar-senha`.
 
 ### Estado
 
-- `AuthProvider` — sessão  
+- `AuthProvider` — sessão da conta  
+- `EmployeeAuthProvider` — sessão do profissional  
 - `DashboardProvider` — employees, services, appointments  
 - `ToastProvider` — toasts (ex.: novo WA)  
 

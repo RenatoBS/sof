@@ -1,4 +1,4 @@
-import { Account } from '@prisma/client';
+import { Account, Employee } from '@prisma/client';
 import { normalizeOpeningHours } from '../account/opening-hours';
 
 export function publicAccount(account: Account | null) {
@@ -8,6 +8,22 @@ export function publicAccount(account: Account | null) {
     ...safe,
     openingHours: normalizeOpeningHours(account.openingHours),
     createdAt: account.createdAt.toISOString(),
+  };
+}
+
+export function publicEmployeeSession(
+  employee: Employee,
+  account: Pick<Account, 'id' | 'businessName'>,
+) {
+  return {
+    id: employee.id,
+    accountId: employee.accountId,
+    name: employee.name,
+    email: employee.email || '',
+    color: employee.color,
+    mustChangePassword: employee.mustChangePassword,
+    businessName: account.businessName,
+    createdAt: employee.createdAt.toISOString(),
   };
 }
 

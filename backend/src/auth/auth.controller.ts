@@ -18,7 +18,7 @@ import { verifyPassword } from '../common/password';
 import {
   COOKIE_NAME,
   cookieOptions,
-  signToken,
+  signAccountToken,
 } from '../common/token';
 import { publicAccount } from '../common/public-shapes';
 import { AuthGuard } from './auth.guard';
@@ -63,7 +63,7 @@ export class AuthController {
       throw new UnauthorizedException({ error: 'Senha incorreta.' });
     }
 
-    const jwtToken = signToken(
+    const jwtToken = signAccountToken(
       account.id,
       this.config.getOrThrow<string>('jwtSecret'),
     );

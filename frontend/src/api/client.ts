@@ -1,4 +1,4 @@
-import { getToken } from '@/src/auth/tokenStorage';
+import { getToken, getEmployeeToken } from '@/src/auth/tokenStorage';
 
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, '') ||
@@ -16,7 +16,8 @@ export class ApiError extends Error {
 type ApiOptions = {
   method?: string;
   body?: unknown;
-  auth?: boolean;
+  /** false = sem auth; 'employee' = token do profissional; default = conta */
+  auth?: boolean | 'account' | 'employee';
 };
 
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -25,7 +26,14 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     headers['Content-Type'] = 'application/json';
   }
 
-  const token = options.auth !== false ? await getToken() : null;
+  const authMode = options.auth === undefined ? 'account' : options.auth;
+  let token: string | null = null;
+  if (authMode === 'account' || authMode === true) {
+    token = await getToken();
+  } else if (authMode === 'employee') {
+    token = await getEmployeeToken();
+  }
+
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
