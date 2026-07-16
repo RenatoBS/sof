@@ -13,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { publicAccount } from '../common/public-shapes';
+import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 import { parseOpeningHoursInput } from './opening-hours';
 
 @Controller('api/account')
@@ -21,6 +22,7 @@ export class AccountController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly whatsappApi: WhatsappApiService,
   ) {}
 
   @Put()
@@ -64,22 +66,20 @@ export class AccountController {
   @Get('integrations')
   integrations(@Req() req: AuthedRequest) {
     const stripeKey = this.config.get<string>('stripe.secretKey') || '';
-    const waProvider = (
-      this.config.get<string>('whatsapp.provider') || 'meta'
-    ).toLowerCase();
-    const waToken = this.config.get<string>('whatsapp.token') || '';
-    const waPhone = this.config.get<string>('whatsapp.phoneNumberId') || '';
-    const waBase = this.config.get<string>('whatsapp.baseUrl') || '';
-    const waConfigured =
-      waProvider === 'uazapi' || waProvider === 'whazap'
-        ? Boolean(waToken && waBase)
-        : Boolean(waToken && waPhone);
+    const waProvider = this.whatsappApi.provider();
+    const waConfigured = this.whatsappApi.isConfigured();
+    const hasInstance = Boolean(
+      req.account.whatsappInstanceToken || req.account.whatsappPhoneNumberId,
+    );
     return {
       stripe: { configured: Boolean(stripeKey) },
       whatsapp: {
         configured: waConfigured,
-        provider: waProvider === 'whazap' ? 'uazapi' : waProvider,
+        provider: waProvider,
         linkedPhoneNumberId: req.account.whatsappPhoneNumberId || '',
+        linked: Boolean(req.account.whatsappConnectedAt),
+        hasInstance,
+        pairingAvailable: this.whatsappApi.isPairingAvailable(),
       },
     };
   }

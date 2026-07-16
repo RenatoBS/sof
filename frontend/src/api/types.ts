@@ -18,6 +18,7 @@ export type Account = {
   openingHours: OpeningHours;
   status: string;
   createdAt: string;
+  whatsappConnectedAt?: string | null;
 };
 
 export type Service = {

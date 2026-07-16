@@ -158,7 +158,7 @@ export class WhatsappController {
     });
     if (!account) {
       console.warn(
-        '[whatsapp] Conta não encontrada para a instância Whazap — salve o Instance ID em Conta.',
+        '[whatsapp] Conta não encontrada para a instância Whazap — pareie o WhatsApp em Conta.',
       );
       return;
     }
@@ -169,9 +169,11 @@ export class WhatsappController {
       text,
     });
     for (const reply of replies) {
-      await this.api.sendText(customerPhone, reply).catch((err) => {
-        console.error('[whatsapp] Falha ao enviar resposta:', err.message);
-      });
+      await this.api
+        .sendText(customerPhone, reply, account.whatsappInstanceToken)
+        .catch((err) => {
+          console.error('[whatsapp] Falha ao enviar resposta:', err.message);
+        });
     }
   }
 
@@ -216,6 +218,14 @@ export class WhatsappController {
     owner?: string;
     token?: string;
   }) {
+    // Preferir token da instância persistido na conta (multi-tenant).
+    if (opts.token) {
+      const byToken = await this.prisma.account.findFirst({
+        where: { whatsappInstanceToken: opts.token },
+      });
+      if (byToken) return byToken;
+    }
+
     const keys = [
       opts.instanceKey,
       this.extractPhone(opts.owner || ''),
@@ -229,8 +239,7 @@ export class WhatsappController {
       if (account) return account;
     }
 
-    // Instância única: se o token do webhook bate com o .env, usa a conta
-    // que já tem qualquer ID ligado; senão a primeira conta (dev).
+    // Instância única legada: token do webhook = WHATSAPP_TOKEN do .env
     const envToken = this.config.get<string>('whatsapp.token') || '';
     if (opts.token && envToken && opts.token === envToken) {
       if (opts.instanceKey) {

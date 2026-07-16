@@ -56,8 +56,10 @@ async function bootstrap() {
   const waConfigured =
     waProvider === 'uazapi' || waProvider === 'whazap'
       ? Boolean(
-          config.get<string>('whatsapp.token') &&
-            config.get<string>('whatsapp.baseUrl'),
+          (config.get<string>('whatsapp.adminToken') &&
+            config.get<string>('whatsapp.baseUrl')) ||
+            (config.get<string>('whatsapp.token') &&
+              config.get<string>('whatsapp.baseUrl')),
         )
       : Boolean(
           config.get<string>('whatsapp.token') &&
@@ -72,7 +74,7 @@ async function bootstrap() {
   }
   if (!waConfigured) {
     console.log(
-      '[whatsapp] Bot desativado — configure WHATSAPP_PROVIDER=uazapi, WHATSAPP_BASE_URL e WHATSAPP_TOKEN (ou Meta).',
+      '[whatsapp] Bot desativado — configure WHATSAPP_PROVIDER=uazapi, WHATSAPP_BASE_URL e WHATSAPP_ADMIN_TOKEN (ou Meta).',
     );
   } else {
     console.log(`[whatsapp] Provedor ativo: ${waProvider}`);

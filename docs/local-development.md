@@ -84,8 +84,21 @@ Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
 |----------|------------------|
 | `CORS_ORIGIN` | `http://localhost:8081` |
 | `PUBLIC_URL` | `http://localhost:8081` |
+| `API_PUBLIC_URL` | URL pública da API (webhook WA); local pode ficar vazio → `http://localhost:3001` |
 | `JWT_SECRET` | qualquer string longa em dev |
 | `EXPO_PUBLIC_API_URL` | `http://localhost:3001` |
+| `WHATSAPP_PROVIDER` | default `uazapi` (ou `meta`) |
+| `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
+| `WHATSAPP_ADMIN_TOKEN` | admin token Uazapi (cria instância por conta) |
+| `WHATSAPP_TOKEN` | token de instância (modo legado / envio) |
+
+### WhatsApp local (Uazapi)
+
+1. Preencha `WHATSAPP_PROVIDER=uazapi` (default), `WHATSAPP_BASE_URL` e **ou** `WHATSAPP_ADMIN_TOKEN` (multi-conta) **ou** `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` (instância única).  
+2. O Admin Token é distinto do token da instância — copie o admin no painel Uazapi.  
+3. Para webhook real, use túnel HTTPS (ex. ngrok) em `API_PUBLIC_URL`.  
+4. No painel Conta → Bot do WhatsApp → Escanear QR ou Usar código.  
+5. Sem essas envs, o simulador na Agenda continua disponível.
 
 ## Troubleshooting
 

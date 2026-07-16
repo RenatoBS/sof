@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-07-16 — Provider WhatsApp padrão = Uazapi
+
+- **Contexto:** Meta Cloud API exigia Phone Number ID + app secret; o produto já opera com Uazapi (QR/código na Conta).  
+- **Decisão:** Default de `WHATSAPP_PROVIDER` passou a `uazapi`; Meta permanece opcional via env. Pareamento na Conta aceita admin token (multi-tenant) ou `WHATSAPP_TOKEN` de instância única (legado), com fallback se o admin for inválido.  
+- **Consequências:** `.env.example` e docs locais enfatizam Uazapi; `WHATSAPP_ADMIN_TOKEN` ≠ token da instância.  
+- **Alternativas descartadas:** Manter default `meta`; exigir sempre admin token mesmo em dev com uma instância.
+
+## 2026-07-16 — Pareamento WhatsApp por conta (QR/código Whazap)
+
+- **Contexto:** O painel só gravava Instance ID manualmente; o QR ficava no Whazap e um único `WHATSAPP_TOKEN` no servidor não escalava multi-tenant.  
+- **Decisão:** Com `WHATSAPP_ADMIN_TOKEN` + `WHATSAPP_BASE_URL`, cada `Account` cria/reusa uma instância Uazapi; Conta exibe QR ou código de pareamento; persistir `whatsappInstanceToken` (strip em `publicAccount`) + `whatsappPhoneNumberId`; envio/webhook usam o token da conta.  
+- **Consequências:** Novos endpoints `/api/account/whatsapp/connect|status|disconnect`; `API_PUBLIC_URL` obrigatória em prod para registrar webhook; simulador na Agenda permanece.  
+- **Alternativas descartadas:** Continuar colando Instance ID; um token global para todas as contas; Evolution API.
+
 ## 2026-07-15 — Planos Sof como assinaturas Stripe (sandbox)
 
 - **Contexto:** Precisávamos de produtos recorrentes mensais e links de pagamento no sandbox.  

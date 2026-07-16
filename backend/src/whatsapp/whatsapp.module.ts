@@ -8,5 +8,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule],
   controllers: [WhatsappController],
   providers: [WhatsappApiService, WhatsappBotService],
+  exports: [WhatsappApiService],
 })
 export class WhatsappModule {}

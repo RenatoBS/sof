@@ -84,18 +84,24 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Assinatura (plano, email, desde).  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
 - Status Stripe.  
-- Status bot WhatsApp + Phone Number ID (`PUT /api/account`).  
+- **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
 - Sair da conta.
 
 ## WhatsApp (bot)
 
-Com credenciais Meta + Phone Number ID na conta:
+Provedor padrão: **Uazapi** (`WHATSAPP_PROVIDER=uazapi` se omitido).
 
+Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN` de instância):
+
+- Pareamento no painel Conta (QR ou código com telefone).  
+- Ao conectar, a API configura o webhook da instância para `API_PUBLIC_URL/api/whatsapp/webhook`.  
 - Webhook `GET/POST /api/whatsapp/webhook`.  
 - Fluxo: serviço → profissionais **filtrados pelos serviços que realizam** → data/hora → confirmação → `Appointment` (`source=whatsapp`).  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta; informa o resumo ao pedir horário.  
 - **Conflito de agenda:** se o profissional já tem um horário confirmado que se sobrepõe (pela duração do serviço), o bot recusa, sugere até 3 horários livres **dentro do expediente** (passo 30 min) e pede outra data/hora; na confirmação há checagem de novo (corrida entre clientes).  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).
+
+Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, sem QR no painel.
 
 Sem credenciais: simulador no painel cobre o mesmo caminho de domínio para demos.
 
@@ -118,13 +124,13 @@ Arquivo: `backend/prisma/seed.ts`.
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
 | Employee auth | `POST /api/employee-auth/login`, `logout`, `GET me`, `POST change-password` |
 | Employee portal | `GET /api/employee/appointments`, `POST …/:id/cancel` |
-| Account | `PUT /api/account`, `GET /api/account/integrations` |
+| Account | `PUT /api/account`, `GET /api/account/integrations`, `POST/GET /api/account/whatsapp/*` |
 | Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Payments | `POST /api/payments/webhook` |
-| WhatsApp | webhooks + `POST /api/whatsapp/simulate` |
+| WhatsApp | webhooks + `POST /api/whatsapp/simulate` + pareamento em `/api/account/whatsapp` |
 | Events | `GET /api/events/stream` |
 
 Detalhes de arquitetura: [`architecture.md`](architecture.md).

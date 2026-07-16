@@ -3,11 +3,18 @@ import { normalizeOpeningHours } from '../account/opening-hours';
 
 export function publicAccount(account: Account | null) {
   if (!account) return null;
-  const { passwordHash: _passwordHash, ...safe } = account;
+  const {
+    passwordHash: _passwordHash,
+    whatsappInstanceToken: _whatsappInstanceToken,
+    ...safe
+  } = account;
   return {
     ...safe,
     openingHours: normalizeOpeningHours(account.openingHours),
     createdAt: account.createdAt.toISOString(),
+    whatsappConnectedAt: account.whatsappConnectedAt
+      ? account.whatsappConnectedAt.toISOString()
+      : null,
   };
 }
 

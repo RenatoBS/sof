@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { dashboardApi } from '@/src/api/endpoints';
 import type { DaySchedule, OpeningHours } from '@/src/api/types';
@@ -28,6 +35,8 @@ const DEFAULT_HOURS: OpeningHours = [
   { open: true, start: '09:00', end: '18:00' },
   { open: true, start: '09:00', end: '18:00' },
 ];
+
+type PairingMode = 'idle' | 'qrcode' | 'paircode';
 
 function normalizeHours(raw: OpeningHours | undefined | null): OpeningHours {
   if (!Array.isArray(raw) || raw.length !== 7) {
@@ -68,25 +77,84 @@ function formatHoursSummary(hours: OpeningHours): string {
 
 export default function AccountScreen() {
   const { account, logout, setSession } = useAuth();
-  const [phoneId, setPhoneId] = useState('');
   const [hours, setHours] = useState<OpeningHours>(DEFAULT_HOURS);
   const [hoursExpanded, setHoursExpanded] = useState(false);
-  const [integrations, setIntegrations] = useState({ stripe: false, wa: false });
-  const [saved, setSaved] = useState('');
+  const [integrations, setIntegrations] = useState({
+    stripe: false,
+    wa: false,
+    pairingAvailable: false,
+  });
   const [hoursSaved, setHoursSaved] = useState('');
   const [hoursError, setHoursError] = useState('');
   const [savingHours, setSavingHours] = useState(false);
 
+  const [waMode, setWaMode] = useState<PairingMode>('idle');
+  const [waStatus, setWaStatus] = useState('disconnected');
+  const [waLinked, setWaLinked] = useState(false);
+  const [waInstanceId, setWaInstanceId] = useState('');
+  const [waQrcode, setWaQrcode] = useState<string | null>(null);
+  const [waPaircode, setWaPaircode] = useState<string | null>(null);
+  const [waPhone, setWaPhone] = useState('');
+  const [waBusy, setWaBusy] = useState(false);
+  const [waError, setWaError] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const refreshWaStatus = useCallback(async () => {
+    try {
+      const data = await dashboardApi.whatsappStatus();
+      setWaStatus(data.status);
+      setWaLinked(data.linked);
+      setWaInstanceId(data.instanceId || '');
+      if (data.qrcode) setWaQrcode(data.qrcode);
+      if (data.paircode) setWaPaircode(data.paircode);
+      if (data.linked) {
+        stopPolling();
+        setWaMode('idle');
+        setWaQrcode(null);
+        setWaPaircode(null);
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, [stopPolling]);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollRef.current = setInterval(() => {
+      void refreshWaStatus();
+    }, 2500);
+  }, [refreshWaStatus, stopPolling]);
+
   useEffect(() => {
-    if (account?.whatsappPhoneNumberId) setPhoneId(account.whatsappPhoneNumberId);
     if (account) setHours(normalizeHours(account.openingHours));
     dashboardApi.integrations().then((data) => {
       setIntegrations({
         stripe: data.stripe.configured,
         wa: data.whatsapp.configured,
+        pairingAvailable: Boolean(data.whatsapp.pairingAvailable),
       });
+      setWaLinked(Boolean(data.whatsapp.linked));
+      setWaInstanceId(data.whatsapp.linkedPhoneNumberId || '');
     });
-  }, [account]);
+    if (account?.whatsappConnectedAt) {
+      setWaLinked(true);
+      setWaStatus('connected');
+    }
+    return () => stopPolling();
+  }, [account, stopPolling]);
+
+  useEffect(() => {
+    if (!integrations.pairingAvailable) return;
+    void refreshWaStatus();
+  }, [integrations.pairingAvailable, refreshWaStatus]);
 
   if (!account) return null;
 
@@ -98,6 +166,75 @@ export default function AccountScreen() {
     setHours((prev) =>
       prev.map((day, i) => (i === index ? { ...day, ...patch } : day)),
     );
+  };
+
+  const connectQr = async () => {
+    setWaError('');
+    setWaBusy(true);
+    setWaMode('qrcode');
+    setWaPaircode(null);
+    try {
+      const data = await dashboardApi.connectWhatsapp();
+      setWaStatus(data.status);
+      setWaInstanceId(data.instanceId || '');
+      setWaQrcode(data.qrcode || null);
+      startPolling();
+    } catch (err) {
+      setWaError(
+        err instanceof Error ? err.message : 'Não foi possível gerar o QR.',
+      );
+      setWaMode('idle');
+    } finally {
+      setWaBusy(false);
+    }
+  };
+
+  const connectPair = async () => {
+    setWaError('');
+    const digits = waPhone.replace(/\D/g, '');
+    if (digits.length < 10) {
+      setWaError('Informe o telefone com DDI (ex: 5511999998888).');
+      return;
+    }
+    setWaBusy(true);
+    setWaMode('paircode');
+    setWaQrcode(null);
+    try {
+      const data = await dashboardApi.connectWhatsapp({ phone: digits });
+      setWaStatus(data.status);
+      setWaInstanceId(data.instanceId || '');
+      setWaPaircode(data.paircode || null);
+      startPolling();
+    } catch (err) {
+      setWaError(
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível gerar o código.',
+      );
+      setWaMode('idle');
+    } finally {
+      setWaBusy(false);
+    }
+  };
+
+  const disconnectWa = async () => {
+    setWaError('');
+    setWaBusy(true);
+    stopPolling();
+    try {
+      await dashboardApi.disconnectWhatsapp();
+      setWaLinked(false);
+      setWaStatus('disconnected');
+      setWaMode('idle');
+      setWaQrcode(null);
+      setWaPaircode(null);
+    } catch (err) {
+      setWaError(
+        err instanceof Error ? err.message : 'Falha ao desconectar.',
+      );
+    } finally {
+      setWaBusy(false);
+    }
   };
 
   return (
@@ -243,36 +380,147 @@ export default function AccountScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Bot do WhatsApp</Text>
-        <Text style={[styles.help, { marginBottom: 16 }]}>
-          Status do bot:{' '}
-          <Text style={[styles.badge, integrations.wa ? styles.on : styles.off]}>
-            {integrations.wa ? 'ligado' : 'desligado'}
+        <Text style={[styles.help, { marginBottom: 12 }]}>
+          Servidor:{' '}
+          <Text
+            style={[styles.badge, integrations.wa ? styles.on : styles.off]}
+          >
+            {integrations.wa ? 'pronto' : 'desligado'}
           </Text>
-          . Configure as variáveis do WhatsApp no servidor e informe abaixo o{' '}
-          <Text style={{ fontWeight: '700' }}>Instance ID</Text> (Whazap/Uazapi)
-          ou Phone Number ID (Meta) para ligar esse número a este painel.
+          {' · '}
+          Dispositivo:{' '}
+          <Text style={[styles.badge, waLinked ? styles.on : styles.off]}>
+            {waLinked
+              ? 'conectado'
+              : waStatus === 'connecting'
+                ? 'conectando…'
+                : 'desconectado'}
+          </Text>
         </Text>
-        <SofInput
-          label="WhatsApp Instance / Phone Number ID"
-          value={phoneId}
-          onChangeText={setPhoneId}
-          theme="dashboard"
-          placeholder="Ex: r67c1326ccc1540"
-        />
-        {saved ? <Text style={styles.saved}>{saved}</Text> : null}
-        <SofButton
-          title="Salvar"
-          variant="dark"
-          theme="dashboard"
-          onPress={async () => {
-            const { account: updated } = await dashboardApi.updateAccount({
-              whatsappPhoneNumberId: phoneId.trim(),
-            });
-            await setSession(updated);
-            setSaved('Salvo!');
-            setTimeout(() => setSaved(''), 2000);
-          }}
-        />
+
+        {!integrations.pairingAvailable ? (
+          <Text style={styles.help}>
+            Para parear pelo painel, configure{' '}
+            <Text style={styles.code}>WHATSAPP_PROVIDER=uazapi</Text>,{' '}
+            <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
+            <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
+            <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma instância).
+            Enquanto isso, use o simulador na Agenda.
+          </Text>
+        ) : waLinked ? (
+          <>
+            {waInstanceId ? (
+              <Text style={styles.help}>
+                Instância: <Text style={styles.code}>{waInstanceId}</Text>
+              </Text>
+            ) : null}
+            <SofButton
+              title={waBusy ? 'Desconectando…' : 'Desconectar WhatsApp'}
+              variant="danger"
+              theme="dashboard"
+              disabled={waBusy}
+              onPress={disconnectWa}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={[styles.help, { marginBottom: 8 }]}>
+              Escaneie o QR no WhatsApp (Aparelhos conectados) ou use um código de
+              pareamento — igual ao cadastro de instância no Uazapi.
+            </Text>
+
+            {waMode === 'idle' || waMode === 'qrcode' ? (
+              <View style={styles.waActions}>
+                <SofButton
+                  title={
+                    waBusy && waMode === 'qrcode' ? 'Gerando…' : 'Escanear QR'
+                  }
+                  variant="dark"
+                  theme="dashboard"
+                  disabled={waBusy}
+                  onPress={connectQr}
+                />
+                <SofButton
+                  title="Usar código"
+                  variant="ghost"
+                  theme="dashboard"
+                  disabled={waBusy}
+                  onPress={() => {
+                    stopPolling();
+                    setWaMode('paircode');
+                    setWaQrcode(null);
+                    setWaPaircode(null);
+                    setWaError('');
+                  }}
+                />
+              </View>
+            ) : null}
+
+            {waMode === 'paircode' ? (
+              <View style={styles.pairBlock}>
+                <SofInput
+                  label="Telefone do WhatsApp (DDI + número)"
+                  value={waPhone}
+                  onChangeText={setWaPhone}
+                  theme="dashboard"
+                  placeholder="5511999998888"
+                  keyboardType="phone-pad"
+                />
+                <View style={styles.waActions}>
+                  <SofButton
+                    title={waBusy ? 'Gerando…' : 'Gerar código'}
+                    variant="dark"
+                    theme="dashboard"
+                    disabled={waBusy}
+                    onPress={connectPair}
+                  />
+                  <SofButton
+                    title="Voltar ao QR"
+                    variant="ghost"
+                    theme="dashboard"
+                    disabled={waBusy}
+                    onPress={() => {
+                      stopPolling();
+                      setWaMode('idle');
+                      setWaPaircode(null);
+                      setWaError('');
+                    }}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {waBusy && !waQrcode && !waPaircode ? (
+              <ActivityIndicator color={d.ink} style={{ marginTop: 8 }} />
+            ) : null}
+
+            {waQrcode ? (
+              <View style={styles.qrWrap}>
+                <Image
+                  source={{ uri: waQrcode }}
+                  style={styles.qrImage}
+                  accessibilityLabel="QR Code WhatsApp"
+                />
+                <Text style={styles.help}>
+                  Abra o WhatsApp → Aparelhos conectados → Conectar um aparelho
+                </Text>
+              </View>
+            ) : null}
+
+            {waPaircode ? (
+              <View style={styles.pairCodeWrap}>
+                <Text style={styles.pairCodeLabel}>Código de pareamento</Text>
+                <Text style={styles.pairCode}>{waPaircode}</Text>
+                <Text style={styles.help}>
+                  No WhatsApp, escolha conectar com o número de telefone e digite
+                  este código.
+                </Text>
+              </View>
+            ) : null}
+          </>
+        )}
+
+        {waError ? <Text style={styles.error}>{waError}</Text> : null}
       </View>
 
       <View style={styles.card}>
@@ -374,4 +622,33 @@ const styles = StyleSheet.create({
   toggleText: { fontWeight: '600', fontSize: 13, color: d.ink },
   timeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   timeField: { flexGrow: 1, flexBasis: 120, minWidth: 120 },
+  waActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  pairBlock: { gap: 12 },
+  qrWrap: { alignItems: 'center', gap: 12, marginTop: 8 },
+  qrImage: {
+    width: 220,
+    height: 220,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: d.line,
+  },
+  pairCodeWrap: {
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: d.line,
+  },
+  pairCodeLabel: { color: d.muted, fontSize: 13, fontWeight: '600' },
+  pairCode: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: 4,
+    color: d.ink,
+    fontFamily: 'monospace',
+  },
 });

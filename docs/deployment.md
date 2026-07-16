@@ -68,9 +68,13 @@ CLI Heroku pode ecoar secrets — rotacionar se vazar em logs.
 | `STRIPE_SECRET_KEY` | cobranca real (preferir `rk_` / `sk_test_` em sandbox) |
 | `STRIPE_WEBHOOK_SECRET` | endpoint Dashboard ou Stripe CLI |
 | `STRIPE_PUBLISHABLE_KEY` | opcional (painel) |
+| `WHATSAPP_PROVIDER` | `uazapi` (default) ou `meta` |
+| `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
+| `WHATSAPP_ADMIN_TOKEN` | cria/pareia instância por conta (≠ token da instância) |
+| `WHATSAPP_TOKEN` | token de instância (legado) / Meta access token |
 | `SEED_DEMO_*` | opcional para demo |
 
-Stripe / WhatsApp: vazios = modos demo / bot off.
+Stripe / WhatsApp: vazios = modos demo / bot off. Pareamento QR na Conta exige `WHATSAPP_BASE_URL` + (`WHATSAPP_ADMIN_TOKEN` ou `WHATSAPP_TOKEN`) e `API_PUBLIC_URL` HTTPS em prod.
 
 ### Variáveis Web
 

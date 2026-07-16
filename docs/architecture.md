@@ -69,7 +69,7 @@ Account
   └── WhatsappSession[]
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId`, `openingHours` (JSON 7 dias, 0=domingo).
+Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `openingHours` (JSON 7 dias, 0=domingo).
 
 `Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
 
@@ -87,12 +87,14 @@ Datasource usa:
 | Integração | Sem credencial | Com credencial |
 |------------|----------------|----------------|
 | Stripe | Checkout demo (aprova em fluxo mock) | Checkout Session + webhook real |
-| WhatsApp Cloud | Bot off; painel tem simulador | Mensagens reais no número |
+| WhatsApp (Uazapi, default) | Bot off; simulador na Agenda | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta |
+| WhatsApp Cloud (Meta) | Bot off; simulador | `WHATSAPP_PROVIDER=meta` + token + Phone Number ID (sem QR no painel) |
 
 URLs:
 
 - `PUBLIC_URL` → retorno checkout (`/checkout-return`)  
-- Webhook local: `stripe listen --forward-to localhost:3001/api/payments/webhook`  
+- `API_PUBLIC_URL` → webhook WhatsApp (`/api/whatsapp/webhook`) e Stripe  
+- Webhook local Stripe: `stripe listen --forward-to localhost:3001/api/payments/webhook`  
 
 ### Tempo real
 

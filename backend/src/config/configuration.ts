@@ -39,6 +39,10 @@ export default () => {
       /\/+$/,
       '',
     ),
+    apiPublicUrl: (
+      process.env.API_PUBLIC_URL ||
+      `http://localhost:${process.env.PORT || '3001'}`
+    ).replace(/\/+$/, ''),
     corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
     nodeEnv,
     isProd,
@@ -50,11 +54,14 @@ export default () => {
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     },
     whatsapp: {
-      // meta | uazapi (Whazap usa a engine Uazapi)
-      provider: (process.env.WHATSAPP_PROVIDER || 'meta').toLowerCase(),
+      // uazapi (Whazap) | meta (Cloud API legado)
+      provider: (process.env.WHATSAPP_PROVIDER || 'uazapi').toLowerCase(),
       baseUrl: (process.env.WHATSAPP_BASE_URL || '').replace(/\/+$/, ''),
+      /** Admin token Whazap/Uazapi — cria instâncias por conta */
+      adminToken: process.env.WHATSAPP_ADMIN_TOKEN || '',
+      /** Fallback legado (instância única / Meta access token) */
       token: process.env.WHATSAPP_TOKEN || '',
-      // Meta: Phone Number ID · Uazapi/Whazap: Instance ID
+      // Meta: Phone Number ID · Uazapi/Whazap: Instance ID (legado)
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
       verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
       appSecret: process.env.WHATSAPP_APP_SECRET || '',

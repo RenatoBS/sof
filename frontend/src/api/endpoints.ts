@@ -185,12 +185,40 @@ export const dashboardApi = {
         configured: boolean;
         provider?: string;
         linkedPhoneNumberId: string;
+        linked?: boolean;
+        hasInstance?: boolean;
+        pairingAvailable?: boolean;
       };
     }>('/account/integrations'),
   updateAccount: (body: {
     whatsappPhoneNumberId?: string;
     openingHours?: OpeningHours;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
+  connectWhatsapp: (body?: { phone?: string }) =>
+    api<{
+      status: string;
+      instanceId: string;
+      qrcode?: string;
+      paircode?: string | null;
+      mode: 'qrcode' | 'paircode';
+    }>('/account/whatsapp/connect', {
+      method: 'POST',
+      body: body || {},
+    }),
+  whatsappStatus: () =>
+    api<{
+      status: string;
+      linked: boolean;
+      instanceId: string;
+      phone: string | null;
+      qrcode: string | null;
+      paircode: string | null;
+      connectedAt: string | null;
+    }>('/account/whatsapp/status'),
+  disconnectWhatsapp: () =>
+    api<{ ok: boolean; status: string }>('/account/whatsapp/disconnect', {
+      method: 'POST',
+    }),
   simulateWhatsapp: (message: string, customerPhone: string) =>
     api<{
       replies: string[];
