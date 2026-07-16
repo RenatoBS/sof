@@ -1,10 +1,5 @@
 import { randomBytes } from 'crypto';
 
-function bool(value: string | undefined, fallback: boolean) {
-  if (value === undefined || value === '') return fallback;
-  return value === 'true' || value === '1';
-}
-
 function parseCorsOrigins(value: string | undefined): string[] {
   const raw =
     value ||
@@ -50,26 +45,22 @@ export default () => {
     databaseUrl: process.env.DATABASE_URL || '',
     stripe: {
       secretKey: process.env.STRIPE_SECRET_KEY || '',
-      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     },
     whatsapp: {
-      // uazapi (Whazap) | meta (Cloud API legado)
+      // uazapi (default) | meta (Cloud API)
       provider: (process.env.WHATSAPP_PROVIDER || 'uazapi').toLowerCase(),
       baseUrl: (process.env.WHATSAPP_BASE_URL || '').replace(/\/+$/, ''),
-      /** Admin token Whazap/Uazapi — cria instâncias por conta */
+      /** Admin token Uazapi — cria instâncias por conta */
       adminToken: process.env.WHATSAPP_ADMIN_TOKEN || '',
-      /** Fallback legado (instância única / Meta access token) */
+      /** Fallback legado (instância única) / Meta access token */
       token: process.env.WHATSAPP_TOKEN || '',
-      // Meta: Phone Number ID · Uazapi/Whazap: Instance ID (legado)
+      // Meta: Phone Number ID · Uazapi legado: Instance ID
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+      /** Só Meta Cloud API (verificação do webhook GET) */
       verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
+      /** Só Meta Cloud API (assinatura X-Hub-Signature-256) */
       appSecret: process.env.WHATSAPP_APP_SECRET || '',
-    },
-    demoAccount: {
-      enabled: bool(process.env.SEED_DEMO_ENABLED, true),
-      email: process.env.SEED_DEMO_EMAIL || 'demo@sof.com',
-      password: process.env.SEED_DEMO_PASSWORD || 'demo123',
     },
   };
 };

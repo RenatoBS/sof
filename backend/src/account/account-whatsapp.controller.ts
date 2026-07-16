@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Body,
   Controller,
@@ -21,8 +22,29 @@ function toDataUrlQr(qrcode?: string) {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
   }
-  // base64 puro → PNG data URL
   return `data:image/png;base64,${trimmed.replace(/^data:image\/\w+;base64,/, '')}`;
+}
+
+function isInvalidTokenError(err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('(401)') ||
+    /invalid token/i.test(msg) ||
+    /unauthorized/i.test(msg)
+  );
+}
+
+function mapUazapiError(err: unknown): never {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (isInvalidTokenError(err)) {
+    throw new BadRequestException({
+      error:
+        'Token da instância WhatsApp inválido. Tente conectar de novo para criar uma instância nova.',
+    });
+  }
+  throw new BadGatewayException({
+    error: msg.slice(0, 300) || 'Falha ao falar com o Uazapi.',
+  });
 }
 
 @Controller('api/account/whatsapp')
@@ -56,10 +78,28 @@ export class AccountWhatsappController {
     return `${base}/api/whatsapp/webhook`;
   }
 
-  private async ensureInstance(accountId: string) {
-    const account = await this.prisma.account.findUniqueOrThrow({
+  private async clearInstance(accountId: string) {
+    return this.prisma.account.update({
+      where: { id: accountId },
+      data: {
+        whatsappInstanceToken: '',
+        whatsappPhoneNumberId: '',
+        whatsappConnectedAt: null,
+      },
+    });
+  }
+
+  private async ensureInstance(
+    accountId: string,
+    opts?: { forceNew?: boolean },
+  ) {
+    let account = await this.prisma.account.findUniqueOrThrow({
       where: { id: accountId },
     });
+
+    if (opts?.forceNew && account.whatsappInstanceToken) {
+      account = await this.clearInstance(accountId);
+    }
 
     if (account.whatsappInstanceToken) {
       return account;
@@ -68,7 +108,6 @@ export class AccountWhatsappController {
     const legacyToken = this.api.legacyInstanceToken();
     const legacyId = this.api.instanceKey();
 
-    // Multi-tenant: cria instância nova via admin token.
     if (this.api.isAdminConfigured()) {
       try {
         const name = `sof-${accountId.slice(-8)}`;
@@ -83,15 +122,14 @@ export class AccountWhatsappController {
           },
         });
       } catch (err) {
-        if (!legacyToken) throw err;
+        if (!legacyToken) mapUazapiError(err);
         console.warn(
-          '[whatsapp] Admin token rejeitado — usando WHATSAPP_TOKEN legado:',
+          '[whatsapp] Admin create falhou — tentando WHATSAPP_TOKEN legado:',
           err instanceof Error ? err.message : err,
         );
       }
     }
 
-    // Legado: reusa a instância única do .env.
     if (!legacyToken) {
       throw new ServiceUnavailableException({
         error:
@@ -124,28 +162,46 @@ export class AccountWhatsappController {
       });
     }
 
-    const account = await this.ensureInstance(req.account.id);
-    const result = await this.api.connectInstance(
-      account.whatsappInstanceToken,
-      phone || undefined,
-    );
+    const run = async (forceNew = false) => {
+      const account = await this.ensureInstance(req.account.id, { forceNew });
+      const result = await this.api.connectInstance(
+        account.whatsappInstanceToken,
+        phone || undefined,
+      );
 
-    const instanceId =
-      result.instanceId || account.whatsappPhoneNumberId || '';
-    if (instanceId && instanceId !== account.whatsappPhoneNumberId) {
-      await this.prisma.account.update({
-        where: { id: account.id },
-        data: { whatsappPhoneNumberId: instanceId },
-      });
-    }
+      const instanceId =
+        result.instanceId || account.whatsappPhoneNumberId || '';
+      if (instanceId && instanceId !== account.whatsappPhoneNumberId) {
+        await this.prisma.account.update({
+          where: { id: account.id },
+          data: { whatsappPhoneNumberId: instanceId },
+        });
+      }
 
-    return {
-      status: result.status,
-      instanceId: instanceId || account.whatsappPhoneNumberId,
-      qrcode: phone ? undefined : toDataUrlQr(result.qrcode),
-      paircode: phone ? result.paircode || null : null,
-      mode: phone ? 'paircode' : 'qrcode',
+      return {
+        status: result.status,
+        instanceId: instanceId || account.whatsappPhoneNumberId,
+        qrcode: phone ? undefined : toDataUrlQr(result.qrcode),
+        paircode: phone ? result.paircode || null : null,
+        mode: phone ? ('paircode' as const) : ('qrcode' as const),
+      };
     };
+
+    try {
+      return await run(false);
+    } catch (err) {
+      if (isInvalidTokenError(err) && this.api.isAdminConfigured()) {
+        console.warn(
+          '[whatsapp] Token inválido no connect — recriando instância via admin.',
+        );
+        try {
+          return await run(true);
+        } catch (retryErr) {
+          mapUazapiError(retryErr);
+        }
+      }
+      mapUazapiError(err);
+    }
   }
 
   @Get('status')
@@ -168,7 +224,28 @@ export class AccountWhatsappController {
       };
     }
 
-    const live = await this.api.instanceStatus(account.whatsappInstanceToken);
+    let live;
+    try {
+      live = await this.api.instanceStatus(account.whatsappInstanceToken);
+    } catch (err) {
+      if (isInvalidTokenError(err)) {
+        console.warn(
+          '[whatsapp] Token inválido no status — limpando vínculo da conta.',
+        );
+        await this.clearInstance(account.id);
+        return {
+          status: 'disconnected' as const,
+          linked: false,
+          instanceId: '',
+          phone: null,
+          qrcode: null,
+          paircode: null,
+          connectedAt: null,
+        };
+      }
+      mapUazapiError(err);
+    }
+
     const linked = live.status === 'connected';
 
     if (linked && !account.whatsappConnectedAt) {

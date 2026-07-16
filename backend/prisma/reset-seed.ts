@@ -4,9 +4,36 @@
  * Uso: npm run prisma:reset-seed  (no backend)
  *  ou: npm run backend:reset-seed (na raiz)
  */
-import 'dotenv/config';
+import { config } from 'dotenv';
 import { execSync } from 'node:child_process';
+import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
+
+// Sempre o .env do backend (mesmo rodando pela raiz via --prefix).
+// override: true evita DATABASE_URL antiga exportada no shell.
+config({ path: path.join(__dirname, '../.env'), override: true });
+
+function assertDatabaseUrl() {
+  const url = process.env.DATABASE_URL || '';
+  if (!url) {
+    throw new Error('DATABASE_URL ausente no backend/.env');
+  }
+  try {
+    const parsed = new URL(url);
+    if (!parsed.port || Number.isNaN(Number(parsed.port))) {
+      throw new Error(`porta inválida: "${parsed.port}"`);
+    }
+    console.log(
+      `[reset-seed] Banco: ${parsed.hostname}:${parsed.port}${parsed.pathname}`,
+    );
+  } catch (err) {
+    const hint =
+      'Senha com +, & ou / precisa ser URL-encoded (%2B, %26, %2F). Ver docs/local-development.md.';
+    throw new Error(
+      `DATABASE_URL inválida (${err instanceof Error ? err.message : err}). ${hint}`,
+    );
+  }
+}
 
 const prisma = new PrismaClient();
 
@@ -25,6 +52,8 @@ async function clearTables() {
 }
 
 async function main() {
+  assertDatabaseUrl();
+
   const email = process.env.SEED_DEMO_EMAIL || 'demo@sof.com';
   console.log('[reset-seed] Limpando tabelas…');
   await clearTables();
@@ -36,7 +65,7 @@ async function main() {
   execSync('npx prisma db seed', {
     stdio: 'inherit',
     env: process.env,
-    cwd: process.cwd(),
+    cwd: path.join(__dirname, '..'),
   });
 
   console.log('[reset-seed] Concluído.');
@@ -44,7 +73,7 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error('[reset-seed] Falhou:', err);
+    console.error('[reset-seed] Falhou:', err instanceof Error ? err.message : err);
     process.exit(1);
   })
   .finally(async () => {

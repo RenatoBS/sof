@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-16 — Limpeza de envs não usadas (Uazapi + Stripe)
+
+- **Contexto:** `.env` e Heroku acumulavam vars Meta (`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`) e `STRIPE_PUBLISHABLE_KEY` que o runtime não lê (Checkout usa só secret + webhook).  
+- **Decisão:** Remover essas três do `.env` local e da Heroku; `SEED_DEMO_*` ficam só para seed; Meta vars documentadas como opcionais no `.env.example`.  
+- **Consequências:** Menos superfície de config; UI Conta não menciona publishable key.  
+- **Alternativas descartadas:** Manter publishable “por se um dia usar Elements”.
+
 ## 2026-07-16 — Provider WhatsApp padrão = Uazapi
 
 - **Contexto:** Meta Cloud API exigia Phone Number ID + app secret; o produto já opera com Uazapi (QR/código na Conta).  

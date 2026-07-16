@@ -373,8 +373,7 @@ export default function AccountScreen() {
           . Para receber de verdade, configure{' '}
           <Text style={styles.code}>STRIPE_SECRET_KEY</Text> e{' '}
           <Text style={styles.code}>STRIPE_WEBHOOK_SECRET</Text> nas variáveis de
-          ambiente do servidor (e opcionalmente{' '}
-          <Text style={styles.code}>STRIPE_PUBLISHABLE_KEY</Text>).
+          ambiente do servidor.
         </Text>
       </View>
 
