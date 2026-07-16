@@ -119,7 +119,11 @@ export function AgendaView({
           </Text>
         </View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator
+          contentContainerStyle={styles.calendarScroll}
+        >
           <View>
             <View style={styles.headerRow}>
               <View style={[styles.corner, { width: 150 }]}>
@@ -296,6 +300,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { color: d.muted },
+  calendarScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   headerRow: { flexDirection: 'row', gap: 1, backgroundColor: d.line },
   corner: {
     backgroundColor: d.ink,
