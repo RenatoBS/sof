@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { CheckoutSession } from '@prisma/client';
+import { CheckoutSession, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateTempPassword, hashPassword } from '../common/password';
+import { DEFAULT_OPENING_HOURS } from '../account/opening-hours';
 
 @Injectable()
 export class ProvisionService {
@@ -35,6 +36,7 @@ export class ProvisionService {
         plan: session.planName,
         planPrice: session.price,
         whatsappPhoneNumberId: '',
+        openingHours: DEFAULT_OPENING_HOURS as Prisma.InputJsonValue,
         status: 'active',
       },
     });

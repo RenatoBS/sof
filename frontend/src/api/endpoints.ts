@@ -1,5 +1,11 @@
 import { api } from '@/src/api/client';
-import type { Account, Appointment, Employee, Service } from '@/src/api/types';
+import type {
+  Account,
+  Appointment,
+  Employee,
+  OpeningHours,
+  Service,
+} from '@/src/api/types';
 
 export const authApi = {
   login: (email: string, password: string) =>
@@ -77,8 +83,10 @@ export const dashboardApi = {
       mercadoPago: { configured: boolean };
       whatsapp: { configured: boolean; linkedPhoneNumberId: string };
     }>('/account/integrations'),
-  updateAccount: (body: { whatsappPhoneNumberId?: string }) =>
-    api<{ account: Account }>('/account', { method: 'PUT', body }),
+  updateAccount: (body: {
+    whatsappPhoneNumberId?: string;
+    openingHours?: OpeningHours;
+  }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   simulateWhatsapp: (message: string, customerPhone: string) =>
     api<{
       replies: string[];

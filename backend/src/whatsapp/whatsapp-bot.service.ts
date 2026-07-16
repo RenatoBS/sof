@@ -4,9 +4,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../events/realtime.service';
 import { serializeDates } from '../common/public-shapes';
 import {
+  checkWithinOpeningHours,
+  formatOpeningHoursSummary,
+  getDaySchedule,
+  normalizeOpeningHours,
+} from '../account/opening-hours';
+import {
   hasScheduleConflict,
   listBusySlots,
   suggestFreeTimes,
+  timeToMinutes,
 } from '../appointments/schedule-conflict';
 
 type SessionData = {
@@ -48,6 +55,25 @@ export class WhatsappBotService {
     const date = `${year}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
     const time = `${String(hh).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
     return { date, time };
+  }
+
+  private suggestOnDate(
+    account: Account,
+    busy: { time: string; duration: number }[],
+    date: string,
+    durationMinutes: number,
+  ) {
+    const day = getDaySchedule(
+      normalizeOpeningHours(account.openingHours),
+      date,
+    );
+    if (!day.open) return [] as string[];
+    return suggestFreeTimes(
+      busy,
+      durationMinutes,
+      timeToMinutes(day.start),
+      timeToMinutes(day.end),
+    );
   }
 
   private async saveSession(
@@ -211,9 +237,10 @@ export class WhatsappBotService {
         step: 'awaiting_datetime',
         data: { ...sessionData, employeeId: employee.id },
       });
+      const hoursHint = formatOpeningHoursSummary(account.openingHours);
       return {
         replies: [
-          'Para quando? Me diga a data e o horário assim: 25/12 15:00',
+          `Para quando? Me diga a data e o horário assim: 25/12 15:00\nFuncionamento: ${hoursHint}`,
         ],
       };
     }
@@ -241,13 +268,58 @@ export class WhatsappBotService {
         };
       }
 
+      const hoursCheck = checkWithinOpeningHours(
+        account.openingHours,
+        when.date,
+        when.time,
+        service.duration,
+      );
+      if (!hoursCheck.ok) {
+        await this.saveSession(account.id, customerPhone, {
+          step: 'awaiting_datetime',
+          data: sessionData,
+        });
+        if (hoursCheck.reason === 'closed') {
+          return {
+            replies: [
+              `Nesse dia (${hoursCheck.label}) estamos fechados. Funcionamento: ${formatOpeningHoursSummary(account.openingHours)}. Escolha outra data/horário (dd/mm hh:mm).`,
+            ],
+          };
+        }
+        const busyOutside = await listBusySlots(this.prisma, {
+          accountId: account.id,
+          employeeId: sessionData.employeeId,
+          date: when.date,
+        });
+        const suggestions = this.suggestOnDate(
+          account,
+          busyOutside,
+          when.date,
+          service.duration,
+        );
+        const tip =
+          suggestions.length > 0
+            ? ` Horários dentro do expediente: ${suggestions.join(', ')}.`
+            : '';
+        return {
+          replies: [
+            `Esse horário fica fora do nosso expediente (${hoursCheck.day.start}–${hoursCheck.day.end}).${tip} Envie outra data/horário (dd/mm hh:mm).`,
+          ],
+        };
+      }
+
       const busy = await listBusySlots(this.prisma, {
         accountId: account.id,
         employeeId: sessionData.employeeId,
         date: when.date,
       });
       if (hasScheduleConflict(busy, when.time, service.duration)) {
-        const suggestions = suggestFreeTimes(busy, service.duration);
+        const suggestions = this.suggestOnDate(
+          account,
+          busy,
+          when.date,
+          service.duration,
+        );
         const dateLabel = when.date.split('-').reverse().join('/');
         const tip =
           suggestions.length > 0
@@ -284,13 +356,38 @@ export class WhatsappBotService {
           return { replies: ['Vamos recomeçar — qual serviço você quer agendar?'] };
         }
 
+        const hoursCheck = checkWithinOpeningHours(
+          account.openingHours,
+          date,
+          time,
+          service.duration,
+        );
+        if (!hoursCheck.ok) {
+          await this.saveSession(account.id, customerPhone, {
+            step: 'awaiting_datetime',
+            data: { serviceId, employeeId },
+          });
+          return {
+            replies: [
+              hoursCheck.reason === 'closed'
+                ? `Nesse dia estamos fechados. Escolha outra data/horário (dd/mm hh:mm).`
+                : `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Envie outra data/horário (dd/mm hh:mm).`,
+            ],
+          };
+        }
+
         const busy = await listBusySlots(this.prisma, {
           accountId: account.id,
           employeeId,
           date,
         });
         if (hasScheduleConflict(busy, time, service.duration)) {
-          const suggestions = suggestFreeTimes(busy, service.duration);
+          const suggestions = this.suggestOnDate(
+            account,
+            busy,
+            date,
+            service.duration,
+          );
           const tip =
             suggestions.length > 0
               ? ` Sugestões: ${suggestions.join(', ')}. Ou envie outra data/horário (dd/mm hh:mm).`

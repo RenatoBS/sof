@@ -74,6 +74,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 ### Conta
 
 - Assinatura (plano, email, desde).  
+- **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
 - Status Mercado Pago.  
 - Status bot WhatsApp + Phone Number ID (`PUT /api/account`).  
 - Sair da conta.
@@ -84,8 +85,9 @@ Com credenciais Meta + Phone Number ID na conta:
 
 - Webhook `GET/POST /api/whatsapp/webhook`.  
 - Fluxo: serviço → profissionais **filtrados pelos serviços que realizam** → data/hora → confirmação → `Appointment` (`source=whatsapp`).  
-- **Conflito de agenda:** se o profissional já tem um horário confirmado que se sobrepõe (pela duração do serviço), o bot recusa, sugere até 3 horários livres no dia (09:00–18:00, passo 30 min) e pede outra data/hora; na confirmação há checagem de novo (corrida entre clientes).  
-- Create/update na API de appointments aplicam a mesma regra (painel e bot).
+- **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta; informa o resumo ao pedir horário.  
+- **Conflito de agenda:** se o profissional já tem um horário confirmado que se sobrepõe (pela duração do serviço), o bot recusa, sugere até 3 horários livres **dentro do expediente** (passo 30 min) e pede outra data/hora; na confirmação há checagem de novo (corrida entre clientes).  
+- Create/update na API de appointments aplicam expediente + conflito (painel e bot).
 
 Sem credenciais: simulador no painel cobre o mesmo caminho de domínio para demos.
 

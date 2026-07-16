@@ -1,10 +1,12 @@
 import { Account } from '@prisma/client';
+import { normalizeOpeningHours } from '../account/opening-hours';
 
 export function publicAccount(account: Account | null) {
   if (!account) return null;
   const { passwordHash: _passwordHash, ...safe } = account;
   return {
     ...safe,
+    openingHours: normalizeOpeningHours(account.openingHours),
     createdAt: account.createdAt.toISOString(),
   };
 }

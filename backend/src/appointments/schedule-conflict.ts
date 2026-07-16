@@ -63,18 +63,27 @@ export function hasScheduleConflict(
   );
 }
 
-/** Sugere até `limit` horários livres no mesmo dia (09:00–18:00, passo 30 min). */
+/**
+ * Sugere até `limit` horários livres no intervalo do expediente
+ * (`dayStart`/`dayEnd` em minutos desde 00:00; passo 30 min).
+ */
 export function suggestFreeTimes(
   busy: BusySlot[],
   durationMinutes: number,
+  dayStartMinutes: number,
+  dayEndMinutes: number,
   limit = 3,
 ): string[] {
-  const dayStart = 9 * 60;
-  const dayEnd = 18 * 60;
+  if (dayEndMinutes <= dayStartMinutes) return [];
+
   const step = 30;
   const suggestions: string[] = [];
 
-  for (let t = dayStart; t + durationMinutes <= dayEnd; t += step) {
+  for (
+    let t = dayStartMinutes;
+    t + durationMinutes <= dayEndMinutes;
+    t += step
+  ) {
     const time = minutesToTime(t);
     if (!hasScheduleConflict(busy, time, durationMinutes)) {
       suggestions.push(time);

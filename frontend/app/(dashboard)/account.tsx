@@ -1,19 +1,56 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { dashboardApi } from '@/src/api/endpoints';
+import type { DaySchedule, OpeningHours } from '@/src/api/types';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
+const DAY_LABELS = [
+  'Domingo',
+  'Segunda',
+  'Terça',
+  'Quarta',
+  'Quinta',
+  'Sexta',
+  'Sábado',
+] as const;
+
+const DEFAULT_HOURS: OpeningHours = [
+  { open: false, start: '09:00', end: '18:00' },
+  { open: true, start: '09:00', end: '18:00' },
+  { open: true, start: '09:00', end: '18:00' },
+  { open: true, start: '09:00', end: '18:00' },
+  { open: true, start: '09:00', end: '18:00' },
+  { open: true, start: '09:00', end: '18:00' },
+  { open: true, start: '09:00', end: '18:00' },
+];
+
+function normalizeHours(raw: OpeningHours | undefined | null): OpeningHours {
+  if (!Array.isArray(raw) || raw.length !== 7) {
+    return DEFAULT_HOURS.map((day) => ({ ...day }));
+  }
+  return raw.map((day, idx) => ({
+    open: Boolean(day?.open),
+    start: day?.start || DEFAULT_HOURS[idx].start,
+    end: day?.end || DEFAULT_HOURS[idx].end,
+  }));
+}
+
 export default function AccountScreen() {
-  const { account, logout } = useAuth();
+  const { account, logout, setSession } = useAuth();
   const [phoneId, setPhoneId] = useState('');
+  const [hours, setHours] = useState<OpeningHours>(DEFAULT_HOURS);
   const [integrations, setIntegrations] = useState({ mp: false, wa: false });
   const [saved, setSaved] = useState('');
+  const [hoursSaved, setHoursSaved] = useState('');
+  const [hoursError, setHoursError] = useState('');
+  const [savingHours, setSavingHours] = useState(false);
 
   useEffect(() => {
     if (account?.whatsappPhoneNumberId) setPhoneId(account.whatsappPhoneNumberId);
+    if (account) setHours(normalizeHours(account.openingHours));
     dashboardApi.integrations().then((data) => {
       setIntegrations({
         mp: data.mercadoPago.configured,
@@ -28,11 +65,17 @@ export default function AccountScreen() {
     ? new Date(account.createdAt).toLocaleDateString('pt-BR')
     : '—';
 
+  const patchDay = (index: number, patch: Partial<DaySchedule>) => {
+    setHours((prev) =>
+      prev.map((day, i) => (i === index ? { ...day, ...patch } : day)),
+    );
+  };
+
   return (
     <View style={styles.page}>
       <View>
         <Text style={styles.h2}>Sua conta</Text>
-        <Text style={styles.sub}>Plano, credenciais e integrações</Text>
+        <Text style={styles.sub}>Plano, horários, credenciais e integrações</Text>
       </View>
 
       <View style={styles.card}>
@@ -54,6 +97,77 @@ export default function AccountScreen() {
             <Text style={styles.metaValue}>{since}</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+        <Text style={[styles.help, { marginBottom: 8 }]}>
+          Define os dias e horários em que clientes podem agendar (WhatsApp e
+          painel). O serviço precisa caber inteiro dentro do expediente.
+        </Text>
+        {hours.map((day, index) => (
+          <View key={DAY_LABELS[index]} style={styles.dayRow}>
+            <View style={styles.dayHead}>
+              <Text style={styles.dayLabel}>{DAY_LABELS[index]}</Text>
+              <Pressable
+                onPress={() => patchDay(index, { open: !day.open })}
+                style={[styles.toggle, day.open ? styles.toggleOn : styles.toggleOff]}
+              >
+                <Text style={styles.toggleText}>
+                  {day.open ? 'Aberto' : 'Fechado'}
+                </Text>
+              </Pressable>
+            </View>
+            {day.open ? (
+              <View style={styles.timeRow}>
+                <View style={styles.timeField}>
+                  <SofInput
+                    label="Abre"
+                    value={day.start}
+                    onChangeText={(start) => patchDay(index, { start })}
+                    theme="dashboard"
+                    placeholder="09:00"
+                  />
+                </View>
+                <View style={styles.timeField}>
+                  <SofInput
+                    label="Fecha"
+                    value={day.end}
+                    onChangeText={(end) => patchDay(index, { end })}
+                    theme="dashboard"
+                    placeholder="18:00"
+                  />
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ))}
+        {hoursError ? <Text style={styles.error}>{hoursError}</Text> : null}
+        {hoursSaved ? <Text style={styles.saved}>{hoursSaved}</Text> : null}
+        <SofButton
+          title={savingHours ? 'Salvando…' : 'Salvar horários'}
+          variant="dark"
+          theme="dashboard"
+          disabled={savingHours}
+          onPress={async () => {
+            setHoursError('');
+            setSavingHours(true);
+            try {
+              const { account: updated } = await dashboardApi.updateAccount({
+                openingHours: hours,
+              });
+              await setSession(updated);
+              setHoursSaved('Horários salvos!');
+              setTimeout(() => setHoursSaved(''), 2000);
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : 'Não foi possível salvar.';
+              setHoursError(message);
+            } finally {
+              setSavingHours(false);
+            }
+          }}
+        />
       </View>
 
       <View style={styles.card}>
@@ -95,9 +209,10 @@ export default function AccountScreen() {
           variant="dark"
           theme="dashboard"
           onPress={async () => {
-            await dashboardApi.updateAccount({
+            const { account: updated } = await dashboardApi.updateAccount({
               whatsappPhoneNumberId: phoneId.trim(),
             });
+            await setSession(updated);
             setSaved('Salvo!');
             setTimeout(() => setSaved(''), 2000);
           }}
@@ -157,4 +272,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   saved: { color: '#0d9c53', fontWeight: '600' },
+  error: { color: '#dc2626', fontWeight: '600' },
+  dayRow: {
+    borderTopWidth: 1,
+    borderTopColor: d.line,
+    paddingTop: 12,
+    gap: 8,
+  },
+  dayHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  dayLabel: { fontWeight: '700', color: d.ink, fontSize: 15 },
+  toggle: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  toggleOn: { borderColor: '#0d9c53', backgroundColor: '#ecfdf5' },
+  toggleOff: { borderColor: d.line, backgroundColor: '#f8fafc' },
+  toggleText: { fontWeight: '600', fontSize: 13, color: d.ink },
+  timeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  timeField: { flexGrow: 1, flexBasis: 120, minWidth: 120 },
 });

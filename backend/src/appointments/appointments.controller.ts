@@ -18,6 +18,9 @@ import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
 import { RealtimeService } from '../events/realtime.service';
 import {
+  checkWithinOpeningHours,
+} from '../account/opening-hours';
+import {
   hasScheduleConflict,
   listBusySlots,
 } from './schedule-conflict';
@@ -65,6 +68,23 @@ export class AppointmentsController {
     });
     if (!link) {
       return { error: 'Este profissional não realiza esse serviço.' };
+    }
+
+    const hoursCheck = checkWithinOpeningHours(
+      account.openingHours,
+      date,
+      time,
+      service.duration,
+    );
+    if (!hoursCheck.ok) {
+      if (hoursCheck.reason === 'closed') {
+        return {
+          error: `O estabelecimento está fechado em ${hoursCheck.label}. Escolha outro dia.`,
+        };
+      }
+      return {
+        error: `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Escolha outro horário.`,
+      };
     }
 
     const busy = await listBusySlots(this.prisma, {

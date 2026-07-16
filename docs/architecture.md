@@ -69,11 +69,11 @@ Account
   └── WhatsappSession[]
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId`.
+Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId`, `openingHours` (JSON 7 dias, 0=domingo).
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N e conflito de agenda do profissional (overlap por duração do serviço; ver `appointments/schedule-conflict.ts`).
+`Appointment`: data/hora, cliente, preço, `status`, `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N, o **expediente da conta** (`account/opening-hours.ts`) e conflito de agenda do profissional (overlap por duração; `appointments/schedule-conflict.ts`).
 
 Datasource usa:
 
@@ -118,7 +118,7 @@ URLs:
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
 | `/(dashboard)/billing` | Faturamento |
-| `/(dashboard)/account` | Conta / integrações |
+| `/(dashboard)/account` | Conta / horários / integrações |
 
 Gate do dashboard: sem `account` → redirect `/login` (`(dashboard)/_layout.tsx`).
 

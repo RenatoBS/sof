@@ -1,3 +1,12 @@
+/** Índice 0 = domingo … 6 = sábado. */
+export type DaySchedule = {
+  open: boolean;
+  start: string;
+  end: string;
+};
+
+export type OpeningHours = DaySchedule[];
+
 export type Account = {
   id: string;
   businessName: string;
@@ -6,6 +15,7 @@ export type Account = {
   plan: string;
   planPrice: number;
   whatsappPhoneNumberId: string;
+  openingHours: OpeningHours;
   status: string;
   createdAt: string;
 };

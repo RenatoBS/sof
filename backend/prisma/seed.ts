@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { DEFAULT_OPENING_HOURS } from '../src/account/opening-hours';
 
 const prisma = new PrismaClient();
 
@@ -27,6 +28,7 @@ async function main() {
       plan: 'Estúdio',
       planPrice: 197,
       whatsappPhoneNumberId: '',
+      openingHours: DEFAULT_OPENING_HOURS,
       status: 'active',
     },
   });

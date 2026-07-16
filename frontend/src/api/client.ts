@@ -45,8 +45,20 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
 
   if (!resp.ok) {
+    const nested =
+      data && typeof data === 'object' && 'message' in data
+        ? (data as { message?: unknown }).message
+        : undefined;
+    const nestedError =
+      nested && typeof nested === 'object' && nested !== null && 'error' in nested
+        ? String((nested as { error: unknown }).error)
+        : typeof nested === 'string'
+          ? nested
+          : undefined;
     throw new ApiError(
-      data?.error || `Erro inesperado (${resp.status}).`,
+      nestedError ||
+        (typeof data?.error === 'string' ? data.error : undefined) ||
+        `Erro inesperado (${resp.status}).`,
       resp.status,
     );
   }

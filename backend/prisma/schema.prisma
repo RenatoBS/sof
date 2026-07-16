@@ -17,6 +17,8 @@ model Account {
   plan                  String
   planPrice             Float
   whatsappPhoneNumberId String   @default("")
+  /// Json: 7 dias (0=domingo…6=sábado), cada um `{ open, start, end }` HH:MM
+  openingHours          Json     @default("[{\"open\":false,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"}]")
   status                String   @default("active")
   createdAt             DateTime @default(now())
 
