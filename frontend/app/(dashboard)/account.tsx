@@ -80,7 +80,6 @@ export default function AccountScreen() {
   const [hours, setHours] = useState<OpeningHours>(DEFAULT_HOURS);
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [integrations, setIntegrations] = useState({
-    stripe: false,
     wa: false,
     pairingAvailable: false,
   });
@@ -137,7 +136,6 @@ export default function AccountScreen() {
     if (account) setHours(normalizeHours(account.openingHours));
     dashboardApi.integrations().then((data) => {
       setIntegrations({
-        stripe: data.stripe.configured,
         wa: data.whatsapp.configured,
         pairingAvailable: Boolean(data.whatsapp.pairingAvailable),
       });
@@ -359,22 +357,6 @@ export default function AccountScreen() {
             />
           </>
         )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Gateway de pagamento — Stripe</Text>
-        <Text style={styles.help}>
-          Status:{' '}
-          <Text
-            style={[styles.badge, integrations.stripe ? styles.on : styles.off]}
-          >
-            {integrations.stripe ? 'configurado' : 'modo demonstração'}
-          </Text>
-          . Para receber de verdade, configure{' '}
-          <Text style={styles.code}>STRIPE_SECRET_KEY</Text> e{' '}
-          <Text style={styles.code}>STRIPE_WEBHOOK_SECRET</Text> nas variáveis de
-          ambiente do servidor.
-        </Text>
       </View>
 
       <View style={styles.card}>

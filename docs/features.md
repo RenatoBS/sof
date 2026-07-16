@@ -83,7 +83,6 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 - Assinatura (plano, email, desde).  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
-- Status Stripe.  
 - **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
 - Sair da conta.
 
