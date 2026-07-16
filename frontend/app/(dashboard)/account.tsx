@@ -17,6 +17,8 @@ const DAY_LABELS = [
   'Sábado',
 ] as const;
 
+const DAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const;
+
 const DEFAULT_HOURS: OpeningHours = [
   { open: false, start: '09:00', end: '18:00' },
   { open: true, start: '09:00', end: '18:00' },
@@ -38,10 +40,37 @@ function normalizeHours(raw: OpeningHours | undefined | null): OpeningHours {
   }));
 }
 
+function sameSchedule(a: DaySchedule, b: DaySchedule) {
+  if (a.open !== b.open) return false;
+  if (!a.open) return true;
+  return a.start === b.start && a.end === b.end;
+}
+
+/** Resume agrupando dias consecutivos com o mesmo expediente. */
+function formatHoursSummary(hours: OpeningHours): string {
+  const parts: string[] = [];
+  let i = 0;
+  while (i < hours.length) {
+    let j = i + 1;
+    while (j < hours.length && sameSchedule(hours[i], hours[j])) j += 1;
+    const label =
+      j === i + 1
+        ? DAY_SHORT[i]
+        : `${DAY_SHORT[i]}–${DAY_SHORT[j - 1]}`;
+    const day = hours[i];
+    parts.push(
+      day.open ? `${label} ${day.start}–${day.end}` : `${label} fechado`,
+    );
+    i = j;
+  }
+  return parts.join(' · ');
+}
+
 export default function AccountScreen() {
   const { account, logout, setSession } = useAuth();
   const [phoneId, setPhoneId] = useState('');
   const [hours, setHours] = useState<OpeningHours>(DEFAULT_HOURS);
+  const [hoursExpanded, setHoursExpanded] = useState(false);
   const [integrations, setIntegrations] = useState({ stripe: false, wa: false });
   const [saved, setSaved] = useState('');
   const [hoursSaved, setHoursSaved] = useState('');
@@ -100,74 +129,99 @@ export default function AccountScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Horário de funcionamento</Text>
-        <Text style={[styles.help, { marginBottom: 8 }]}>
-          Define os dias e horários em que clientes podem agendar (WhatsApp e
-          painel). O serviço precisa caber inteiro dentro do expediente.
-        </Text>
-        {hours.map((day, index) => (
-          <View key={DAY_LABELS[index]} style={styles.dayRow}>
-            <View style={styles.dayHead}>
-              <Text style={styles.dayLabel}>{DAY_LABELS[index]}</Text>
-              <Pressable
-                onPress={() => patchDay(index, { open: !day.open })}
-                style={[styles.toggle, day.open ? styles.toggleOn : styles.toggleOff]}
-              >
-                <Text style={styles.toggleText}>
-                  {day.open ? 'Aberto' : 'Fechado'}
-                </Text>
-              </Pressable>
-            </View>
-            {day.open ? (
-              <View style={styles.timeRow}>
-                <View style={styles.timeField}>
-                  <SofInput
-                    label="Abre"
-                    value={day.start}
-                    onChangeText={(start) => patchDay(index, { start })}
-                    theme="dashboard"
-                    placeholder="09:00"
-                  />
+        <View style={styles.hoursHeader}>
+          <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+          <Pressable
+            onPress={() => setHoursExpanded((prev) => !prev)}
+            style={styles.expandBtn}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: hoursExpanded }}
+          >
+            <Text style={styles.expandBtnText}>
+              {hoursExpanded ? 'Recolher' : 'Editar'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {!hoursExpanded ? (
+          <Text style={styles.hoursSummary}>{formatHoursSummary(hours)}</Text>
+        ) : (
+          <>
+            <Text style={[styles.help, { marginBottom: 8 }]}>
+              Define os dias e horários em que clientes podem agendar (WhatsApp e
+              painel). O serviço precisa caber inteiro dentro do expediente.
+            </Text>
+            {hours.map((day, index) => (
+              <View key={DAY_LABELS[index]} style={styles.dayRow}>
+                <View style={styles.dayHead}>
+                  <Text style={styles.dayLabel}>{DAY_LABELS[index]}</Text>
+                  <Pressable
+                    onPress={() => patchDay(index, { open: !day.open })}
+                    style={[
+                      styles.toggle,
+                      day.open ? styles.toggleOn : styles.toggleOff,
+                    ]}
+                  >
+                    <Text style={styles.toggleText}>
+                      {day.open ? 'Aberto' : 'Fechado'}
+                    </Text>
+                  </Pressable>
                 </View>
-                <View style={styles.timeField}>
-                  <SofInput
-                    label="Fecha"
-                    value={day.end}
-                    onChangeText={(end) => patchDay(index, { end })}
-                    theme="dashboard"
-                    placeholder="18:00"
-                  />
-                </View>
+                {day.open ? (
+                  <View style={styles.timeRow}>
+                    <View style={styles.timeField}>
+                      <SofInput
+                        label="Abre"
+                        value={day.start}
+                        onChangeText={(start) => patchDay(index, { start })}
+                        theme="dashboard"
+                        placeholder="09:00"
+                      />
+                    </View>
+                    <View style={styles.timeField}>
+                      <SofInput
+                        label="Fecha"
+                        value={day.end}
+                        onChangeText={(end) => patchDay(index, { end })}
+                        theme="dashboard"
+                        placeholder="18:00"
+                      />
+                    </View>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
-        ))}
-        {hoursError ? <Text style={styles.error}>{hoursError}</Text> : null}
-        {hoursSaved ? <Text style={styles.saved}>{hoursSaved}</Text> : null}
-        <SofButton
-          title={savingHours ? 'Salvando…' : 'Salvar horários'}
-          variant="dark"
-          theme="dashboard"
-          disabled={savingHours}
-          onPress={async () => {
-            setHoursError('');
-            setSavingHours(true);
-            try {
-              const { account: updated } = await dashboardApi.updateAccount({
-                openingHours: hours,
-              });
-              await setSession(updated);
-              setHoursSaved('Horários salvos!');
-              setTimeout(() => setHoursSaved(''), 2000);
-            } catch (err) {
-              const message =
-                err instanceof Error ? err.message : 'Não foi possível salvar.';
-              setHoursError(message);
-            } finally {
-              setSavingHours(false);
-            }
-          }}
-        />
+            ))}
+            {hoursError ? <Text style={styles.error}>{hoursError}</Text> : null}
+            {hoursSaved ? <Text style={styles.saved}>{hoursSaved}</Text> : null}
+            <SofButton
+              title={savingHours ? 'Salvando…' : 'Salvar horários'}
+              variant="dark"
+              theme="dashboard"
+              disabled={savingHours}
+              onPress={async () => {
+                setHoursError('');
+                setSavingHours(true);
+                try {
+                  const { account: updated } = await dashboardApi.updateAccount({
+                    openingHours: hours,
+                  });
+                  await setSession(updated);
+                  setHoursSaved('Horários salvos!');
+                  setTimeout(() => setHoursSaved(''), 2000);
+                  setHoursExpanded(false);
+                } catch (err) {
+                  const message =
+                    err instanceof Error
+                      ? err.message
+                      : 'Não foi possível salvar.';
+                  setHoursError(message);
+                } finally {
+                  setSavingHours(false);
+                }
+              }}
+            />
+          </>
+        )}
       </View>
 
       <View style={styles.card}>
@@ -254,6 +308,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: d.ink,
     marginBottom: 4,
+  },
+  hoursHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  expandBtn: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: d.line,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  expandBtnText: { fontWeight: '600', fontSize: 13, color: d.ink },
+  hoursSummary: {
+    color: d.ink,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   metaGrid: {
     flexDirection: 'row',
