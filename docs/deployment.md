@@ -65,9 +65,12 @@ CLI Heroku pode ecoar secrets — rotacionar se vazar em logs.
 | `CORS_ORIGIN` | mesma URL do web |
 | `API_PUBLIC_URL` | URL do app API |
 | `DATABASE_URL` / `DIRECT_URL` | Supabase |
+| `STRIPE_SECRET_KEY` | cobranca real (preferir `rk_` / `sk_test_` em sandbox) |
+| `STRIPE_WEBHOOK_SECRET` | endpoint Dashboard ou Stripe CLI |
+| `STRIPE_PUBLISHABLE_KEY` | opcional (painel) |
 | `SEED_DEMO_*` | opcional para demo |
 
-MP / WhatsApp: vazios = modos demo / bot off.
+Stripe / WhatsApp: vazios = modos demo / bot off.
 
 ### Variáveis Web
 

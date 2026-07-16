@@ -59,6 +59,15 @@ npm run web          # http://localhost:8081
 # npm run start      # Expo Go
 ```
 
+Sem `STRIPE_SECRET_KEY` no `.env`, o checkout continua em **modo demo**.
+
+Para testar Stripe de verdade em local:
+
+1. Preencha `STRIPE_SECRET_KEY` (sandbox `sk_test_…` ou restricted `rk_…`)
+2. Em outro terminal: `stripe listen --forward-to localhost:3001/api/payments/webhook`
+3. Cole o `whsec_…` em `STRIPE_WEBHOOK_SECRET`
+4. Reinicie a API
+
 ## Conta de teste
 
 - Email: `demo@sof.com` (ou `SEED_DEMO_EMAIL`)  

@@ -43,8 +43,8 @@ Registrados em `backend/src/app.module.ts`:
 | `EmployeesModule` | profissionais |
 | `ServicesModule` | serviços (cardápio) |
 | `AppointmentsModule` | agendamentos |
-| `CheckoutModule` | assinatura / sessão MP |
-| `PaymentsModule` | webhook Mercado Pago |
+| `CheckoutModule` | assinatura / Checkout Session Stripe |
+| `PaymentsModule` | webhook Stripe |
 | `WhatsappModule` | webhook Meta + simulador |
 | `EventsModule` | SSE de appointments |
 | `HealthController` | `GET /api/health` |
@@ -86,13 +86,13 @@ Datasource usa:
 
 | Integração | Sem credencial | Com credencial |
 |------------|----------------|----------------|
-| Mercado Pago | Checkout demo (aprova em fluxo mock) | Cobrança / webhook real |
+| Stripe | Checkout demo (aprova em fluxo mock) | Checkout Session + webhook real |
 | WhatsApp Cloud | Bot off; painel tem simulador | Mensagens reais no número |
 
 URLs:
 
 - `PUBLIC_URL` → retorno checkout (`/checkout-return`)  
-- `API_PUBLIC_URL` → `notification_url` do MP  
+- Webhook local: `stripe listen --forward-to localhost:3001/api/payments/webhook`  
 
 ### Tempo real
 

@@ -76,7 +76,7 @@ Browser / Expo Go
 
 - **API:** NestJS + Prisma, prefixo `/api/*`, health em `/api/health`.
 - **Front:** Expo SDK ~57 + expo-router; marketing + dashboard.
-- **Pagamentos:** Mercado Pago (ou modo demo sem token).
+- **Pagamentos:** Stripe Checkout (ou modo demo sem `STRIPE_SECRET_KEY`).
 - **WhatsApp:** Cloud API (ou simulador no painel se desligado).
 - **Deploy atual:** dois apps Heroku (`APP_BASE=backend|frontend`) + Postgres Supabase.
 

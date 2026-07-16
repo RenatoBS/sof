@@ -59,7 +59,7 @@ export default function CheckoutReturnScreen() {
             <Text style={styles.sub}>Isso leva só alguns segundos.</Text>
             <View style={styles.hint}>
               <Text style={styles.hintText}>
-                Aguardando a confirmação do Mercado Pago. Não feche esta página.
+                Aguardando a confirmação do Stripe. Não feche esta página.
               </Text>
             </View>
           </>

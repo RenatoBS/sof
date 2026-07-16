@@ -42,7 +42,7 @@ export default function AccountScreen() {
   const { account, logout, setSession } = useAuth();
   const [phoneId, setPhoneId] = useState('');
   const [hours, setHours] = useState<OpeningHours>(DEFAULT_HOURS);
-  const [integrations, setIntegrations] = useState({ mp: false, wa: false });
+  const [integrations, setIntegrations] = useState({ stripe: false, wa: false });
   const [saved, setSaved] = useState('');
   const [hoursSaved, setHoursSaved] = useState('');
   const [hoursError, setHoursError] = useState('');
@@ -53,7 +53,7 @@ export default function AccountScreen() {
     if (account) setHours(normalizeHours(account.openingHours));
     dashboardApi.integrations().then((data) => {
       setIntegrations({
-        mp: data.mercadoPago.configured,
+        stripe: data.stripe.configured,
         wa: data.whatsapp.configured,
       });
     });
@@ -171,17 +171,19 @@ export default function AccountScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Gateway de pagamento — Mercado Pago</Text>
+        <Text style={styles.cardTitle}>Gateway de pagamento — Stripe</Text>
         <Text style={styles.help}>
           Status:{' '}
-          <Text style={[styles.badge, integrations.mp ? styles.on : styles.off]}>
-            {integrations.mp ? 'configurado' : 'modo demonstração'}
+          <Text
+            style={[styles.badge, integrations.stripe ? styles.on : styles.off]}
+          >
+            {integrations.stripe ? 'configurado' : 'modo demonstração'}
           </Text>
           . Para receber de verdade, configure{' '}
-          <Text style={styles.code}>MP_ACCESS_TOKEN</Text>,{' '}
-          <Text style={styles.code}>MP_PUBLIC_KEY</Text> e{' '}
-          <Text style={styles.code}>MP_WEBHOOK_SECRET</Text> nas variáveis de
-          ambiente do servidor.
+          <Text style={styles.code}>STRIPE_SECRET_KEY</Text> e{' '}
+          <Text style={styles.code}>STRIPE_WEBHOOK_SECRET</Text> nas variáveis de
+          ambiente do servidor (e opcionalmente{' '}
+          <Text style={styles.code}>STRIPE_PUBLISHABLE_KEY</Text>).
         </Text>
       </View>
 

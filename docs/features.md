@@ -10,7 +10,7 @@ Sof ajuda salões/barbearias a:
 1. Receber agendamentos pelo **WhatsApp** (conversa guiada).  
 2. Ver a **semana** de todos os profissionais num painel.  
 3. Gerir **equipe**, **cardápio de serviços** e **faturamento**.  
-4. Assinar planos via **Mercado Pago** (ou fluxo demo).
+4. Assinar planos via **Stripe** (ou fluxo demo).
 
 ## Site institucional (marketing)
 
@@ -34,9 +34,9 @@ Copy e tokens devem permanecer alinhados à marca Sof.
 | Webhook pagamento | backend | `POST /api/payments/webhook` |
 | Credenciais pós-aprovação | UI retorno | email + senha temporária (quando aplicável) |
 
-Sem `MP_ACCESS_TOKEN`: modo **demonstração** (não cobra de verdade).
+Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade).
 
-Planos hardcodeados no front (`CheckoutModal` / `PLANS`): Essencial 99, Estúdio 197, Rede 249.
+Planos (`plans.ts` + `CheckoutModal`): Essencial 99 / Estúdio 197 / Rede 249 — assinatura mensal Stripe; Payment Links em `paymentLinkUrl` no backend.
 
 ## Painel (dashboard)
 
@@ -83,7 +83,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 - Assinatura (plano, email, desde).  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
-- Status Mercado Pago.  
+- Status Stripe.  
 - Status bot WhatsApp + Phone Number ID (`PUT /api/account`).  
 - Sair da conta.
 

@@ -236,7 +236,7 @@ export function CheckoutModal({
                 onPress={submit}
               />
               <Text style={styles.payNote}>
-                Você será direcionado ao ambiente seguro do Mercado Pago para
+                Você será direcionado ao ambiente seguro do Stripe para
                 concluir o pagamento.
               </Text>
             </>

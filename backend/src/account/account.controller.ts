@@ -63,11 +63,11 @@ export class AccountController {
 
   @Get('integrations')
   integrations(@Req() req: AuthedRequest) {
-    const mpToken = this.config.get<string>('mercadoPago.accessToken') || '';
+    const stripeKey = this.config.get<string>('stripe.secretKey') || '';
     const waToken = this.config.get<string>('whatsapp.token') || '';
     const waPhone = this.config.get<string>('whatsapp.phoneNumberId') || '';
     return {
-      mercadoPago: { configured: Boolean(mpToken) },
+      stripe: { configured: Boolean(stripeKey) },
       whatsapp: {
         configured: Boolean(waToken && waPhone),
         linkedPhoneNumberId: req.account.whatsappPhoneNumberId || '',

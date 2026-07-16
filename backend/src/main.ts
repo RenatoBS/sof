@@ -49,16 +49,16 @@ async function bootstrap() {
   const port = config.get<number>('port') || 3001;
   await app.listen(port);
 
-  const mpConfigured = Boolean(config.get<string>('mercadoPago.accessToken'));
+  const stripeConfigured = Boolean(config.get<string>('stripe.secretKey'));
   const waConfigured = Boolean(
     config.get<string>('whatsapp.token') &&
       config.get<string>('whatsapp.phoneNumberId'),
   );
 
   console.log(`Sof API rodando em http://localhost:${port}`);
-  if (!mpConfigured) {
+  if (!stripeConfigured) {
     console.log(
-      '[mercadopago] Modo demonstração ativo — configure MP_ACCESS_TOKEN no .env para cobrar de verdade.',
+      '[stripe] Modo demonstração ativo — configure STRIPE_SECRET_KEY no .env para cobrar de verdade.',
     );
   }
   if (!waConfigured) {

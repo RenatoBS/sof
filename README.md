@@ -77,7 +77,7 @@ Configure `EXPO_PUBLIC_API_URL=http://localhost:3001` no `.env`.
 | backend | `DATABASE_URL` | Postgres (pooler em Supabase ok) |
 | backend | `DIRECT_URL` | Postgres direto (migrations Prisma) |
 | backend | `CORS_ORIGIN` | Origens do front |
-| backend | `PUBLIC_URL` | URL do frontend (retorno Mercado Pago) |
+| backend | `PUBLIC_URL` | URL do frontend (retorno Stripe Checkout) |
 | frontend | `EXPO_PUBLIC_API_URL` | URL da API |
 
 ## Scripts na raiz

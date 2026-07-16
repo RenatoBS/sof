@@ -15,9 +15,9 @@ import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { getPlan } from '../common/plans';
-import { COOKIE_NAME, cookieOptions, signToken } from '../common/token';
+import { COOKIE_NAME, cookieOptions, signAccountToken } from '../common/token';
 import { ProvisionService } from './provision.service';
-import { MercadoPagoService } from './mercadopago.service';
+import { StripeService } from './stripe.service';
 
 function isEmail(value: unknown): value is string {
   return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -29,7 +29,7 @@ export class CheckoutController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly provision: ProvisionService,
-    private readonly mercadoPago: MercadoPagoService,
+    private readonly stripe: StripeService,
   ) {}
 
   @Post('create')
@@ -72,29 +72,26 @@ export class CheckoutController {
       },
     });
 
-    if (this.mercadoPago.isConfigured()) {
+    if (this.stripe.isConfigured()) {
       try {
-        const preference = await this.mercadoPago.createPreference({
+        const checkout = await this.stripe.createCheckoutSession({
           sessionId: session.id,
           planName: plan.name,
-          price: plan.price,
+          stripePriceId: plan.stripePriceId,
           payerEmail: email,
         });
         await this.prisma.checkoutSession.update({
           where: { id: session.id },
-          data: { preferenceId: preference.id },
+          data: { preferenceId: checkout.id },
         });
-        const isProd = this.config.get<boolean>('isProd') === true;
         return {
           mode: 'redirect',
           sessionId: session.id,
-          initPoint: isProd
-            ? preference.init_point
-            : preference.sandbox_init_point || preference.init_point,
+          initPoint: checkout.url,
         };
       } catch (err) {
         console.error(
-          '[checkout] Erro ao criar preferência no Mercado Pago:',
+          '[checkout] Erro ao criar sessão Stripe:',
           (err as Error).message,
         );
         throw new BadRequestException({
@@ -105,7 +102,7 @@ export class CheckoutController {
     }
 
     const { account } = await this.provision.provisionAccount(session);
-    const jwtToken = signToken(
+    const jwtToken = signAccountToken(
       account.id,
       this.config.getOrThrow<string>('jwtSecret'),
     );

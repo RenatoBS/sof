@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-07-15 — Planos Sof como assinaturas Stripe (sandbox)
+
+- **Contexto:** Precisávamos de produtos recorrentes mensais e links de pagamento no sandbox.  
+- **Decisão:** Criar Product + Price (`recurring.interval=month`) + Payment Link para Essencial (R$ 99), Estúdio (R$ 197) e Rede (R$ 249); Checkout da API passou a `mode: subscription` com `stripePriceId`.  
+- **Consequências:** IDs e URLs em `backend/src/common/plans.ts`; Payment Links usáveis fora do app; webhook continua em `checkout.session.completed`.  
+- **Alternativas descartadas:** Manter pagamento único (`mode: payment`); só Payment Links sem Checkout Session no app.
+
+## 2026-07-16 — Gateway de pagamento: Stripe no lugar do Mercado Pago
+
+- **Contexto:** Produto precisava trocar o gateway; Preference/MP era one-shot com redirect.  
+- **Decisão:** Stripe Checkout Sessions (`mode: payment`) + webhook `checkout.session.completed`; envs `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PUBLISHABLE_KEY`; sem token → modo demo igual ao antigo; `preferenceId` no DB passa a guardar o id `cs_…` da sessão Stripe.  
+- **Consequências:** Removido `mercadopago.service`; painel Conta e docs atualizados; webhook exige raw body + assinatura.  
+- **Alternativas descartadas:** Payment Element embutido; Subscriptions Billing (próximo passo se quiser renovação automática de verdade).
+
 ## 2026-07-16 — Login unificado conta + profissional
 
 - **Contexto:** Duas telas de login confundiam o fluxo.  

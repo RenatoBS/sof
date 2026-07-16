@@ -44,10 +44,10 @@ export default () => {
     isProd,
     jwtSecret,
     databaseUrl: process.env.DATABASE_URL || '',
-    mercadoPago: {
-      accessToken: process.env.MP_ACCESS_TOKEN || '',
-      publicKey: process.env.MP_PUBLIC_KEY || '',
-      webhookSecret: process.env.MP_WEBHOOK_SECRET || '',
+    stripe: {
+      secretKey: process.env.STRIPE_SECRET_KEY || '',
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     },
     whatsapp: {
       token: process.env.WHATSAPP_TOKEN || '',

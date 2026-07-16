@@ -135,7 +135,7 @@ export const dashboardApi = {
     api<{ ok: boolean }>(`/appointments/${id}`, { method: 'DELETE' }),
   integrations: () =>
     api<{
-      mercadoPago: { configured: boolean };
+      stripe: { configured: boolean };
       whatsapp: { configured: boolean; linkedPhoneNumberId: string };
     }>('/account/integrations'),
   updateAccount: (body: {

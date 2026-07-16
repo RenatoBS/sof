@@ -25,11 +25,11 @@ services:
         generateValue: true
       - key: SEED_DEMO_ENABLED
         value: "false"
-      - key: MP_ACCESS_TOKEN
+      - key: STRIPE_SECRET_KEY
         sync: false
-      - key: MP_PUBLIC_KEY
+      - key: STRIPE_PUBLISHABLE_KEY
         sync: false
-      - key: MP_WEBHOOK_SECRET
+      - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: WHATSAPP_TOKEN
         sync: false
