@@ -46,7 +46,21 @@ npm run start:dev
 API: `http://localhost:3001`  
 Health: `http://localhost:3001/api/health`
 
-Scripts úteis: `prisma:migrate`, `prisma:deploy`, `prisma:seed`, `start:prod`.
+Scripts úteis: `prisma:migrate`, `prisma:deploy`, `prisma:seed`, `prisma:reset-seed`, `start:prod`.
+
+### Reset + seed (local)
+
+Apaga o conteúdo de todas as tabelas e recria a conta demo com `SEED_DEMO_EMAIL` / `SEED_DEMO_PASSWORD` do `backend/.env`:
+
+```bash
+# na raiz
+npm run backend:reset-seed
+
+# ou no backend
+npm run prisma:reset-seed
+```
+
+Não usa `migrate reset` (não dropa o schema / migrations).
 
 ## Frontend
 
