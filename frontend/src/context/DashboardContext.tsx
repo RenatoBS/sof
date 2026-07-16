@@ -108,6 +108,10 @@ export function useDashboard() {
   return ctx;
 }
 
+export function useOptionalDashboard() {
+  return useContext(DashboardContext);
+}
+
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',

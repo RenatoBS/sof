@@ -7,9 +7,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import type { Appointment } from '@/src/api/types';
+import type { Appointment, Client, Service } from '@/src/api/types';
 import { employeeApi } from '@/src/api/endpoints';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
+import {
+  AppointmentModal,
+  type AppointmentDraft,
+} from '@/src/features/appointments/AppointmentModal';
 import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
@@ -35,9 +39,14 @@ function getWeekDates(offset: number) {
 export default function ProfissionalAgendaScreen() {
   const { employee } = useEmployeeAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const [createDraft, setCreateDraft] = useState<AppointmentDraft | null>(
+    null,
+  );
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,8 +56,16 @@ export default function ProfissionalAgendaScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { appointments: list } = await employeeApi.appointments();
-      setAppointments(list.filter((a) => a.status === 'confirmed'));
+      const [appts, clientsRes, servicesRes] = await Promise.all([
+        employeeApi.appointments(),
+        employeeApi.clients(),
+        employeeApi.services(),
+      ]);
+      setAppointments(
+        appts.appointments.filter((a) => a.status === 'confirmed'),
+      );
+      setClients(clientsRes.clients);
+      setServices(servicesRes.services);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar agenda');
     } finally {
@@ -82,6 +99,23 @@ export default function ProfissionalAgendaScreen() {
 
   if (!employee) return null;
 
+  const employeesScoped = [
+    {
+      id: employee.id,
+      accountId: employee.accountId,
+      name: employee.name,
+      email: employee.email,
+      mustChangePassword: employee.mustChangePassword,
+      color: employee.color,
+      services,
+      createdAt: employee.createdAt,
+    },
+  ];
+
+  const closeModal = () => {
+    setCreateDraft(null);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.head}>
@@ -89,7 +123,8 @@ export default function ProfissionalAgendaScreen() {
           <Text style={styles.h2}>Minha agenda</Text>
           <Text style={styles.sub}>
             {weekDates[0].toLocaleDateString('pt-BR')} a{' '}
-            {weekDates[6].toLocaleDateString('pt-BR')}
+            {weekDates[6].toLocaleDateString('pt-BR')} — clique no dia para
+            agendar
           </Text>
         </View>
         <View style={styles.toolbar}>
@@ -124,20 +159,32 @@ export default function ProfissionalAgendaScreen() {
             const items = forDay(ds);
             const isToday = ds === todayStr;
             return (
-              <View
+              <Pressable
                 key={ds}
+                onPress={() => {
+                  setSelected(null);
+                  setCreateDraft({
+                    employeeId: employee.id,
+                    date: ds,
+                  });
+                }}
                 style={[styles.dayCol, isToday && styles.dayToday]}
               >
                 <Text style={styles.dayTitle}>
-                  {DOW[day.getDay()]} {pad(day.getDate())}/{pad(day.getMonth() + 1)}
+                  {DOW[day.getDay()]} {pad(day.getDate())}/
+                  {pad(day.getMonth() + 1)}
                 </Text>
                 {items.length === 0 ? (
-                  <Text style={styles.empty}>Sem horários</Text>
+                  <Text style={styles.empty}>+ Agendar</Text>
                 ) : (
                   items.map((a) => (
                     <Pressable
                       key={a.id}
-                      onPress={() => setSelected(a)}
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        setCreateDraft(null);
+                        setSelected(a);
+                      }}
                       style={[
                         styles.card,
                         { borderLeftColor: employee.color },
@@ -148,7 +195,7 @@ export default function ProfissionalAgendaScreen() {
                     </Pressable>
                   ))
                 )}
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -181,6 +228,40 @@ export default function ProfissionalAgendaScreen() {
           </View>
         </View>
       ) : null}
+
+      <AppointmentModal
+        mode="create"
+        visible={!!createDraft}
+        initial={createDraft}
+        lockEmployeeId={employee.id}
+        clients={clients}
+        services={services}
+        employees={employeesScoped}
+        onClose={closeModal}
+        onClientCreated={(client) =>
+          setClients((prev) =>
+            [...prev.filter((c) => c.id !== client.id), client].sort((a, b) =>
+              a.name.localeCompare(b.name, 'pt-BR'),
+            ),
+          )
+        }
+        onSaved={(appointment) => {
+          setAppointments((prev) =>
+            prev.some((a) => a.id === appointment.id)
+              ? prev
+              : [...prev, appointment],
+          );
+        }}
+        createAppointment={async (body) =>
+          employeeApi.createAppointment({
+            clientId: body.clientId,
+            date: body.date,
+            time: body.time,
+            serviceId: body.serviceId,
+          })
+        }
+        createClient={async (body) => employeeApi.createClient(body)}
+      />
     </ScrollView>
   );
 }
@@ -217,7 +298,7 @@ const styles = StyleSheet.create({
   },
   dayToday: { borderColor: d.accent },
   dayTitle: { fontWeight: '700', color: d.ink, fontSize: 13 },
-  empty: { color: d.muted, fontSize: 12 },
+  empty: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
   card: {
     backgroundColor: '#f8fafc',
     borderRadius: 8,
@@ -238,5 +319,10 @@ const styles = StyleSheet.create({
   },
   detailTitle: { fontSize: 18, fontWeight: '700', color: d.ink },
   detailLine: { color: d.ink, fontSize: 14 },
-  detailActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  detailActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
 });

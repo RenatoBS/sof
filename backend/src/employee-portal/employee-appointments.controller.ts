@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   Get,
   NotFoundException,
@@ -9,13 +11,18 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { serializeDates } from '../common/public-shapes';
+import { isValidPhone, normalizePhone } from '../common/phone';
 import { RealtimeService } from '../events/realtime.service';
+import {
+  type AppointmentPayload,
+  validateAppointmentPayload,
+} from '../appointments/appointment-payload';
 import {
   EmployeeAuthGuard,
   type EmployeeAuthedRequest,
 } from './employee-auth.guard';
 
-@Controller('api/employee/appointments')
+@Controller('api/employee')
 @UseGuards(EmployeeAuthGuard)
 export class EmployeeAppointmentsController {
   constructor(
@@ -23,7 +30,7 @@ export class EmployeeAppointmentsController {
     private readonly realtime: RealtimeService,
   ) {}
 
-  @Get()
+  @Get('appointments')
   async list(@Req() req: EmployeeAuthedRequest) {
     const appointments = await this.prisma.appointment.findMany({
       where: {
@@ -36,7 +43,38 @@ export class EmployeeAppointmentsController {
     return { appointments: appointments.map((a) => serializeDates(a)) };
   }
 
-  @Post(':appointmentId/cancel')
+  @Post('appointments')
+  async create(
+    @Req() req: EmployeeAuthedRequest,
+    @Body() body: Record<string, unknown>,
+  ) {
+    const parsed = await validateAppointmentPayload(
+      this.prisma,
+      body,
+      req.account,
+      { forceEmployeeId: req.employee.id },
+    );
+    if ('error' in parsed) {
+      throw new BadRequestException({ error: parsed.error });
+    }
+    const data = parsed as AppointmentPayload;
+
+    const appointment = await this.prisma.appointment.create({
+      data: {
+        accountId: req.account.id,
+        status: 'confirmed',
+        source: 'manual',
+        ...data,
+      },
+    });
+    const shaped = serializeDates(appointment);
+    this.realtime.broadcast(req.account.id, 'appointment:created', {
+      appointment: shaped,
+    });
+    return { appointment: shaped };
+  }
+
+  @Post('appointments/:appointmentId/cancel')
   async cancel(
     @Req() req: EmployeeAuthedRequest,
     @Param('appointmentId') appointmentId: string,
@@ -62,5 +100,64 @@ export class EmployeeAppointmentsController {
       appointment: shaped,
     });
     return { appointment: shaped };
+  }
+
+  @Get('clients')
+  async listClients(@Req() req: EmployeeAuthedRequest) {
+    const clients = await this.prisma.client.findMany({
+      where: { accountId: req.account.id },
+      orderBy: { name: 'asc' },
+    });
+    return { clients: clients.map((c) => serializeDates(c)) };
+  }
+
+  @Post('clients')
+  async createClient(
+    @Req() req: EmployeeAuthedRequest,
+    @Body() body: { name?: string; phone?: string },
+  ) {
+    const name = String(body?.name || '').trim();
+    const phone = normalizePhone(body?.phone);
+
+    if (!name) {
+      throw new BadRequestException({ error: 'Informe o nome do cliente.' });
+    }
+    if (!isValidPhone(phone)) {
+      throw new BadRequestException({
+        error: 'Informe um telefone válido com DDD (somente números).',
+      });
+    }
+
+    const taken = await this.prisma.client.findUnique({
+      where: {
+        accountId_phone: { accountId: req.account.id, phone },
+      },
+    });
+    if (taken) {
+      throw new BadRequestException({
+        error: 'Já existe um cliente com este telefone.',
+      });
+    }
+
+    const client = await this.prisma.client.create({
+      data: {
+        accountId: req.account.id,
+        name,
+        phone,
+      },
+    });
+    return { client: serializeDates(client) };
+  }
+
+  @Get('services')
+  async listServices(@Req() req: EmployeeAuthedRequest) {
+    const links = await this.prisma.employeeService.findMany({
+      where: { employeeId: req.employee.id },
+      include: { service: true },
+      orderBy: { service: { createdAt: 'asc' } },
+    });
+    return {
+      services: links.map((link) => serializeDates(link.service)),
+    };
   }
 }

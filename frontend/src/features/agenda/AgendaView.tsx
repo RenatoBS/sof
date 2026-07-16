@@ -35,8 +35,10 @@ function getWeekDates(offset: number) {
 
 export function AgendaView({
   onSelectAppointment,
+  onCreateAppointment,
 }: {
   onSelectAppointment: (a: Appointment) => void;
+  onCreateAppointment: (draft: { employeeId: string; date: string }) => void;
 }) {
   const { width } = useWindowDimensions();
   const colW = Math.max(110, Math.min(140, (width - 220) / 7));
@@ -84,8 +86,8 @@ export function AgendaView({
           <Text style={styles.h2}>Agenda Semanal</Text>
           <Text style={styles.sub}>
             {weekDates[0].toLocaleDateString('pt-BR')} a{' '}
-            {weekDates[6].toLocaleDateString('pt-BR')} — clique em qualquer
-            agendamento para editar
+            {weekDates[6].toLocaleDateString('pt-BR')} — clique numa célula para
+            agendar ou em um horário para editar
           </Text>
         </View>
         <View style={styles.toolbar}>
@@ -180,17 +182,26 @@ export function AgendaView({
                     )
                     .sort((a, b) => a.time.localeCompare(b.time));
                   return (
-                    <View
+                    <Pressable
                       key={ds}
+                      onPress={() =>
+                        onCreateAppointment({ employeeId: emp.id, date: ds })
+                      }
                       style={[
                         styles.cell,
                         { width: colW, borderLeftColor: emp.color || d.accent },
                       ]}
                     >
+                      {dayAppts.length === 0 ? (
+                        <Text style={styles.cellHint}>+ Agendar</Text>
+                      ) : null}
                       {dayAppts.map((appt) => (
                         <Pressable
                           key={appt.id}
-                          onPress={() => onSelectAppointment(appt)}
+                          onPress={(e) => {
+                            e?.stopPropagation?.();
+                            onSelectAppointment(appt);
+                          }}
                           style={[
                             styles.appt,
                             appt.source === 'whatsapp' && styles.apptWa,
@@ -209,7 +220,7 @@ export function AgendaView({
                           ) : null}
                         </Pressable>
                       ))}
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -315,6 +326,12 @@ const styles = StyleSheet.create({
     minHeight: 150,
     gap: 8,
     borderLeftWidth: 2,
+  },
+  cellHint: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   appt: {
     backgroundColor: '#f1f5f9',
