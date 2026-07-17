@@ -126,16 +126,35 @@ export class WhatsappBotService {
     };
   }
 
+  private formatPrice(price: number) {
+    return Number(price || 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+  }
+
+  /** Título do botão com preço (máx. 20 chars no WhatsApp). */
+  private serviceChoiceTitle(name: string, price: number) {
+    const pricePart = ` ${this.formatPrice(price)}`;
+    const max = 20;
+    if (name.length + pricePart.length <= max) {
+      return `${name}${pricePart}`;
+    }
+    const room = max - pricePart.length;
+    if (room <= 1) return pricePart.trim().slice(0, max);
+    return `${name.slice(0, room - 1)}…${pricePart}`;
+  }
+
   private serviceMenu(
     bodyText: string,
-    services: { id: string; name: string; duration: number }[],
+    services: { id: string; name: string; duration: number; price: number }[],
   ): WhatsappBotResult {
     return this.menuReply(
       bodyText,
       services.map((s) => ({
         id: `svc:${s.id}`,
-        title: s.name,
-        description: `${s.duration} min`,
+        title: this.serviceChoiceTitle(s.name, s.price),
+        description: `${s.duration} min · ${this.formatPrice(s.price)}`,
       })),
       { listButton: 'Ver serviços' },
     );
@@ -542,7 +561,7 @@ export class WhatsappBotService {
     account: Account,
     customerPhone: string,
     client: { id: string; name: string },
-    services: { id: string; name: string; duration: number }[],
+    services: { id: string; name: string; duration: number; price: number }[],
   ): Promise<WhatsappBotResult> {
     await this.saveSession(account.id, customerPhone, {
       step: 'awaiting_service',
@@ -645,12 +664,20 @@ export class WhatsappBotService {
     if (step === 'awaiting_service') {
       const idx = this.resolveChoice(trimmed, services, {
         idPrefix: 'svc',
-        label: (s) => s.name,
+        label: (s) => this.serviceChoiceTitle(s.name, s.price),
       });
-      if (idx === null) {
+      // Fallback: só o nome do serviço (sem preço)
+      const idxByName =
+        idx === null
+          ? this.resolveChoice(trimmed, services, {
+              idPrefix: 'svc',
+              label: (s) => s.name,
+            })
+          : idx;
+      if (idxByName === null) {
         return this.serviceMenu('Não entendi. Escolha um serviço:', services);
       }
-      const service = services[idx];
+      const service = services[idxByName];
       return this.slotMenu(account, service, sessionData, phone);
     }
 
