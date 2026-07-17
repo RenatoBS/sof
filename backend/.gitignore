@@ -1,0 +1,33 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+build/
+out/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# Testes
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Prisma (compilado a partir de seed.ts)
+prisma/seed.js
+prisma/seed.js.map
+prisma/seed.d.ts
+
+# Cache
+.cache/
+.temp/

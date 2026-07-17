@@ -1,0 +1,230 @@
+import { api } from '@/src/api/client';
+import type {
+  Account,
+  Appointment,
+  Client,
+  Employee,
+  EmployeeSession,
+  OpeningHours,
+  Service,
+} from '@/src/api/types';
+
+export const authApi = {
+  login: (email: string, password: string) =>
+    api<{ account: Account; token: string }>('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      auth: false,
+    }),
+  me: () => api<{ account: Account }>('/auth/me'),
+  logout: () => api<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+};
+
+export const employeeAuthApi = {
+  login: (email: string, password: string) =>
+    api<{ employee: EmployeeSession; token: string }>('/employee-auth/login', {
+      method: 'POST',
+      body: { email, password },
+      auth: false,
+    }),
+  me: () =>
+    api<{ employee: EmployeeSession }>('/employee-auth/me', {
+      auth: 'employee',
+    }),
+  logout: () =>
+    api<{ ok: boolean }>('/employee-auth/logout', {
+      method: 'POST',
+      auth: 'employee',
+    }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api<{ employee: EmployeeSession }>('/employee-auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      auth: 'employee',
+    }),
+};
+
+export const employeeApi = {
+  appointments: () =>
+    api<{ appointments: Appointment[] }>('/employee/appointments', {
+      auth: 'employee',
+    }),
+  createAppointment: (body: {
+    clientId: string;
+    date: string;
+    time: string;
+    serviceId: string;
+  }) =>
+    api<{ appointment: Appointment }>('/employee/appointments', {
+      method: 'POST',
+      body,
+      auth: 'employee',
+    }),
+  cancelAppointment: (id: string) =>
+    api<{ appointment: Appointment }>(`/employee/appointments/${id}/cancel`, {
+      method: 'POST',
+      auth: 'employee',
+    }),
+  clients: () =>
+    api<{ clients: Client[] }>('/employee/clients', { auth: 'employee' }),
+  createClient: (body: { name: string; phone: string }) =>
+    api<{ client: Client }>('/employee/clients', {
+      method: 'POST',
+      body,
+      auth: 'employee',
+    }),
+  services: () =>
+    api<{ services: Service[] }>('/employee/services', { auth: 'employee' }),
+};
+
+export const checkoutApi = {
+  create: (planName: string, name: string, email: string) =>
+    api<{
+      mode: 'redirect' | 'dev-approved';
+      sessionId: string;
+      initPoint?: string;
+      token?: string;
+    }>('/checkout/create', {
+      method: 'POST',
+      body: { planName, name, email },
+      auth: false,
+    }),
+  status: (sessionId: string) =>
+    api<{
+      status: string;
+      email?: string;
+      tempPassword?: string;
+      delivered?: boolean;
+    }>(`/checkout/status/${sessionId}`, { auth: false }),
+};
+
+export const dashboardApi = {
+  employees: () => api<{ employees: Employee[] }>('/employees'),
+  createEmployee: (body: {
+    name: string;
+    email: string;
+    serviceIds: string[];
+    color?: string;
+  }) =>
+    api<{ employee: Employee; temporaryPassword: string }>('/employees', {
+      method: 'POST',
+      body,
+    }),
+  updateEmployee: (
+    id: string,
+    body: {
+      name: string;
+      email: string;
+      serviceIds: string[];
+      color?: string;
+      resetPassword?: boolean;
+    },
+  ) =>
+    api<{ employee: Employee; temporaryPassword?: string }>(
+      `/employees/${id}`,
+      {
+        method: 'PUT',
+        body,
+      },
+    ),
+  deleteEmployee: (id: string) =>
+    api<{ ok: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
+  services: () => api<{ services: Service[] }>('/services'),
+  createService: (body: { name: string; duration: number; price: number }) =>
+    api<{ service: Service }>('/services', { method: 'POST', body }),
+  updateService: (
+    id: string,
+    body: { name: string; duration: number; price: number },
+  ) =>
+    api<{ service: Service }>(`/services/${id}`, { method: 'PUT', body }),
+  deleteService: (id: string) =>
+    api<{ ok: boolean }>(`/services/${id}`, { method: 'DELETE' }),
+  clients: () => api<{ clients: Client[] }>('/clients'),
+  createClient: (body: { name: string; phone: string }) =>
+    api<{ client: Client }>('/clients', { method: 'POST', body }),
+  updateClient: (id: string, body: { name: string; phone: string }) =>
+    api<{ client: Client }>(`/clients/${id}`, { method: 'PUT', body }),
+  deleteClient: (id: string) =>
+    api<{ ok: boolean }>(`/clients/${id}`, { method: 'DELETE' }),
+  appointments: () => api<{ appointments: Appointment[] }>('/appointments'),
+  createAppointment: (body: {
+    clientId?: string;
+    clientName?: string;
+    clientPhone?: string;
+    date: string;
+    time: string;
+    employeeId: string;
+    serviceId: string;
+  }) =>
+    api<{ appointment: Appointment }>('/appointments', {
+      method: 'POST',
+      body,
+    }),
+  updateAppointment: (
+    id: string,
+    body: {
+      clientId?: string;
+      clientName?: string;
+      clientPhone?: string;
+      date: string;
+      time: string;
+      employeeId: string;
+      serviceId: string;
+    },
+  ) =>
+    api<{ appointment: Appointment }>(`/appointments/${id}`, {
+      method: 'PUT',
+      body,
+    }),
+  deleteAppointment: (id: string) =>
+    api<{ ok: boolean }>(`/appointments/${id}`, { method: 'DELETE' }),
+  integrations: () =>
+    api<{
+      stripe: { configured: boolean };
+      whatsapp: {
+        configured: boolean;
+        provider?: string;
+        linkedPhoneNumberId: string;
+        linked?: boolean;
+        hasInstance?: boolean;
+        pairingAvailable?: boolean;
+      };
+    }>('/account/integrations'),
+  updateAccount: (body: {
+    whatsappPhoneNumberId?: string;
+    openingHours?: OpeningHours;
+  }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
+  connectWhatsapp: (body?: { phone?: string }) =>
+    api<{
+      status: string;
+      instanceId: string;
+      qrcode?: string;
+      paircode?: string | null;
+      mode: 'qrcode' | 'paircode';
+    }>('/account/whatsapp/connect', {
+      method: 'POST',
+      body: body || {},
+    }),
+  whatsappStatus: () =>
+    api<{
+      status: string;
+      linked: boolean;
+      instanceId: string;
+      phone: string | null;
+      qrcode: string | null;
+      paircode: string | null;
+      connectedAt: string | null;
+    }>('/account/whatsapp/status'),
+  disconnectWhatsapp: () =>
+    api<{ ok: boolean; status: string }>('/account/whatsapp/disconnect', {
+      method: 'POST',
+    }),
+  simulateWhatsapp: (message: string, customerPhone: string) =>
+    api<{
+      replies: string[];
+      appointment?: Appointment;
+    }>('/whatsapp/simulate', {
+      method: 'POST',
+      body: { message, customerPhone },
+    }),
+};

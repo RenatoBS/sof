@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: sof-agendamento-api
+    runtime: node
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run start:prod
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO_ENABLED
+        value: "false"
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: WHATSAPP_PROVIDER
+        sync: false
+      - key: WHATSAPP_BASE_URL
+        sync: false
+      - key: WHATSAPP_ADMIN_TOKEN
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false

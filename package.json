@@ -1,0 +1,22 @@
+{
+  "name": "sof-agendamento",
+  "private": true,
+  "description": "Sof — monorepo Expo + NestJS",
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "backend:dev": "npm run start:dev --prefix backend",
+    "backend:migrate": "npm run prisma:migrate --prefix backend",
+    "backend:seed": "npm run prisma:seed --prefix backend",
+    "backend:reset-seed": "npm run prisma:reset-seed --prefix backend",
+    "frontend:dev": "npm run start --prefix frontend",
+    "frontend:web": "npm run web --prefix frontend",
+    "heroku:remotes": "heroku git:remote -a sof-agendamento-api -r heroku-api && heroku git:remote -a sof-agendamento-web -r heroku-web",
+    "deploy:api": "git push heroku-api HEAD:main",
+    "deploy:web": "git push heroku-web HEAD:main",
+    "deploy": "npm run deploy:api && npm run deploy:web"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
