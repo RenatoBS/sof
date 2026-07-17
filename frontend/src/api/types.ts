@@ -60,11 +60,23 @@ export type Client = {
   createdAt: string;
 };
 
+export type AppointmentKind = 'service' | 'block';
+
+export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly';
+
+export type AppointmentRecurrence = {
+  frequency: Exclude<RecurrenceFrequency, 'none'>;
+  until: string;
+};
+
 export type Appointment = {
   id: string;
   accountId: string;
   employeeId: string;
-  serviceId: string;
+  kind: AppointmentKind;
+  title: string;
+  durationMinutes?: number | null;
+  serviceId?: string | null;
   clientId?: string | null;
   clientName: string;
   clientPhone: string;
@@ -73,5 +85,20 @@ export type Appointment = {
   price: number;
   status: string;
   source: 'manual' | 'whatsapp';
+  recurrenceGroupId?: string | null;
   createdAt: string;
+};
+
+export type AppointmentWriteBody = {
+  kind?: AppointmentKind;
+  title?: string;
+  durationMinutes?: number;
+  clientId?: string;
+  clientName?: string;
+  clientPhone?: string;
+  date: string;
+  time: string;
+  employeeId: string;
+  serviceId?: string;
+  recurrence?: AppointmentRecurrence;
 };

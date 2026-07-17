@@ -14,6 +14,7 @@ import { serializeDates } from '../common/public-shapes';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { RealtimeService } from '../events/realtime.service';
 import {
+  appointmentCreateRows,
   type AppointmentPayload,
   validateAppointmentPayload,
 } from '../appointments/appointment-payload';
@@ -58,20 +59,19 @@ export class EmployeeAppointmentsController {
       throw new BadRequestException({ error: parsed.error });
     }
     const data = parsed as AppointmentPayload;
+    const rows = appointmentCreateRows(req.account.id, data);
 
-    const appointment = await this.prisma.appointment.create({
-      data: {
-        accountId: req.account.id,
-        status: 'confirmed',
-        source: 'manual',
-        ...data,
-      },
-    });
-    const shaped = serializeDates(appointment);
-    this.realtime.broadcast(req.account.id, 'appointment:created', {
-      appointment: shaped,
-    });
-    return { appointment: shaped };
+    const created = await this.prisma.$transaction(
+      rows.map((row) => this.prisma.appointment.create({ data: row })),
+    );
+
+    const shaped = created.map((a) => serializeDates(a));
+    for (const appointment of shaped) {
+      this.realtime.broadcast(req.account.id, 'appointment:created', {
+        appointment,
+      });
+    }
+    return { appointment: shaped[0], appointments: shaped };
   }
 
   @Post('appointments/:appointmentId/cancel')

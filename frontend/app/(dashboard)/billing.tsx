@@ -15,10 +15,17 @@ function localDateStr(date: Date) {
 }
 
 function revenueFor(
-  appointments: { status: string; date: string; price: number }[],
+  appointments: {
+    status: string;
+    date: string;
+    price: number;
+    kind?: string;
+  }[],
   filter: 'day' | 'week' | 'month',
 ) {
-  const confirmed = appointments.filter((a) => a.status === 'confirmed');
+  const confirmed = appointments.filter(
+    (a) => a.status === 'confirmed' && a.kind !== 'block',
+  );
   const today = new Date();
   const todayStr = localDateStr(today);
   let filtered = confirmed;
@@ -58,7 +65,7 @@ export default function BillingScreen() {
   );
 
   const rows = appointments
-    .filter((a) => a.status === 'confirmed')
+    .filter((a) => a.status === 'confirmed' && a.kind !== 'block')
     .sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`));
 
   return (
@@ -95,7 +102,7 @@ export default function BillingScreen() {
                     {day}/{m}/{y} · {a.time} · {a.clientName}
                   </Text>
                   <Text style={styles.rowMeta}>
-                    {getService(a.serviceId)?.name} ·{' '}
+                    {getService(a.serviceId || '')?.name} ·{' '}
                     {getEmployee(a.employeeId)?.name || '—'} ·{' '}
                     {a.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                   </Text>

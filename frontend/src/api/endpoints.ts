@@ -2,6 +2,7 @@ import { api } from '@/src/api/client';
 import type {
   Account,
   Appointment,
+  AppointmentWriteBody,
   Client,
   Employee,
   EmployeeSession,
@@ -49,17 +50,15 @@ export const employeeApi = {
     api<{ appointments: Appointment[] }>('/employee/appointments', {
       auth: 'employee',
     }),
-  createAppointment: (body: {
-    clientId: string;
-    date: string;
-    time: string;
-    serviceId: string;
-  }) =>
-    api<{ appointment: Appointment }>('/employee/appointments', {
-      method: 'POST',
-      body,
-      auth: 'employee',
-    }),
+  createAppointment: (body: AppointmentWriteBody) =>
+    api<{ appointment: Appointment; appointments: Appointment[] }>(
+      '/employee/appointments',
+      {
+        method: 'POST',
+        body,
+        auth: 'employee',
+      },
+    ),
   cancelAppointment: (id: string) =>
     api<{ appointment: Appointment }>(`/employee/appointments/${id}/cancel`, {
       method: 'POST',
@@ -147,37 +146,24 @@ export const dashboardApi = {
   deleteClient: (id: string) =>
     api<{ ok: boolean }>(`/clients/${id}`, { method: 'DELETE' }),
   appointments: () => api<{ appointments: Appointment[] }>('/appointments'),
-  createAppointment: (body: {
-    clientId?: string;
-    clientName?: string;
-    clientPhone?: string;
-    date: string;
-    time: string;
-    employeeId: string;
-    serviceId: string;
-  }) =>
-    api<{ appointment: Appointment }>('/appointments', {
-      method: 'POST',
-      body,
-    }),
-  updateAppointment: (
-    id: string,
-    body: {
-      clientId?: string;
-      clientName?: string;
-      clientPhone?: string;
-      date: string;
-      time: string;
-      employeeId: string;
-      serviceId: string;
-    },
-  ) =>
+  createAppointment: (body: AppointmentWriteBody) =>
+    api<{ appointment: Appointment; appointments: Appointment[] }>(
+      '/appointments',
+      {
+        method: 'POST',
+        body,
+      },
+    ),
+  updateAppointment: (id: string, body: AppointmentWriteBody) =>
     api<{ appointment: Appointment }>(`/appointments/${id}`, {
       method: 'PUT',
       body,
     }),
-  deleteAppointment: (id: string) =>
-    api<{ ok: boolean }>(`/appointments/${id}`, { method: 'DELETE' }),
+  deleteAppointment: (id: string, scope?: 'one' | 'series') =>
+    api<{ ok: boolean; deletedCount?: number }>(
+      `/appointments/${id}${scope === 'series' ? '?scope=series' : ''}`,
+      { method: 'DELETE' },
+    ),
   integrations: () =>
     api<{
       stripe: { configured: boolean };

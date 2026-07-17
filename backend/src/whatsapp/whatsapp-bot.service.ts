@@ -508,8 +508,10 @@ export class WhatsappBotService {
         const appointment = await this.prisma.appointment.create({
           data: {
             accountId: account.id,
+            kind: 'service',
             employeeId,
             serviceId,
+            durationMinutes: service.duration,
             clientId: client.id,
             clientName: client.name,
             clientPhone: client.phone,

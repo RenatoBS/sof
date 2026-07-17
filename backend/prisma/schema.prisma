@@ -91,29 +91,38 @@ model Client {
 }
 
 model Appointment {
-  id          String   @id @default(cuid())
-  accountId   String
-  employeeId  String
-  serviceId   String
-  clientId    String?
-  clientName  String
-  clientPhone String   @default("")
-  date        String
-  time        String
-  price       Float
-  status      String   @default("confirmed")
-  source      String   @default("manual")
-  createdAt   DateTime @default(now())
+  id                String   @id @default(cuid())
+  accountId         String
+  employeeId        String
+  /// `service` = atendimento; `block` = evento livre (almoço, médico, etc.)
+  kind              String   @default("service")
+  /// Título do evento livre (kind=block); vazio em serviços
+  title             String   @default("")
+  /// Duração em minutos; obrigatório em block; em service usa Service.duration se null
+  durationMinutes   Int?
+  serviceId         String?
+  clientId          String?
+  clientName        String   @default("")
+  clientPhone       String   @default("")
+  date              String
+  time              String
+  price             Float    @default(0)
+  status            String   @default("confirmed")
+  source            String   @default("manual")
+  /// Liga ocorrências materializadas da mesma série recorrente
+  recurrenceGroupId String?
+  createdAt         DateTime @default(now())
 
   account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   client   Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([accountId])
   @@index([employeeId])
   @@index([serviceId])
   @@index([clientId])
+  @@index([recurrenceGroupId])
 }
 
 model CheckoutSession {

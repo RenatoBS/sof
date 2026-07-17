@@ -199,7 +199,9 @@ export function AgendaView({
                       {dayAppts.length === 0 ? (
                         <Text style={styles.cellHint}>+ Agendar</Text>
                       ) : null}
-                      {dayAppts.map((appt) => (
+                      {dayAppts.map((appt) => {
+                        const isBlock = appt.kind === 'block';
+                        return (
                         <Pressable
                           key={appt.id}
                           onPress={(e) => {
@@ -209,21 +211,38 @@ export function AgendaView({
                           style={[
                             styles.appt,
                             appt.source === 'whatsapp' && styles.apptWa,
+                            isBlock && styles.apptBlock,
                           ]}
                         >
                           <Text style={styles.apptTime}>{appt.time}</Text>
-                          <Text style={styles.apptClient}>{appt.clientName}</Text>
-                          <Text style={styles.apptSvc}>
-                            {getService(appt.serviceId)?.name}
+                          <Text style={styles.apptClient}>
+                            {isBlock
+                              ? appt.title || 'Evento'
+                              : appt.clientName}
                           </Text>
-                          <Text style={styles.apptPrice}>
-                            {formatCurrency(appt.price)}
-                          </Text>
+                          {!isBlock ? (
+                            <>
+                              <Text style={styles.apptSvc}>
+                                {getService(appt.serviceId || '')?.name}
+                              </Text>
+                              <Text style={styles.apptPrice}>
+                                {formatCurrency(appt.price)}
+                              </Text>
+                            </>
+                          ) : (
+                            <Text style={styles.apptSvc}>
+                              {appt.durationMinutes
+                                ? `${appt.durationMinutes} min`
+                                : 'Bloqueio'}
+                              {appt.recurrenceGroupId ? ' · recorrente' : ''}
+                            </Text>
+                          )}
                           {appt.source === 'whatsapp' ? (
                             <Text style={styles.waBadge}>WhatsApp</Text>
                           ) : null}
                         </Pressable>
-                      ))}
+                        );
+                      })}
                     </Pressable>
                   );
                 })}
@@ -349,6 +368,10 @@ const styles = StyleSheet.create({
     borderRadius: d.radiusSm,
   },
   apptWa: { borderLeftColor: d.waGreen },
+  apptBlock: {
+    borderLeftColor: '#64748b',
+    backgroundColor: '#f8fafc',
+  },
   apptTime: { fontWeight: '600', fontSize: 12 },
   apptClient: { color: '#475569', marginTop: 4, fontSize: 12 },
   apptSvc: { color: '#94a3b8', fontSize: 11, marginTop: 4 },

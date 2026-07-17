@@ -1,21 +1,34 @@
-import { Account } from '@prisma/client';
+import { Account, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { checkWithinOpeningHours } from '../account/opening-hours';
 import { hasScheduleConflict, listBusySlots } from './schedule-conflict';
+import {
+  expandRecurrenceDates,
+  parseRecurrenceInput,
+  type RecurrenceInput,
+} from './recurrence';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
+export type AppointmentKind = 'service' | 'block';
+
 export type AppointmentPayload = {
-  clientId: string;
+  kind: AppointmentKind;
+  title: string;
+  durationMinutes: number | null;
+  clientId: string | null;
   clientName: string;
   clientPhone: string;
   date: string;
   time: string;
   employeeId: string;
-  serviceId: string;
+  serviceId: string | null;
   price: number;
+  recurrenceGroupId: string | null;
+  recurrenceDates: string[];
 };
 
 export async function resolveClientForAppointment(
@@ -67,36 +80,107 @@ export async function resolveClientForAppointment(
   };
 }
 
+function parseKind(body: Record<string, unknown>): AppointmentKind {
+  const raw = String(body?.kind || 'service').trim().toLowerCase();
+  return raw === 'block' ? 'block' : 'service';
+}
+
 export async function validateAppointmentPayload(
   prisma: PrismaService,
   body: Record<string, unknown>,
   account: Account,
   options?: {
     excludeAppointmentId?: string;
+    /** Ao editar, não regenera série — usa só a data do body */
+    skipRecurrenceExpand?: boolean;
     forceEmployeeId?: string;
   },
 ): Promise<AppointmentPayload | { error: string }> {
+  const kind = parseKind(body);
   const date = String(body?.date || '');
   const time = String(body?.time || '');
   const employeeId = String(
     options?.forceEmployeeId || body?.employeeId || '',
   );
-  const serviceId = String(body?.serviceId || '');
 
   if (!DATE_RE.test(date)) return { error: 'Data inválida.' };
   if (!TIME_RE.test(time)) return { error: 'Horário inválido.' };
 
+  const employee = await prisma.employee.findFirst({
+    where: { id: employeeId, accountId: account.id },
+  });
+  if (!employee) return { error: 'Profissional inválido.' };
+
+  let recurrence: RecurrenceInput | null = null;
+  if (!options?.skipRecurrenceExpand) {
+    const parsedRecurrence = parseRecurrenceInput(body);
+    if (parsedRecurrence && 'error' in parsedRecurrence) {
+      return parsedRecurrence;
+    }
+    recurrence = parsedRecurrence;
+  }
+
+  const datesResult = expandRecurrenceDates(date, recurrence);
+  if ('error' in datesResult) return datesResult;
+  const recurrenceDates = datesResult;
+  const recurrenceGroupId =
+    recurrenceDates.length > 1 ? randomUUID() : null;
+
+  if (kind === 'block') {
+    const title = String(body?.title || '').trim();
+    if (!title) return { error: 'Informe o título do evento.' };
+
+    const durationRaw = body?.durationMinutes ?? body?.duration;
+    const durationMinutes = Number(durationRaw);
+    if (
+      !Number.isFinite(durationMinutes) ||
+      durationMinutes < 5 ||
+      durationMinutes > 24 * 60
+    ) {
+      return { error: 'Informe a duração em minutos (mín. 5).' };
+    }
+
+    for (const occurrenceDate of recurrenceDates) {
+      const busy = await listBusySlots(prisma, {
+        accountId: account.id,
+        employeeId,
+        date: occurrenceDate,
+        excludeAppointmentId: options?.excludeAppointmentId,
+      });
+      if (hasScheduleConflict(busy, time, durationMinutes)) {
+        return {
+          error:
+            recurrenceDates.length > 1
+              ? `Conflito de agenda em ${occurrenceDate}. Ajuste o horário ou o período.`
+              : 'Este profissional já tem um agendamento nesse horário. Escolha outro horário.',
+        };
+      }
+    }
+
+    return {
+      kind: 'block',
+      title,
+      durationMinutes,
+      clientId: null,
+      clientName: '',
+      clientPhone: '',
+      date,
+      time,
+      employeeId,
+      serviceId: null,
+      price: 0,
+      recurrenceGroupId,
+      recurrenceDates,
+    };
+  }
+
+  const serviceId = String(body?.serviceId || '');
   const clientResolved = await resolveClientForAppointment(
     prisma,
     account.id,
     body,
   );
   if ('error' in clientResolved) return clientResolved;
-
-  const employee = await prisma.employee.findFirst({
-    where: { id: employeeId, accountId: account.id },
-  });
-  if (!employee) return { error: 'Profissional inválido.' };
 
   const service = await prisma.service.findFirst({
     where: { id: serviceId, accountId: account.id },
@@ -112,42 +196,76 @@ export async function validateAppointmentPayload(
     return { error: 'Este profissional não realiza esse serviço.' };
   }
 
-  const hoursCheck = checkWithinOpeningHours(
-    account.openingHours,
-    date,
-    time,
-    service.duration,
-  );
-  if (!hoursCheck.ok) {
-    if (hoursCheck.reason === 'closed') {
+  for (const occurrenceDate of recurrenceDates) {
+    const hoursCheck = checkWithinOpeningHours(
+      account.openingHours,
+      occurrenceDate,
+      time,
+      service.duration,
+    );
+    if (!hoursCheck.ok) {
+      if (hoursCheck.reason === 'closed') {
+        return {
+          error:
+            recurrenceDates.length > 1
+              ? `O estabelecimento está fechado em ${occurrenceDate} (${hoursCheck.label}).`
+              : `O estabelecimento está fechado em ${hoursCheck.label}. Escolha outro dia.`,
+        };
+      }
       return {
-        error: `O estabelecimento está fechado em ${hoursCheck.label}. Escolha outro dia.`,
+        error: `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Escolha outro horário.`,
       };
     }
-    return {
-      error: `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Escolha outro horário.`,
-    };
-  }
 
-  const busy = await listBusySlots(prisma, {
-    accountId: account.id,
-    employeeId,
-    date,
-    excludeAppointmentId: options?.excludeAppointmentId,
-  });
-  if (hasScheduleConflict(busy, time, service.duration)) {
-    return {
-      error:
-        'Este profissional já tem um agendamento nesse horário. Escolha outro horário.',
-    };
+    const busy = await listBusySlots(prisma, {
+      accountId: account.id,
+      employeeId,
+      date: occurrenceDate,
+      excludeAppointmentId: options?.excludeAppointmentId,
+    });
+    if (hasScheduleConflict(busy, time, service.duration)) {
+      return {
+        error:
+          recurrenceDates.length > 1
+            ? `Conflito de agenda em ${occurrenceDate}. Ajuste o horário ou o período.`
+            : 'Este profissional já tem um agendamento nesse horário. Escolha outro horário.',
+      };
+    }
   }
 
   return {
+    kind: 'service',
+    title: '',
+    durationMinutes: service.duration,
     ...clientResolved,
     date,
     time,
     employeeId,
     serviceId,
     price: service.price,
+    recurrenceGroupId,
+    recurrenceDates,
   };
+}
+
+export function appointmentCreateRows(
+  accountId: string,
+  payload: AppointmentPayload,
+  source = 'manual',
+): Prisma.AppointmentCreateManyInput[] {
+  const {
+    recurrenceDates,
+    recurrenceGroupId,
+    date: _date,
+    ...base
+  } = payload;
+
+  return recurrenceDates.map((occurrenceDate) => ({
+    accountId,
+    status: 'confirmed',
+    source,
+    ...base,
+    date: occurrenceDate,
+    recurrenceGroupId,
+  }));
 }

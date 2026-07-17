@@ -64,7 +64,7 @@ Account
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Appointment[]  (employeeId + serviceId; employee deve oferecer o serviço)
+  ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
   └── WhatsappSession[]
 ```
@@ -75,7 +75,7 @@ Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`,
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Appointment`: data/hora, cliente, preço, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N, o **expediente da conta** (`account/opening-hours.ts`) e conflito de agenda do profissional (overlap por duração; `appointments/schedule-conflict.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
+`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
 
 Datasource usa:
 

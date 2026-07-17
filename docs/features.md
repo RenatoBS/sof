@@ -48,10 +48,15 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 - Grade semanal por profissional × dia.  
 - Navegação: semana anterior / hoje / próxima.  
-- Clique edita agendamento (modal).  
+- Clique numa célula abre o modal; clique num horário edita.  
+- Modal com dois tipos:
+  - **Serviço** — cliente + serviço + profissional (como antes).
+  - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).
+- **Recorrência** na criação (serviço ou evento): diário / semanal / mensal até uma data (máx. 52 ocorrências); editar altera só a ocorrência; excluir pode ser “só esta” ou “série inteira” (`?scope=series`).  
 - Empty state se não houver profissionais.  
 - Bloco **Bot do WhatsApp — simulador** (telefone + mensagem → `POST /api/whatsapp/simulate`).  
 - Toast + grade atualizam em tempo real via SSE.
+- Faturamento ignora eventos `kind=block` (preço 0).
 
 ### Profissionais
 
@@ -128,7 +133,7 @@ Arquivo: `backend/prisma/seed.ts`.
 | Account | `PUT /api/account`, `GET /api/account/integrations`, `POST/GET /api/account/whatsapp/*` |
 | Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
-| Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` |
+| Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Payments | `POST /api/payments/webhook` |
 | WhatsApp | webhooks + `POST /api/whatsapp/simulate` + pareamento em `/api/account/whatsapp` |
