@@ -49,6 +49,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Grade semanal por profissional × dia.  
 - Navegação: semana anterior / hoje / próxima.  
 - Clique numa célula abre o modal; clique num horário edita.  
+- **Recolher / expandir** a linha de cada profissional (nome do profissional); recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
 - Modal com dois tipos:
   - **Serviço** — cliente + serviço + profissional (como antes).
   - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).
