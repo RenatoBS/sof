@@ -57,6 +57,8 @@ export type Client = {
   accountId: string;
   name: string;
   phone: string;
+  botPausedPermanent: boolean;
+  botPausedUntil?: string | null;
   createdAt: string;
 };
 

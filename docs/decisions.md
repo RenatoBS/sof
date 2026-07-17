@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-17 — Pausar bot WhatsApp por cliente
+
+- **Contexto:** Dono precisa falar manualmente com um cliente sem o bot interferir, às vezes só por algumas horas.  
+- **Decisão:** Campos `Client.botPausedPermanent` e `botPausedUntil`; UI na edição do cliente com presets (1h/8h/24h/7d) ou permanente; webhook/simulate silenciam se pausado (`isClientBotPaused`).  
+- **Consequências:** Mute só para telefone já cadastrado como `Client`; sem auto-reply de “bot desativado”.  
+- **Alternativas descartadas:** Mute global da conta; mensagem automática ao cliente; mute só na sessão WhatsApp sem flag no Client.
+
 ## 2026-07-17 — Fluxo WA: serviço → horário → profissional
 
 - **Contexto:** Escolher profissional antes do horário forçava o cliente a decidir sem ver disponibilidade real.  

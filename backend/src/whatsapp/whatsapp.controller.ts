@@ -17,6 +17,8 @@ import type { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
+import { normalizePhone } from '../common/phone';
+import { isClientBotPaused } from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
@@ -199,6 +201,10 @@ export class WhatsappController {
       return;
     }
 
+    if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+      return;
+    }
+
     const result = await this.bot.handleIncomingMessage({
       account,
       customerPhone,
@@ -291,6 +297,9 @@ export class WhatsappController {
           if (!account || !message.from) continue;
           const text = this.extractMetaSelection(message);
           if (!text) continue;
+          if (await this.isBotPausedForPhone(account.id, message.from)) {
+            continue;
+          }
           const result = await this.bot.handleIncomingMessage({
             account,
             customerPhone: message.from,
@@ -330,6 +339,18 @@ export class WhatsappController {
   private extractPhone(raw: string) {
     const digits = String(raw || '').replace(/\D/g, '');
     return digits || '';
+  }
+
+  private async isBotPausedForPhone(accountId: string, rawPhone: string) {
+    const phone = normalizePhone(rawPhone) || this.extractPhone(rawPhone);
+    if (!phone) return false;
+    const client = await this.prisma.client.findUnique({
+      where: {
+        accountId_phone: { accountId, phone },
+      },
+      select: { botPausedPermanent: true, botPausedUntil: true },
+    });
+    return isClientBotPaused(client);
   }
 
   private async resolveAccount(opts: {
@@ -388,6 +409,14 @@ export class WhatsappController {
       throw new BadRequestException({
         error: 'Informe uma mensagem para simular.',
       });
+    }
+
+    if (await this.isBotPausedForPhone(req.account.id, customerPhone)) {
+      return {
+        replies: [
+          '(Bot pausado para este cliente — nenhuma resposta enviada.)',
+        ],
+      };
     }
 
     return this.bot.handleIncomingMessage({

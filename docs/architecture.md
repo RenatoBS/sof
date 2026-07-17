@@ -64,6 +64,7 @@ Account
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
+  ├── Client[]  (botPausedPermanent / botPausedUntil)
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
   └── WhatsappSession[]
@@ -74,6 +75,8 @@ Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`,
 `Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
+
+`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`).
 
 `Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
 

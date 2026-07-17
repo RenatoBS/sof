@@ -81,6 +81,14 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - CRUD: adicionar / **editar** / remover (`PUT /api/services/:id`).  
 - Copy: “Configure seu cardápio de serviços”.
 
+### Clientes
+
+- Listagem em cards (nome + telefone).  
+- CRUD: adicionar / editar / remover.  
+- Na **edição**: pausar o bot WhatsApp para aquele cliente — **Bot ativo**, timer (1 h / 8 h / 24 h / 7 dias) ou **Permanente**.  
+- Badge na lista: **Bot off** (permanente) ou **Bot pausado até …** (temporário).  
+- Enquanto pausado, o webhook **não responde** (silêncio). Só vale para `Client` cadastrado (mesmo telefone da conversa).
+
 ### Faturamento
 
 - Cards: Hoje / Esta Semana / Este Mês (confirmed).  
@@ -107,6 +115,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Horários:** após o serviço, o bot lista até 5 slots livres nos próximos dias (qualquer profissional do serviço) + opção **Outro horário** (`dd/mm hh:mm`).  
 - **Menus interativos:** escolhas de serviço (com **preço**), horário, profissional e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
 - **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão da conversa.  
+- **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).
@@ -137,6 +146,7 @@ Arquivo: `backend/prisma/seed.ts`.
 | Account | `PUT /api/account`, `GET /api/account/integrations`, `POST/GET /api/account/whatsapp/*` |
 | Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
+| Clients | `GET/POST /api/clients`, `PUT/DELETE …/:id` (pause do bot no PUT) |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Payments | `POST /api/payments/webhook` |

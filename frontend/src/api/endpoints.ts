@@ -141,7 +141,15 @@ export const dashboardApi = {
   clients: () => api<{ clients: Client[] }>('/clients'),
   createClient: (body: { name: string; phone: string }) =>
     api<{ client: Client }>('/clients', { method: 'POST', body }),
-  updateClient: (id: string, body: { name: string; phone: string }) =>
+  updateClient: (
+    id: string,
+    body: {
+      name: string;
+      phone: string;
+      botPausedPermanent?: boolean;
+      botPausedUntil?: string | null;
+    },
+  ) =>
     api<{ client: Client }>(`/clients/${id}`, { method: 'PUT', body }),
   deleteClient: (id: string) =>
     api<{ ok: boolean }>(`/clients/${id}`, { method: 'DELETE' }),

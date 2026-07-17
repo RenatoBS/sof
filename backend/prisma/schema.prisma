@@ -77,11 +77,15 @@ model EmployeeService {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  accountId String
-  name      String
-  phone     String
-  createdAt DateTime @default(now())
+  id                  String    @id @default(cuid())
+  accountId           String
+  name                String
+  phone               String
+  /// Se true, bot WhatsApp não responde este cliente até reativar
+  botPausedPermanent  Boolean   @default(false)
+  /// Mute temporário: bot silencioso enquanto > now()
+  botPausedUntil      DateTime?
+  createdAt           DateTime  @default(now())
 
   account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments Appointment[]
