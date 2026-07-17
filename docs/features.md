@@ -130,10 +130,12 @@ Quando `SEED_DEMO_ENABLED=true`, o seed cria (ou recria padrão de demo):
 
 - Email: `SEED_DEMO_EMAIL` (default `demo@sof.com`)  
 - Senha: `SEED_DEMO_PASSWORD`  
-- Negócio exemplo “Santa Madalena”, plano Estúdio, profissionais/serviços/agendamento de exemplo  
+- Negócio exemplo “Santa Madalena”, plano Estúdio, 3 profissionais / 4 serviços  
+- **10 clientes**, **10 agendamentos de serviço por cliente** (alguns em série semanal com `recurrenceGroupId`)  
+- Bloqueios fixos por profissional: **Almoço** diário (série) + compromisso semanal (Médico / Reunião / Estoque)  
 - Login profissional demo: `marcelo@demo.sof` (mesma senha do demo; troca no 1º acesso em `/login`)  
 
-Arquivo: `backend/prisma/seed.ts`.
+Arquivo: `backend/prisma/seed.ts`. Conta já existente: use `npm run backend:reset-seed` (local) para apagar e semear de novo.
 
 ## API — mapa rápido
 
