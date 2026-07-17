@@ -117,7 +117,7 @@ URLs:
 | `/pricing` | Planos + checkout modal |
 | `/about` | Quem somos |
 | `/login` | Entrar (conta ou profissional) |
-| `/checkout-return` | Retorno MP |
+| `/checkout-return` | Retorno Stripe → auto-login agenda |
 | `/(dashboard)/agenda` | Agenda semanal + simulador WA |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |

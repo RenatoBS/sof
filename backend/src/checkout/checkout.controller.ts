@@ -14,6 +14,11 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  hashPassword,
+  isValidAccountPassword,
+} from '../common/password';
 import { getPlan } from '../common/plans';
 import { COOKIE_NAME, cookieOptions, signAccountToken } from '../common/token';
 import { ProvisionService } from './provision.service';
@@ -36,7 +41,8 @@ export class CheckoutController {
   @HttpCode(200)
   @Throttle({ default: { limit: 15, ttl: 15 * 60 * 1000 } })
   async create(
-    @Body() body: { planName?: string; name?: string; email?: string },
+    @Body()
+    body: { planName?: string; name?: string; email?: string; password?: string },
     @Res({ passthrough: true }) res: Response,
   ) {
     const planName = String(body?.planName || '').trim();
@@ -44,6 +50,7 @@ export class CheckoutController {
     const email = String(body?.email || '')
       .trim()
       .toLowerCase();
+    const password = body?.password;
 
     const plan = getPlan(planName);
     if (!plan) throw new BadRequestException({ error: 'Plano inválido.' });
@@ -52,6 +59,11 @@ export class CheckoutController {
     }
     if (!isEmail(email)) {
       throw new BadRequestException({ error: 'Informe um e-mail válido.' });
+    }
+    if (!isValidAccountPassword(password)) {
+      throw new BadRequestException({
+        error: `A senha deve ter pelo menos ${ACCOUNT_PASSWORD_MIN_LENGTH} caracteres.`,
+      });
     }
 
     const existing = await this.prisma.account.findUnique({ where: { email } });
@@ -62,12 +74,15 @@ export class CheckoutController {
       });
     }
 
+    const passwordHash = await hashPassword(password);
+
     const session = await this.prisma.checkoutSession.create({
       data: {
         planName: plan.name,
         price: plan.price,
         name,
         email,
+        passwordHash,
         status: 'pending',
       },
     });
@@ -115,7 +130,10 @@ export class CheckoutController {
   }
 
   @Get('status/:sessionId')
-  async status(@Param('sessionId') sessionId: string) {
+  async status(
+    @Param('sessionId') sessionId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const session = await this.prisma.checkoutSession.findUnique({
       where: { id: sessionId },
     });
@@ -129,20 +147,29 @@ export class CheckoutController {
       return { status: session.status };
     }
 
-    if (session.delivered) {
+    if (session.delivered || !session.accountId) {
       return { status: 'approved', email: session.email, delivered: true };
     }
 
-    const tempPassword = session.tempPassword;
+    const jwtToken = signAccountToken(
+      session.accountId,
+      this.config.getOrThrow<string>('jwtSecret'),
+    );
     await this.prisma.checkoutSession.update({
       where: { id: session.id },
-      data: { delivered: true, tempPassword: null },
+      data: { delivered: true },
     });
+
+    res.cookie(
+      COOKIE_NAME,
+      jwtToken,
+      cookieOptions(this.config.get<boolean>('isProd') === true),
+    );
 
     return {
       status: 'approved',
       email: session.email,
-      tempPassword,
+      token: jwtToken,
       delivered: false,
     };
   }

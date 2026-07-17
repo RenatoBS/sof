@@ -29,12 +29,14 @@ Copy e tokens devem permanecer alinhados à marca Sof.
 | Feature | Onde | API |
 |---------|------|-----|
 | Escolher plano | modal no pricing / home flow | — |
-| Criar sessão | CheckoutModal | `POST /api/checkout/create` |
-| Retorno MP | `/checkout-return?ref=` | `GET /api/checkout/status/:sessionId` |
+| Criar sessão | CheckoutModal (nome, e-mail, **senha**) | `POST /api/checkout/create` |
+| Retorno Stripe | `/checkout-return?ref=` | `GET /api/checkout/status/:sessionId` → JWT + agenda |
 | Webhook pagamento | backend | `POST /api/payments/webhook` |
-| Credenciais pós-aprovação | UI retorno | email + senha temporária (quando aplicável) |
+| Pós-pagamento | auto-login | token na 1ª consulta de status; redireciona `/(dashboard)/agenda` |
 
-Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade).
+Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — provisiona na hora e já entra na agenda.
+
+A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada.
 
 Planos (`plans.ts` + `CheckoutModal`): Essencial 99 / Estúdio 197 / Rede 249 — assinatura mensal Stripe; Payment Links em `paymentLinkUrl` no backend.
 

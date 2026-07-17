@@ -125,7 +125,7 @@ model CheckoutSession {
   status       String   @default("pending")
   preferenceId String?
   accountId    String?
-  tempPassword String?
+  passwordHash String?
   delivered    Boolean  @default(false)
   createdAt    DateTime @default(now())
 

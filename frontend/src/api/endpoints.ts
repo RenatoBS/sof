@@ -78,7 +78,7 @@ export const employeeApi = {
 };
 
 export const checkoutApi = {
-  create: (planName: string, name: string, email: string) =>
+  create: (planName: string, name: string, email: string, password: string) =>
     api<{
       mode: 'redirect' | 'dev-approved';
       sessionId: string;
@@ -86,14 +86,14 @@ export const checkoutApi = {
       token?: string;
     }>('/checkout/create', {
       method: 'POST',
-      body: { planName, name, email },
+      body: { planName, name, email, password },
       auth: false,
     }),
   status: (sessionId: string) =>
     api<{
       status: string;
       email?: string;
-      tempPassword?: string;
+      token?: string;
       delivered?: boolean;
     }>(`/checkout/status/${sessionId}`, { auth: false }),
 };

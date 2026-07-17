@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CheckoutSession, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { generateTempPassword, hashPassword } from '../common/password';
 import { DEFAULT_OPENING_HOURS } from '../account/opening-hours';
 
 @Injectable()
@@ -18,21 +17,25 @@ export class ProvisionService {
         data: {
           status: 'approved',
           accountId: existing.id,
+          passwordHash: null,
           delivered: true,
         },
       });
-      return { account: existing, tempPassword: null, alreadyExisted: true };
+      return { account: existing, alreadyExisted: true };
     }
 
-    const tempPassword = generateTempPassword();
-    const passwordHash = await hashPassword(tempPassword);
+    if (!session.passwordHash) {
+      throw new BadRequestException({
+        error: 'Sessão de checkout sem senha. Recomece a assinatura.',
+      });
+    }
 
     const account = await this.prisma.account.create({
       data: {
         businessName: session.name,
         ownerName: session.name,
         email: session.email,
-        passwordHash,
+        passwordHash: session.passwordHash,
         plan: session.planName,
         planPrice: session.price,
         whatsappPhoneNumberId: '',
@@ -46,11 +49,11 @@ export class ProvisionService {
       data: {
         status: 'approved',
         accountId: account.id,
-        tempPassword,
+        passwordHash: null,
         delivered: false,
       },
     });
 
-    return { account, tempPassword, alreadyExisted: false };
+    return { account, alreadyExisted: false };
   }
 }
