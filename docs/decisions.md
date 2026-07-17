@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-17 — Botões/listas no bot WhatsApp
+
+- **Contexto:** Escolhas eram só lista numerada em texto; no celular é mais natural tocar em botões.  
+- **Decisão:** Enviar menus interativos (Uazapi `/send/menu`, Meta `interactive`): botões se ≤3 opções, lista se >3; webhook aceita id do botão/lista; números e título continuam como fallback (simulador).  
+- **Consequências:** Confirmação usa Sim/Não em botões; se o envio do menu falhar, cai para texto numerado.  
+- **Alternativas descartadas:** Só texto; só botões (quebraria com muitos serviços).
+
 ## 2026-07-17 — Eventos livres + recorrência materializada
 
 - **Contexto:** A agenda só permitia atendimento com serviço/cliente; faltava bloquear horário com título livre (almoço, médico) e repetir agendamentos.  

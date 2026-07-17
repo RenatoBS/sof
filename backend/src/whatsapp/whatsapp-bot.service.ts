@@ -26,6 +26,27 @@ type SessionData = {
   time?: string;
 };
 
+export type WhatsappMenuChoice = {
+  id: string;
+  title: string;
+  description?: string;
+};
+
+export type WhatsappInteractiveMenu = {
+  text: string;
+  choices: WhatsappMenuChoice[];
+  listButton?: string;
+  footerText?: string;
+};
+
+export type WhatsappBotResult = {
+  /** Texto para simulador / fallback se o menu falhar. */
+  replies: string[];
+  /** Menus interativos (botões ≤3, lista >3) enviados no WhatsApp real. */
+  interactive?: WhatsappInteractiveMenu[];
+  appointment?: ReturnType<typeof serializeDates>;
+};
+
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
 const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'fecha', 'fechado'];
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
@@ -37,14 +58,110 @@ export class WhatsappBotService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  private listMenu<T>(items: T[], label: (item: T) => string) {
-    return items.map((item, idx) => `${idx + 1}. ${label(item)}`).join('\n');
-  }
-
   private parseChoice(text: string, max: number) {
     const n = parseInt(String(text).trim(), 10);
     if (!Number.isInteger(n) || n < 1 || n > max) return null;
     return n - 1;
+  }
+
+  /**
+   * Resolve escolha por: id do botão (`svc:…` / `emp:…` / `confirm:yes`),
+   * número, ou título aproximado.
+   */
+  private resolveChoice<T extends { id: string }>(
+    text: string,
+    items: T[],
+    opts: {
+      idPrefix?: string;
+      label: (item: T) => string;
+    },
+  ): number | null {
+    const trimmed = String(text || '').trim();
+    if (!trimmed || items.length === 0) return null;
+
+    if (opts.idPrefix) {
+      const prefix = `${opts.idPrefix}:`;
+      if (trimmed.startsWith(prefix)) {
+        const id = trimmed.slice(prefix.length);
+        const byId = items.findIndex((item) => item.id === id);
+        if (byId >= 0) return byId;
+      }
+    }
+
+    const byNumber = this.parseChoice(trimmed, items.length);
+    if (byNumber !== null) return byNumber;
+
+    const lower = trimmed.toLowerCase();
+    const exact = items.findIndex(
+      (item) => opts.label(item).toLowerCase() === lower,
+    );
+    if (exact >= 0) return exact;
+
+    const starts = items.findIndex((item) =>
+      opts.label(item).toLowerCase().startsWith(lower),
+    );
+    if (starts >= 0) return starts;
+
+    return null;
+  }
+
+  private menuReply(
+    bodyText: string,
+    choices: WhatsappMenuChoice[],
+    opts?: { listButton?: string; footerText?: string },
+  ): WhatsappBotResult {
+    const numbered = choices
+      .map((c, idx) => `${idx + 1}. ${c.title}`)
+      .join('\n');
+    return {
+      replies: [
+        `${bodyText}\n${numbered}\n\nToque numa opção ou responda com o número.`,
+      ],
+      interactive: [
+        {
+          text: bodyText,
+          choices,
+          listButton: opts?.listButton || 'Ver opções',
+          footerText: opts?.footerText,
+        },
+      ],
+    };
+  }
+
+  private serviceMenu(
+    bodyText: string,
+    services: { id: string; name: string; duration: number }[],
+  ): WhatsappBotResult {
+    return this.menuReply(
+      bodyText,
+      services.map((s) => ({
+        id: `svc:${s.id}`,
+        title: s.name,
+        description: `${s.duration} min`,
+      })),
+      { listButton: 'Ver serviços' },
+    );
+  }
+
+  private employeeMenu(
+    bodyText: string,
+    employees: { id: string; name: string }[],
+  ): WhatsappBotResult {
+    return this.menuReply(
+      bodyText,
+      employees.map((e) => ({
+        id: `emp:${e.id}`,
+        title: e.name,
+      })),
+      { listButton: 'Ver profissionais' },
+    );
+  }
+
+  private confirmMenu(bodyText: string): WhatsappBotResult {
+    return this.menuReply(bodyText, [
+      { id: 'confirm:yes', title: 'Sim' },
+      { id: 'confirm:no', title: 'Não' },
+    ]);
   }
 
   private parseDateTime(text: string) {
@@ -123,16 +240,15 @@ export class WhatsappBotService {
     customerPhone: string,
     client: { id: string; name: string },
     services: { id: string; name: string; duration: number }[],
-  ) {
+  ): Promise<WhatsappBotResult> {
     await this.saveSession(account.id, customerPhone, {
       step: 'awaiting_service',
       data: { clientId: client.id, clientName: client.name },
     });
-    return {
-      replies: [
-        `Oi, ${client.name}! Aqui é a Sof, do ${account.businessName}. Qual serviço você quer agendar?\n${this.listMenu(services, (s) => `${s.name} (${s.duration}min)`)}\n\nResponda com o número da opção.`,
-      ],
-    };
+    return this.serviceMenu(
+      `Oi, ${client.name}! Aqui é a Sof, do ${account.businessName}. Qual serviço você quer agendar?`,
+      services,
+    );
   }
 
   async handleIncomingMessage({
@@ -143,7 +259,7 @@ export class WhatsappBotService {
     account: Account;
     customerPhone: string;
     text: string;
-  }) {
+  }): Promise<WhatsappBotResult> {
     const trimmed = String(text || '').trim();
     const lower = trimmed.toLowerCase();
     const phone = normalizePhone(customerPhone) || customerPhone;
@@ -227,13 +343,15 @@ export class WhatsappBotService {
     }
 
     if (step === 'awaiting_service') {
-      const idx = this.parseChoice(trimmed, services.length);
+      const idx = this.resolveChoice(trimmed, services, {
+        idPrefix: 'svc',
+        label: (s) => s.name,
+      });
       if (idx === null) {
-        return {
-          replies: [
-            `Não entendi. Responda com o número do serviço:\n${this.listMenu(services, (s) => s.name)}`,
-          ],
-        };
+        return this.serviceMenu(
+          'Não entendi. Escolha um serviço:',
+          services,
+        );
       }
       const service = services[idx];
       const employeesForService = await this.prisma.employee.findMany({
@@ -251,11 +369,10 @@ export class WhatsappBotService {
             clientName: sessionData.clientName,
           },
         });
-        return {
-          replies: [
-            `Por enquanto nenhum profissional faz ${service.name}. Escolha outro serviço:\n${this.listMenu(services, (s) => s.name)}`,
-          ],
-        };
+        return this.serviceMenu(
+          `Por enquanto nenhum profissional faz ${service.name}. Escolha outro serviço:`,
+          services,
+        );
       }
       await this.saveSession(account.id, phone, {
         step: 'awaiting_employee',
@@ -265,11 +382,10 @@ export class WhatsappBotService {
           serviceId: service.id,
         },
       });
-      return {
-        replies: [
-          `Combinado: ${service.name}. Com qual profissional?\n${this.listMenu(employeesForService, (e) => e.name)}`,
-        ],
-      };
+      return this.employeeMenu(
+        `Combinado: ${service.name}. Com qual profissional?`,
+        employeesForService,
+      );
     }
 
     if (step === 'awaiting_employee') {
@@ -289,19 +405,20 @@ export class WhatsappBotService {
             clientName: sessionData.clientName,
           },
         });
-        return {
-          replies: [
-            `Nenhum profissional disponível para esse serviço. Escolha outro:\n${this.listMenu(services, (s) => s.name)}`,
-          ],
-        };
+        return this.serviceMenu(
+          'Nenhum profissional disponível para esse serviço. Escolha outro:',
+          services,
+        );
       }
-      const idx = this.parseChoice(trimmed, employeesForService.length);
+      const idx = this.resolveChoice(trimmed, employeesForService, {
+        idPrefix: 'emp',
+        label: (e) => e.name,
+      });
       if (idx === null) {
-        return {
-          replies: [
-            `Não entendi. Responda com o número do profissional:\n${this.listMenu(employeesForService, (e) => e.name)}`,
-          ],
-        };
+        return this.employeeMenu(
+          'Não entendi. Escolha um profissional:',
+          employeesForService,
+        );
       }
       const employee = employeesForService[idx];
       await this.saveSession(account.id, phone, {
@@ -334,9 +451,10 @@ export class WhatsappBotService {
       });
       if (!service || !employee || !sessionData.employeeId) {
         await this.resetSession(account.id, phone);
-        return {
-          replies: ['Vamos recomeçar — qual serviço você quer agendar?'],
-        };
+        return this.serviceMenu(
+          'Vamos recomeçar — qual serviço você quer agendar?',
+          services,
+        );
       }
 
       const hoursCheck = checkWithinOpeningHours(
@@ -411,20 +529,25 @@ export class WhatsappBotService {
         step: 'awaiting_confirmation',
         data: { ...sessionData, ...when },
       });
-      return {
-        replies: [
-          `Fechar ${service.name} com ${employee.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}? (responda sim ou não)`,
-        ],
-      };
+      return this.confirmMenu(
+        `Fechar ${service.name} com ${employee.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+      );
     }
 
     if (step === 'awaiting_confirmation') {
-      if (AFFIRMATIVE.includes(lower)) {
+      const isYes =
+        AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
+      const isNo = NEGATIVE.includes(lower) || trimmed === 'confirm:no';
+
+      if (isYes) {
         const { serviceId, employeeId, date, time, clientId } = sessionData;
         const service = services.find((s) => s.id === serviceId);
         if (!service || !employeeId || !date || !time || !serviceId) {
           await this.resetSession(account.id, phone);
-          return { replies: ['Vamos recomeçar — qual serviço você quer agendar?'] };
+          return this.serviceMenu(
+            'Vamos recomeçar — qual serviço você quer agendar?',
+            services,
+          );
         }
 
         const hoursCheck = checkWithinOpeningHours(
@@ -534,7 +657,7 @@ export class WhatsappBotService {
           appointment: shaped,
         };
       }
-      if (NEGATIVE.includes(lower)) {
+      if (isNo) {
         await this.resetSession(account.id, phone);
         return {
           replies: [
@@ -542,12 +665,15 @@ export class WhatsappBotService {
           ],
         };
       }
-      return {
-        replies: ['Responda "sim" para confirmar ou "não" para cancelar.'],
-      };
+      return this.confirmMenu(
+        'Confirma o agendamento? Toque em Sim ou Não.',
+      );
     }
 
     await this.resetSession(account.id, phone);
-    return { replies: ['Vamos recomeçar — qual serviço você quer agendar?'] };
+    return this.serviceMenu(
+      'Vamos recomeçar — qual serviço você quer agendar?',
+      services,
+    );
   }
 }
