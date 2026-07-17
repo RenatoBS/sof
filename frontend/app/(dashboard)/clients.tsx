@@ -6,12 +6,75 @@ import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
+type PauseMode = 'off' | 'permanent' | '1h' | '8h' | '24h' | '7d';
+
+const PAUSE_PRESETS: { id: PauseMode; label: string; hours?: number }[] = [
+  { id: 'off', label: 'Bot ativo' },
+  { id: '1h', label: '1 hora', hours: 1 },
+  { id: '8h', label: '8 horas', hours: 8 },
+  { id: '24h', label: '24 horas', hours: 24 },
+  { id: '7d', label: '7 dias', hours: 24 * 7 },
+  { id: 'permanent', label: 'Permanente' },
+];
+
+function isClientBotPaused(client: Client) {
+  if (client.botPausedPermanent) return true;
+  if (!client.botPausedUntil) return false;
+  const until = new Date(client.botPausedUntil);
+  return !Number.isNaN(until.getTime()) && until.getTime() > Date.now();
+}
+
+function pauseBadge(client: Client) {
+  if (client.botPausedPermanent) return 'Bot off';
+  if (!client.botPausedUntil) return null;
+  const until = new Date(client.botPausedUntil);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+    return null;
+  }
+  return `Bot pausado até ${until.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
+}
+
+function pauseModeFromClient(client: Client): PauseMode {
+  if (client.botPausedPermanent) return 'permanent';
+  if (!client.botPausedUntil) return 'off';
+  const until = new Date(client.botPausedUntil);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+    return 'off';
+  }
+  return '24h'; // modo temporário genérico ao editar (usuário reescolhe o preset)
+}
+
+function pausePayload(mode: PauseMode): {
+  botPausedPermanent: boolean;
+  botPausedUntil: string | null;
+} {
+  if (mode === 'off') {
+    return { botPausedPermanent: false, botPausedUntil: null };
+  }
+  if (mode === 'permanent') {
+    return { botPausedPermanent: true, botPausedUntil: null };
+  }
+  const preset = PAUSE_PRESETS.find((p) => p.id === mode);
+  const hours = preset?.hours || 24;
+  const until = new Date(Date.now() + hours * 60 * 60 * 1000);
+  return {
+    botPausedPermanent: false,
+    botPausedUntil: until.toISOString(),
+  };
+}
+
 export default function ClientsScreen() {
   const { clients, setClients } = useDashboard();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [pauseMode, setPauseMode] = useState<PauseMode>('off');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,6 +83,7 @@ export default function ClientsScreen() {
   const resetForm = () => {
     setName('');
     setPhone('');
+    setPauseMode('off');
     setError('');
     setEditingId(null);
     setShowForm(false);
@@ -29,6 +93,7 @@ export default function ClientsScreen() {
   const startCreate = () => {
     setName('');
     setPhone('');
+    setPauseMode('off');
     setError('');
     setEditingId(null);
     setShowForm(true);
@@ -38,6 +103,7 @@ export default function ClientsScreen() {
     setEditingId(client.id);
     setName(client.name);
     setPhone(client.phone);
+    setPauseMode(pauseModeFromClient(client));
     setError('');
     setShowForm(true);
   };
@@ -59,7 +125,10 @@ export default function ClientsScreen() {
         phone: phone.replace(/\D/g, ''),
       };
       if (editingId) {
-        const { client } = await dashboardApi.updateClient(editingId, body);
+        const { client } = await dashboardApi.updateClient(editingId, {
+          ...body,
+          ...pausePayload(pauseMode),
+        });
         setClients((prev) =>
           prev
             .map((c) => (c.id === client.id ? client : c))
@@ -129,6 +198,36 @@ export default function ClientsScreen() {
               placeholder="11999990000"
               keyboardType="phone-pad"
             />
+            {isEditing ? (
+              <>
+                <Text style={styles.label}>Bot WhatsApp</Text>
+                <Text style={styles.hint}>
+                  Desative para este cliente: o bot para de responder a conversa
+                  (silêncio). Pode ser permanente ou por um tempo.
+                </Text>
+                <View style={styles.chips}>
+                  {PAUSE_PRESETS.map((p) => {
+                    const active = pauseMode === p.id;
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => setPauseMode(p.id)}
+                        style={[styles.chip, active && styles.chipActive]}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            active && styles.chipTextActive,
+                          ]}
+                        >
+                          {p.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
@@ -162,20 +261,38 @@ export default function ClientsScreen() {
             cadastro pelo WhatsApp.
           </Text>
         ) : (
-          clients.map((c) => (
-            <View key={c.id} style={styles.entity}>
-              <Text style={styles.name}>{c.name}</Text>
-              <Text style={styles.meta}>{formatPhone(c.phone)}</Text>
-              <View style={styles.cardActions}>
-                <Pressable onPress={() => startEdit(c)}>
-                  <Text style={styles.edit}>Editar</Text>
-                </Pressable>
-                <Pressable onPress={() => remove(c.id)}>
-                  <Text style={styles.delete}>Remover</Text>
-                </Pressable>
+          clients.map((c) => {
+            const badge = pauseBadge(c);
+            return (
+              <View key={c.id} style={styles.entity}>
+                <View style={styles.rowTop}>
+                  <Text style={styles.name}>{c.name}</Text>
+                  {badge ? (
+                    <Text
+                      style={[
+                        styles.badge,
+                        c.botPausedPermanent && styles.badgePermanent,
+                      ]}
+                    >
+                      {badge}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.meta}>{formatPhone(c.phone)}</Text>
+                {isClientBotPaused(c) && !c.botPausedPermanent ? (
+                  <Text style={styles.metaMuted}>Bot silencioso neste período</Text>
+                ) : null}
+                <View style={styles.cardActions}>
+                  <Pressable onPress={() => startEdit(c)}>
+                    <Text style={styles.edit}>Editar</Text>
+                  </Pressable>
+                  <Pressable onPress={() => remove(c.id)}>
+                    <Text style={styles.delete}>Remover</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </View>
     </View>
@@ -203,6 +320,20 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 18, fontWeight: '700', color: d.ink },
   formGrid: { gap: 12 },
+  label: { fontWeight: '600', color: d.ink, fontSize: 14 },
+  hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+  },
+  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  chipText: { color: d.ink, fontSize: 13 },
+  chipTextActive: { fontWeight: '700' },
   error: { color: '#dc2626', fontWeight: '600' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
@@ -216,8 +347,29 @@ const styles = StyleSheet.create({
     width: 280,
     gap: 8,
   },
+  rowTop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
   name: { fontSize: 17, fontWeight: '700', color: d.ink },
+  badge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400e',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  badgePermanent: {
+    color: '#991b1b',
+    backgroundColor: '#fee2e2',
+  },
   meta: { color: d.muted, fontSize: 13 },
+  metaMuted: { color: d.muted, fontSize: 12, fontStyle: 'italic' },
   cardActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
   edit: { color: d.accent, fontWeight: '600' },
   delete: { color: '#dc2626', fontWeight: '600' },

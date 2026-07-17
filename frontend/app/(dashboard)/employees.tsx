@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
@@ -52,6 +53,10 @@ export default function EmployeesScreen() {
   };
 
   const startCreate = () => {
+    if (services.length === 0) {
+      router.push('/(dashboard)/services?create=1');
+      return;
+    }
     setName('');
     setEmail('');
     setColor(nextDefaultColor());
@@ -78,7 +83,7 @@ export default function EmployeesScreen() {
   const save = async () => {
     setError('');
     if (serviceIds.length === 0) {
-      setError('Selecione ao menos um serviço.');
+      setError('Selecione ao menos um servi?o.');
       return;
     }
     if (!email.trim()) {
@@ -152,15 +157,15 @@ export default function EmployeesScreen() {
 
       {tempPassword ? (
         <View style={styles.passwordCard}>
-          <Text style={styles.cardTitle}>Senha temporária gerada</Text>
+          <Text style={styles.cardTitle}>Senha tempor?ria gerada</Text>
           <Text style={styles.hint}>
             Anote e envie ao profissional. No primeiro acesso em{' '}
-            <Text style={styles.code}>/login</Text> será pedida a troca de
+            <Text style={styles.code}>/login</Text> ser? pedida a troca de
             senha.
           </Text>
           <Text style={styles.tempPass}>{tempPassword}</Text>
           <SofButton
-            title="Ok, já anotei"
+            title="Ok, j? anotei"
             variant="dark"
             theme="dashboard"
             onPress={() => setTempPassword('')}
@@ -211,32 +216,25 @@ export default function EmployeesScreen() {
                 );
               })}
             </View>
-            <Text style={styles.label}>Serviços que realiza</Text>
-            {services.length === 0 ? (
-              <Text style={styles.hint}>
-                Cadastre serviços na aba Serviços antes de salvar um
-                profissional.
-              </Text>
-            ) : (
-              <View style={styles.chips}>
-                {services.map((s) => {
-                  const active = serviceIds.includes(s.id);
-                  return (
-                    <Pressable
-                      key={s.id}
-                      onPress={() => toggleService(s.id)}
-                      style={[styles.chip, active && styles.chipActive]}
+            <Text style={styles.label}>Servi?os que realiza</Text>
+            <View style={styles.chips}>
+              {services.map((s) => {
+                const active = serviceIds.includes(s.id);
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => toggleService(s.id)}
+                    style={[styles.chip, active && styles.chipActive]}
+                  >
+                    <Text
+                      style={[styles.chipText, active && styles.chipTextActive]}
                     >
-                      <Text
-                        style={[styles.chipText, active && styles.chipTextActive]}
-                      >
-                        {s.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
+                      {s.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
             {isEditing ? (
               <Pressable
                 onPress={() => setResetPassword((v) => !v)}
@@ -249,13 +247,13 @@ export default function EmployeesScreen() {
                   ]}
                 >
                   {resetPassword
-                    ? '✓ Gerar nova senha temporária'
-                    : 'Gerar nova senha temporária'}
+                    ? '? Gerar nova senha tempor?ria'
+                    : 'Gerar nova senha tempor?ria'}
                 </Text>
               </Pressable>
             ) : (
               <Text style={styles.hint}>
-                Uma senha temporária será gerada automaticamente ao salvar.
+                Uma senha tempor?ria ser? gerada automaticamente ao salvar.
               </Text>
             )}
           </View>
@@ -264,15 +262,15 @@ export default function EmployeesScreen() {
             <SofButton
               title={
                 loading
-                  ? 'Salvando…'
+                  ? 'Salvando?'
                   : isEditing
-                    ? 'Salvar alterações'
+                    ? 'Salvar altera??es'
                     : 'Adicionar'
               }
               variant="dark"
               theme="dashboard"
               onPress={save}
-              disabled={services.length === 0 || loading}
+              disabled={loading}
             />
             <SofButton
               title="Cancelar"
@@ -292,7 +290,7 @@ export default function EmployeesScreen() {
                 <Text style={styles.name}>{e.name}</Text>
                 <Text style={styles.meta}>{e.email || 'Sem e-mail de acesso'}</Text>
                 <Text style={styles.meta}>
-                  {(e.services || []).map((s) => s.name).join(', ') || '—'}
+                  {(e.services || []).map((s) => s.name).join(', ') || '?'}
                 </Text>
               </View>
               <View style={[styles.dot, { backgroundColor: e.color }]} />

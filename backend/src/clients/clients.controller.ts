@@ -17,6 +17,13 @@ import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
 import { isValidPhone, normalizePhone } from '../common/phone';
 
+type ClientWriteBody = {
+  name?: string;
+  phone?: string;
+  botPausedPermanent?: boolean;
+  botPausedUntil?: string | null;
+};
+
 @Controller('api/clients')
 @UseGuards(AuthGuard)
 export class ClientsController {
@@ -24,7 +31,7 @@ export class ClientsController {
 
   private async parsePayload(
     accountId: string,
-    body: { name?: string; phone?: string },
+    body: ClientWriteBody,
     excludeClientId?: string,
   ) {
     const name = String(body?.name || '').trim();
@@ -53,6 +60,38 @@ export class ClientsController {
     return { name, phone };
   }
 
+  private parseBotPause(body: ClientWriteBody): {
+    botPausedPermanent: boolean;
+    botPausedUntil: Date | null;
+  } {
+    const permanent = Boolean(body.botPausedPermanent);
+    if (permanent) {
+      return { botPausedPermanent: true, botPausedUntil: null };
+    }
+
+    if (body.botPausedUntil === null || body.botPausedUntil === '') {
+      return { botPausedPermanent: false, botPausedUntil: null };
+    }
+
+    if (body.botPausedUntil === undefined) {
+      // Campo omitido no create — defaults
+      return { botPausedPermanent: false, botPausedUntil: null };
+    }
+
+    const until = new Date(String(body.botPausedUntil));
+    if (Number.isNaN(until.getTime())) {
+      throw new BadRequestException({
+        error: 'Data de pausa do bot inválida.',
+      });
+    }
+    if (until.getTime() <= Date.now()) {
+      throw new BadRequestException({
+        error: 'A pausa temporária precisa ser uma data/hora no futuro.',
+      });
+    }
+    return { botPausedPermanent: false, botPausedUntil: until };
+  }
+
   @Get()
   async list(@Req() req: AuthedRequest) {
     const clients = await this.prisma.client.findMany({
@@ -63,15 +102,14 @@ export class ClientsController {
   }
 
   @Post()
-  async create(
-    @Req() req: AuthedRequest,
-    @Body() body: { name?: string; phone?: string },
-  ) {
+  async create(@Req() req: AuthedRequest, @Body() body: ClientWriteBody) {
     const data = await this.parsePayload(req.account.id, body);
+    const pause = this.parseBotPause(body);
     const client = await this.prisma.client.create({
       data: {
         accountId: req.account.id,
         ...data,
+        ...pause,
       },
     });
     return { client: serializeDates(client) };
@@ -81,7 +119,7 @@ export class ClientsController {
   async update(
     @Req() req: AuthedRequest,
     @Param('clientId') clientId: string,
-    @Body() body: { name?: string; phone?: string },
+    @Body() body: ClientWriteBody,
   ) {
     const existing = await this.prisma.client.findFirst({
       where: { id: clientId, accountId: req.account.id },
@@ -91,10 +129,19 @@ export class ClientsController {
     }
 
     const data = await this.parsePayload(req.account.id, body, existing.id);
+    const pause =
+      body.botPausedPermanent !== undefined ||
+      body.botPausedUntil !== undefined
+        ? this.parseBotPause(body)
+        : {
+            botPausedPermanent: existing.botPausedPermanent,
+            botPausedUntil: existing.botPausedUntil,
+          };
+
     const client = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.client.update({
         where: { id: existing.id },
-        data,
+        data: { ...data, ...pause },
       });
       await tx.appointment.updateMany({
         where: { clientId: existing.id, accountId: req.account.id },

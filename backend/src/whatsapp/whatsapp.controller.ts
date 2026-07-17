@@ -17,6 +17,8 @@ import type { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
+import { normalizePhone } from '../common/phone';
+import { isClientBotPaused } from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
@@ -30,6 +32,12 @@ type MetaWebhookBody = {
           type?: string;
           from?: string;
           text?: { body?: string };
+          interactive?: {
+            type?: string;
+            button_reply?: { id?: string; title?: string };
+            list_reply?: { id?: string; title?: string };
+          };
+          button?: { payload?: string; text?: string };
         }>;
       };
     }>;
@@ -52,11 +60,21 @@ type UazapiWebhookBody = {
     source?: string;
     isGroup?: boolean;
     text?: string;
+    content?: string;
     type?: string;
     messageType?: string;
     sender?: string;
     sender_pn?: string;
     chatid?: string;
+    buttonOrListid?: string;
+    selectedId?: string;
+    selectedButtonId?: string;
+    listResponse?: { id?: string; title?: string; description?: string };
+    buttonResponse?: { id?: string; title?: string };
+    interactive?: {
+      button_reply?: { id?: string; title?: string };
+      list_reply?: { id?: string; title?: string };
+    };
   };
   chat?: {
     phone?: string;
@@ -140,14 +158,8 @@ export class WhatsappController {
     if (message.source === 'api' || message.source === 'system') return;
     if (message.isGroup || body?.chat?.wa_isGroup) return;
 
-    const text = String(message.text || '').trim();
-    const isText =
-      !message.type ||
-      message.type === 'text' ||
-      message.messageType === 'Conversation' ||
-      message.messageType === 'conversation' ||
-      Boolean(text);
-    if (!isText || !text) return;
+    const text = this.extractUazapiSelection(message);
+    if (!text) return;
 
     const customerPhone = this.extractPhone(
       message.sender_pn ||
@@ -189,14 +201,80 @@ export class WhatsappController {
       return;
     }
 
-    const { replies } = await this.bot.handleIncomingMessage({
+    if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+      return;
+    }
+
+    const result = await this.bot.handleIncomingMessage({
       account,
       customerPhone,
       text,
     });
-    for (const reply of replies) {
+    await this.dispatchBotReplies(
+      customerPhone,
+      result,
+      account.whatsappInstanceToken,
+    );
+  }
+
+  private extractUazapiSelection(
+    message: NonNullable<UazapiWebhookBody['message']>,
+  ): string {
+    const fromInteractive =
+      message.buttonOrListid ||
+      message.selectedId ||
+      message.selectedButtonId ||
+      message.listResponse?.id ||
+      message.buttonResponse?.id ||
+      message.interactive?.button_reply?.id ||
+      message.interactive?.list_reply?.id ||
+      '';
+    if (fromInteractive) return String(fromInteractive).trim();
+
+    const fromTitle =
+      message.listResponse?.title ||
+      message.buttonResponse?.title ||
+      message.interactive?.button_reply?.title ||
+      message.interactive?.list_reply?.title ||
+      '';
+    if (fromTitle) return String(fromTitle).trim();
+
+    return String(message.text || message.content || '').trim();
+  }
+
+  private async dispatchBotReplies(
+    customerPhone: string,
+    result: Awaited<ReturnType<WhatsappBotService['handleIncomingMessage']>>,
+    instanceToken?: string,
+  ) {
+    const menus = result.interactive || [];
+    if (menus.length > 0) {
+      for (const menu of menus) {
+        try {
+          await this.api.sendMenu(customerPhone, menu, instanceToken);
+        } catch (err) {
+          console.error(
+            '[whatsapp] Falha ao enviar menu, caindo para texto:',
+            err instanceof Error ? err.message : err,
+          );
+          for (const reply of result.replies) {
+            await this.api
+              .sendText(customerPhone, reply, instanceToken)
+              .catch((sendErr) => {
+                console.error(
+                  '[whatsapp] Falha ao enviar resposta:',
+                  sendErr.message,
+                );
+              });
+          }
+        }
+      }
+      return;
+    }
+
+    for (const reply of result.replies) {
       await this.api
-        .sendText(customerPhone, reply, account.whatsappInstanceToken)
+        .sendText(customerPhone, reply, instanceToken)
         .catch((err) => {
           console.error('[whatsapp] Falha ao enviar resposta:', err.message);
         });
@@ -216,27 +294,63 @@ export class WhatsappController {
           : null;
 
         for (const message of value.messages || []) {
-          if (message.type !== 'text' || !account || !message.from) continue;
-          const customerPhone = message.from;
-          const text = message.text?.body || '';
-          const { replies } = await this.bot.handleIncomingMessage({
+          if (!account || !message.from) continue;
+          const text = this.extractMetaSelection(message);
+          if (!text) continue;
+          if (await this.isBotPausedForPhone(account.id, message.from)) {
+            continue;
+          }
+          const result = await this.bot.handleIncomingMessage({
             account,
-            customerPhone,
+            customerPhone: message.from,
             text,
           });
-          for (const reply of replies) {
-            await this.api.sendText(customerPhone, reply).catch((err) => {
-              console.error('[whatsapp] Falha ao enviar resposta:', err.message);
-            });
-          }
+          await this.dispatchBotReplies(message.from, result);
         }
       }
     }
   }
 
+  private extractMetaSelection(message: {
+    type?: string;
+    text?: { body?: string };
+    interactive?: {
+      button_reply?: { id?: string; title?: string };
+      list_reply?: { id?: string; title?: string };
+    };
+    button?: { payload?: string; text?: string };
+  }): string {
+    if (message.type === 'interactive') {
+      const reply =
+        message.interactive?.button_reply || message.interactive?.list_reply;
+      return String(reply?.id || reply?.title || '').trim();
+    }
+    if (message.type === 'button') {
+      return String(
+        message.button?.payload || message.button?.text || '',
+      ).trim();
+    }
+    if (message.type === 'text') {
+      return String(message.text?.body || '').trim();
+    }
+    return '';
+  }
+
   private extractPhone(raw: string) {
     const digits = String(raw || '').replace(/\D/g, '');
     return digits || '';
+  }
+
+  private async isBotPausedForPhone(accountId: string, rawPhone: string) {
+    const phone = normalizePhone(rawPhone) || this.extractPhone(rawPhone);
+    if (!phone) return false;
+    const client = await this.prisma.client.findUnique({
+      where: {
+        accountId_phone: { accountId, phone },
+      },
+      select: { botPausedPermanent: true, botPausedUntil: true },
+    });
+    return isClientBotPaused(client);
   }
 
   private async resolveAccount(opts: {
@@ -295,6 +409,14 @@ export class WhatsappController {
       throw new BadRequestException({
         error: 'Informe uma mensagem para simular.',
       });
+    }
+
+    if (await this.isBotPausedForPhone(req.account.id, customerPhone)) {
+      return {
+        replies: [
+          '(Bot pausado para este cliente — nenhuma resposta enviada.)',
+        ],
+      };
     }
 
     return this.bot.handleIncomingMessage({

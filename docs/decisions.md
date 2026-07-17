@@ -17,6 +17,48 @@ Formato sugerido:
 
 ---
 
+## 2026-07-17 — Endereço da conta no painel e no bot
+
+- **Contexto:** Cliente pergunta onde fica o salão; a conta precisava cadastrar endereço depois do signup.  
+- **Decisão:** Campo `Account.address` (string opcional); edição na aba Conta; bot responde a “endereço/onde fica/como chegar”, inclui no cumprimento e na confirmação do agendamento.  
+- **Consequências:** Contas sem endereço recebem mensagem pedindo para tentar depois; seed demo preenche um endereço de exemplo.  
+- **Alternativas descartadas:** Endereço só no checkout; pin de mapa obrigatório.
+
+## 2026-07-17 — Pausar bot WhatsApp por cliente
+
+- **Contexto:** Dono precisa falar manualmente com um cliente sem o bot interferir, às vezes só por algumas horas.  
+- **Decisão:** Campos `Client.botPausedPermanent` e `botPausedUntil`; UI na edição do cliente com presets (1h/8h/24h/7d) ou permanente; webhook/simulate silenciam se pausado (`isClientBotPaused`).  
+- **Consequências:** Mute só para telefone já cadastrado como `Client`; sem auto-reply de “bot desativado”.  
+- **Alternativas descartadas:** Mute global da conta; mensagem automática ao cliente; mute só na sessão WhatsApp sem flag no Client.
+
+## 2026-07-17 — Fluxo WA: serviço → horário → profissional
+
+- **Contexto:** Escolher profissional antes do horário forçava o cliente a decidir sem ver disponibilidade real.  
+- **Decisão:** Novo fluxo: serviço → slots próximos (qualquer profissional do serviço livre) ou horário customizado → lista só profissionais disponíveis naquele slot → confirmação. Se só 1 profissional livre, pula direto para confirmar.  
+- **Consequências:** Steps `awaiting_slot` / `awaiting_custom_datetime`; sessões antigas em `awaiting_datetime`/`awaiting_employee` sem data são redirecionadas.  
+- **Alternativas descartadas:** Manter profissional primeiro; calendário de dias separados sem slots.
+
+## 2026-07-17 — Botões/listas no bot WhatsApp
+
+- **Contexto:** Escolhas eram só lista numerada em texto; no celular é mais natural tocar em botões.  
+- **Decisão:** Enviar menus interativos (Uazapi `/send/menu`, Meta `interactive`): botões se ≤3 opções, lista se >3; webhook aceita id do botão/lista; números e título continuam como fallback (simulador).  
+- **Consequências:** Confirmação usa Sim/Não em botões; se o envio do menu falhar, cai para texto numerado.  
+- **Alternativas descartadas:** Só texto; só botões (quebraria com muitos serviços).
+
+## 2026-07-17 — Eventos livres + recorrência materializada
+
+- **Contexto:** A agenda só permitia atendimento com serviço/cliente; faltava bloquear horário com título livre (almoço, médico) e repetir agendamentos.  
+- **Decisão:** `Appointment.kind` (`service` | `block`); em `block`, `serviceId`/cliente opcionais, `title` + `durationMinutes` obrigatórios, sem validação de expediente; recorrência diária/semanal/mensal materializa até 52 linhas com `recurrenceGroupId`; editar = 1 ocorrência; delete com `?scope=series` remove a série.  
+- **Consequências:** Conflito de agenda usa `durationMinutes ?? service.duration`; faturamento ignora `block`; SSE emite um evento por ocorrência criada.  
+- **Alternativas descartadas:** Modelo separado de “Block”; RRULE expandido só na leitura (mais complexo para conflito/UI).
+
+## 2026-07-17 — Senha no checkout + agenda após pagamento
+
+- **Contexto:** Conta era criada com senha temporária gerada; o retorno do Stripe mostrava credenciais e mandava para o login.  
+- **Decisão:** Campo senha no modal de assinatura (hash na `CheckoutSession`); provisionamento usa essa senha; `GET /checkout/status` devolve JWT na 1ª leitura e o front entra direto em `/(dashboard)/agenda`.  
+- **Consequências:** Coluna `tempPassword` renomeada para `passwordHash`; sem exibir senha na UI de retorno.  
+- **Alternativas descartadas:** Manter senha gerada + tela de credenciais; login automático via e-mail/senha em plaintext na sessão.
+
 ## 2026-07-16 — Deduplicação de webhook Uazapi
 
 - **Contexto:** Uazapi POSTava o mesmo evento em pares (~1 ms); bot respondia duas vezes. Possível empilhamento de webhooks sem `action: replace`.  

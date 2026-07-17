@@ -18,6 +18,8 @@ import { FeatureIcon } from '@/src/components/FeatureIcon';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
+const PASSWORD_MIN = 8;
+
 export const PLANS = [
   {
     name: 'Essencial',
@@ -121,18 +123,20 @@ export function CheckoutModal({
   const { refreshMe } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<{
-    email: string;
-    tempPassword?: string;
-  } | null>(null);
+
+  const canSubmit =
+    Boolean(name.trim()) &&
+    Boolean(email.trim()) &&
+    password.length >= PASSWORD_MIN;
 
   const reset = () => {
     setName('');
     setEmail('');
+    setPassword('');
     setError('');
-    setSuccess(null);
     setLoading(false);
   };
 
@@ -141,43 +145,38 @@ export function CheckoutModal({
     onClose();
   };
 
-  const pollStatus = (sessionId: string) => {
-    const timer = setInterval(async () => {
-      try {
-        const data = await checkoutApi.status(sessionId);
-        if (data.status === 'approved') {
-          clearInterval(timer);
-          setSuccess({
-            email: data.email || email,
-            tempPassword: data.tempPassword,
-          });
-          setLoading(false);
-        }
-      } catch {
-        clearInterval(timer);
-        setLoading(false);
-      }
-    }, 1500);
+  const enterAgenda = async (token: string) => {
+    await setToken(token);
+    await refreshMe();
+    handleClose();
+    router.replace('/(dashboard)/agenda');
   };
 
   const submit = async () => {
     setError('');
+    if (password.length < PASSWORD_MIN) {
+      setError(`A senha deve ter pelo menos ${PASSWORD_MIN} caracteres.`);
+      return;
+    }
     setLoading(true);
     try {
-      const data = await checkoutApi.create(planName, name.trim(), email.trim());
+      const data = await checkoutApi.create(
+        planName,
+        name.trim(),
+        email.trim(),
+        password,
+      );
       if (data.mode === 'redirect' && data.initPoint) {
         if (Platform.OS === 'web') window.location.href = data.initPoint;
         else await Linking.openURL(data.initPoint);
         return;
       }
       if (data.token) {
-        await setToken(data.token);
-        await refreshMe();
-        handleClose();
-        router.replace('/(dashboard)/agenda');
+        await enterAgenda(data.token);
         return;
       }
-      pollStatus(data.sessionId);
+      setError('Não foi possível concluir a assinatura. Tente novamente.');
+      setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro no checkout');
       setLoading(false);
@@ -187,7 +186,12 @@ export function CheckoutModal({
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.overlay}>
-        <View style={[styles.modalCard, m.shadow.lift]}>
+        <ScrollView
+          contentContainerStyle={styles.overlayScroll}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <View style={[styles.modalCard, m.shadow.lift]}>
           <View style={styles.modalTop}>
             <Text style={styles.modalTitle}>Finalizar assinatura</Text>
             <Pressable onPress={handleClose}>
@@ -195,80 +199,59 @@ export function CheckoutModal({
             </Pressable>
           </View>
 
-          {!success ? (
-            <>
-              <View style={styles.summary}>
-                <View style={styles.summaryRow}>
-                  <Text>Plano {planName}</Text>
-                  <Text>R$ {price.toFixed(2).replace('.', ',')}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={{ color: m.muted }}>Cobrança mensal</Text>
-                  <Text style={{ color: m.muted }}>renovação automática</Text>
-                </View>
-                <View style={[styles.summaryRow, styles.summaryTotal]}>
-                  <Text style={styles.total}>Total hoje</Text>
-                  <Text style={styles.total}>
-                    R$ {price.toFixed(2).replace('.', ',')}
-                  </Text>
-                </View>
-              </View>
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <SofInput
-                label="Nome completo"
-                value={name}
-                onChangeText={setName}
-                placeholder="Nome do responsável pela conta"
-                autoCapitalize="words"
-              />
-              <SofInput
-                label="E-mail"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                placeholder="Onde você acessa o painel"
-              />
-              <SofButton
-                title={loading ? 'Processando…' : 'Continuar para o pagamento'}
-                variant="accent"
-                block
-                disabled={loading || !name || !email}
-                onPress={submit}
-              />
-              <Text style={styles.payNote}>
-                Você será direcionado ao ambiente seguro do Stripe para
-                concluir o pagamento.
+          <View style={styles.summary}>
+            <View style={styles.summaryRow}>
+              <Text>Plano {planName}</Text>
+              <Text>R$ {price.toFixed(2).replace('.', ',')}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ color: m.muted }}>Cobrança mensal</Text>
+              <Text style={{ color: m.muted }}>renovação automática</Text>
+            </View>
+            <View style={[styles.summaryRow, styles.summaryTotal]}>
+              <Text style={styles.total}>Total hoje</Text>
+              <Text style={styles.total}>
+                R$ {price.toFixed(2).replace('.', ',')}
               </Text>
-            </>
-          ) : (
-            <>
-              <Text style={{ color: m.muted, marginBottom: 12 }}>
-                Assinatura confirmada. Guarde seu acesso:
-              </Text>
-              <View style={styles.creds}>
-                <View style={styles.summaryRow}>
-                  <Text>E-mail</Text>
-                  <Text style={styles.credV}>{success.email}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text>Senha</Text>
-                  <Text style={styles.credV}>
-                    {success.tempPassword || '(já entregue)'}
-                  </Text>
-                </View>
-              </View>
-              <SofButton
-                title="Ir para o painel"
-                variant="accent"
-                block
-                onPress={() => {
-                  handleClose();
-                  router.push('/login');
-                }}
-              />
-            </>
-          )}
-        </View>
+            </View>
+          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <SofInput
+            label="Nome completo"
+            value={name}
+            onChangeText={setName}
+            placeholder="Nome do responsável pela conta"
+            autoCapitalize="words"
+          />
+          <SofInput
+            label="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            placeholder="Onde você acessa o painel"
+          />
+          <SofInput
+            label="Senha"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder={`Mínimo ${PASSWORD_MIN} caracteres`}
+            textContentType="newPassword"
+            autoComplete="new-password"
+          />
+          <SofButton
+            title={loading ? 'Processando…' : 'Continuar para o pagamento'}
+            variant="accent"
+            block
+            disabled={loading || !canSubmit}
+            onPress={submit}
+          />
+          <Text style={styles.payNote}>
+            Você será direcionado ao ambiente seguro do Stripe para concluir o
+            pagamento. Depois, entra direto na agenda.
+          </Text>
+          </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -325,6 +308,9 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(35,35,41,0.45)',
+  },
+  overlayScroll: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
@@ -368,12 +354,4 @@ const styles = StyleSheet.create({
   total: { fontWeight: '700', color: m.ink },
   error: { color: m.danger, marginBottom: 10 },
   payNote: { marginTop: 12, fontSize: 13, color: m.muted, textAlign: 'center' },
-  creds: {
-    backgroundColor: m.paper,
-    borderRadius: m.radiusSm,
-    padding: 16,
-    marginBottom: 16,
-    gap: 10,
-  },
-  credV: { fontFamily: m.fonts.display, fontWeight: '600' },
 });

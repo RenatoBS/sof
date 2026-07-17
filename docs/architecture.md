@@ -64,18 +64,21 @@ Account
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Appointment[]  (employeeId + serviceId; employee deve oferecer o serviço)
+  ├── Client[]  (botPausedPermanent / botPausedUntil)
+  ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
   └── WhatsappSession[]
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `openingHours` (JSON 7 dias, 0=domingo).
+Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `openingHours` (JSON 7 dias, 0=domingo).
 
 `Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Appointment`: data/hora, cliente, preço, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`), etc. Create/update validam o vínculo N:N, o **expediente da conta** (`account/opening-hours.ts`) e conflito de agenda do profissional (overlap por duração; `appointments/schedule-conflict.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
+`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`).
+
+`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
 
 Datasource usa:
 
@@ -87,8 +90,8 @@ Datasource usa:
 | Integração | Sem credencial | Com credencial |
 |------------|----------------|----------------|
 | Stripe | Checkout demo (aprova em fluxo mock) | Checkout Session + webhook real |
-| WhatsApp (Uazapi, default) | Bot off; simulador na Agenda | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta |
-| WhatsApp Cloud (Meta) | Bot off; simulador | `WHATSAPP_PROVIDER=meta` + token + Phone Number ID (sem QR no painel) |
+| WhatsApp (Uazapi, default) | Bot off; simulador na Agenda | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta; menus via `/send/menu` |
+| WhatsApp Cloud (Meta) | Bot off; simulador | `WHATSAPP_PROVIDER=meta` + token + Phone Number ID (sem QR no painel); menus `interactive` |
 
 URLs:
 
@@ -117,7 +120,7 @@ URLs:
 | `/pricing` | Planos + checkout modal |
 | `/about` | Quem somos |
 | `/login` | Entrar (conta ou profissional) |
-| `/checkout-return` | Retorno MP |
+| `/checkout-return` | Retorno Stripe → auto-login agenda |
 | `/(dashboard)/agenda` | Agenda semanal + simulador WA |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |

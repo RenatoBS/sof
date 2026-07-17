@@ -8,6 +8,12 @@ const GRAPH_API_BASE = 'https://graph.facebook.com/v20.0';
 type RawBodyRequest = Request & { rawBody?: Buffer };
 export type WhatsappProvider = 'meta' | 'uazapi';
 
+function truncateWhatsappTitle(value: string, max: number) {
+  const text = String(value || '').trim();
+  if (text.length <= max) return text || 'Opção';
+  return `${text.slice(0, Math.max(1, max - 1))}…`;
+}
+
 export type UazapiInstanceCreated = {
   instanceId: string;
   token: string;
@@ -333,6 +339,36 @@ export class WhatsappApiService {
     return this.sendTextMeta(digits, body);
   }
 
+  /**
+   * Menu interativo: botões (≤3) ou lista (>3).
+   * Fallback: se o provider falhar, o caller deve enviar texto.
+   */
+  async sendMenu(
+    to: string,
+    menu: {
+      text: string;
+      choices: Array<{ id: string; title: string; description?: string }>;
+      listButton?: string;
+      footerText?: string;
+    },
+    instanceToken?: string,
+  ) {
+    const digits = String(to).replace(/\D/g, '');
+    if (this.provider() === 'uazapi') {
+      const token =
+        (instanceToken || '').trim() ||
+        (this.config.get<string>('whatsapp.token') || '').trim();
+      if (!token || !this.config.get<string>('whatsapp.baseUrl')) {
+        throw new Error('Uazapi sem token para enviar menu.');
+      }
+      return this.sendMenuUazapi(digits, menu, token);
+    }
+    if (!this.isConfigured()) {
+      throw new Error('WhatsApp Meta não configurado.');
+    }
+    return this.sendMenuMeta(digits, menu);
+  }
+
   private async sendTextUazapi(to: string, body: string, token: string) {
     const baseUrl = this.uazapiBaseUrl();
     const resp = await fetch(`${baseUrl}/send/text`, {
@@ -347,6 +383,54 @@ export class WhatsappApiService {
       const text = await resp.text().catch(() => '');
       throw new Error(
         `Whazap/Uazapi recusou o envio (${resp.status}): ${text}`,
+      );
+    }
+    return resp.json();
+  }
+
+  private async sendMenuUazapi(
+    to: string,
+    menu: {
+      text: string;
+      choices: Array<{ id: string; title: string; description?: string }>;
+      listButton?: string;
+      footerText?: string;
+    },
+    token: string,
+  ) {
+    const useButtons = menu.choices.length <= 3;
+    const choices = menu.choices.map((c) => {
+      const title = truncateWhatsappTitle(c.title, useButtons ? 20 : 24);
+      if (useButtons) return `${title}|${c.id}`;
+      const desc = (c.description || '').slice(0, 72);
+      return desc ? `${title}|${c.id}|${desc}` : `${title}|${c.id}`;
+    });
+
+    const body: Record<string, unknown> = {
+      number: to,
+      type: useButtons ? 'button' : 'list',
+      text: menu.text,
+      choices,
+    };
+    if (menu.footerText) body.footerText = menu.footerText;
+    if (!useButtons) {
+      body.listButton = menu.listButton || 'Ver opções';
+      body.choices = ['[Opções]', ...choices];
+    }
+
+    const baseUrl = this.uazapiBaseUrl();
+    const resp = await fetch(`${baseUrl}/send/menu`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        token,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(
+        `Whazap/Uazapi recusou o menu (${resp.status}): ${text}`,
       );
     }
     return resp.json();
@@ -375,6 +459,79 @@ export class WhatsappApiService {
       const text = await resp.text().catch(() => '');
       throw new Error(
         `WhatsApp Cloud API recusou o envio (${resp.status}): ${text}`,
+      );
+    }
+    return resp.json();
+  }
+
+  private async sendMenuMeta(
+    to: string,
+    menu: {
+      text: string;
+      choices: Array<{ id: string; title: string; description?: string }>;
+      listButton?: string;
+      footerText?: string;
+    },
+  ) {
+    const phoneNumberId = this.config.getOrThrow<string>(
+      'whatsapp.phoneNumberId',
+    );
+    const token = this.config.getOrThrow<string>('whatsapp.token');
+    const useButtons = menu.choices.length <= 3 && menu.choices.length >= 1;
+
+    const interactive = useButtons
+      ? {
+          type: 'button',
+          body: { text: menu.text },
+          ...(menu.footerText ? { footer: { text: menu.footerText } } : {}),
+          action: {
+            buttons: menu.choices.slice(0, 3).map((c) => ({
+              type: 'reply',
+              reply: {
+                id: c.id.slice(0, 256),
+                title: truncateWhatsappTitle(c.title, 20),
+              },
+            })),
+          },
+        }
+      : {
+          type: 'list',
+          body: { text: menu.text },
+          ...(menu.footerText ? { footer: { text: menu.footerText } } : {}),
+          action: {
+            button: truncateWhatsappTitle(menu.listButton || 'Ver opções', 20),
+            sections: [
+              {
+                title: 'Opções',
+                rows: menu.choices.slice(0, 10).map((c) => ({
+                  id: c.id.slice(0, 200),
+                  title: truncateWhatsappTitle(c.title, 24),
+                  ...(c.description
+                    ? { description: c.description.slice(0, 72) }
+                    : {}),
+                })),
+              },
+            ],
+          },
+        };
+
+    const resp = await fetch(`${GRAPH_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive,
+      }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(
+        `WhatsApp Cloud API recusou o menu (${resp.status}): ${text}`,
       );
     }
     return resp.json();

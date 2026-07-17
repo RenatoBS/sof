@@ -44,6 +44,10 @@ export function AgendaView({
   const colW = Math.max(110, Math.min(140, (width - 220) / 7));
   const { employees, appointments, getService, loadAll } = useDashboard();
   const [weekOffset, setWeekOffset] = useState(0);
+  /** IDs de profissionais com a linha recolhida (só 1º horário por dia). */
+  const [collapsedEmpIds, setCollapsedEmpIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [waPhone, setWaPhone] = useState('5511999990000');
   const [waMessage, setWaMessage] = useState('');
   const [waLog, setWaLog] = useState<{ dir: 'in' | 'out'; text: string }[]>(
@@ -54,6 +58,15 @@ export function AgendaView({
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const todayStr = localDateStr(new Date());
+
+  const toggleCollapsed = (employeeId: string) => {
+    setCollapsedEmpIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(employeeId)) next.delete(employeeId);
+      else next.add(employeeId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     dashboardApi
@@ -160,20 +173,31 @@ export function AgendaView({
                   </View>
                 );
               })}
+              <View style={[styles.dayHeader, styles.actionHeader]}>
+                <Text style={styles.dow}> </Text>
+              </View>
             </View>
 
-            {employees.map((emp) => (
+            {employees.map((emp) => {
+              const collapsed = collapsedEmpIds.has(emp.id);
+              return (
               <View key={emp.id} style={styles.row}>
                 <View
                   style={[
                     styles.empCell,
                     { width: 150, borderLeftColor: emp.color || d.accent },
+                    collapsed && styles.empCellCollapsed,
                   ]}
                 >
-                  <Text style={styles.empName}>{emp.name}</Text>
-                  <Text style={styles.specialty} numberOfLines={2}>
-                    {(emp.services || []).map((s) => s.name).join(', ') || '—'}
+                  <Text style={styles.empName} numberOfLines={1}>
+                    {emp.name}
                   </Text>
+                  {!collapsed ? (
+                    <Text style={styles.specialty} numberOfLines={2}>
+                      {(emp.services || []).map((s) => s.name).join(', ') ||
+                        '—'}
+                    </Text>
+                  ) : null}
                 </View>
                 {weekDates.map((day) => {
                   const ds = localDateStr(day);
@@ -185,6 +209,12 @@ export function AgendaView({
                         a.date === ds,
                     )
                     .sort((a, b) => a.time.localeCompare(b.time));
+                  const visibleAppts = collapsed
+                    ? dayAppts.slice(0, 1)
+                    : dayAppts;
+                  const hiddenCount = collapsed
+                    ? Math.max(0, dayAppts.length - 1)
+                    : 0;
                   return (
                     <Pressable
                       key={ds}
@@ -194,12 +224,15 @@ export function AgendaView({
                       style={[
                         styles.cell,
                         { width: colW, borderLeftColor: emp.color || d.accent },
+                        collapsed && styles.cellCollapsed,
                       ]}
                     >
                       {dayAppts.length === 0 ? (
                         <Text style={styles.cellHint}>+ Agendar</Text>
                       ) : null}
-                      {dayAppts.map((appt) => (
+                      {visibleAppts.map((appt) => {
+                        const isBlock = appt.kind === 'block';
+                        return (
                         <Pressable
                           key={appt.id}
                           onPress={(e) => {
@@ -209,26 +242,77 @@ export function AgendaView({
                           style={[
                             styles.appt,
                             appt.source === 'whatsapp' && styles.apptWa,
+                            isBlock && styles.apptBlock,
+                            collapsed && styles.apptCollapsed,
                           ]}
                         >
                           <Text style={styles.apptTime}>{appt.time}</Text>
-                          <Text style={styles.apptClient}>{appt.clientName}</Text>
-                          <Text style={styles.apptSvc}>
-                            {getService(appt.serviceId)?.name}
+                          <Text style={styles.apptClient} numberOfLines={1}>
+                            {isBlock
+                              ? appt.title || 'Evento'
+                              : appt.clientName}
                           </Text>
-                          <Text style={styles.apptPrice}>
-                            {formatCurrency(appt.price)}
-                          </Text>
-                          {appt.source === 'whatsapp' ? (
+                          {!collapsed ? (
+                            !isBlock ? (
+                              <>
+                                <Text style={styles.apptSvc}>
+                                  {getService(appt.serviceId || '')?.name}
+                                </Text>
+                                <Text style={styles.apptPrice}>
+                                  {formatCurrency(appt.price)}
+                                </Text>
+                              </>
+                            ) : (
+                              <Text style={styles.apptSvc}>
+                                {appt.durationMinutes
+                                  ? `${appt.durationMinutes} min`
+                                  : 'Bloqueio'}
+                                {appt.recurrenceGroupId ? ' · recorrente' : ''}
+                              </Text>
+                            )
+                          ) : null}
+                          {!collapsed && appt.source === 'whatsapp' ? (
                             <Text style={styles.waBadge}>WhatsApp</Text>
                           ) : null}
                         </Pressable>
-                      ))}
+                        );
+                      })}
+                      {hiddenCount > 0 ? (
+                        <Pressable
+                          onPress={(e) => {
+                            e?.stopPropagation?.();
+                            toggleCollapsed(emp.id);
+                          }}
+                        >
+                          <Text style={styles.moreHint}>+{hiddenCount}</Text>
+                        </Pressable>
+                      ) : null}
                     </Pressable>
                   );
                 })}
+                <Pressable
+                  onPress={() => toggleCollapsed(emp.id)}
+                  style={[
+                    styles.actionCell,
+                    collapsed && styles.actionCellCollapsed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    collapsed
+                      ? `Expandir agenda de ${emp.name}`
+                      : `Recolher agenda de ${emp.name}`
+                  }
+                >
+                  <Text style={styles.actionCellIcon}>
+                    {collapsed ? '▾' : '▴'}
+                  </Text>
+                  <Text style={styles.actionCellLabel}>
+                    {collapsed ? 'Expandir' : 'Recolher'}
+                  </Text>
+                </Pressable>
               </View>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       )}
@@ -325,9 +409,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     padding: 16,
     borderLeftWidth: 3,
+    justifyContent: 'center',
+  },
+  empCellCollapsed: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   empName: { fontWeight: '600', fontSize: 14 },
   specialty: { fontSize: 11, color: d.muted, marginTop: 4 },
+  actionHeader: {
+    width: 88,
+    backgroundColor: '#f1f5f9',
+  },
+  actionCell: {
+    width: 88,
+    backgroundColor: '#f8fafc',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 150,
+  },
+  actionCellCollapsed: {
+    minHeight: 64,
+  },
+  actionCellIcon: {
+    fontSize: 16,
+    color: d.accent,
+    fontWeight: '700',
+  },
+  actionCellLabel: {
+    fontSize: 11,
+    color: d.accent,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   cell: {
     backgroundColor: '#fff',
     padding: 12,
@@ -335,11 +452,21 @@ const styles = StyleSheet.create({
     gap: 8,
     borderLeftWidth: 2,
   },
+  cellCollapsed: {
+    minHeight: 64,
+    paddingVertical: 8,
+    gap: 4,
+  },
   cellHint: {
     color: '#94a3b8',
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  moreHint: {
+    color: d.accent,
+    fontSize: 11,
+    fontWeight: '700',
   },
   appt: {
     backgroundColor: '#f1f5f9',
@@ -348,7 +475,14 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: d.radiusSm,
   },
+  apptCollapsed: {
+    paddingVertical: 6,
+  },
   apptWa: { borderLeftColor: d.waGreen },
+  apptBlock: {
+    borderLeftColor: '#64748b',
+    backgroundColor: '#f8fafc',
+  },
   apptTime: { fontWeight: '600', fontSize: 12 },
   apptClient: { color: '#475569', marginTop: 4, fontSize: 12 },
   apptSvc: { color: '#94a3b8', fontSize: 11, marginTop: 4 },

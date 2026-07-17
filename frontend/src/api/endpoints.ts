@@ -2,6 +2,7 @@ import { api } from '@/src/api/client';
 import type {
   Account,
   Appointment,
+  AppointmentWriteBody,
   Client,
   Employee,
   EmployeeSession,
@@ -49,17 +50,15 @@ export const employeeApi = {
     api<{ appointments: Appointment[] }>('/employee/appointments', {
       auth: 'employee',
     }),
-  createAppointment: (body: {
-    clientId: string;
-    date: string;
-    time: string;
-    serviceId: string;
-  }) =>
-    api<{ appointment: Appointment }>('/employee/appointments', {
-      method: 'POST',
-      body,
-      auth: 'employee',
-    }),
+  createAppointment: (body: AppointmentWriteBody) =>
+    api<{ appointment: Appointment; appointments: Appointment[] }>(
+      '/employee/appointments',
+      {
+        method: 'POST',
+        body,
+        auth: 'employee',
+      },
+    ),
   cancelAppointment: (id: string) =>
     api<{ appointment: Appointment }>(`/employee/appointments/${id}/cancel`, {
       method: 'POST',
@@ -78,7 +77,7 @@ export const employeeApi = {
 };
 
 export const checkoutApi = {
-  create: (planName: string, name: string, email: string) =>
+  create: (planName: string, name: string, email: string, password: string) =>
     api<{
       mode: 'redirect' | 'dev-approved';
       sessionId: string;
@@ -86,14 +85,14 @@ export const checkoutApi = {
       token?: string;
     }>('/checkout/create', {
       method: 'POST',
-      body: { planName, name, email },
+      body: { planName, name, email, password },
       auth: false,
     }),
   status: (sessionId: string) =>
     api<{
       status: string;
       email?: string;
-      tempPassword?: string;
+      token?: string;
       delivered?: boolean;
     }>(`/checkout/status/${sessionId}`, { auth: false }),
 };
@@ -142,42 +141,37 @@ export const dashboardApi = {
   clients: () => api<{ clients: Client[] }>('/clients'),
   createClient: (body: { name: string; phone: string }) =>
     api<{ client: Client }>('/clients', { method: 'POST', body }),
-  updateClient: (id: string, body: { name: string; phone: string }) =>
+  updateClient: (
+    id: string,
+    body: {
+      name: string;
+      phone: string;
+      botPausedPermanent?: boolean;
+      botPausedUntil?: string | null;
+    },
+  ) =>
     api<{ client: Client }>(`/clients/${id}`, { method: 'PUT', body }),
   deleteClient: (id: string) =>
     api<{ ok: boolean }>(`/clients/${id}`, { method: 'DELETE' }),
   appointments: () => api<{ appointments: Appointment[] }>('/appointments'),
-  createAppointment: (body: {
-    clientId?: string;
-    clientName?: string;
-    clientPhone?: string;
-    date: string;
-    time: string;
-    employeeId: string;
-    serviceId: string;
-  }) =>
-    api<{ appointment: Appointment }>('/appointments', {
-      method: 'POST',
-      body,
-    }),
-  updateAppointment: (
-    id: string,
-    body: {
-      clientId?: string;
-      clientName?: string;
-      clientPhone?: string;
-      date: string;
-      time: string;
-      employeeId: string;
-      serviceId: string;
-    },
-  ) =>
+  createAppointment: (body: AppointmentWriteBody) =>
+    api<{ appointment: Appointment; appointments: Appointment[] }>(
+      '/appointments',
+      {
+        method: 'POST',
+        body,
+      },
+    ),
+  updateAppointment: (id: string, body: AppointmentWriteBody) =>
     api<{ appointment: Appointment }>(`/appointments/${id}`, {
       method: 'PUT',
       body,
     }),
-  deleteAppointment: (id: string) =>
-    api<{ ok: boolean }>(`/appointments/${id}`, { method: 'DELETE' }),
+  deleteAppointment: (id: string, scope?: 'one' | 'series') =>
+    api<{ ok: boolean; deletedCount?: number }>(
+      `/appointments/${id}${scope === 'series' ? '?scope=series' : ''}`,
+      { method: 'DELETE' },
+    ),
   integrations: () =>
     api<{
       stripe: { configured: boolean };
@@ -193,6 +187,8 @@ export const dashboardApi = {
   updateAccount: (body: {
     whatsappPhoneNumberId?: string;
     openingHours?: OpeningHours;
+    address?: string;
+    businessName?: string;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
     api<{

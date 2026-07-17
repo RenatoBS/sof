@@ -48,7 +48,7 @@ export async function listBusySlots(
 
   return appointments.map((a) => ({
     time: a.time,
-    duration: a.service?.duration || 30,
+    duration: a.durationMinutes ?? a.service?.duration ?? 30,
   }));
 }
 

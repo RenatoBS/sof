@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import type { Service } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
@@ -8,6 +9,7 @@ import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
   const { services, setServices, setEmployees } = useDashboard();
+  const { create } = useLocalSearchParams<{ create?: string }>();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -15,8 +17,20 @@ export default function ServicesScreen() {
   const [price, setPrice] = useState('60');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fromEmployees, setFromEmployees] = useState(false);
 
   const isEditing = !!editingId;
+
+  useEffect(() => {
+    if (create !== '1') return;
+    setFromEmployees(true);
+    setName('');
+    setDuration('45');
+    setPrice('60');
+    setError('');
+    setEditingId(null);
+    setShowForm(true);
+  }, [create]);
 
   const resetForm = () => {
     setName('');
@@ -26,6 +40,7 @@ export default function ServicesScreen() {
     setEditingId(null);
     setShowForm(false);
     setLoading(false);
+    setFromEmployees(false);
   };
 
   const startCreate = () => {
@@ -72,6 +87,11 @@ export default function ServicesScreen() {
       } else {
         const { service } = await dashboardApi.createService(body);
         setServices((prev) => [...prev, service]);
+        if (fromEmployees) {
+          resetForm();
+          router.push('/(dashboard)/employees');
+          return;
+        }
       }
       resetForm();
     } catch (err) {
@@ -116,6 +136,11 @@ export default function ServicesScreen() {
           <Text style={styles.cardTitle}>
             {isEditing ? 'Editar Serviço' : 'Novo Serviço'}
           </Text>
+          {fromEmployees && !isEditing ? (
+            <Text style={styles.fromHint}>
+              Cadastre ao menos um serviço antes de adicionar profissionais.
+            </Text>
+          ) : null}
           <SofInput
             label="Nome do Serviço"
             value={name}
@@ -203,6 +228,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   cardTitle: { fontWeight: '600', marginBottom: 8 },
+  fromHint: { color: d.muted, fontSize: 14, marginBottom: 12, lineHeight: 20 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   error: { color: d.danger },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },

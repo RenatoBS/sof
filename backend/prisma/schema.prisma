@@ -22,6 +22,8 @@ model Account {
   whatsappConnectedAt   DateTime?
   /// Json: 7 dias (0=domingo…6=sábado), cada um `{ open, start, end }` HH:MM
   openingHours          Json     @default("[{\"open\":false,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"}]")
+  /// Endereço do estabelecimento (opcional; bot pode informar na conversa)
+  address               String   @default("")
   status                String   @default("active")
   createdAt             DateTime @default(now())
 
@@ -77,11 +79,15 @@ model EmployeeService {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  accountId String
-  name      String
-  phone     String
-  createdAt DateTime @default(now())
+  id                  String    @id @default(cuid())
+  accountId           String
+  name                String
+  phone               String
+  /// Se true, bot WhatsApp não responde este cliente até reativar
+  botPausedPermanent  Boolean   @default(false)
+  /// Mute temporário: bot silencioso enquanto > now()
+  botPausedUntil      DateTime?
+  createdAt           DateTime  @default(now())
 
   account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments Appointment[]
@@ -91,29 +97,38 @@ model Client {
 }
 
 model Appointment {
-  id          String   @id @default(cuid())
-  accountId   String
-  employeeId  String
-  serviceId   String
-  clientId    String?
-  clientName  String
-  clientPhone String   @default("")
-  date        String
-  time        String
-  price       Float
-  status      String   @default("confirmed")
-  source      String   @default("manual")
-  createdAt   DateTime @default(now())
+  id                String   @id @default(cuid())
+  accountId         String
+  employeeId        String
+  /// `service` = atendimento; `block` = evento livre (almoço, médico, etc.)
+  kind              String   @default("service")
+  /// Título do evento livre (kind=block); vazio em serviços
+  title             String   @default("")
+  /// Duração em minutos; obrigatório em block; em service usa Service.duration se null
+  durationMinutes   Int?
+  serviceId         String?
+  clientId          String?
+  clientName        String   @default("")
+  clientPhone       String   @default("")
+  date              String
+  time              String
+  price             Float    @default(0)
+  status            String   @default("confirmed")
+  source            String   @default("manual")
+  /// Liga ocorrências materializadas da mesma série recorrente
+  recurrenceGroupId String?
+  createdAt         DateTime @default(now())
 
   account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   client   Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([accountId])
   @@index([employeeId])
   @@index([serviceId])
   @@index([clientId])
+  @@index([recurrenceGroupId])
 }
 
 model CheckoutSession {
@@ -125,7 +140,7 @@ model CheckoutSession {
   status       String   @default("pending")
   preferenceId String?
   accountId    String?
-  tempPassword String?
+  passwordHash String?
   delivered    Boolean  @default(false)
   createdAt    DateTime @default(now())
 

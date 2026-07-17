@@ -87,6 +87,11 @@ export default function AccountScreen() {
   const [hoursError, setHoursError] = useState('');
   const [savingHours, setSavingHours] = useState(false);
 
+  const [address, setAddress] = useState('');
+  const [addressSaved, setAddressSaved] = useState('');
+  const [addressError, setAddressError] = useState('');
+  const [savingAddress, setSavingAddress] = useState(false);
+
   const [waMode, setWaMode] = useState<PairingMode>('idle');
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waLinked, setWaLinked] = useState(false);
@@ -133,7 +138,10 @@ export default function AccountScreen() {
   }, [refreshWaStatus, stopPolling]);
 
   useEffect(() => {
-    if (account) setHours(normalizeHours(account.openingHours));
+    if (account) {
+      setHours(normalizeHours(account.openingHours));
+      setAddress(account.address || '');
+    }
     dashboardApi.integrations().then((data) => {
       setIntegrations({
         wa: data.whatsapp.configured,
@@ -261,6 +269,50 @@ export default function AccountScreen() {
             <Text style={styles.metaValue}>{since}</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Endereço</Text>
+        <Text style={[styles.help, { marginBottom: 12 }]}>
+          Opcional. O bot do WhatsApp pode informar o endereço quando o cliente
+          perguntar (ex.: “onde fica?”).
+        </Text>
+        <SofInput
+          label="Endereço do estabelecimento"
+          value={address}
+          onChangeText={setAddress}
+          theme="dashboard"
+          placeholder="Rua Exemplo, 123 — Bairro, Cidade"
+          autoCapitalize="words"
+        />
+        {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
+        {addressSaved ? <Text style={styles.saved}>{addressSaved}</Text> : null}
+        <SofButton
+          title={savingAddress ? 'Salvando…' : 'Salvar endereço'}
+          variant="dark"
+          theme="dashboard"
+          disabled={savingAddress}
+          onPress={async () => {
+            setAddressError('');
+            setSavingAddress(true);
+            try {
+              const { account: updated } = await dashboardApi.updateAccount({
+                address: address.trim(),
+              });
+              await setSession(updated);
+              setAddressSaved('Endereço salvo!');
+              setTimeout(() => setAddressSaved(''), 2000);
+            } catch (err) {
+              setAddressError(
+                err instanceof Error
+                  ? err.message
+                  : 'Não foi possível salvar.',
+              );
+            } finally {
+              setSavingAddress(false);
+            }
+          }}
+        />
       </View>
 
       <View style={styles.card}>

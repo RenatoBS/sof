@@ -1,19 +1,20 @@
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { checkoutApi } from '@/src/api/endpoints';
+import { useAuth } from '@/src/auth/AuthProvider';
+import { setToken } from '@/src/auth/tokenStorage';
 import { SofButton } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
-type Phase = 'waiting' | 'approved' | 'failed';
+type Phase = 'waiting' | 'entering' | 'failed';
 
 export default function CheckoutReturnScreen() {
   const { ref } = useLocalSearchParams<{ ref?: string }>();
+  const { refreshMe } = useAuth();
   const [phase, setPhase] = useState<Phase>('waiting');
   const [error, setError] = useState('');
-  const [creds, setCreds] = useState<{ email: string; password?: string } | null>(
-    null,
-  );
+  const entered = useRef(false);
 
   useEffect(() => {
     if (!ref) {
@@ -34,11 +35,22 @@ export default function CheckoutReturnScreen() {
       }
       try {
         const data = await checkoutApi.status(String(ref));
-        if (data.status === 'approved') {
-          clearInterval(timer);
-          setPhase('approved');
-          setCreds({ email: data.email || '', password: data.tempPassword });
+        if (data.status !== 'approved') return;
+
+        clearInterval(timer);
+        if (entered.current) return;
+        entered.current = true;
+
+        if (data.token) {
+          setPhase('entering');
+          await setToken(data.token);
+          await refreshMe();
+          router.replace('/(dashboard)/agenda');
+          return;
         }
+
+        // Já entregue (refresh / segunda visita) — pede login.
+        router.replace('/login');
       } catch {
         clearInterval(timer);
         setPhase('failed');
@@ -48,45 +60,26 @@ export default function CheckoutReturnScreen() {
       }
     }, 2000);
     return () => clearInterval(timer);
-  }, [ref]);
+  }, [ref, refreshMe]);
 
   return (
     <View style={styles.page}>
       <View style={[styles.card, m.shadow.soft]}>
-        {phase === 'waiting' ? (
+        {phase === 'waiting' || phase === 'entering' ? (
           <>
-            <Text style={styles.title}>Confirmando seu pagamento…</Text>
+            <Text style={styles.title}>
+              {phase === 'entering'
+                ? 'Entrando na agenda…'
+                : 'Confirmando seu pagamento…'}
+            </Text>
             <Text style={styles.sub}>Isso leva só alguns segundos.</Text>
             <View style={styles.hint}>
               <Text style={styles.hintText}>
-                Aguardando a confirmação do Stripe. Não feche esta página.
+                {phase === 'entering'
+                  ? 'Pagamento aprovado. Preparando seu painel.'
+                  : 'Aguardando a confirmação do Stripe. Não feche esta página.'}
               </Text>
             </View>
-          </>
-        ) : null}
-
-        {phase === 'approved' ? (
-          <>
-            <Text style={styles.title}>Pagamento aprovado!</Text>
-            <Text style={styles.sub}>Guarde seu acesso:</Text>
-            <View style={styles.creds}>
-              <View style={styles.credRow}>
-                <Text style={styles.credLabel}>E-mail</Text>
-                <Text style={styles.credValue}>{creds?.email}</Text>
-              </View>
-              {creds?.password ? (
-                <View style={styles.credRow}>
-                  <Text style={styles.credLabel}>Senha</Text>
-                  <Text style={styles.credValue}>{creds.password}</Text>
-                </View>
-              ) : null}
-            </View>
-            <SofButton
-              title="Ir para o login"
-              variant="accent"
-              block
-              onPress={() => router.replace('/login')}
-            />
           </>
         ) : null}
 
@@ -141,20 +134,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   hintText: { color: m.accentInk, fontSize: 14, lineHeight: 20 },
-  creds: {
-    backgroundColor: m.paper,
-    borderRadius: m.radiusSm,
-    padding: 16,
-    gap: 12,
-    marginVertical: 6,
-  },
-  credRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  credLabel: { color: m.muted, fontSize: 14 },
-  credValue: { color: m.ink, fontWeight: '600', fontSize: 14, flexShrink: 1 },
   errorBox: {
     backgroundColor: m.dangerSoft,
     borderRadius: m.radiusSm,

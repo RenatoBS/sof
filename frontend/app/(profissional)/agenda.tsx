@@ -191,7 +191,11 @@ export default function ProfissionalAgendaScreen() {
                       ]}
                     >
                       <Text style={styles.time}>{a.time}</Text>
-                      <Text style={styles.client}>{a.clientName}</Text>
+                      <Text style={styles.client}>
+                        {a.kind === 'block'
+                          ? a.title || 'Evento'
+                          : a.clientName}
+                      </Text>
                     </Pressable>
                   ))
                 )}
@@ -203,14 +207,31 @@ export default function ProfissionalAgendaScreen() {
 
       {selected ? (
         <View style={styles.detail}>
-          <Text style={styles.detailTitle}>Agendamento</Text>
+          <Text style={styles.detailTitle}>
+            {selected.kind === 'block' ? 'Evento' : 'Agendamento'}
+          </Text>
           <Text style={styles.detailLine}>
             {selected.date.split('-').reverse().join('/')} às {selected.time}
           </Text>
-          <Text style={styles.detailLine}>Cliente: {selected.clientName}</Text>
-          {selected.clientPhone ? (
-            <Text style={styles.detailLine}>Tel: {selected.clientPhone}</Text>
-          ) : null}
+          {selected.kind === 'block' ? (
+            <Text style={styles.detailLine}>
+              {selected.title}
+              {selected.durationMinutes
+                ? ` · ${selected.durationMinutes} min`
+                : ''}
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.detailLine}>
+                Cliente: {selected.clientName}
+              </Text>
+              {selected.clientPhone ? (
+                <Text style={styles.detailLine}>
+                  Tel: {selected.clientPhone}
+                </Text>
+              ) : null}
+            </>
+          )}
           <View style={styles.detailActions}>
             <SofButton
               title={cancelling ? 'Cancelando…' : 'Cancelar agendamento'}
@@ -245,21 +266,14 @@ export default function ProfissionalAgendaScreen() {
             ),
           )
         }
-        onSaved={(appointment) => {
-          setAppointments((prev) =>
-            prev.some((a) => a.id === appointment.id)
-              ? prev
-              : [...prev, appointment],
-          );
+        onSaved={(appointment, series) => {
+          const list = series?.length ? series : [appointment];
+          setAppointments((prev) => {
+            const ids = new Set(list.map((a) => a.id));
+            return [...prev.filter((a) => !ids.has(a.id)), ...list];
+          });
         }}
-        createAppointment={async (body) =>
-          employeeApi.createAppointment({
-            clientId: body.clientId,
-            date: body.date,
-            time: body.time,
-            serviceId: body.serviceId,
-          })
-        }
+        createAppointment={(body) => employeeApi.createAppointment(body)}
         createClient={async (body) => employeeApi.createClient(body)}
       />
     </ScrollView>
