@@ -13,7 +13,7 @@ import {
 import {
   hasScheduleConflict,
   listBusySlots,
-  suggestFreeTimes,
+  minutesToTime,
   timeToMinutes,
 } from '../appointments/schedule-conflict';
 
@@ -25,6 +25,8 @@ type SessionData = {
   date?: string;
   time?: string;
 };
+
+type SlotOption = { date: string; time: string };
 
 export type WhatsappMenuChoice = {
   id: string;
@@ -40,9 +42,7 @@ export type WhatsappInteractiveMenu = {
 };
 
 export type WhatsappBotResult = {
-  /** Texto para simulador / fallback se o menu falhar. */
   replies: string[];
-  /** Menus interativos (botões ≤3, lista >3) enviados no WhatsApp real. */
   interactive?: WhatsappInteractiveMenu[];
   appointment?: ReturnType<typeof serializeDates>;
 };
@@ -50,6 +50,8 @@ export type WhatsappBotResult = {
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
 const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'fecha', 'fechado'];
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
+const CUSTOM_SLOT_RE = /^(outro|outra|custom|slot:custom)$/i;
+const SLOT_ID_RE = /^slot:(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/;
 
 @Injectable()
 export class WhatsappBotService {
@@ -64,10 +66,6 @@ export class WhatsappBotService {
     return n - 1;
   }
 
-  /**
-   * Resolve escolha por: id do botão (`svc:…` / `emp:…` / `confirm:yes`),
-   * número, ou título aproximado.
-   */
   private resolveChoice<T extends { id: string }>(
     text: string,
     items: T[],
@@ -164,6 +162,25 @@ export class WhatsappBotService {
     ]);
   }
 
+  private pad(n: number) {
+    return String(n).padStart(2, '0');
+  }
+
+  private localDateStr(date: Date) {
+    return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}-${this.pad(date.getDate())}`;
+  }
+
+  private formatSlotLabel(date: string, time: string) {
+    const today = this.localDateStr(new Date());
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = this.localDateStr(tomorrowDate);
+    if (date === today) return `Hoje ${time}`;
+    if (date === tomorrow) return `Amanhã ${time}`;
+    const [, m, d] = date.split('-');
+    return `${d}/${m} ${time}`;
+  }
+
   private parseDateTime(text: string) {
     const match = String(text).match(DATETIME_RE);
     if (!match) return null;
@@ -177,22 +194,308 @@ export class WhatsappBotService {
     return { date, time };
   }
 
-  private suggestOnDate(
+  private parseSlotSelection(
+    text: string,
+    offered: SlotOption[],
+  ): SlotOption | 'custom' | null {
+    const trimmed = String(text || '').trim();
+    if (CUSTOM_SLOT_RE.test(trimmed) || trimmed === 'slot:custom') {
+      return 'custom';
+    }
+
+    const idMatch = trimmed.match(SLOT_ID_RE);
+    if (idMatch) {
+      return { date: idMatch[1], time: idMatch[2] };
+    }
+
+    // Menu numerado: 1..N = slots, N+1 = outro
+    const byNumber = this.parseChoice(trimmed, offered.length + 1);
+    if (byNumber !== null) {
+      if (byNumber === offered.length) return 'custom';
+      return offered[byNumber];
+    }
+
+    // Título tipo "Hoje 15:00" / "18/07 10:00"
+    const byLabel = offered.find(
+      (s) =>
+        this.formatSlotLabel(s.date, s.time).toLowerCase() ===
+        trimmed.toLowerCase(),
+    );
+    if (byLabel) return byLabel;
+
+    const asDateTime = this.parseDateTime(trimmed);
+    if (asDateTime) return asDateTime;
+
+    return null;
+  }
+
+  private async employeesForService(accountId: string, serviceId: string) {
+    return this.prisma.employee.findMany({
+      where: {
+        accountId,
+        services: { some: { serviceId } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /** Horários próximos em que há ao menos 1 profissional livre para o serviço. */
+  private async findNearbySlots(
     account: Account,
-    busy: { time: string; duration: number }[],
+    employees: { id: string }[],
+    durationMinutes: number,
+    limit = 5,
+  ): Promise<SlotOption[]> {
+    if (employees.length === 0) return [];
+
+    const hours = normalizeOpeningHours(account.openingHours);
+    const now = new Date();
+    const slots: SlotOption[] = [];
+
+    for (let dayOffset = 0; dayOffset < 14 && slots.length < limit; dayOffset++) {
+      const dayDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + dayOffset,
+      );
+      const date = this.localDateStr(dayDate);
+      const day = getDaySchedule(hours, date);
+      if (!day.open) continue;
+
+      let startMin = timeToMinutes(day.start);
+      if (dayOffset === 0) {
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const rounded = Math.ceil((nowMin + 1) / 30) * 30;
+        startMin = Math.max(startMin, rounded);
+      }
+      const endMin = timeToMinutes(day.end);
+      if (startMin + durationMinutes > endMin) continue;
+
+      const busyByEmployee = new Map<string, Awaited<ReturnType<typeof listBusySlots>>>();
+      for (const emp of employees) {
+        busyByEmployee.set(
+          emp.id,
+          await listBusySlots(this.prisma, {
+            accountId: account.id,
+            employeeId: emp.id,
+            date,
+          }),
+        );
+      }
+
+      for (let t = startMin; t + durationMinutes <= endMin; t += 30) {
+        const time = minutesToTime(t);
+        const anyFree = employees.some(
+          (emp) =>
+            !hasScheduleConflict(
+              busyByEmployee.get(emp.id) || [],
+              time,
+              durationMinutes,
+            ),
+        );
+        if (!anyFree) continue;
+        slots.push({ date, time });
+        if (slots.length >= limit) break;
+      }
+    }
+
+    return slots;
+  }
+
+  private async availableEmployeesAt(
+    account: Account,
+    serviceId: string,
     date: string,
+    time: string,
     durationMinutes: number,
   ) {
-    const day = getDaySchedule(
-      normalizeOpeningHours(account.openingHours),
-      date,
+    const employees = await this.employeesForService(account.id, serviceId);
+    const free: { id: string; name: string }[] = [];
+    for (const emp of employees) {
+      const hoursCheck = checkWithinOpeningHours(
+        account.openingHours,
+        date,
+        time,
+        durationMinutes,
+      );
+      if (!hoursCheck.ok) continue;
+      const busy = await listBusySlots(this.prisma, {
+        accountId: account.id,
+        employeeId: emp.id,
+        date,
+      });
+      if (!hasScheduleConflict(busy, time, durationMinutes)) {
+        free.push({ id: emp.id, name: emp.name });
+      }
+    }
+    return free;
+  }
+
+  private async slotMenu(
+    account: Account,
+    service: { id: string; name: string; duration: number },
+    sessionBase: SessionData,
+    customerPhone: string,
+    intro?: string,
+  ): Promise<WhatsappBotResult> {
+    const employees = await this.employeesForService(account.id, service.id);
+    if (employees.length === 0) {
+      await this.saveSession(account.id, customerPhone, {
+        step: 'awaiting_service',
+        data: {
+          clientId: sessionBase.clientId,
+          clientName: sessionBase.clientName,
+        },
+      });
+      const services = await this.prisma.service.findMany({
+        where: { accountId: account.id },
+        orderBy: { createdAt: 'asc' },
+      });
+      return this.serviceMenu(
+        `Por enquanto nenhum profissional faz ${service.name}. Escolha outro serviço:`,
+        services,
+      );
+    }
+
+    const nearby = await this.findNearbySlots(
+      account,
+      employees,
+      service.duration,
+      5,
     );
-    if (!day.open) return [] as string[];
-    return suggestFreeTimes(
-      busy,
-      durationMinutes,
-      timeToMinutes(day.start),
-      timeToMinutes(day.end),
+
+    await this.saveSession(account.id, customerPhone, {
+      step: 'awaiting_slot',
+      data: {
+        clientId: sessionBase.clientId,
+        clientName: sessionBase.clientName,
+        serviceId: service.id,
+      },
+    });
+
+    const body =
+      intro ||
+      `Combinado: ${service.name}. Escolha um horário próximo ou mande o horário que preferir.`;
+
+    if (nearby.length === 0) {
+      await this.saveSession(account.id, customerPhone, {
+        step: 'awaiting_custom_datetime',
+        data: {
+          clientId: sessionBase.clientId,
+          clientName: sessionBase.clientName,
+          serviceId: service.id,
+        },
+      });
+      return {
+        replies: [
+          `${body}\n\nNão achei horários livres nos próximos dias. Me diga a data e o horário assim: 25/12 15:00\nFuncionamento: ${formatOpeningHoursSummary(account.openingHours)}`,
+        ],
+      };
+    }
+
+    const choices: WhatsappMenuChoice[] = [
+      ...nearby.map((s) => ({
+        id: `slot:${s.date}_${s.time}`,
+        title: this.formatSlotLabel(s.date, s.time),
+        description: `${s.date.split('-').reverse().join('/')} às ${s.time}`,
+      })),
+      {
+        id: 'slot:custom',
+        title: 'Outro horário',
+        description: 'Enviar data e hora (dd/mm hh:mm)',
+      },
+    ];
+
+    return this.menuReply(body, choices, {
+      listButton: 'Ver horários',
+      footerText: 'Ou digite dd/mm hh:mm',
+    });
+  }
+
+  private async proceedWithSlot(
+    account: Account,
+    services: { id: string; name: string; duration: number; price: number }[],
+    sessionData: SessionData,
+    customerPhone: string,
+    when: SlotOption,
+  ): Promise<WhatsappBotResult> {
+    const service = services.find((s) => s.id === sessionData.serviceId);
+    if (!service) {
+      await this.resetSession(account.id, customerPhone);
+      return this.serviceMenu(
+        'Vamos recomeçar — qual serviço você quer agendar?',
+        services,
+      );
+    }
+
+    const hoursCheck = checkWithinOpeningHours(
+      account.openingHours,
+      when.date,
+      when.time,
+      service.duration,
+    );
+    if (!hoursCheck.ok) {
+      if (hoursCheck.reason === 'closed') {
+        return this.slotMenu(
+          account,
+          service,
+          sessionData,
+          customerPhone,
+          `Nesse dia (${hoursCheck.label}) estamos fechados. Escolha outro horário:`,
+        );
+      }
+      return this.slotMenu(
+        account,
+        service,
+        sessionData,
+        customerPhone,
+        `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Escolha outro:`,
+      );
+    }
+
+    const free = await this.availableEmployeesAt(
+      account,
+      service.id,
+      when.date,
+      when.time,
+      service.duration,
+    );
+
+    if (free.length === 0) {
+      return this.slotMenu(
+        account,
+        service,
+        sessionData,
+        customerPhone,
+        'Nesse horário ninguém está livre. Escolha outro:',
+      );
+    }
+
+    const baseData: SessionData = {
+      clientId: sessionData.clientId,
+      clientName: sessionData.clientName,
+      serviceId: service.id,
+      date: when.date,
+      time: when.time,
+    };
+
+    if (free.length === 1) {
+      await this.saveSession(account.id, customerPhone, {
+        step: 'awaiting_confirmation',
+        data: { ...baseData, employeeId: free[0].id },
+      });
+      return this.confirmMenu(
+        `Fechar ${service.name} com ${free[0].name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+      );
+    }
+
+    await this.saveSession(account.id, customerPhone, {
+      step: 'awaiting_employee',
+      data: baseData,
+    });
+    return this.employeeMenu(
+      `Quem você prefere em ${this.formatSlotLabel(when.date, when.time)}?`,
+      free,
     );
   }
 
@@ -305,12 +608,7 @@ export class WhatsappBotService {
     if (step === 'start') {
       const existingClient = await this.findClient(account.id, phone);
       if (existingClient) {
-        return this.startBooking(
-          account,
-          phone,
-          existingClient,
-          services,
-        );
+        return this.startBooking(account, phone, existingClient, services);
       }
       await this.saveSession(account.id, phone, {
         step: 'awaiting_name',
@@ -350,108 +648,15 @@ export class WhatsappBotService {
         label: (s) => s.name,
       });
       if (idx === null) {
-        return this.serviceMenu(
-          'Não entendi. Escolha um serviço:',
-          services,
-        );
+        return this.serviceMenu('Não entendi. Escolha um serviço:', services);
       }
       const service = services[idx];
-      const employeesForService = await this.prisma.employee.findMany({
-        where: {
-          accountId: account.id,
-          services: { some: { serviceId: service.id } },
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (employeesForService.length === 0) {
-        await this.saveSession(account.id, phone, {
-          step: 'awaiting_service',
-          data: {
-            clientId: sessionData.clientId,
-            clientName: sessionData.clientName,
-          },
-        });
-        return this.serviceMenu(
-          `Por enquanto nenhum profissional faz ${service.name}. Escolha outro serviço:`,
-          services,
-        );
-      }
-      await this.saveSession(account.id, phone, {
-        step: 'awaiting_employee',
-        data: {
-          clientId: sessionData.clientId,
-          clientName: sessionData.clientName,
-          serviceId: service.id,
-        },
-      });
-      return this.employeeMenu(
-        `Combinado: ${service.name}. Com qual profissional?`,
-        employeesForService,
-      );
+      return this.slotMenu(account, service, sessionData, phone);
     }
 
-    if (step === 'awaiting_employee') {
-      const serviceId = sessionData.serviceId || '';
-      const employeesForService = await this.prisma.employee.findMany({
-        where: {
-          accountId: account.id,
-          services: { some: { serviceId } },
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (employeesForService.length === 0) {
-        await this.saveSession(account.id, phone, {
-          step: 'awaiting_service',
-          data: {
-            clientId: sessionData.clientId,
-            clientName: sessionData.clientName,
-          },
-        });
-        return this.serviceMenu(
-          'Nenhum profissional disponível para esse serviço. Escolha outro:',
-          services,
-        );
-      }
-      const idx = this.resolveChoice(trimmed, employeesForService, {
-        idPrefix: 'emp',
-        label: (e) => e.name,
-      });
-      if (idx === null) {
-        return this.employeeMenu(
-          'Não entendi. Escolha um profissional:',
-          employeesForService,
-        );
-      }
-      const employee = employeesForService[idx];
-      await this.saveSession(account.id, phone, {
-        step: 'awaiting_datetime',
-        data: { ...sessionData, employeeId: employee.id },
-      });
-      const hoursHint = formatOpeningHoursSummary(account.openingHours);
-      return {
-        replies: [
-          `Para quando? Me diga a data e o horário assim: 25/12 15:00\nFuncionamento: ${hoursHint}`,
-        ],
-      };
-    }
-
-    if (step === 'awaiting_datetime') {
-      const when = this.parseDateTime(trimmed);
-      if (!when) {
-        return {
-          replies: [
-            'Não consegui entender a data. Envie no formato dd/mm hh:mm, por exemplo: 25/12 15:00',
-          ],
-        };
-      }
+    if (step === 'awaiting_slot') {
       const service = services.find((s) => s.id === sessionData.serviceId);
-      const employee = await this.prisma.employee.findFirst({
-        where: {
-          id: sessionData.employeeId,
-          accountId: account.id,
-        },
-      });
-      if (!service || !employee || !sessionData.employeeId) {
+      if (!service) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
           'Vamos recomeçar — qual serviço você quer agendar?',
@@ -459,80 +664,148 @@ export class WhatsappBotService {
         );
       }
 
-      const hoursCheck = checkWithinOpeningHours(
-        account.openingHours,
-        when.date,
-        when.time,
+      const employees = await this.employeesForService(account.id, service.id);
+      const nearby = await this.findNearbySlots(
+        account,
+        employees,
+        service.duration,
+        5,
+      );
+      const selection = this.parseSlotSelection(trimmed, nearby);
+
+      if (selection === 'custom') {
+        await this.saveSession(account.id, phone, {
+          step: 'awaiting_custom_datetime',
+          data: {
+            clientId: sessionData.clientId,
+            clientName: sessionData.clientName,
+            serviceId: service.id,
+          },
+        });
+        return {
+          replies: [
+            `Me diga a data e o horário assim: 25/12 15:00\nFuncionamento: ${formatOpeningHoursSummary(account.openingHours)}`,
+          ],
+        };
+      }
+
+      if (!selection) {
+        return this.slotMenu(
+          account,
+          service,
+          sessionData,
+          phone,
+          'Não entendi. Escolha um horário da lista ou toque em Outro horário:',
+        );
+      }
+
+      return this.proceedWithSlot(
+        account,
+        services,
+        sessionData,
+        phone,
+        selection,
+      );
+    }
+
+    if (step === 'awaiting_custom_datetime') {
+      const service = services.find((s) => s.id === sessionData.serviceId);
+      if (!service) {
+        await this.resetSession(account.id, phone);
+        return this.serviceMenu(
+          'Vamos recomeçar — qual serviço você quer agendar?',
+          services,
+        );
+      }
+
+      const when = this.parseDateTime(trimmed);
+      if (!when) {
+        return {
+          replies: [
+            'Não consegui entender. Envie no formato dd/mm hh:mm, por exemplo: 25/12 15:00\nOu digite /reset para recomeçar.',
+          ],
+        };
+      }
+
+      return this.proceedWithSlot(
+        account,
+        services,
+        sessionData,
+        phone,
+        when,
+      );
+    }
+
+    if (step === 'awaiting_employee') {
+      const service = services.find((s) => s.id === sessionData.serviceId);
+      const { date, time } = sessionData;
+
+      // Sessão antiga (sem data/hora): redireciona para escolha de horário
+      if (!service || !date || !time) {
+        if (service) {
+          return this.slotMenu(account, service, sessionData, phone);
+        }
+        await this.resetSession(account.id, phone);
+        return this.serviceMenu(
+          'Vamos recomeçar — qual serviço você quer agendar?',
+          services,
+        );
+      }
+
+      const free = await this.availableEmployeesAt(
+        account,
+        service.id,
+        date,
+        time,
         service.duration,
       );
-      if (!hoursCheck.ok) {
-        await this.saveSession(account.id, phone, {
-          step: 'awaiting_datetime',
-          data: sessionData,
-        });
-        if (hoursCheck.reason === 'closed') {
-          return {
-            replies: [
-              `Nesse dia (${hoursCheck.label}) estamos fechados. Funcionamento: ${formatOpeningHoursSummary(account.openingHours)}. Escolha outra data/horário (dd/mm hh:mm).`,
-            ],
-          };
-        }
-        const busyOutside = await listBusySlots(this.prisma, {
-          accountId: account.id,
-          employeeId: sessionData.employeeId,
-          date: when.date,
-        });
-        const suggestions = this.suggestOnDate(
+      if (free.length === 0) {
+        return this.slotMenu(
           account,
-          busyOutside,
-          when.date,
-          service.duration,
+          service,
+          sessionData,
+          phone,
+          'Nesse horário ninguém está mais livre. Escolha outro:',
         );
-        const tip =
-          suggestions.length > 0
-            ? ` Horários dentro do expediente: ${suggestions.join(', ')}.`
-            : '';
-        return {
-          replies: [
-            `Esse horário fica fora do nosso expediente (${hoursCheck.day.start}–${hoursCheck.day.end}).${tip} Envie outra data/horário (dd/mm hh:mm).`,
-          ],
-        };
       }
 
-      const busy = await listBusySlots(this.prisma, {
-        accountId: account.id,
-        employeeId: sessionData.employeeId,
-        date: when.date,
+      const idx = this.resolveChoice(trimmed, free, {
+        idPrefix: 'emp',
+        label: (e) => e.name,
       });
-      if (hasScheduleConflict(busy, when.time, service.duration)) {
-        const suggestions = this.suggestOnDate(
-          account,
-          busy,
-          when.date,
-          service.duration,
+      if (idx === null) {
+        return this.employeeMenu(
+          `Não entendi. Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
+          free,
         );
-        const dateLabel = when.date.split('-').reverse().join('/');
-        const tip =
-          suggestions.length > 0
-            ? ` Horários livres com ${employee.name} em ${dateLabel}: ${suggestions.join(', ')}. Ou me diga outra data/horário.`
-            : ' Me diga outra data e horário no formato dd/mm hh:mm.';
-        await this.saveSession(account.id, phone, {
-          step: 'awaiting_datetime',
-          data: sessionData,
-        });
-        return {
-          replies: [
-            `${employee.name} já tem compromisso nesse horário.${tip}`,
-          ],
-        };
       }
 
+      const employee = free[idx];
       await this.saveSession(account.id, phone, {
         step: 'awaiting_confirmation',
-        data: { ...sessionData, ...when },
+        data: { ...sessionData, employeeId: employee.id },
       });
       return this.confirmMenu(
-        `Fechar ${service.name} com ${employee.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+        `Fechar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
+      );
+    }
+
+    // Compat: sessões antigas em awaiting_datetime → pedem horário de novo
+    if (step === 'awaiting_datetime') {
+      const service = services.find((s) => s.id === sessionData.serviceId);
+      if (service) {
+        return this.slotMenu(
+          account,
+          service,
+          sessionData,
+          phone,
+          'Vamos escolher o horário de novo:',
+        );
+      }
+      await this.resetSession(account.id, phone);
+      return this.serviceMenu(
+        'Vamos recomeçar — qual serviço você quer agendar?',
+        services,
       );
     }
 
@@ -559,22 +832,15 @@ export class WhatsappBotService {
           service.duration,
         );
         if (!hoursCheck.ok) {
-          await this.saveSession(account.id, phone, {
-            step: 'awaiting_datetime',
-            data: {
-              clientId: sessionData.clientId,
-              clientName: sessionData.clientName,
-              serviceId,
-              employeeId,
-            },
-          });
-          return {
-            replies: [
-              hoursCheck.reason === 'closed'
-                ? `Nesse dia estamos fechados. Escolha outra data/horário (dd/mm hh:mm).`
-                : `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Envie outra data/horário (dd/mm hh:mm).`,
-            ],
-          };
+          return this.slotMenu(
+            account,
+            service,
+            sessionData,
+            phone,
+            hoursCheck.reason === 'closed'
+              ? 'Nesse dia estamos fechados. Escolha outro horário:'
+              : `Horário fora do expediente (${hoursCheck.day.start}–${hoursCheck.day.end}). Escolha outro:`,
+          );
         }
 
         const busy = await listBusySlots(this.prisma, {
@@ -583,38 +849,20 @@ export class WhatsappBotService {
           date,
         });
         if (hasScheduleConflict(busy, time, service.duration)) {
-          const suggestions = this.suggestOnDate(
+          return this.slotMenu(
             account,
-            busy,
-            date,
-            service.duration,
+            service,
+            sessionData,
+            phone,
+            'Esse horário acabou de ser preenchido. Escolha outro:',
           );
-          const tip =
-            suggestions.length > 0
-              ? ` Sugestões: ${suggestions.join(', ')}. Ou envie outra data/horário (dd/mm hh:mm).`
-              : ' Envie outra data e horário (dd/mm hh:mm).';
-          await this.saveSession(account.id, phone, {
-            step: 'awaiting_datetime',
-            data: {
-              clientId: sessionData.clientId,
-              clientName: sessionData.clientName,
-              serviceId,
-              employeeId,
-            },
-          });
-          return {
-            replies: [
-              `Esse horário acabou de ser preenchido.${tip}`,
-            ],
-          };
         }
 
-        let client =
-          clientId
-            ? await this.prisma.client.findFirst({
-                where: { id: clientId, accountId: account.id },
-              })
-            : null;
+        let client = clientId
+          ? await this.prisma.client.findFirst({
+              where: { id: clientId, accountId: account.id },
+            })
+          : null;
         if (!client) {
           client = await this.findClient(account.id, phone);
         }

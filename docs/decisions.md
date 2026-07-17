@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-17 — Fluxo WA: serviço → horário → profissional
+
+- **Contexto:** Escolher profissional antes do horário forçava o cliente a decidir sem ver disponibilidade real.  
+- **Decisão:** Novo fluxo: serviço → slots próximos (qualquer profissional do serviço livre) ou horário customizado → lista só profissionais disponíveis naquele slot → confirmação. Se só 1 profissional livre, pula direto para confirmar.  
+- **Consequências:** Steps `awaiting_slot` / `awaiting_custom_datetime`; sessões antigas em `awaiting_datetime`/`awaiting_employee` sem data são redirecionadas.  
+- **Alternativas descartadas:** Manter profissional primeiro; calendário de dias separados sem slots.
+
 ## 2026-07-17 — Botões/listas no bot WhatsApp
 
 - **Contexto:** Escolhas eram só lista numerada em texto; no celular é mais natural tocar em botões.  

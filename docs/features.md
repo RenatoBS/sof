@@ -103,11 +103,12 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Pareamento no painel Conta (QR ou código com telefone).  
 - Ao conectar, a API configura o webhook da instância para `API_PUBLIC_URL/api/whatsapp/webhook`.  
 - Webhook `GET/POST /api/whatsapp/webhook`.  
-- Fluxo: serviço → profissionais **filtrados pelos serviços que realizam** → data/hora → confirmação → `Appointment` (`source=whatsapp`).  
-- **Menus interativos:** escolhas de serviço, profissional e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
+- Fluxo: **serviço → horário** (sugestões próximas ou data/hora livre) → **profissional disponível naquele horário** → confirmação → `Appointment` (`source=whatsapp`).  
+- **Horários:** após o serviço, o bot lista até 5 slots livres nos próximos dias (qualquer profissional do serviço) + opção **Outro horário** (`dd/mm hh:mm`).  
+- **Menus interativos:** escolhas de serviço, horário, profissional e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
 - **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão da conversa.  
-- **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta; informa o resumo ao pedir horário.  
-- **Conflito de agenda:** se o profissional já tem um horário confirmado que se sobrepõe (pela duração do serviço), o bot recusa, sugere até 3 horários livres **dentro do expediente** (passo 30 min) e pede outra data/hora; na confirmação há checagem de novo (corrida entre clientes).  
+- **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
+- **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).
 
 Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, sem QR no painel.
