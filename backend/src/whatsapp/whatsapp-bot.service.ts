@@ -264,11 +264,13 @@ export class WhatsappBotService {
     const lower = trimmed.toLowerCase();
     const phone = normalizePhone(customerPhone) || customerPhone;
 
-    if (lower === 'cancelar') {
+    if (lower === 'cancelar' || lower === '/reset' || lower === 'reset') {
       await this.resetSession(account.id, phone);
       return {
         replies: [
-          'Combinado, cancelei o que estava em andamento. É só chamar de novo quando quiser marcar um horário.',
+          lower === '/reset' || lower === 'reset'
+            ? 'Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser agendar.'
+            : 'Combinado, cancelei o que estava em andamento. É só chamar de novo quando quiser marcar um horário.',
         ],
       };
     }
