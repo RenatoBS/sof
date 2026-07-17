@@ -63,6 +63,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Listagem em cards (cor de identificação).  
 - CRUD: adicionar / **editar** / remover.  
 - Campos: nome, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
+- Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
 - Ao criar (ou resetar senha), o painel gera senha temporária e exibe uma vez; no 1º login o profissional troca a senha.  
 - `PUT /api/employees/:id` substitui nome, e-mail e a lista de serviços (`resetPassword` opcional).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
