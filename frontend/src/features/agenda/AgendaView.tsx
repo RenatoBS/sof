@@ -173,6 +173,9 @@ export function AgendaView({
                   </View>
                 );
               })}
+              <View style={[styles.dayHeader, styles.actionHeader]}>
+                <Text style={styles.dow}> </Text>
+              </View>
             </View>
 
             {employees.map((emp) => {
@@ -186,34 +189,15 @@ export function AgendaView({
                     collapsed && styles.empCellCollapsed,
                   ]}
                 >
-                  <Pressable
-                    onPress={() => toggleCollapsed(emp.id)}
-                    style={styles.empToggle}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      collapsed
-                        ? `Expandir agenda de ${emp.name}`
-                        : `Recolher agenda de ${emp.name}`
-                    }
-                  >
-                    <Text style={styles.empToggleIcon}>
-                      {collapsed ? '▸' : '▾'}
-                    </Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.empName} numberOfLines={1}>
-                        {emp.name}
-                      </Text>
-                      {!collapsed ? (
-                        <Text style={styles.specialty} numberOfLines={2}>
-                          {(emp.services || []).map((s) => s.name).join(', ') ||
-                            '—'}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-                  <Text style={styles.empToggleHint}>
-                    {collapsed ? 'Expandir' : 'Recolher'}
+                  <Text style={styles.empName} numberOfLines={1}>
+                    {emp.name}
                   </Text>
+                  {!collapsed ? (
+                    <Text style={styles.specialty} numberOfLines={2}>
+                      {(emp.services || []).map((s) => s.name).join(', ') ||
+                        '—'}
+                    </Text>
+                  ) : null}
                 </View>
                 {weekDates.map((day) => {
                   const ds = localDateStr(day);
@@ -306,6 +290,26 @@ export function AgendaView({
                     </Pressable>
                   );
                 })}
+                <Pressable
+                  onPress={() => toggleCollapsed(emp.id)}
+                  style={[
+                    styles.actionCell,
+                    collapsed && styles.actionCellCollapsed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    collapsed
+                      ? `Expandir agenda de ${emp.name}`
+                      : `Recolher agenda de ${emp.name}`
+                  }
+                >
+                  <Text style={styles.actionCellIcon}>
+                    {collapsed ? '▾' : '▴'}
+                  </Text>
+                  <Text style={styles.actionCellLabel}>
+                    {collapsed ? 'Expandir' : 'Recolher'}
+                  </Text>
+                </Pressable>
               </View>
               );
             })}
@@ -406,31 +410,41 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 3,
     justifyContent: 'center',
-    gap: 6,
   },
   empCellCollapsed: {
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
-  empToggle: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
+  empName: { fontWeight: '600', fontSize: 14 },
+  specialty: { fontSize: 11, color: d.muted, marginTop: 4 },
+  actionHeader: {
+    width: 88,
+    backgroundColor: '#f1f5f9',
   },
-  empToggleIcon: {
-    fontSize: 14,
-    color: d.muted,
-    marginTop: 2,
-    width: 12,
+  actionCell: {
+    width: 88,
+    backgroundColor: '#f8fafc',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 150,
   },
-  empToggleHint: {
+  actionCellCollapsed: {
+    minHeight: 64,
+  },
+  actionCellIcon: {
+    fontSize: 16,
+    color: d.accent,
+    fontWeight: '700',
+  },
+  actionCellLabel: {
     fontSize: 11,
     color: d.accent,
     fontWeight: '600',
-    marginLeft: 18,
+    textAlign: 'center',
   },
-  empName: { fontWeight: '600', fontSize: 14 },
-  specialty: { fontSize: 11, color: d.muted, marginTop: 4 },
   cell: {
     backgroundColor: '#fff',
     padding: 12,
