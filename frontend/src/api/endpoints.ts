@@ -187,6 +187,8 @@ export const dashboardApi = {
   updateAccount: (body: {
     whatsappPhoneNumberId?: string;
     openingHours?: OpeningHours;
+    address?: string;
+    businessName?: string;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
     api<{

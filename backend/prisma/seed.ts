@@ -85,6 +85,7 @@ async function main() {
       planPrice: 197,
       whatsappPhoneNumberId: '',
       openingHours: DEFAULT_OPENING_HOURS,
+      address: 'Rua Santa Madalena, 120 — Vila Madalena, São Paulo — SP',
       status: 'active',
     },
   });

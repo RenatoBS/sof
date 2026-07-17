@@ -16,6 +16,7 @@ export type Account = {
   planPrice: number;
   whatsappPhoneNumberId: string;
   openingHours: OpeningHours;
+  address: string;
   status: string;
   createdAt: string;
   whatsappConnectedAt?: string | null;

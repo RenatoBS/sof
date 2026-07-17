@@ -22,6 +22,8 @@ model Account {
   whatsappConnectedAt   DateTime?
   /// Json: 7 dias (0=domingo…6=sábado), cada um `{ open, start, end }` HH:MM
   openingHours          Json     @default("[{\"open\":false,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"}]")
+  /// Endereço do estabelecimento (opcional; bot pode informar na conversa)
+  address               String   @default("")
   status                String   @default("active")
   createdAt             DateTime @default(now())
 

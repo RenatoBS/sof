@@ -52,6 +52,20 @@ const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'fecha', 'fechad
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
 const CUSTOM_SLOT_RE = /^(outro|outra|custom|slot:custom)$/i;
 const SLOT_ID_RE = /^slot:(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/;
+const ADDRESS_RE =
+  /\b(endere[cç]o|onde\s+fica|localiza[cç][aã]o|como\s+chegar|onde\s+voc[eê]s?\s+(fica|est[aã]o)|maps?)\b/i;
+
+function accountAddress(account: Account) {
+  return String(account.address || '').trim();
+}
+
+function formatAddressReply(account: Account) {
+  const address = accountAddress(account);
+  if (!address) {
+    return `Ainda não temos o endereço cadastrado do ${account.businessName}. Pode perguntar pelo WhatsApp do salão ou tentar de novo em breve.`;
+  }
+  return `Endereço do ${account.businessName}:\n${address}`;
+}
 
 @Injectable()
 export class WhatsappBotService {
@@ -568,7 +582,11 @@ export class WhatsappBotService {
       data: { clientId: client.id, clientName: client.name },
     });
     return this.serviceMenu(
-      `Oi, ${client.name}! Aqui é a Sof, do ${account.businessName}. Qual serviço você quer agendar?`,
+      `Oi, ${client.name}! Aqui é a Sof, do ${account.businessName}.${
+        accountAddress(account)
+          ? ` Nosso endereço: ${accountAddress(account)}.`
+          : ''
+      } Qual serviço você quer agendar?`,
       services,
     );
   }
@@ -595,6 +613,10 @@ export class WhatsappBotService {
             : 'Combinado, cancelei o que estava em andamento. É só chamar de novo quando quiser marcar um horário.',
         ],
       };
+    }
+
+    if (ADDRESS_RE.test(trimmed) || lower === 'endereço' || lower === 'endereco') {
+      return { replies: [formatAddressReply(account)] };
     }
 
     const services = await this.prisma.service.findMany({
@@ -929,7 +951,9 @@ export class WhatsappBotService {
         });
         return {
           replies: [
-            'Marcado! Você recebe um lembrete antes do horário. Até lá!',
+            accountAddress(account)
+              ? `Marcado! Você recebe um lembrete antes do horário.\nEndereço: ${accountAddress(account)}\nAté lá!`
+              : 'Marcado! Você recebe um lembrete antes do horário. Até lá!',
           ],
           appointment: shaped,
         };

@@ -99,6 +99,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 ### Conta
 
 - Assinatura (plano, email, desde).  
+- **Endereço** do estabelecimento (opcional); `PUT /api/account` com `address`; o bot informa na conversa.  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
 - **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
 - Sair da conta.
@@ -115,7 +116,8 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Fluxo: **serviço → horário** (sugestões próximas ou data/hora livre) → **profissional disponível naquele horário** → confirmação → `Appointment` (`source=whatsapp`).  
 - **Horários:** após o serviço, o bot lista até 5 slots livres nos próximos dias (qualquer profissional do serviço) + opção **Outro horário** (`dd/mm hh:mm`).  
 - **Menus interativos:** escolhas de serviço (com **preço**), horário, profissional e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
-- **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão da conversa.  
+- **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão; perguntas de **endereço** / “onde fica” / “como chegar” devolvem `Account.address` (se cadastrado).  
+- **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  

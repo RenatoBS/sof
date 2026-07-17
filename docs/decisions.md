@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-17 — Endereço da conta no painel e no bot
+
+- **Contexto:** Cliente pergunta onde fica o salão; a conta precisava cadastrar endereço depois do signup.  
+- **Decisão:** Campo `Account.address` (string opcional); edição na aba Conta; bot responde a “endereço/onde fica/como chegar”, inclui no cumprimento e na confirmação do agendamento.  
+- **Consequências:** Contas sem endereço recebem mensagem pedindo para tentar depois; seed demo preenche um endereço de exemplo.  
+- **Alternativas descartadas:** Endereço só no checkout; pin de mapa obrigatório.
+
 ## 2026-07-17 — Pausar bot WhatsApp por cliente
 
 - **Contexto:** Dono precisa falar manualmente com um cliente sem o bot interferir, às vezes só por algumas horas.  

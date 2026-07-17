@@ -33,12 +33,14 @@ export class AccountController {
       businessName?: string;
       whatsappPhoneNumberId?: string;
       openingHours?: unknown;
+      address?: string;
     },
   ) {
     const data: {
       businessName?: string;
       whatsappPhoneNumberId?: string;
       openingHours?: Prisma.InputJsonValue;
+      address?: string;
     } = {};
 
     if (typeof body?.businessName === 'string') {
@@ -47,6 +49,9 @@ export class AccountController {
     }
     if (typeof body?.whatsappPhoneNumberId === 'string') {
       data.whatsappPhoneNumberId = body.whatsappPhoneNumberId.trim();
+    }
+    if (typeof body?.address === 'string') {
+      data.address = body.address.trim().slice(0, 500);
     }
     if (body?.openingHours !== undefined) {
       const parsed = parseOpeningHoursInput(body.openingHours);
