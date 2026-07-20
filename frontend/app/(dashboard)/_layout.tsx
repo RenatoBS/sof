@@ -7,6 +7,7 @@ import {
   Text,
   View,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { dashboardApi } from '@/src/api/endpoints';
@@ -27,6 +28,8 @@ const TABS = [
 ] as const;
 
 function DashboardChrome({ children }: { children: React.ReactNode }) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 720;
   const { account, loading, logout } = useAuth();
   const { loadAll, setAppointments, setClients } = useDashboard();
   const { showToast } = useToast();
@@ -80,10 +83,19 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.root}>
       <View style={styles.topbar}>
-        <View style={styles.topbarInner}>
-          <View>
-            <Text style={styles.biz}>{account.businessName}</Text>
-            <Text style={styles.email}>{account.email}</Text>
+        <View
+          style={[styles.topbarInner, isCompact && styles.topbarInnerCompact]}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              style={[styles.biz, isCompact && styles.bizCompact]}
+              numberOfLines={1}
+            >
+              {account.businessName}
+            </Text>
+            <Text style={styles.email} numberOfLines={1}>
+              {account.email}
+            </Text>
           </View>
           <SofButton
             title="Sair"
@@ -101,7 +113,10 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabbarInner}
+          contentContainerStyle={[
+            styles.tabbarInner,
+            isCompact && styles.tabbarInnerCompact,
+          ]}
         >
           {TABS.map((tab) => {
             const active = pathname.includes(tab.match);
@@ -120,7 +135,13 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         </ScrollView>
       </View>
 
-      <ScrollView style={styles.main} contentContainerStyle={styles.mainContent}>
+      <ScrollView
+        style={styles.main}
+        contentContainerStyle={[
+          styles.mainContent,
+          isCompact && styles.mainContentCompact,
+        ]}
+      >
         {children}
       </ScrollView>
     </View>
@@ -158,8 +179,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+  },
+  topbarInnerCompact: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
   biz: { fontSize: 24, fontWeight: '700', color: d.ink },
+  bizCompact: { fontSize: 18 },
   email: { fontSize: 14, color: d.muted, marginTop: 4 },
   tabbar: {
     backgroundColor: d.surface,
@@ -169,6 +196,10 @@ const styles = StyleSheet.create({
   tabbarInner: {
     paddingHorizontal: 32,
     gap: 48,
+  },
+  tabbarInnerCompact: {
+    paddingHorizontal: 16,
+    gap: 20,
   },
   tabBtn: {
     paddingVertical: 16,
@@ -180,4 +211,5 @@ const styles = StyleSheet.create({
   tabTextActive: { color: d.ink, fontWeight: '600' },
   main: { flex: 1 },
   mainContent: { padding: 32, gap: 32 },
+  mainContentCompact: { padding: 16, gap: 20 },
 });

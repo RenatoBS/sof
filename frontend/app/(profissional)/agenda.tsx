@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import type { Appointment, Client, Service } from '@/src/api/types';
 import { employeeApi } from '@/src/api/endpoints';
@@ -18,6 +19,7 @@ import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const COMPACT_BREAKPOINT = 720;
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -37,11 +39,16 @@ function getWeekDates(offset: number) {
 }
 
 export default function ProfissionalAgendaScreen() {
+  const { width } = useWindowDimensions();
+  const isCompact = width < COMPACT_BREAKPOINT;
   const { employee } = useEmployeeAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(() =>
+    localDateStr(new Date()),
+  );
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [createDraft, setCreateDraft] = useState<AppointmentDraft | null>(
@@ -52,6 +59,15 @@ export default function ProfissionalAgendaScreen() {
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const todayStr = localDateStr(new Date());
+
+  useEffect(() => {
+    const inWeek = weekDates.some((day) => localDateStr(day) === selectedDate);
+    if (inWeek) return;
+    const todayInWeek = weekDates.find(
+      (day) => localDateStr(day) === todayStr,
+    );
+    setSelectedDate(localDateStr(todayInWeek || weekDates[0]));
+  }, [weekDates, selectedDate, todayStr]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,20 +132,24 @@ export default function ProfissionalAgendaScreen() {
     setCreateDraft(null);
   };
 
+  const selectedDayItems = forDay(selectedDate);
+
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Minha agenda</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.h2, isCompact && styles.h2Compact]}>
+            Minha agenda
+          </Text>
           <Text style={styles.sub}>
             {weekDates[0].toLocaleDateString('pt-BR')} a{' '}
-            {weekDates[6].toLocaleDateString('pt-BR')} — clique no dia para
-            agendar
+            {weekDates[6].toLocaleDateString('pt-BR')}
+            {isCompact ? ' — escolha o dia' : ' — clique no dia para agendar'}
           </Text>
         </View>
         <View style={styles.toolbar}>
           <SofButton
-            title="Semana anterior"
+            title={isCompact ? 'Ant.' : 'Semana anterior'}
             variant="light"
             theme="dashboard"
             onPress={() => setWeekOffset((w) => w - 1)}
@@ -141,7 +161,7 @@ export default function ProfissionalAgendaScreen() {
             onPress={() => setWeekOffset(0)}
           />
           <SofButton
-            title="Próxima"
+            title={isCompact ? 'Próx.' : 'Próxima'}
             variant="light"
             theme="dashboard"
             onPress={() => setWeekOffset((w) => w + 1)}
@@ -152,6 +172,112 @@ export default function ProfissionalAgendaScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
         <ActivityIndicator color={d.muted} />
+      ) : isCompact ? (
+        <View style={styles.compactRoot}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayStrip}
+          >
+            {weekDates.map((day) => {
+              const ds = localDateStr(day);
+              const isToday = ds === todayStr;
+              const active = ds === selectedDate;
+              const count = forDay(ds).length;
+              return (
+                <Pressable
+                  key={ds}
+                  onPress={() => setSelectedDate(ds)}
+                  style={[
+                    styles.dayChip,
+                    isToday && !active && styles.dayChipToday,
+                    active && styles.dayChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayChipDow,
+                      active && styles.dayChipTextActive,
+                    ]}
+                  >
+                    {DOW[day.getDay()]}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dayChipDom,
+                      active && styles.dayChipTextActive,
+                    ]}
+                  >
+                    {day.getDate()}
+                  </Text>
+                  {count > 0 ? (
+                    <Text
+                      style={[
+                        styles.dayChipCount,
+                        active && styles.dayChipTextActive,
+                      ]}
+                    >
+                      {count}
+                    </Text>
+                  ) : (
+                    <Text style={styles.dayChipCountPlaceholder}> </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <View style={styles.dayPanel}>
+            <View style={styles.dayPanelHead}>
+              <Text style={styles.dayPanelTitle}>
+                {DOW[new Date(selectedDate + 'T12:00:00').getDay()]}{' '}
+                {selectedDate.split('-').reverse().join('/')}
+              </Text>
+              <SofButton
+                title="+ Agendar"
+                variant="light"
+                theme="dashboard"
+                onPress={() => {
+                  setSelected(null);
+                  setCreateDraft({
+                    employeeId: employee.id,
+                    date: selectedDate,
+                  });
+                }}
+              />
+            </View>
+            {selectedDayItems.length === 0 ? (
+              <Pressable
+                onPress={() => {
+                  setSelected(null);
+                  setCreateDraft({
+                    employeeId: employee.id,
+                    date: selectedDate,
+                  });
+                }}
+                style={styles.compactEmpty}
+              >
+                <Text style={styles.empty}>Livre — toque para agendar</Text>
+              </Pressable>
+            ) : (
+              selectedDayItems.map((a) => (
+                <Pressable
+                  key={a.id}
+                  onPress={() => {
+                    setCreateDraft(null);
+                    setSelected(a);
+                  }}
+                  style={[styles.card, { borderLeftColor: employee.color }]}
+                >
+                  <Text style={styles.time}>{a.time}</Text>
+                  <Text style={styles.client}>
+                    {a.kind === 'block' ? a.title || 'Evento' : a.clientName}
+                  </Text>
+                </Pressable>
+              ))
+            )}
+          </View>
+        </View>
       ) : (
         <View style={styles.grid}>
           {weekDates.map((day) => {
@@ -290,9 +416,79 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   h2: { fontSize: 28, fontWeight: '700', color: d.ink },
+  h2Compact: { fontSize: 22 },
   sub: { color: d.muted, marginTop: 6 },
   toolbar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   error: { color: '#dc2626', fontWeight: '600' },
+  compactRoot: { gap: 16 },
+  dayStrip: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+    paddingRight: 8,
+  },
+  dayChip: {
+    width: 56,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: d.radiusSm,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayChipToday: {
+    borderWidth: 1,
+    borderColor: d.accent,
+  },
+  dayChipActive: {
+    backgroundColor: d.ink,
+  },
+  dayChipDow: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: d.muted,
+  },
+  dayChipDom: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+  },
+  dayChipCount: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: d.accent,
+    marginTop: 2,
+  },
+  dayChipCountPlaceholder: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  dayChipTextActive: {
+    color: '#fff',
+  },
+  dayPanel: {
+    backgroundColor: d.surface,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 14,
+    gap: 10,
+  },
+  dayPanelHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  dayPanelTitle: {
+    fontWeight: '700',
+    color: d.ink,
+    fontSize: 15,
+    flex: 1,
+  },
+  compactEmpty: {
+    paddingVertical: 16,
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

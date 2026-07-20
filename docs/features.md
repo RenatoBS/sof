@@ -46,10 +46,11 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Agenda
 
-- Grade semanal por profissional × dia.  
+- **Desktop (≥720px):** grade semanal por profissional × dia.  
+- **Celular (<720px):** seletor de dia (chips Dom–Sáb) + lista vertical por profissional do dia escolhido (evita scroll horizontal da grade).  
 - Navegação: semana anterior / hoje / próxima.  
-- Clique numa célula abre o modal; clique num horário edita.  
-- **Recolher / expandir** no final de cada linha do profissional; recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
+- Clique numa célula (ou “+ Agendar”) abre o modal; clique num horário edita.  
+- **Recolher / expandir** (desktop) no final de cada linha do profissional; recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
 - Modal com dois tipos:
   - **Serviço** — cliente + serviço + profissional (como antes).
   - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).
@@ -72,7 +73,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 ### Área do profissional
 
 - Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
-- Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional.  
+- Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
 - Se `mustChangePassword`, redireciona para `/(profissional)/trocar-senha`.
 

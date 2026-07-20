@@ -15,6 +15,7 @@ import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const COMPACT_BREAKPOINT = 720;
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -41,12 +42,16 @@ export function AgendaView({
   onCreateAppointment: (draft: { employeeId: string; date: string }) => void;
 }) {
   const { width } = useWindowDimensions();
+  const isCompact = width < COMPACT_BREAKPOINT;
   const colW = Math.max(110, Math.min(140, (width - 220) / 7));
   const { employees, appointments, getService, loadAll } = useDashboard();
   const [weekOffset, setWeekOffset] = useState(0);
   /** IDs de profissionais com a linha recolhida (só 1º horário por dia). */
   const [collapsedEmpIds, setCollapsedEmpIds] = useState<Set<string>>(
     () => new Set(),
+  );
+  const [selectedDate, setSelectedDate] = useState(() =>
+    localDateStr(new Date()),
   );
   const [waPhone, setWaPhone] = useState('5511999990000');
   const [waMessage, setWaMessage] = useState('');
@@ -58,6 +63,15 @@ export function AgendaView({
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const todayStr = localDateStr(new Date());
+
+  useEffect(() => {
+    const inWeek = weekDates.some((day) => localDateStr(day) === selectedDate);
+    if (inWeek) return;
+    const todayInWeek = weekDates.find(
+      (day) => localDateStr(day) === todayStr,
+    );
+    setSelectedDate(localDateStr(todayInWeek || weekDates[0]));
+  }, [weekDates, selectedDate, todayStr]);
 
   const toggleCollapsed = (employeeId: string) => {
     setCollapsedEmpIds((prev) => {
@@ -92,20 +106,84 @@ export function AgendaView({
     }
   };
 
+  const dayApptsFor = (employeeId: string, dateStr: string) =>
+    appointments
+      .filter(
+        (a) =>
+          a.status === 'confirmed' &&
+          a.employeeId === employeeId &&
+          a.date === dateStr,
+      )
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+  const renderApptCard = (
+    appt: Appointment,
+    opts?: { collapsed?: boolean },
+  ) => {
+    const isBlock = appt.kind === 'block';
+    const collapsed = !!opts?.collapsed;
+    return (
+      <Pressable
+        key={appt.id}
+        onPress={(e) => {
+          e?.stopPropagation?.();
+          onSelectAppointment(appt);
+        }}
+        style={[
+          styles.appt,
+          appt.source === 'whatsapp' && styles.apptWa,
+          isBlock && styles.apptBlock,
+          collapsed && styles.apptCollapsed,
+        ]}
+      >
+        <Text style={styles.apptTime}>{appt.time}</Text>
+        <Text style={styles.apptClient} numberOfLines={1}>
+          {isBlock ? appt.title || 'Evento' : appt.clientName}
+        </Text>
+        {!collapsed ? (
+          !isBlock ? (
+            <>
+              <Text style={styles.apptSvc}>
+                {getService(appt.serviceId || '')?.name}
+              </Text>
+              <Text style={styles.apptPrice}>
+                {formatCurrency(appt.price)}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.apptSvc}>
+              {appt.durationMinutes
+                ? `${appt.durationMinutes} min`
+                : 'Bloqueio'}
+              {appt.recurrenceGroupId ? ' · recorrente' : ''}
+            </Text>
+          )
+        ) : null}
+        {!collapsed && appt.source === 'whatsapp' ? (
+          <Text style={styles.waBadge}>WhatsApp</Text>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const weekLabel = `${weekDates[0].toLocaleDateString('pt-BR')} a ${weekDates[6].toLocaleDateString('pt-BR')}`;
+
   return (
-    <View style={{ gap: 32 }}>
-      <View style={styles.panelHead}>
-        <View>
-          <Text style={styles.h2}>Agenda Semanal</Text>
-          <Text style={styles.sub}>
-            {weekDates[0].toLocaleDateString('pt-BR')} a{' '}
-            {weekDates[6].toLocaleDateString('pt-BR')} — clique numa célula para
-            agendar ou em um horário para editar
+    <View style={{ gap: isCompact ? 20 : 32 }}>
+      <View style={[styles.panelHead, isCompact && styles.panelHeadCompact]}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.h2, isCompact && styles.h2Compact]}>
+            Agenda Semanal
+          </Text>
+          <Text style={[styles.sub, isCompact && styles.subCompact]}>
+            {isCompact
+              ? `${weekLabel} — escolha o dia`
+              : `${weekLabel} — clique numa célula para agendar ou em um horário para editar`}
           </Text>
         </View>
         <View style={styles.toolbar}>
           <SofButton
-            title="Semana Anterior"
+            title={isCompact ? 'Ant.' : 'Semana Anterior'}
             variant="light"
             theme="dashboard"
             onPress={() => setWeekOffset((w) => w - 1)}
@@ -117,7 +195,7 @@ export function AgendaView({
             onPress={() => setWeekOffset(0)}
           />
           <SofButton
-            title="Próxima Semana"
+            title={isCompact ? 'Próx.' : 'Próxima Semana'}
             variant="light"
             theme="dashboard"
             onPress={() => setWeekOffset((w) => w + 1)}
@@ -130,6 +208,122 @@ export function AgendaView({
           <Text style={styles.emptyText}>
             Nenhum profissional cadastrado ainda. Adicione um na aba Profissionais.
           </Text>
+        </View>
+      ) : isCompact ? (
+        <View style={styles.compactRoot}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayStrip}
+          >
+            {weekDates.map((day) => {
+              const ds = localDateStr(day);
+              const isToday = ds === todayStr;
+              const active = ds === selectedDate;
+              const count = appointments.filter(
+                (a) => a.status === 'confirmed' && a.date === ds,
+              ).length;
+              return (
+                <Pressable
+                  key={ds}
+                  onPress={() => setSelectedDate(ds)}
+                  style={[
+                    styles.dayChip,
+                    isToday && !active && styles.dayChipToday,
+                    active && styles.dayChipActive,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text
+                    style={[
+                      styles.dayChipDow,
+                      active && styles.dayChipTextActive,
+                    ]}
+                  >
+                    {DOW[day.getDay()]}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dayChipDom,
+                      active && styles.dayChipTextActive,
+                    ]}
+                  >
+                    {day.getDate()}
+                  </Text>
+                  {count > 0 ? (
+                    <Text
+                      style={[
+                        styles.dayChipCount,
+                        active && styles.dayChipTextActive,
+                      ]}
+                    >
+                      {count}
+                    </Text>
+                  ) : (
+                    <Text style={styles.dayChipCountPlaceholder}> </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <View style={styles.compactList}>
+            {employees.map((emp) => {
+              const dayAppts = dayApptsFor(emp.id, selectedDate);
+              return (
+                <View
+                  key={emp.id}
+                  style={[
+                    styles.empCard,
+                    { borderLeftColor: emp.color || d.accent },
+                  ]}
+                >
+                  <View style={styles.empCardHead}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.empName} numberOfLines={1}>
+                        {emp.name}
+                      </Text>
+                      <Text style={styles.specialty} numberOfLines={1}>
+                        {(emp.services || []).map((s) => s.name).join(', ') ||
+                          '—'}
+                      </Text>
+                    </View>
+                    <SofButton
+                      title="+ Agendar"
+                      variant="light"
+                      theme="dashboard"
+                      onPress={() =>
+                        onCreateAppointment({
+                          employeeId: emp.id,
+                          date: selectedDate,
+                        })
+                      }
+                    />
+                  </View>
+                  {dayAppts.length === 0 ? (
+                    <Pressable
+                      onPress={() =>
+                        onCreateAppointment({
+                          employeeId: emp.id,
+                          date: selectedDate,
+                        })
+                      }
+                      style={styles.compactEmpty}
+                    >
+                      <Text style={styles.cellHint}>
+                        Livre — toque para agendar
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <View style={styles.compactAppts}>
+                      {dayAppts.map((appt) => renderApptCard(appt))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
         </View>
       ) : (
         <ScrollView
@@ -155,18 +349,12 @@ export function AgendaView({
                     ]}
                   >
                     <Text
-                      style={[
-                        styles.dow,
-                        isToday && { color: '#fff' },
-                      ]}
+                      style={[styles.dow, isToday && { color: '#fff' }]}
                     >
                       {DOW[day.getDay()]}
                     </Text>
                     <Text
-                      style={[
-                        styles.dom,
-                        isToday && { color: '#fff' },
-                      ]}
+                      style={[styles.dom, isToday && { color: '#fff' }]}
                     >
                       {day.getDate()}
                     </Text>
@@ -181,143 +369,98 @@ export function AgendaView({
             {employees.map((emp) => {
               const collapsed = collapsedEmpIds.has(emp.id);
               return (
-              <View key={emp.id} style={styles.row}>
-                <View
-                  style={[
-                    styles.empCell,
-                    { width: 150, borderLeftColor: emp.color || d.accent },
-                    collapsed && styles.empCellCollapsed,
-                  ]}
-                >
-                  <Text style={styles.empName} numberOfLines={1}>
-                    {emp.name}
-                  </Text>
-                  {!collapsed ? (
-                    <Text style={styles.specialty} numberOfLines={2}>
-                      {(emp.services || []).map((s) => s.name).join(', ') ||
-                        '—'}
+                <View key={emp.id} style={styles.row}>
+                  <View
+                    style={[
+                      styles.empCell,
+                      { width: 150, borderLeftColor: emp.color || d.accent },
+                      collapsed && styles.empCellCollapsed,
+                    ]}
+                  >
+                    <Text style={styles.empName} numberOfLines={1}>
+                      {emp.name}
                     </Text>
-                  ) : null}
+                    {!collapsed ? (
+                      <Text style={styles.specialty} numberOfLines={2}>
+                        {(emp.services || []).map((s) => s.name).join(', ') ||
+                          '—'}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {weekDates.map((day) => {
+                    const ds = localDateStr(day);
+                    const dayAppts = dayApptsFor(emp.id, ds);
+                    const visibleAppts = collapsed
+                      ? dayAppts.slice(0, 1)
+                      : dayAppts;
+                    const hiddenCount = collapsed
+                      ? Math.max(0, dayAppts.length - 1)
+                      : 0;
+                    return (
+                      <Pressable
+                        key={ds}
+                        onPress={() =>
+                          onCreateAppointment({
+                            employeeId: emp.id,
+                            date: ds,
+                          })
+                        }
+                        style={[
+                          styles.cell,
+                          {
+                            width: colW,
+                            borderLeftColor: emp.color || d.accent,
+                          },
+                          collapsed && styles.cellCollapsed,
+                        ]}
+                      >
+                        {dayAppts.length === 0 ? (
+                          <Text style={styles.cellHint}>+ Agendar</Text>
+                        ) : null}
+                        {visibleAppts.map((appt) =>
+                          renderApptCard(appt, { collapsed }),
+                        )}
+                        {hiddenCount > 0 ? (
+                          <Pressable
+                            onPress={(e) => {
+                              e?.stopPropagation?.();
+                              toggleCollapsed(emp.id);
+                            }}
+                          >
+                            <Text style={styles.moreHint}>+{hiddenCount}</Text>
+                          </Pressable>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                  <Pressable
+                    onPress={() => toggleCollapsed(emp.id)}
+                    style={[
+                      styles.actionCell,
+                      collapsed && styles.actionCellCollapsed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      collapsed
+                        ? `Expandir agenda de ${emp.name}`
+                        : `Recolher agenda de ${emp.name}`
+                    }
+                  >
+                    <Text style={styles.actionCellIcon}>
+                      {collapsed ? '▾' : '▴'}
+                    </Text>
+                    <Text style={styles.actionCellLabel}>
+                      {collapsed ? 'Expandir' : 'Recolher'}
+                    </Text>
+                  </Pressable>
                 </View>
-                {weekDates.map((day) => {
-                  const ds = localDateStr(day);
-                  const dayAppts = appointments
-                    .filter(
-                      (a) =>
-                        a.status === 'confirmed' &&
-                        a.employeeId === emp.id &&
-                        a.date === ds,
-                    )
-                    .sort((a, b) => a.time.localeCompare(b.time));
-                  const visibleAppts = collapsed
-                    ? dayAppts.slice(0, 1)
-                    : dayAppts;
-                  const hiddenCount = collapsed
-                    ? Math.max(0, dayAppts.length - 1)
-                    : 0;
-                  return (
-                    <Pressable
-                      key={ds}
-                      onPress={() =>
-                        onCreateAppointment({ employeeId: emp.id, date: ds })
-                      }
-                      style={[
-                        styles.cell,
-                        { width: colW, borderLeftColor: emp.color || d.accent },
-                        collapsed && styles.cellCollapsed,
-                      ]}
-                    >
-                      {dayAppts.length === 0 ? (
-                        <Text style={styles.cellHint}>+ Agendar</Text>
-                      ) : null}
-                      {visibleAppts.map((appt) => {
-                        const isBlock = appt.kind === 'block';
-                        return (
-                        <Pressable
-                          key={appt.id}
-                          onPress={(e) => {
-                            e?.stopPropagation?.();
-                            onSelectAppointment(appt);
-                          }}
-                          style={[
-                            styles.appt,
-                            appt.source === 'whatsapp' && styles.apptWa,
-                            isBlock && styles.apptBlock,
-                            collapsed && styles.apptCollapsed,
-                          ]}
-                        >
-                          <Text style={styles.apptTime}>{appt.time}</Text>
-                          <Text style={styles.apptClient} numberOfLines={1}>
-                            {isBlock
-                              ? appt.title || 'Evento'
-                              : appt.clientName}
-                          </Text>
-                          {!collapsed ? (
-                            !isBlock ? (
-                              <>
-                                <Text style={styles.apptSvc}>
-                                  {getService(appt.serviceId || '')?.name}
-                                </Text>
-                                <Text style={styles.apptPrice}>
-                                  {formatCurrency(appt.price)}
-                                </Text>
-                              </>
-                            ) : (
-                              <Text style={styles.apptSvc}>
-                                {appt.durationMinutes
-                                  ? `${appt.durationMinutes} min`
-                                  : 'Bloqueio'}
-                                {appt.recurrenceGroupId ? ' · recorrente' : ''}
-                              </Text>
-                            )
-                          ) : null}
-                          {!collapsed && appt.source === 'whatsapp' ? (
-                            <Text style={styles.waBadge}>WhatsApp</Text>
-                          ) : null}
-                        </Pressable>
-                        );
-                      })}
-                      {hiddenCount > 0 ? (
-                        <Pressable
-                          onPress={(e) => {
-                            e?.stopPropagation?.();
-                            toggleCollapsed(emp.id);
-                          }}
-                        >
-                          <Text style={styles.moreHint}>+{hiddenCount}</Text>
-                        </Pressable>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  onPress={() => toggleCollapsed(emp.id)}
-                  style={[
-                    styles.actionCell,
-                    collapsed && styles.actionCellCollapsed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    collapsed
-                      ? `Expandir agenda de ${emp.name}`
-                      : `Recolher agenda de ${emp.name}`
-                  }
-                >
-                  <Text style={styles.actionCellIcon}>
-                    {collapsed ? '▾' : '▴'}
-                  </Text>
-                  <Text style={styles.actionCellLabel}>
-                    {collapsed ? 'Expandir' : 'Recolher'}
-                  </Text>
-                </Pressable>
-              </View>
               );
             })}
           </View>
         </ScrollView>
       )}
 
-      <View style={styles.card}>
+      <View style={[styles.card, isCompact && styles.cardCompact]}>
         <Text style={styles.cardTitle}>Bot do WhatsApp — simulador</Text>
         <Text style={styles.cardDesc}>
           Em produção, os agendamentos chegam de verdade pelo WhatsApp do cliente e
@@ -339,15 +482,19 @@ export function AgendaView({
             </View>
           ))}
         </ScrollView>
-        <View style={styles.waForm}>
+        <View style={[styles.waForm, isCompact && styles.waFormCompact]}>
           <TextInput
-            style={styles.waInput}
+            style={[styles.waInput, isCompact && styles.waInputCompact]}
             value={waPhone}
             onChangeText={setWaPhone}
             placeholder="Telefone do cliente"
           />
           <TextInput
-            style={[styles.waInput, { flex: 1 }]}
+            style={[
+              styles.waInput,
+              { flex: 1 },
+              isCompact && styles.waInputCompact,
+            ]}
             value={waMessage}
             onChangeText={setWaMessage}
             placeholder="Mensagem (ex.: oi)"
@@ -372,8 +519,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 16,
   },
+  panelHeadCompact: {
+    gap: 12,
+  },
   h2: { fontSize: 30, fontWeight: '700', color: d.ink },
+  h2Compact: { fontSize: 22 },
   sub: { color: d.muted, fontSize: 14, marginTop: 8 },
+  subCompact: { fontSize: 13, marginTop: 4 },
   toolbar: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   empty: {
     backgroundColor: d.surface,
@@ -384,6 +536,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { color: d.muted },
+  compactRoot: { gap: 16 },
+  dayStrip: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+    paddingRight: 8,
+  },
+  dayChip: {
+    width: 56,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: d.radiusSm,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayChipToday: {
+    borderWidth: 1,
+    borderColor: d.accent,
+  },
+  dayChipActive: {
+    backgroundColor: d.ink,
+  },
+  dayChipDow: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: d.muted,
+  },
+  dayChipDom: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+  },
+  dayChipCount: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: d.accent,
+    marginTop: 2,
+  },
+  dayChipCountPlaceholder: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  dayChipTextActive: {
+    color: '#fff',
+  },
+  compactList: { gap: 12 },
+  empCard: {
+    backgroundColor: d.surface,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.line,
+    borderLeftWidth: 4,
+    padding: 14,
+    gap: 12,
+  },
+  empCardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  compactEmpty: {
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  compactAppts: { gap: 8 },
   calendarScroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -501,6 +719,9 @@ const styles = StyleSheet.create({
     padding: 32,
     gap: 12,
   },
+  cardCompact: {
+    padding: 16,
+  },
   cardTitle: { fontWeight: '600', fontSize: 16, marginBottom: 4 },
   cardDesc: { color: d.muted, fontSize: 14, marginBottom: 8 },
   waStatus: {
@@ -544,6 +765,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   waForm: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', alignItems: 'center' },
+  waFormCompact: { flexDirection: 'column', alignItems: 'stretch' },
   waInput: {
     borderWidth: 1,
     borderColor: '#cbd5e1',
@@ -553,5 +775,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minWidth: 160,
     backgroundColor: '#fff',
+  },
+  waInputCompact: {
+    minWidth: 0,
+    width: '100%',
   },
 });

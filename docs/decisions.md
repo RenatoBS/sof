@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-20 — Agenda responsiva no celular
+
+- **Contexto:** A grade profissional × 7 dias forçava scroll horizontal e células estreitas no mobile.  
+- **Decisão:** Abaixo de 720px, agenda do painel e do profissional usam chips de dia + lista vertical do dia selecionado; desktop mantém a grade/colunas.  
+- **Consequências:** Menos overview da semana inteira de uma vez no celular; troca de dia é explícita.  
+- **Alternativas descartadas:** Só zoom/scroll na grade; agenda diária sem chips da semana.
+
 ## 2026-07-20 — Menu WA: ver/cancelar se há agendamento futuro
 
 - **Contexto:** Cliente que já tinha horário marcado só via serviços de novo; não havia caminho no bot para consultar ou cancelar.  
