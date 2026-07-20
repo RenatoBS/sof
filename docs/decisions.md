@@ -17,6 +17,27 @@ Formato sugerido:
 
 ---
 
+## 2026-07-20 — Menu WA: ver/cancelar se há agendamento futuro
+
+- **Contexto:** Cliente que já tinha horário marcado só via serviços de novo; não havia caminho no bot para consultar ou cancelar.  
+- **Decisão:** No cumprimento, se existirem agendamentos `confirmed` futuros do cliente, o menu inclui os serviços + **Ver agendamentos** + **Cancelar horário**. Sem futuro, só serviços. Cancelamento com confirmação Sim/Não e soft-cancel (`status=cancelled`) + SSE.  
+- **Consequências:** Steps `awaiting_cancel_pick` / `awaiting_cancel_confirm`; comando global `cancelar` continua reiniciando a conversa (não cancela horário).  
+- **Alternativas descartadas:** Menu separado Agendar/Gerenciar antes dos serviços; cancelar sem confirmação.
+
+## 2026-07-20 — Fluxo WA: dia e horário em duas perguntas
+
+- **Contexto:** Listar slots misturados de vários dias (ex. “Hoje 15:00”, “Amanhã 10:00”) deixava a escolha densa e pouco clara.  
+- **Decisão:** Escolha em duas etapas: (1) **Hoje / Amanhã / Outra data** — Hoje e Amanhã só aparecem se houver ao menos 1 vaga; Outra data pede `dd/mm`; (2) até **5 horários** livres daquele dia + **Outro horário** (`hh:mm`). Steps `awaiting_day`, `awaiting_custom_date`, `awaiting_time`, `awaiting_custom_time`. Sessões antigas `awaiting_slot` / `awaiting_custom_datetime` redirecionam para o menu de dia.  
+- **Consequências:** Fluxo mais longo em mensagens, mas menus menores e mais previsíveis; aceita atalho `dd/mm hh:mm` em vários steps.  
+- **Alternativas descartadas:** Manter lista única de slots multi-dia; calendário com muitos dias sugeridos.
+
+## 2026-07-20 — Fluxo WA: profissional ou horário após o serviço
+
+- **Contexto:** Só horário → profissional escondia a preferência por um profissional; só profissional → horário não deixava o cliente priorizar disponibilidade.  
+- **Decisão:** Após o serviço, menu com profissionais do serviço e, por último, **Escolher horário**. Caminho profissional → slots só desse profissional → confirmação. Caminho horário → slots de qualquer um → profissionais livres naquele horário + **Deixa a Sof escolher** (`emp:auto`, pega o primeiro livre) → confirmação. Se só 1 profissional livre no slot, confirma direto.  
+- **Consequências:** Novo step `awaiting_path`; `awaiting_slot` / custom preservam `employeeId` quando já escolhido; menu de profissionais no caminho horário-primeiro inclui Sof.  
+- **Alternativas descartadas:** Manter só horário → profissional; forçar sempre profissional antes do horário sem atalho.
+
 ## 2026-07-17 — Endereço da conta no painel e no bot
 
 - **Contexto:** Cliente pergunta onde fica o salão; a conta precisava cadastrar endereço depois do signup.  
