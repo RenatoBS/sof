@@ -118,6 +118,7 @@ export default function AccountScreen() {
 
   const [reminderMinutes, setReminderMinutes] = useState(120);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
+  const [timezoneOpen, setTimezoneOpen] = useState(false);
   const [reminderSaved, setReminderSaved] = useState('');
   const [reminderError, setReminderError] = useState('');
   const [savingReminder, setSavingReminder] = useState(false);
@@ -622,25 +623,47 @@ export default function AccountScreen() {
           })}
         </View>
         <Text style={[styles.label, { marginTop: 8 }]}>Fuso horário</Text>
-        <View style={styles.chips}>
-          {TIMEZONE_OPTIONS.map((opt) => {
-            const active = timezone === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => setTimezone(opt.value)}
-                style={[styles.chip, active && styles.chipActive]}
-                disabled={savingReminder}
-              >
-                <Text
-                  style={[styles.chipText, active && styles.chipTextActive]}
+        <Pressable
+          onPress={() => setTimezoneOpen((prev) => !prev)}
+          style={styles.tzButton}
+          disabled={savingReminder}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: timezoneOpen }}
+        >
+          <Text style={styles.tzButtonText}>
+            {TIMEZONE_OPTIONS.find((opt) => opt.value === timezone)?.label ||
+              timezone}
+          </Text>
+          <Text style={styles.tzChevron}>{timezoneOpen ? '▲' : '▼'}</Text>
+        </Pressable>
+        {timezoneOpen ? (
+          <View style={styles.tzList}>
+            {TIMEZONE_OPTIONS.map((opt) => {
+              const active = timezone === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => {
+                    setTimezone(opt.value);
+                    setTimezoneOpen(false);
+                  }}
+                  style={[styles.tzOption, active && styles.tzOptionActive]}
+                  disabled={savingReminder}
                 >
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.tzOptionText,
+                      active && styles.tzOptionTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {active ? <Text style={styles.tzCheck}>✓</Text> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         {reminderError ? <Text style={styles.error}>{reminderError}</Text> : null}
         {reminderSaved ? <Text style={styles.saved}>{reminderSaved}</Text> : null}
         <SofButton
@@ -749,6 +772,41 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
   chipText: { color: d.ink, fontSize: 13 },
   chipTextActive: { fontWeight: '700' },
+  tzButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  tzButtonText: { color: d.ink, fontSize: 14, fontWeight: '600' },
+  tzChevron: { color: d.muted, fontSize: 11 },
+  tzList: {
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  tzOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: d.line,
+  },
+  tzOptionActive: { backgroundColor: '#eff6ff' },
+  tzOptionText: { color: d.ink, fontSize: 14 },
+  tzOptionTextActive: { fontWeight: '700' },
+  tzCheck: { color: d.accent, fontWeight: '700' },
   badge: { fontWeight: '700' },
   on: { color: '#0d9c53' },
   off: { color: '#94a3b8' },
