@@ -8,6 +8,7 @@ import type {
   EmployeeSession,
   OpeningHours,
   Service,
+  WhatsappHandoff,
 } from '@/src/api/types';
 
 export const authApi = {
@@ -213,6 +214,23 @@ export const dashboardApi = {
     }>('/account/whatsapp/status'),
   disconnectWhatsapp: () =>
     api<{ ok: boolean; status: string }>('/account/whatsapp/disconnect', {
+      method: 'POST',
+    }),
+  whatsappHandoffs: (status?: 'open' | 'resolved') =>
+    api<{ handoffs: WhatsappHandoff[] }>(
+      `/whatsapp-handoffs${status ? `?status=${status}` : ''}`,
+    ),
+  whatsappHandoffSettings: () =>
+    api<{ threshold: number; allowed: number[] }>(
+      '/whatsapp-handoffs/settings',
+    ),
+  updateWhatsappHandoffSettings: (threshold: number) =>
+    api<{ threshold: number; allowed: number[] }>(
+      '/whatsapp-handoffs/settings',
+      { method: 'PUT', body: { threshold } },
+    ),
+  resolveWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/resolve`, {
       method: 'POST',
     }),
   simulateWhatsapp: (message: string, customerPhone: string) =>

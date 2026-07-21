@@ -45,8 +45,9 @@ Registrados em `backend/src/app.module.ts`:
 | `AppointmentsModule` | agendamentos |
 | `CheckoutModule` | assinatura / Checkout Session Stripe |
 | `PaymentsModule` | webhook Stripe |
-| `WhatsappModule` | webhook Meta + simulador |
-| `EventsModule` | SSE de appointments |
+| `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
+| `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
+| `EventsModule` | SSE de appointments + handoffs |
 | `HealthController` | `GET /api/health` |
 
 ### Auth
@@ -64,10 +65,11 @@ Account
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Client[]  (botPausedPermanent / botPausedUntil)
+  ├── Client[]  (botPausedPermanent / botPausedUntil / botUnresolvedCount)
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
-  └── WhatsappSession[]
+  ├── WhatsappSession[]
+  └── WhatsappHandoff[]  (alerta de escalonamento: reason, status, humanRepliedAt)
 ```
 
 Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `openingHours` (JSON 7 dias, 0=domingo).
@@ -76,7 +78,9 @@ Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`,
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`).
+`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`); `botUnresolvedCount` conta "não entendi" consecutivos para escalonamento.
+
+`WhatsappHandoff`: alerta de atendimento humano por conversa — `reason` (`unresolved` | `human_requested`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta. Fluxo: webhook detecta `fromMe` sem `wasSentByApi` (humano respondeu pelo celular/WhatsApp Web) → `WhatsappHandoffsService.onHumanReply` pausa o bot 1 h (`botPausedUntil`), zera o contador e resolve os alertas; o webhook Uazapi é configurado **sem** excluir `fromMe` (só `wasSentByApi` + grupos) e o `GET /api/account/whatsapp/status` ressincroniza a config do webhook no máx. 1x/hora por instância.
 
 `Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
 
@@ -102,7 +106,7 @@ URLs:
 
 ### Tempo real
 
-`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`frontend/src/hooks/useRealtime.ts`). Eventos tipados: created / updated / deleted de appointment.
+`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted` e `whatsapp-handoff:opened|updated|resolved`.
 
 ## Frontend (`frontend/`)
 
@@ -125,6 +129,7 @@ URLs:
 | `/(dashboard)/agenda` | Agenda semanal + simulador WA |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
+| `/(dashboard)/handoffs` | Atendimentos (alertas de escalonamento + config) |
 | `/(dashboard)/billing` | Faturamento |
 | `/(dashboard)/account` | Conta / horários / integrações |
 | `/profissional/login` | Redirect → `/login` |
@@ -138,7 +143,7 @@ Gate do portal profissional: sem sessão employee → `/login`; com `mustChangeP
 
 - `AuthProvider` — sessão da conta  
 - `EmployeeAuthProvider` — sessão do profissional  
-- `DashboardProvider` — employees, services, appointments  
+- `DashboardProvider` — employees, services, clients, appointments, handoffs  
 - `ToastProvider` — toasts (ex.: novo WA)  
 
 ### API client

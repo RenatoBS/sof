@@ -63,6 +63,22 @@ export type Client = {
   createdAt: string;
 };
 
+export type WhatsappHandoff = {
+  id: string;
+  accountId: string;
+  clientId?: string | null;
+  customerPhone: string;
+  customerName: string;
+  lastMessage: string;
+  reason: 'unresolved' | 'human_requested';
+  status: 'open' | 'resolved';
+  openedAt: string;
+  humanRepliedAt?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AppointmentKind = 'service' | 'block';
 
 export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly';

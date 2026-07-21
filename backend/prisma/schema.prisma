@@ -24,6 +24,8 @@ model Account {
   openingHours          Json     @default("[{\"open\":false,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"}]")
   /// Endereço do estabelecimento (opcional; bot pode informar na conversa)
   address               String   @default("")
+  /// Quantas falhas consecutivas do bot abrem alerta de atendimento (1|2|3|5)
+  whatsappHandoffThreshold Int   @default(2)
   status                String   @default("active")
   createdAt             DateTime @default(now())
 
@@ -33,6 +35,7 @@ model Account {
   appointments     Appointment[]
   checkoutSessions CheckoutSession[]
   whatsappSessions WhatsappSession[]
+  whatsappHandoffs WhatsappHandoff[]
 }
 
 model Employee {
@@ -87,10 +90,13 @@ model Client {
   botPausedPermanent  Boolean   @default(false)
   /// Mute temporário: bot silencioso enquanto > now()
   botPausedUntil      DateTime?
+  /// Falhas consecutivas do bot (escalonamento humano)
+  botUnresolvedCount  Int       @default(0)
   createdAt           DateTime  @default(now())
 
-  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account      Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  handoffs     WhatsappHandoff[]
 
   @@unique([accountId, phone])
   @@index([accountId])
@@ -162,4 +168,29 @@ model WhatsappSession {
 
   @@unique([accountId, customerPhone])
   @@index([accountId])
+}
+
+/// Alerta de conversa que o bot não resolveu / pediu humano
+model WhatsappHandoff {
+  id              String    @id @default(cuid())
+  accountId       String
+  clientId        String?
+  customerPhone   String
+  customerName    String    @default("")
+  lastMessage     String    @default("")
+  /// unresolved | human_requested
+  reason          String
+  /// open | resolved
+  status          String    @default("open")
+  openedAt        DateTime  @default(now())
+  humanRepliedAt  DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, status, openedAt])
+  @@index([accountId, customerPhone, status])
 }

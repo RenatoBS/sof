@@ -597,7 +597,7 @@ export class WhatsappApiService {
         url: callbackUrl,
         enabled: true,
         events: ['messages'],
-        excludeMessages: ['wasSentByApi', 'fromMe', 'isGroupYes'],
+        excludeMessages: ['wasSentByApi', 'isGroupYes'],
         addUrlEvents: false,
         addUrlTypesMessages: false,
         // Evita empilhar vários webhooks iguais (causa envio duplicado).

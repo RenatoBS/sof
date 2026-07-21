@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-21 — Escalonamento humano com pausa por resposta no WhatsApp
+
+- **Contexto:** Quando o bot não resolve (cliente pede atendente ou o bot repete "não entendi"), o dono não ficava sabendo e o bot continuava atrapalhando a conversa se um humano assumisse.  
+- **Decisão:** Novo modelo `WhatsappHandoff` (1 alerta aberto por telefone) + `Client.botUnresolvedCount` + `Account.whatsappHandoffThreshold` (1|2|3|5, default 2). Pedido explícito por humano (regex estrita + intent `human` do NLU) abre alerta imediato; N "não entendi" seguidos abrem por contagem — intents `cancel`/`list`/`book` continuam no bot. Alertas aparecem na aba **Atendimentos** (badge SSE na tabbar, link para WhatsApp Web/`wa.me`). Detecção de resposta humana: webhook Uazapi passa a receber `fromMe` (exclui só `wasSentByApi` + grupos); mensagem `fromMe` não-API pausa o bot 1 h (`botPausedUntil`), zera contador e resolve o alerta. `GET /account/whatsapp/status` ressincroniza a config do webhook (máx. 1x/h por instância) para cobrir instâncias pareadas antes da mudança.  
+- **Consequências:** Todo envio manual do dono pelo WhatsApp silencia o bot por 1 h naquela conversa (comportamento desejado); mais eventos de webhook (`fromMe`) para processar; cliente recebe aviso "avisei a equipe" quando o alerta abre.  
+- **Alternativas descartadas:** Detectar humano via app próprio (não existe inbox no painel); pausar bot permanente na resposta humana (dono teria que reativar manualmente); webhook separado para eventos `fromMe` (complexidade sem ganho).
+
 ## 2026-07-21 — NLU com LLM para frases livres no bot
 
 - **Contexto:** Áudios transcritos chegavam como frases corridas ("quero marcar um corte amanhã ao meio-dia") e o fluxo guiado só entendia opções exatas de menu, respondendo "Não entendi".  

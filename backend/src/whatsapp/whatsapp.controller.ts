@@ -22,9 +22,13 @@ import { isClientBotPaused } from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
+import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
 
 const AUDIO_FALLBACK_REPLY =
   'Não consegui ouvir seu áudio 😅 Pode escrever ou tocar numa das opções?';
+
+const HANDOFF_NOTICE =
+  'Avisei a equipe — alguém vai te responder por aqui em breve.';
 
 type MetaWebhookBody = {
   entry?: Array<{
@@ -93,6 +97,7 @@ export class WhatsappController {
     private readonly prisma: PrismaService,
     private readonly api: WhatsappApiService,
     private readonly bot: WhatsappBotService,
+    private readonly handoffs: WhatsappHandoffsService,
   ) {}
 
   @Get('webhook')
@@ -157,9 +162,22 @@ export class WhatsappController {
 
     const message = body?.message;
     if (!message) return;
-    if (message.fromMe || message.wasSentByApi) return;
-    if (message.source === 'api' || message.source === 'system') return;
     if (message.isGroup || body?.chat?.wa_isGroup) return;
+
+    // Mensagens da API Sof — nunca tratar como humano nem processar no bot.
+    if (
+      message.wasSentByApi ||
+      message.source === 'api' ||
+      message.source === 'system'
+    ) {
+      return;
+    }
+
+    // Humano respondeu pelo WhatsApp (celular / Web): pausa bot 1h.
+    if (message.fromMe) {
+      await this.handleHumanOutbound(body, message, event);
+      return;
+    }
 
     const customerPhone = this.extractPhone(
       message.sender_pn ||
@@ -264,6 +282,13 @@ export class WhatsappController {
         result,
         account.whatsappInstanceToken ?? undefined,
       );
+      await this.afterBotResult({
+        accountId: account.id,
+        customerPhone,
+        text,
+        result,
+        instanceToken: account.whatsappInstanceToken ?? undefined,
+      });
       return;
     }
 
@@ -307,6 +332,107 @@ export class WhatsappController {
       result,
       account.whatsappInstanceToken,
     );
+    await this.afterBotResult({
+      accountId: account.id,
+      customerPhone,
+      text,
+      result,
+      instanceToken: account.whatsappInstanceToken ?? undefined,
+    });
+  }
+
+  private async handleHumanOutbound(
+    body: UazapiWebhookBody,
+    message: NonNullable<UazapiWebhookBody['message']>,
+    event: string,
+  ) {
+    const customerPhone = this.extractPhone(
+      body?.chat?.phone ||
+        message.chatid ||
+        body?.chat?.wa_chatid ||
+        message.sender_pn ||
+        message.sender ||
+        '',
+    );
+    if (!customerPhone) return;
+
+    const messageId =
+      message.id ||
+      message.messageid ||
+      message.messageId ||
+      message.key?.id ||
+      '';
+    const dedupeKey = webhookDedupeKey({
+      messageId,
+      token: body?.token,
+      phone: customerPhone,
+      text: 'fromMe',
+      event,
+    });
+    if (isDuplicateWebhook(dedupeKey)) return;
+
+    const account = await this.resolveAccount({
+      instanceKey: this.api.instanceKey(),
+      owner: body?.owner,
+      token: body?.token,
+    });
+    if (!account) return;
+
+    await this.handoffs.onHumanReply({
+      accountId: account.id,
+      phone: customerPhone,
+    });
+  }
+
+  private async afterBotResult(opts: {
+    accountId: string;
+    customerPhone: string;
+    text: string;
+    result: Awaited<ReturnType<WhatsappBotService['handleIncomingMessage']>>;
+    instanceToken?: string;
+    /** Se true, não envia aviso ao WhatsApp (ex.: simulador). */
+    skipOutboundNotice?: boolean;
+  }): Promise<{ handoffOpened: boolean }> {
+    if (opts.result.humanRequested) {
+      const opened = await this.handoffs.openOrRefresh({
+        accountId: opts.accountId,
+        phone: opts.customerPhone,
+        lastMessage: opts.text,
+        reason: 'human_requested',
+      });
+      await this.handoffs.resetUnresolved(opts.accountId, opts.customerPhone);
+      if (opened?.created && !opts.skipOutboundNotice) {
+        await this.api
+          .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
+          .catch(() => undefined);
+      }
+      return { handoffOpened: Boolean(opened?.created) };
+    }
+
+    if (opts.result.unresolved) {
+      const bump = await this.handoffs.bumpUnresolved({
+        accountId: opts.accountId,
+        phone: opts.customerPhone,
+      });
+      if (bump.reached) {
+        const opened = await this.handoffs.openOrRefresh({
+          accountId: opts.accountId,
+          phone: opts.customerPhone,
+          lastMessage: opts.text,
+          reason: 'unresolved',
+        });
+        if (opened?.created && !opts.skipOutboundNotice) {
+          await this.api
+            .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
+            .catch(() => undefined);
+        }
+        return { handoffOpened: Boolean(opened?.created) };
+      }
+      return { handoffOpened: false };
+    }
+
+    await this.handoffs.resetUnresolved(opts.accountId, opts.customerPhone);
+    return { handoffOpened: false };
   }
 
   private extractUazapiSelection(

@@ -13,6 +13,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { PaymentsModule } from './payments/payments.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { WhatsappHandoffsModule } from './whatsapp-handoffs/whatsapp-handoffs.module';
 import { EventsModule } from './events/events.module';
 import { EmployeePortalModule } from './employee-portal/employee-portal.module';
 import { HealthController } from './health/health.controller';
@@ -39,6 +40,7 @@ import { HealthController } from './health/health.controller';
     CheckoutModule,
     PaymentsModule,
     WhatsappModule,
+    WhatsappHandoffsModule,
     EventsModule,
     EmployeePortalModule,
   ],

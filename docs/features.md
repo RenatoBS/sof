@@ -91,6 +91,16 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Badge na lista: **Bot off** (permanente) ou **Bot pausado até …** (temporário).  
 - Enquanto pausado, o webhook **não responde** (silêncio). Só vale para `Client` cadastrado (mesmo telefone da conversa).
 
+### Atendimentos (escalonamento humano)
+
+- Aba **Atendimentos** com **badge vermelho** na tabbar contando alertas abertos (tempo real via SSE).  
+- Alerta abre quando: (a) o cliente **pede atendente explicitamente** (regex + intent `human` do NLU) — imediato; ou (b) o bot responde "não entendi" **N vezes seguidas** (default 2; configurável na aba: 1 / 2 / 3 / 5, salvo em `Account.whatsappHandoffThreshold`).  
+- Cada card mostra nome/telefone, motivo (Pediu atendente / Bot não entendeu), última mensagem e desde quando; botões **Abrir no WhatsApp** (WhatsApp Web no navegador, `wa.me` no celular) e **Marcar resolvido**.  
+- Quando o alerta abre, o cliente recebe no WhatsApp: "Avisei a equipe — alguém vai te responder por aqui em breve."  
+- **Resposta humana** (mensagem `fromMe` que não veio da API — celular ou WhatsApp Web): pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e **resolve** o alerta automaticamente.  
+- Intents `cancel`/`list`/`book` do NLU continuam tratadas pelo bot — só o pedido explícito por humano escala na hora.  
+- API: `GET /api/whatsapp-handoffs` (`?status=open|resolved`), `GET/PUT …/settings`, `POST …/:id/resolve`. SSE: `whatsapp-handoff:opened|updated|resolved`.
+
 ### Faturamento
 
 - Cards: Hoje / Esta Semana / Este Mês (confirmed).  
@@ -124,6 +134,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Frases livres (NLU):** com `OPENAI_API_KEY`, frases corridas (≥ 3 palavras) no início da conversa ou na escolha de serviço passam por um extrator LLM (`gpt-4o-mini`, JSON) que identifica intenção (marcar/cancelar/ver), serviço, data e hora — ex. "quero marcar um corte amanhã ao meio-dia" pula direto para a confirmação. Falha ou frase vaga caem no fluxo guiado normal (`whatsapp/booking-nlu.service.ts`).  
 - **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
+- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot 1 h e resolve o alerta (ver seção Atendimentos acima).  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).
@@ -158,6 +169,7 @@ Arquivo: `backend/prisma/seed.ts`. Conta já existente: use `npm run backend:res
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
 | Clients | `GET/POST /api/clients`, `PUT/DELETE …/:id` (pause do bot no PUT) |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
+| WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `POST …/:id/resolve` |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Payments | `POST /api/payments/webhook` |
 | WhatsApp | webhooks + `POST /api/whatsapp/simulate` + pareamento em `/api/account/whatsapp` |
