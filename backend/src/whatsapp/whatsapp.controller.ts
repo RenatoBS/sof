@@ -178,10 +178,12 @@ export class WhatsappController {
       message.key?.id ||
       '';
 
-    let text = this.extractUazapiSelection(message);
     const isAudio = this.isUazapiAudioMessage(message);
+    // Áudio sempre passa pela transcrição — a Uazapi pode preencher
+    // text/content com metadados da mídia, que não servem para o bot.
+    let text = isAudio ? '' : this.extractUazapiSelection(message);
 
-    if (!text && isAudio) {
+    if (isAudio) {
       const dedupeKey = webhookDedupeKey({
         messageId,
         token: body?.token,
