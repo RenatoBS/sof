@@ -46,10 +46,11 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Agenda
 
-- Grade semanal por profissional × dia.  
+- **Desktop (≥720px):** grade semanal por profissional × dia.  
+- **Celular (<720px):** seletor de dia (chips Dom–Sáb) + lista vertical por profissional do dia escolhido (evita scroll horizontal da grade).  
 - Navegação: semana anterior / hoje / próxima.  
-- Clique numa célula abre o modal; clique num horário edita.  
-- **Recolher / expandir** no final de cada linha do profissional; recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
+- Clique numa célula (ou “+ Agendar”) abre o modal; clique num horário edita.  
+- **Recolher / expandir** (desktop) no final de cada linha do profissional; recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
 - Modal com dois tipos:
   - **Serviço** — cliente + serviço + profissional (como antes).
   - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).
@@ -72,7 +73,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 ### Área do profissional
 
 - Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
-- Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional.  
+- Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
 - Se `mustChangePassword`, redireciona para `/(profissional)/trocar-senha`.
 
@@ -113,9 +114,11 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Pareamento no painel Conta (QR ou código com telefone).  
 - Ao conectar, a API configura o webhook da instância para `API_PUBLIC_URL/api/whatsapp/webhook`.  
 - Webhook `GET/POST /api/whatsapp/webhook`.  
-- Fluxo: **serviço → horário** (sugestões próximas ou data/hora livre) → **profissional disponível naquele horário** → confirmação → `Appointment` (`source=whatsapp`).  
-- **Horários:** após o serviço, o bot lista até 5 slots livres nos próximos dias (qualquer profissional do serviço) + opção **Outro horário** (`dd/mm hh:mm`).  
-- **Menus interativos:** escolhas de serviço (com **preço**), horário, profissional e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
+- Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
+- **Menu inicial:** se o cliente já tem agendamento **futuro** (`confirmed`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
+- **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher).  
+- **Dia e horário (duas perguntas):** 1) Hoje, Amanhã (só se houver vaga) ou Outra data (`dd/mm`); 2) até 5 horários livres daquele dia + **Outro horário** (`hh:mm`).  
+- **Menus interativos:** escolhas de serviço (com **preço**), caminho/profissional, dia, horário e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
 - **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão; perguntas de **endereço** / “onde fica” / “como chegar” devolvem `Account.address` (se cadastrado).  
 - **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
