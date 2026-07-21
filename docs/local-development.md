@@ -105,7 +105,7 @@ Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
 | `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
 | `WHATSAPP_ADMIN_TOKEN` | admin token Uazapi (cria instância por conta) |
 | `WHATSAPP_TOKEN` | token de instância (modo legado / envio) |
-| `OPENAI_API_KEY` | transcrição de áudio do bot (opcional; sem chave, áudio recebe fallback pedindo texto) |
+| `OPENAI_API_KEY` | transcrição de áudio + NLU de frases livres do bot (opcional; sem chave, áudio recebe fallback e frases caem no menu) |
 
 ### WhatsApp local (Uazapi)
 

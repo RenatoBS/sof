@@ -71,7 +71,7 @@ CLI Heroku pode ecoar secrets — rotacionar se vazar em logs.
 | `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
 | `WHATSAPP_ADMIN_TOKEN` | cria/pareia instância por conta (≠ token da instância) |
 | `WHATSAPP_TOKEN` | token de instância (legado) / Meta access token |
-| `OPENAI_API_KEY` | transcrição de áudio do bot (Uazapi `transcribe: true` em `/message/download`) |
+| `OPENAI_API_KEY` | transcrição de áudio do bot (Uazapi) + NLU de frases livres (`gpt-4o-mini`) |
 | `SEED_DEMO_*` | só para `prisma db seed` (não usados em runtime) |
 
 Só Meta (`WHATSAPP_PROVIDER=meta`): `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`.
