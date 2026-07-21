@@ -314,6 +314,41 @@ export class WhatsappApiService {
     });
   }
 
+  /** Transcreve áudio de mensagem via Uazapi (POST /message/download). */
+  async transcribeAudio(
+    messageId: string,
+    instanceToken?: string,
+  ): Promise<string> {
+    if (this.provider() !== 'uazapi') {
+      throw new Error('Transcrição de áudio só está disponível com Uazapi.');
+    }
+    const token =
+      (instanceToken || '').trim() ||
+      (this.config.get<string>('whatsapp.token') || '').trim();
+    if (!token || !this.config.get<string>('whatsapp.baseUrl')) {
+      throw new Error('Uazapi sem token para transcrever áudio.');
+    }
+
+    const openaiApiKey =
+      (this.config.get<string>('whatsapp.openaiApiKey') || '').trim() || undefined;
+
+    const body: Record<string, unknown> = {
+      id: messageId,
+      transcribe: true,
+      return_base64: false,
+      return_link: false,
+    };
+    if (openaiApiKey) body.openai_apikey = openaiApiKey;
+
+    const json = await this.uazapiFetch('/message/download', {
+      method: 'POST',
+      body,
+      auth: { kind: 'token', token },
+    });
+
+    return String(json.transcription || '').trim();
+  }
+
   async sendText(to: string, body: string, instanceToken?: string) {
     if (this.provider() === 'uazapi') {
       const token =
