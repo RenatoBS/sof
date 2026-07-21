@@ -26,7 +26,7 @@ const FEATURES = [
   {
     icon: 'bell',
     title: 'Lembrete automático',
-    body: 'Um aviso por SMS uma hora antes. Menos falta, sem ninguém precisar lembrar.',
+    body: 'Aviso no WhatsApp antes do horário, no tempo que você configurar. Menos falta, sem ninguém precisar lembrar.',
   },
   {
     icon: 'chart',

@@ -26,6 +26,30 @@ const DAY_LABELS = [
 
 const DAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const;
 
+const REMINDER_PRESETS: { minutes: number; label: string }[] = [
+  { minutes: 0, label: 'Desativado' },
+  { minutes: 60, label: '1h' },
+  { minutes: 120, label: '2h' },
+  { minutes: 180, label: '3h' },
+  { minutes: 360, label: '6h' },
+  { minutes: 1440, label: '24h' },
+];
+
+const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'America/Sao_Paulo', label: 'Brasília (SP, RJ, MG, PR, SC, RS…)' },
+  { value: 'America/Fortaleza', label: 'Fortaleza (CE, PI, RN, PB, AL, SE)' },
+  { value: 'America/Recife', label: 'Recife (PE)' },
+  { value: 'America/Bahia', label: 'Bahia (BA)' },
+  { value: 'America/Belem', label: 'Belém (PA, AP, MA)' },
+  { value: 'America/Manaus', label: 'Manaus (AM)' },
+  { value: 'America/Cuiaba', label: 'Cuiabá (MT)' },
+  { value: 'America/Campo_Grande', label: 'Campo Grande (MS)' },
+  { value: 'America/Porto_Velho', label: 'Porto Velho (RO)' },
+  { value: 'America/Boa_Vista', label: 'Boa Vista (RR)' },
+  { value: 'America/Rio_Branco', label: 'Rio Branco (AC)' },
+  { value: 'America/Noronha', label: 'Fernando de Noronha' },
+];
+
 const DEFAULT_HOURS: OpeningHours = [
   { open: false, start: '09:00', end: '18:00' },
   { open: true, start: '09:00', end: '18:00' },
@@ -92,6 +116,12 @@ export default function AccountScreen() {
   const [addressError, setAddressError] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
 
+  const [reminderMinutes, setReminderMinutes] = useState(120);
+  const [timezone, setTimezone] = useState('America/Sao_Paulo');
+  const [reminderSaved, setReminderSaved] = useState('');
+  const [reminderError, setReminderError] = useState('');
+  const [savingReminder, setSavingReminder] = useState(false);
+
   const [waMode, setWaMode] = useState<PairingMode>('idle');
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waLinked, setWaLinked] = useState(false);
@@ -141,6 +171,14 @@ export default function AccountScreen() {
     if (account) {
       setHours(normalizeHours(account.openingHours));
       setAddress(account.address || '');
+      const lead = Number(account.whatsappReminderMinutes);
+      setReminderMinutes(
+        Number.isFinite(lead) &&
+          REMINDER_PRESETS.some((p) => p.minutes === lead)
+          ? lead
+          : 120,
+      );
+      setTimezone(account.timezone || 'America/Sao_Paulo');
     }
     dashboardApi.integrations().then((data) => {
       setIntegrations({
@@ -557,6 +595,84 @@ export default function AccountScreen() {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
+        <Text style={[styles.help, { marginBottom: 8 }]}>
+          A Sof envia um lembrete automático pela instância conectada, no máximo
+          1× por agendamento. O job roda a cada 30 minutos — o aviso pode sair
+          até meia hora depois do horário estimado.
+        </Text>
+        <Text style={styles.label}>Antecedência</Text>
+        <View style={styles.chips}>
+          {REMINDER_PRESETS.map((preset) => {
+            const active = reminderMinutes === preset.minutes;
+            return (
+              <Pressable
+                key={preset.minutes}
+                onPress={() => setReminderMinutes(preset.minutes)}
+                style={[styles.chip, active && styles.chipActive]}
+                disabled={savingReminder}
+              >
+                <Text
+                  style={[styles.chipText, active && styles.chipTextActive]}
+                >
+                  {preset.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={[styles.label, { marginTop: 8 }]}>Fuso horário</Text>
+        <View style={styles.chips}>
+          {TIMEZONE_OPTIONS.map((opt) => {
+            const active = timezone === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => setTimezone(opt.value)}
+                style={[styles.chip, active && styles.chipActive]}
+                disabled={savingReminder}
+              >
+                <Text
+                  style={[styles.chipText, active && styles.chipTextActive]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {reminderError ? <Text style={styles.error}>{reminderError}</Text> : null}
+        {reminderSaved ? <Text style={styles.saved}>{reminderSaved}</Text> : null}
+        <SofButton
+          title={savingReminder ? 'Salvando…' : 'Salvar lembrete'}
+          variant="dark"
+          theme="dashboard"
+          disabled={savingReminder}
+          onPress={async () => {
+            setReminderError('');
+            setSavingReminder(true);
+            try {
+              const { account: updated } = await dashboardApi.updateAccount({
+                whatsappReminderMinutes: reminderMinutes,
+                timezone,
+              });
+              await setSession(updated);
+              setReminderSaved('Configuração de lembrete salva!');
+              setTimeout(() => setReminderSaved(''), 2000);
+            } catch (err) {
+              setReminderError(
+                err instanceof Error
+                  ? err.message
+                  : 'Não foi possível salvar.',
+              );
+            } finally {
+              setSavingReminder(false);
+            }
+          }}
+        />
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Sair da conta</Text>
         <SofButton
           title="Sair"
@@ -620,6 +736,19 @@ const styles = StyleSheet.create({
   metaLabel: { color: d.muted, fontSize: 13, marginBottom: 4 },
   metaValue: { fontWeight: '700', fontSize: 15, color: d.ink },
   help: { color: d.muted, fontSize: 14, lineHeight: 22 },
+  label: { fontWeight: '600', color: d.ink, fontSize: 14 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+  },
+  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  chipText: { color: d.ink, fontSize: 13 },
+  chipTextActive: { fontWeight: '700' },
   badge: { fontWeight: '700' },
   on: { color: '#0d9c53' },
   off: { color: '#94a3b8' },

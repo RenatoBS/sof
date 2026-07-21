@@ -47,6 +47,7 @@ Registrados em `backend/src/app.module.ts`:
 | `PaymentsModule` | webhook Stripe |
 | `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
 | `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
+| `RemindersModule` | job de lembretes WhatsApp (a cada 30 min) |
 | `EventsModule` | SSE de appointments + handoffs |
 | `HealthController` | `GET /api/health` |
 
@@ -72,7 +73,7 @@ Account
   └── WhatsappHandoff[]  (alerta de escalonamento: reason, status, humanRepliedAt)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `openingHours` (JSON 7 dias, 0=domingo).
+Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `openingHours` (JSON 7 dias, 0=domingo).
 
 `Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
 
@@ -82,7 +83,11 @@ Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`,
 
 `WhatsappHandoff`: alerta de atendimento humano por conversa — `reason` (`unresolved` | `human_requested`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta. Fluxo: webhook detecta `fromMe` sem `wasSentByApi` (humano respondeu pelo celular/WhatsApp Web) → `WhatsappHandoffsService.onHumanReply` pausa o bot 1 h (`botPausedUntil`), zera o contador e resolve os alertas; o webhook Uazapi é configurado **sem** excluir `fromMe` (só `wasSentByApi` + grupos) e o `GET /api/account/whatsapp/status` ressincroniza a config do webhook no máx. 1x/hora por instância.
 
-`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
+`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`). Lembrete WhatsApp: `reminderClaimedAt` / `reminderSentAt` (no máximo 1 envio bem-sucedido; job em `reminders/`).
+
+### Lembretes WhatsApp
+
+`RemindersModule` (`@nestjs/schedule`): tick no bootstrap + a cada 30 minutos. Interpreta `Appointment.date`/`time` no `Account.timezone`, calcula due = início − `whatsappReminderMinutes`, envia via `WhatsappApiService.sendText` com o token da conta. Claim atômico no Postgres evita double-send entre dynos/ticks; falha de envio libera o claim para retry.
 
 Datasource usa:
 

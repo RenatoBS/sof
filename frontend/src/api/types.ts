@@ -17,6 +17,10 @@ export type Account = {
   whatsappPhoneNumberId: string;
   openingHours: OpeningHours;
   address: string;
+  /** Minutos antes do horário (0 = desativado). Default 120. */
+  whatsappReminderMinutes?: number;
+  /** Fuso IANA da conta. Default America/Sao_Paulo. */
+  timezone?: string;
   status: string;
   createdAt: string;
   whatsappConnectedAt?: string | null;

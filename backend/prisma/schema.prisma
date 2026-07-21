@@ -26,6 +26,10 @@ model Account {
   address               String   @default("")
   /// Quantas falhas consecutivas do bot abrem alerta de atendimento (1|2|3|5)
   whatsappHandoffThreshold Int   @default(2)
+  /// Minutos antes do horário para lembrete WhatsApp (0=off; 60|120|180|360|1440)
+  whatsappReminderMinutes Int    @default(120)
+  /// Fuso IANA da conta (interpreta date/time dos agendamentos)
+  timezone              String   @default("America/Sao_Paulo")
   status                String   @default("active")
   createdAt             DateTime @default(now())
 
@@ -123,6 +127,10 @@ model Appointment {
   source            String   @default("manual")
   /// Liga ocorrências materializadas da mesma série recorrente
   recurrenceGroupId String?
+  /// Claim de envio de lembrete (timeout libera para retry)
+  reminderClaimedAt DateTime?
+  /// Lembrete WhatsApp enviado com sucesso (no máximo 1x)
+  reminderSentAt    DateTime?
   createdAt         DateTime @default(now())
 
   account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
@@ -135,6 +143,7 @@ model Appointment {
   @@index([serviceId])
   @@index([clientId])
   @@index([recurrenceGroupId])
+  @@index([status, reminderSentAt, date])
 }
 
 model CheckoutSession {

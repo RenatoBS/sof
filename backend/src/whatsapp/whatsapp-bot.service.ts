@@ -17,6 +17,7 @@ import {
   timeToMinutes,
 } from '../appointments/schedule-conflict';
 import { BookingNluService } from './booking-nlu.service';
+import { formatReminderLeadLabel } from '../reminders/reminder-window';
 
 type SessionData = {
   clientId?: string;
@@ -2061,11 +2062,18 @@ export class WhatsappBotService {
         this.realtime.broadcast(account.id, 'appointment:created', {
           appointment: shaped,
         });
+        const lead = Number(account.whatsappReminderMinutes) || 0;
+        const leadLabel = formatReminderLeadLabel(lead);
+        const reminderLine =
+          lead > 0
+            ? ` Você recebe um lembrete no WhatsApp ${leadLabel} antes do horário.`
+            : '';
+        const address = accountAddress(account);
         return {
           replies: [
-            accountAddress(account)
-              ? `Marcado! Você recebe um lembrete antes do horário.\nEndereço: ${accountAddress(account)}\nAté lá!`
-              : 'Marcado! Você recebe um lembrete antes do horário. Até lá!',
+            address
+              ? `Marcado!${reminderLine}\nEndereço: ${address}\nAté lá!`
+              : `Marcado!${reminderLine} Até lá!`,
           ],
           appointment: shaped,
         };

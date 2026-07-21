@@ -190,6 +190,8 @@ export const dashboardApi = {
     openingHours?: OpeningHours;
     address?: string;
     businessName?: string;
+    whatsappReminderMinutes?: number;
+    timezone?: string;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
     api<{

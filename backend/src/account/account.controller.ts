@@ -15,6 +15,13 @@ import type { AuthedRequest } from '../auth/auth.guard';
 import { publicAccount } from '../common/public-shapes';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 import { parseOpeningHoursInput } from './opening-hours';
+import {
+  ACCOUNT_TIMEZONES,
+  DEFAULT_ACCOUNT_TIMEZONE,
+  normalizeAccountTimezone,
+  normalizeReminderLeadMinutes,
+  REMINDER_LEAD_MINUTES,
+} from '../reminders/reminder-window';
 
 @Controller('api/account')
 @UseGuards(AuthGuard)
@@ -34,6 +41,8 @@ export class AccountController {
       whatsappPhoneNumberId?: string;
       openingHours?: unknown;
       address?: string;
+      whatsappReminderMinutes?: number;
+      timezone?: string;
     },
   ) {
     const data: {
@@ -41,6 +50,8 @@ export class AccountController {
       whatsappPhoneNumberId?: string;
       openingHours?: Prisma.InputJsonValue;
       address?: string;
+      whatsappReminderMinutes?: number;
+      timezone?: string;
     } = {};
 
     if (typeof body?.businessName === 'string') {
@@ -59,6 +70,24 @@ export class AccountController {
         throw new BadRequestException({ error: parsed.error });
       }
       data.openingHours = parsed.hours as Prisma.InputJsonValue;
+    }
+    if (body?.whatsappReminderMinutes !== undefined) {
+      const lead = normalizeReminderLeadMinutes(body.whatsappReminderMinutes);
+      if (lead === null) {
+        throw new BadRequestException({
+          error: `Antecedência inválida. Use: ${REMINDER_LEAD_MINUTES.join(', ')} minutos.`,
+        });
+      }
+      data.whatsappReminderMinutes = lead;
+    }
+    if (body?.timezone !== undefined) {
+      const timezone = normalizeAccountTimezone(body.timezone);
+      if (!timezone) {
+        throw new BadRequestException({
+          error: `Fuso horário inválido. Preferidos: ${ACCOUNT_TIMEZONES.join(', ')}.`,
+        });
+      }
+      data.timezone = timezone || DEFAULT_ACCOUNT_TIMEZONE;
     }
 
     const account = await this.prisma.account.update({

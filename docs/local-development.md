@@ -114,7 +114,8 @@ Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
 3. Para webhook real, use túnel HTTPS (ex. ngrok) em `API_PUBLIC_URL`.  
 4. No painel Conta → Bot do WhatsApp → Escanear QR ou Usar código.  
 5. Sem essas envs, o simulador na Agenda continua disponível.  
-6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).
+6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).  
+7. Lembretes: com a API no ar (`backend:dev`), o job roda no boot e a cada 30 min. Configure antecedência/fuso em Conta → Lembrete WhatsApp (default 2h, `America/Sao_Paulo`). Precisa de instância conectada para enviar de verdade.
 
 ## Troubleshooting
 

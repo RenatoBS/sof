@@ -113,6 +113,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - **Endereço** do estabelecimento (opcional); `PUT /api/account` com `address`; o bot informa na conversa.  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
 - **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
+- **Lembrete WhatsApp:** card na Conta com antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário da conta; `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.  
 - Sair da conta.
 
 ## WhatsApp (bot)
@@ -135,6 +136,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
 - **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot 1 h e resolve o alerta (ver seção Atendimentos acima).  
+- **Lembrete automático:** se `whatsappReminderMinutes > 0` e a instância está conectada, um job a cada 30 min avisa o cliente no WhatsApp antes do horário (1× por agendamento; fuso = `Account.timezone`). A confirmação do bot só promete lembrete quando a antecedência está ativa.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).

@@ -42,7 +42,7 @@ export const PLANS = [
     features: [
       'Até 7 profissionais',
       '2 números de WhatsApp',
-      'Lembrete por SMS',
+      'Lembrete por WhatsApp',
       'Relatório de faturamento',
       'Suporte prioritário',
     ],
