@@ -16,6 +16,7 @@ import {
   minutesToTime,
   timeToMinutes,
 } from '../appointments/schedule-conflict';
+import { BookingNluService } from './booking-nlu.service';
 
 type SessionData = {
   clientId?: string;
@@ -76,7 +77,64 @@ export class WhatsappBotService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly nlu: BookingNluService,
   ) {}
+
+  /**
+   * Interpretação de frase livre (áudio transcrito ou texto corrido) via LLM.
+   * Retorna a resposta do fluxo se conseguiu extrair algo útil, senão null.
+   */
+  private async tryNluBooking(
+    account: Account,
+    services: { id: string; name: string; duration: number; price: number }[],
+    base: SessionData,
+    phone: string,
+    text: string,
+    client: { id: string; name: string } | null,
+  ): Promise<WhatsappBotResult | null> {
+    if (!this.nlu.isEnabled()) return null;
+    // Só frases livres — menus/números/comandos seguem o fluxo normal.
+    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length < 3) return null;
+
+    const parsed = await this.nlu.extract({ text, services });
+    if (!parsed) return null;
+
+    if (client && parsed.intent === 'cancel') {
+      return this.startCancelFlow(account, client, services, phone);
+    }
+    if (client && parsed.intent === 'list') {
+      return this.showFutureAppointments(account, client, services, phone);
+    }
+
+    if (!parsed.serviceId) return null;
+    const service = services.find((s) => s.id === parsed.serviceId);
+    if (!service) return null;
+
+    const sessionBase: SessionData = {
+      clientId: base.clientId,
+      clientName: base.clientName,
+      serviceId: service.id,
+    };
+
+    if (parsed.date && parsed.time) {
+      return this.proceedWithSlot(account, services, sessionBase, phone, {
+        date: parsed.date,
+        time: parsed.time,
+      });
+    }
+    if (parsed.date) {
+      return this.timeMenu(
+        account,
+        service,
+        sessionBase,
+        phone,
+        parsed.date,
+        `Combinado: ${service.name} em ${this.formatDayLabel(parsed.date)}. Horários:`,
+      );
+    }
+    return this.pathMenu(account, service, sessionBase, phone);
+  }
 
   private parseChoice(text: string, max: number) {
     const n = parseInt(String(text).trim(), 10);
@@ -1163,6 +1221,15 @@ export class WhatsappBotService {
     if (step === 'start') {
       const existingClient = await this.findClient(account.id, phone);
       if (existingClient) {
+        const viaNlu = await this.tryNluBooking(
+          account,
+          services,
+          { clientId: existingClient.id, clientName: existingClient.name },
+          phone,
+          trimmed,
+          existingClient,
+        );
+        if (viaNlu) return viaNlu;
         return this.startBooking(account, phone, existingClient, services);
       }
       await this.saveSession(account.id, phone, {
@@ -1267,6 +1334,15 @@ export class WhatsappBotService {
             : null;
 
       if (serviceIdx === null) {
+        const viaNlu = await this.tryNluBooking(
+          account,
+          services,
+          sessionData,
+          phone,
+          trimmed,
+          client,
+        );
+        if (viaNlu) return viaNlu;
         if (client) {
           return this.mainMenu(
             account,

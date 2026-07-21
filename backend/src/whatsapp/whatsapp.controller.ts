@@ -23,6 +23,9 @@ import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
 
+const AUDIO_FALLBACK_REPLY =
+  'Não consegui ouvir seu áudio 😅 Pode escrever ou tocar numa das opções?';
+
 type MetaWebhookBody = {
   entry?: Array<{
     changes?: Array<{
@@ -158,9 +161,6 @@ export class WhatsappController {
     if (message.source === 'api' || message.source === 'system') return;
     if (message.isGroup || body?.chat?.wa_isGroup) return;
 
-    const text = this.extractUazapiSelection(message);
-    if (!text) return;
-
     const customerPhone = this.extractPhone(
       message.sender_pn ||
         body?.chat?.phone ||
@@ -177,6 +177,98 @@ export class WhatsappController {
       message.messageId ||
       message.key?.id ||
       '';
+
+    const isAudio = this.isUazapiAudioMessage(message);
+    // Áudio sempre passa pela transcrição — a Uazapi pode preencher
+    // text/content com metadados da mídia, que não servem para o bot.
+    let text = isAudio ? '' : this.extractUazapiSelection(message);
+
+    if (isAudio) {
+      const dedupeKey = webhookDedupeKey({
+        messageId,
+        token: body?.token,
+        phone: customerPhone,
+        event,
+      });
+      if (isDuplicateWebhook(dedupeKey)) {
+        console.warn(
+          `[whatsapp] Webhook duplicado ignorado (${dedupeKey.slice(0, 48)})`,
+        );
+        return;
+      }
+
+      const account = await this.resolveAccount({
+        instanceKey: this.api.instanceKey(),
+        owner: body?.owner,
+        token: body?.token,
+      });
+      if (!account) {
+        console.warn(
+          '[whatsapp] Conta não encontrada para a instância Uazapi — pareie o WhatsApp em Conta.',
+        );
+        return;
+      }
+
+      if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+        return;
+      }
+
+      const openaiApiKey =
+        (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
+      if (!openaiApiKey) {
+        await this.api.sendText(
+          customerPhone,
+          AUDIO_FALLBACK_REPLY,
+          account.whatsappInstanceToken ?? undefined,
+        );
+        return;
+      }
+
+      if (!messageId) {
+        await this.api.sendText(
+          customerPhone,
+          AUDIO_FALLBACK_REPLY,
+          account.whatsappInstanceToken ?? undefined,
+        );
+        return;
+      }
+
+      try {
+        text = await this.api.transcribeAudio(
+          messageId,
+          account.whatsappInstanceToken ?? undefined,
+        );
+      } catch (err) {
+        console.error(
+          '[whatsapp] Falha ao transcrever áudio:',
+          err instanceof Error ? err.message : err,
+        );
+      }
+
+      if (!text) {
+        await this.api.sendText(
+          customerPhone,
+          AUDIO_FALLBACK_REPLY,
+          account.whatsappInstanceToken ?? undefined,
+        );
+        return;
+      }
+
+      const result = await this.bot.handleIncomingMessage({
+        account,
+        customerPhone,
+        text,
+      });
+      await this.dispatchBotReplies(
+        customerPhone,
+        result,
+        account.whatsappInstanceToken ?? undefined,
+      );
+      return;
+    }
+
+    if (!text) return;
+
     const dedupeKey = webhookDedupeKey({
       messageId,
       token: body?.token,
@@ -240,6 +332,13 @@ export class WhatsappController {
     if (fromTitle) return String(fromTitle).trim();
 
     return String(message.text || message.content || '').trim();
+  }
+
+  private isUazapiAudioMessage(
+    message: NonNullable<UazapiWebhookBody['message']>,
+  ) {
+    const kind = String(message.messageType || message.type || '').toLowerCase();
+    return kind.includes('audio') || kind.includes('ptt');
   }
 
   private async dispatchBotReplies(

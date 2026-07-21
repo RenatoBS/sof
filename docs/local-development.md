@@ -105,6 +105,7 @@ Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
 | `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
 | `WHATSAPP_ADMIN_TOKEN` | admin token Uazapi (cria instância por conta) |
 | `WHATSAPP_TOKEN` | token de instância (modo legado / envio) |
+| `OPENAI_API_KEY` | transcrição de áudio + NLU de frases livres do bot (opcional; sem chave, áudio recebe fallback e frases caem no menu) |
 
 ### WhatsApp local (Uazapi)
 
@@ -112,7 +113,8 @@ Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
 2. O Admin Token é distinto do token da instância — copie o admin no painel Uazapi.  
 3. Para webhook real, use túnel HTTPS (ex. ngrok) em `API_PUBLIC_URL`.  
 4. No painel Conta → Bot do WhatsApp → Escanear QR ou Usar código.  
-5. Sem essas envs, o simulador na Agenda continua disponível.
+5. Sem essas envs, o simulador na Agenda continua disponível.  
+6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).
 
 ## Troubleshooting
 

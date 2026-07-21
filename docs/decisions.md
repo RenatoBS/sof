@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-07-21 — NLU com LLM para frases livres no bot
+
+- **Contexto:** Áudios transcritos chegavam como frases corridas ("quero marcar um corte amanhã ao meio-dia") e o fluxo guiado só entendia opções exatas de menu, respondendo "Não entendi".  
+- **Decisão:** Novo `BookingNluService` (OpenAI `gpt-4o-mini`, JSON estrito, timeout 10s) extrai intenção (book/cancel/list), `serviceId`, data e hora. Chamado só em frases livres (≥ 3 palavras) nas etapas `start` e `awaiting_service`; o resultado reaproveita o fluxo existente (`proceedWithSlot`, `timeMenu`, `pathMenu`), mantendo validação de expediente e conflito. Falha do LLM ou frase vaga → fluxo guiado normal.  
+- **Consequências:** Usa a mesma `OPENAI_API_KEY` da transcrição; custo por mensagem ínfimo; mais uma chamada externa no caminho de mensagens livres.  
+- **Alternativas descartadas:** Matching heurístico de substring (frágil para variações); LLM em todas as etapas do fluxo (mais custo/latência sem ganho claro).
+
+## 2026-07-21 — Transcrição de áudio no bot WhatsApp (Uazapi nativo)
+
+- **Contexto:** Clientes mandam áudio no WhatsApp; o bot só processava texto e botões, ignorando `audio`/`ptt`.  
+- **Decisão:** Com `WHATSAPP_PROVIDER=uazapi`, detectar áudio no webhook, chamar `POST /message/download` com `transcribe: true` e tratar `transcription` como mensagem de texto no fluxo existente. Chave `OPENAI_API_KEY` no servidor (Uazapi usa Whisper; pode persistir na instância). Sem chave ou falha → resposta pedindo texto/botões.  
+- **Consequências:** Custo baixo por áudio curto (~US$ 0,006/min); Meta Cloud API continua sem áudio; dedupe por `messageId` antes de transcrever evita cobrança duplicada em retries do webhook.  
+- **Alternativas descartadas:** Groq/Whisper direto no backend (mais barato, mais código); responder só “mande em texto”; transcrição só no simulador.
+
 ## 2026-07-20 — Agenda responsiva no celular
 
 - **Contexto:** A grade profissional × 7 dias forçava scroll horizontal e células estreitas no mobile.  

@@ -61,6 +61,8 @@ export default () => {
       verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
       /** Só Meta Cloud API (assinatura X-Hub-Signature-256) */
       appSecret: process.env.WHATSAPP_APP_SECRET || '',
+      /** Transcrição de áudio do bot (Uazapi /message/download transcribe) */
+      openaiApiKey: process.env.OPENAI_API_KEY || '',
     },
   };
 };
