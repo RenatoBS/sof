@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-22 — Rotas planas no admin-frontend (sem `[id]` irmão de lista)
+
+- **Contexto:** No Expo Router web, rotas dinâmicas sob o mesmo shell (`accounts/index` + `accounts/[id]`, depois `/account/[id]`) faziam a URL virar `/…/undefined` e a UI ficava em branco após login. `FlatList`+`gap` no RN Web também crashava.  
+- **Decisão:** Rotas planas como o dashboard do produto: `/accounts`, `/accounts-new`, `/account-detail`, `/plans`, `/plans-new`, `/plan-detail` (id via params). Listas com `ScrollView`.  
+- **Consequências:** URLs de detalhe mudam; docs atualizados.  
+- **Alternativas descartadas:** Manter pastas `[id]` com workarounds de href.
+
+---
+
 ## 2026-07-22 — Link de uso único para senha do profissional (2h)
 
 - **Contexto:** Reset gerava senha temporária para a conta copiar; o profissional ainda precisava da “senha antiga” no 1º acesso.  

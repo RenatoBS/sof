@@ -49,10 +49,10 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Login admin | `/login` | `POST /api/auth/login` |
 | Listar / buscar contas | `/accounts` | `GET /api/accounts?q=` |
 | Criar conta manual | `/accounts/new` | `POST /api/accounts` |
-| Editar conta / plano / status | `/accounts/[id]` | `PUT /api/accounts/:id` |
+| Editar conta / plano / status | `/account-detail?id=` | `PUT /api/accounts/:id` |
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos | `/plans` | `GET /api/plans` |
-| Criar / editar plano (+ Stripe) | `/plans/new`, `/plans/[id]` | `POST/PUT /api/plans` |
+| Criar / editar plano (+ Stripe) | `/plans-new`, `/plan-detail?id=` | `POST/PUT /api/plans` |
 
 Seed: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@sof.com`).
 

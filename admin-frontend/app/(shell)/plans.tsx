@@ -48,7 +48,7 @@ export default function PlansScreen() {
               : 'Stripe não configurada — use IDs manuais ao criar.'}
           </Text>
         </View>
-        <Button title="Novo plano" onPress={() => router.push('/plans/new')} />
+        <Button title="Novo plano" onPress={() => router.push('/plans-new')} />
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -61,7 +61,9 @@ export default function PlansScreen() {
           <Pressable
             key={item.id}
             style={styles.row}
-            onPress={() => router.push(`/plan/${item.id}`)}
+            onPress={() =>
+              router.push({ pathname: '/plan-detail', params: { id: item.id } })
+            }
           >
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>{item.name}</Text>

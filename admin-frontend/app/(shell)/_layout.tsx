@@ -28,8 +28,16 @@ export default function ShellLayout() {
       <View style={styles.nav}>
         <Text style={styles.brand}>Sof Admin</Text>
         <View style={styles.links}>
-          <NavLink href="/accounts" label="Contas" active={pathname.startsWith('/account')} />
-          <NavLink href="/plans" label="Planos" active={pathname.startsWith('/plan')} />
+          <NavLink
+            href="/accounts"
+            label="Contas"
+            active={pathname.startsWith('/account')}
+          />
+          <NavLink
+            href="/plans"
+            label="Planos"
+            active={pathname.startsWith('/plan')}
+          />
         </View>
         <View style={styles.right}>
           <Text style={styles.email}>{admin.email}</Text>

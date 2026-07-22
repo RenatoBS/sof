@@ -35,7 +35,10 @@ export default function AccountDetailScreen() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id) {
+      setError('Conta inválida.');
+      return;
+    }
     const [detail, planList] = await Promise.all([
       accountsApi.get(id),
       plansApi.list(),

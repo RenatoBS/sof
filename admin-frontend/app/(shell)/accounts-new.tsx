@@ -47,7 +47,11 @@ export default function NewAccountScreen() {
       if (res.temporaryPassword) {
         setTempPw(res.temporaryPassword);
         setCreatedId(res.account.id);
-      } else router.replace(`/account/${res.account.id}`);
+      } else
+        router.replace({
+          pathname: '/account-detail',
+          params: { id: res.account.id },
+        });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Falha ao criar.');
     } finally {
@@ -106,7 +110,12 @@ export default function NewAccountScreen() {
           <Text style={styles.noticeBody}>Senha temporária: {tempPw}</Text>
           <Button
             title="Ver conta"
-            onPress={() => router.replace(`/account/${createdId}`)}
+            onPress={() =>
+              router.replace({
+                pathname: '/account-detail',
+                params: { id: createdId },
+              })
+            }
           />
         </View>
       ) : (

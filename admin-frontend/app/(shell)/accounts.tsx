@@ -46,7 +46,7 @@ export default function AccountsScreen() {
           <Text style={styles.title}>Contas</Text>
           <Text style={styles.sub}>{total} no total</Text>
         </View>
-        <Button title="Nova conta" onPress={() => router.push('/accounts/new')} />
+        <Button title="Nova conta" onPress={() => router.push('/accounts-new')} />
       </View>
 
       <View style={styles.searchRow}>
@@ -68,7 +68,11 @@ export default function AccountsScreen() {
         <Text style={styles.empty}>Nenhuma conta encontrada.</Text>
       ) : (
         accounts.map((item) => (
-          <Link key={item.id} href={`/account/${item.id}`} asChild>
+          <Link
+            key={item.id}
+            href={{ pathname: '/account-detail', params: { id: item.id } }}
+            asChild
+          >
             <Pressable style={styles.row}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{item.businessName}</Text>
