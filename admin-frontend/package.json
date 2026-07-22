@@ -1,0 +1,39 @@
+{
+  "name": "sof-admin-frontend",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "expo start --port 8091",
+    "web": "expo start --web --port 8091",
+    "export:web": "expo export -p web",
+    "start:web": "serve dist -s -l $PORT",
+    "heroku-postbuild": "npm run export:web"
+  },
+  "dependencies": {
+    "@expo-google-fonts/hanken-grotesk": "^0.4.3",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "expo": "~57.0.6",
+    "expo-constants": "~57.0.5",
+    "expo-font": "~57.0.1",
+    "expo-linking": "~57.0.3",
+    "expo-router": "~57.0.6",
+    "expo-secure-store": "~15.0.3",
+    "expo-splash-screen": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-web": "~0.21.0",
+    "serve": "^14.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

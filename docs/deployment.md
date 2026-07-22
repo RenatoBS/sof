@@ -11,18 +11,24 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 |------------|------------|-------------------------|
 | `sof-agendamento-api` | `backend` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
 | `sof-agendamento-web` | `frontend` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
+| `sof-agendamento-admin-api` | `admin-backend` | https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com |
+| `sof-agendamento-admin-web` | `admin-frontend` | https://sof-agendamento-admin-web-234d632f6b1f.herokuapp.com |
+
+Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api`. O `admin-backend` carrega uma cópia do schema em `admin-backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
 
 Git remotes locais típicos:
 
-- `heroku-api` → API  
-- `heroku-web` → front  
+- `heroku-api` → API produto  
+- `heroku-web` → front produto  
+- `heroku-admin-api` → API admin  
+- `heroku-admin-web` → front admin  
 
 ### Buildpacks (ordem)
 
 1. `https://github.com/lstoll/heroku-buildpack-monorepo`  
 2. `heroku/nodejs`  
 
-Config: `APP_BASE=backend` ou `frontend`.
+Config: `APP_BASE=backend|frontend|admin-backend|admin-frontend`.
 
 ### Processos
 
@@ -89,6 +95,27 @@ Lembretes WhatsApp: o job roda **no dyno web** (`@nestjs/schedule`, a cada 30 mi
 | `EXPO_PUBLIC_API_URL` | URL HTTPS da API |
 | `NODE_ENV` | `production` |
 
+### Variáveis Admin API (`sof-agendamento-admin-api`)
+
+| Var | Notas |
+|-----|--------|
+| `APP_BASE` | `admin-backend` |
+| `NODE_ENV` | `production` |
+| `ADMIN_JWT_SECRET` | forte, obrigatório |
+| `PUBLIC_URL` | URL do admin-web |
+| `CORS_ORIGIN` | mesma URL do admin-web |
+| `DATABASE_URL` / `DIRECT_URL` | mesmos do produto (Supabase) |
+| `STRIPE_SECRET_KEY` | criar/alterar planos (mesmo da API produto) |
+| `SEED_ADMIN_*` | só para seed no app produto |
+
+### Variáveis Admin Web (`sof-agendamento-admin-web`)
+
+| Var | Notas |
+|-----|--------|
+| `APP_BASE` | `admin-frontend` |
+| `EXPO_PUBLIC_API_URL` | URL HTTPS da admin-api (antes do build) |
+| `NODE_ENV` | `production` |
+
 ### Deploy
 
 Na raiz do monorepo ([`package.json`](../package.json)):
@@ -98,26 +125,32 @@ Na raiz do monorepo ([`package.json`](../package.json)):
 # (uma vez) configurar remotes
 npm run heroku:remotes
 
-# só API
+# só API / front produto
 npm run deploy:api
-
-# só front
 npm run deploy:web
 
-# API + front (na ordem: api → web)
+# admin
+npm run deploy:admin-api
+npm run deploy:admin-web
+
+# produto (api → web)
 npm run deploy
 
-# seed opcional
+# os quatro
+npm run deploy:all
+
+# seed opcional (cria admin + planos + demo)
 heroku run -a sof-agendamento-api npx prisma db seed
 ```
 
-Equivalente manual: `git push heroku-api HEAD:main` e `git push heroku-web HEAD:main`.
+Equivalente manual: `git push heroku-api HEAD:main` (e remotes `heroku-web`, `heroku-admin-api`, `heroku-admin-web`).
 
 Smoke:
 
 ```bash
-curl -sS https://<api>/api/health
-# abrir https://<web>/  e testar login demo
+curl -sS https://sof-agendamento-api-105cf5acdd23.herokuapp.com/api/health
+curl -sS https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com/api/health
+# abrir webs produto e admin
 ```
 
 ### Auth cross-origin em produção

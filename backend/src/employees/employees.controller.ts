@@ -15,10 +15,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
-import {
-  generateTempPassword,
-  hashPassword,
-} from '../common/password';
+import { isValidPhone, normalizePhone } from '../common/phone';
+import { EmployeePasswordTokenService } from '../employee-portal/employee-password-token.service';
 
 const COLORS = [
   '#3b82f6',
@@ -58,6 +56,7 @@ function shapeEmployee(
     accountId: string;
     name: string;
     email: string | null;
+    phone: string;
     mustChangePassword: boolean;
     color: string;
     createdAt: Date;
@@ -70,6 +69,7 @@ function shapeEmployee(
     accountId: rest.accountId,
     name: rest.name,
     email: rest.email || '',
+    phone: rest.phone || '',
     mustChangePassword: rest.mustChangePassword,
     color: rest.color,
     createdAt: rest.createdAt.toISOString(),
@@ -89,7 +89,10 @@ function parseServiceIds(raw: unknown): string[] {
 @Controller('api/employees')
 @UseGuards(AuthGuard)
 export class EmployeesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly passwordTokens: EmployeePasswordTokenService,
+  ) {}
 
   private async assertEmailAvailable(
     email: string,
@@ -116,13 +119,19 @@ export class EmployeesController {
 
   private async validatePayload(
     accountId: string,
-    body: { name?: string; email?: string; serviceIds?: unknown },
+    body: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      serviceIds?: unknown;
+    },
     options: { requireEmail: boolean },
   ) {
     const name = String(body?.name || '').trim();
     const email = String(body?.email || '')
       .trim()
       .toLowerCase();
+    const phone = normalizePhone(body?.phone);
     const serviceIds = parseServiceIds(body?.serviceIds);
 
     if (!name) {
@@ -136,6 +145,11 @@ export class EmployeesController {
           error: 'Informe um e-mail válido para o acesso do profissional.',
         });
       }
+    }
+    if (!isValidPhone(phone)) {
+      throw new BadRequestException({
+        error: 'Informe um telefone válido com DDD (somente números).',
+      });
     }
     if (serviceIds.length === 0) {
       throw new BadRequestException({
@@ -152,7 +166,7 @@ export class EmployeesController {
       });
     }
 
-    return { name, email: email || null, serviceIds };
+    return { name, email: email || null, phone, serviceIds };
   }
 
   @Get()
@@ -172,11 +186,12 @@ export class EmployeesController {
     body: {
       name?: string;
       email?: string;
+      phone?: string;
       serviceIds?: unknown;
       color?: string;
     },
   ) {
-    const { name, email, serviceIds } = await this.validatePayload(
+    const { name, email, phone, serviceIds } = await this.validatePayload(
       req.account.id,
       body,
       { requireEmail: true },
@@ -189,9 +204,6 @@ export class EmployeesController {
 
     await this.assertEmailAvailable(email);
 
-    const temporaryPassword = generateTempPassword();
-    const passwordHash = await hashPassword(temporaryPassword);
-
     const count = await this.prisma.employee.count({
       where: { accountId: req.account.id },
     });
@@ -201,7 +213,8 @@ export class EmployeesController {
         accountId: req.account.id,
         name,
         email,
-        passwordHash,
+        phone,
+        passwordHash: null,
         mustChangePassword: true,
         color,
         services: {
@@ -210,9 +223,15 @@ export class EmployeesController {
       },
       include: employeeInclude,
     });
+
+    const { resetLink, expiresAt } = await this.passwordTokens.issueResetLink(
+      employee.id,
+    );
+
     return {
       employee: shapeEmployee(employee),
-      temporaryPassword,
+      resetLink,
+      expiresAt: expiresAt.toISOString(),
     };
   }
 
@@ -224,6 +243,7 @@ export class EmployeesController {
     body: {
       name?: string;
       email?: string;
+      phone?: string;
       serviceIds?: unknown;
       color?: string;
       resetPassword?: boolean;
@@ -236,7 +256,7 @@ export class EmployeesController {
       throw new NotFoundException({ error: 'Profissional não encontrado.' });
     }
 
-    const { name, email, serviceIds } = await this.validatePayload(
+    const { name, email, phone, serviceIds } = await this.validatePayload(
       req.account.id,
       body,
       { requireEmail: true },
@@ -251,12 +271,7 @@ export class EmployeesController {
 
     const color = parseColor(body?.color, existing.color);
     const resetPassword = body?.resetPassword === true;
-    let temporaryPassword: string | undefined;
-    let passwordHash: string | undefined;
-    if (resetPassword || !existing.passwordHash) {
-      temporaryPassword = generateTempPassword();
-      passwordHash = await hashPassword(temporaryPassword);
-    }
+    const needsInvite = resetPassword || !existing.passwordHash;
 
     const employee = await this.prisma.$transaction(async (tx) => {
       await tx.employeeService.deleteMany({
@@ -267,9 +282,10 @@ export class EmployeesController {
         data: {
           name,
           email,
+          phone,
           color,
-          ...(passwordHash
-            ? { passwordHash, mustChangePassword: true }
+          ...(needsInvite
+            ? { passwordHash: null, mustChangePassword: true }
             : {}),
           services: {
             create: serviceIds.map((serviceId) => ({ serviceId })),
@@ -279,9 +295,18 @@ export class EmployeesController {
       });
     });
 
+    if (!needsInvite) {
+      return { employee: shapeEmployee(employee) };
+    }
+
+    const { resetLink, expiresAt } = await this.passwordTokens.issueResetLink(
+      employee.id,
+    );
+
     return {
       employee: shapeEmployee(employee),
-      ...(temporaryPassword ? { temporaryPassword } : {}),
+      resetLink,
+      expiresAt: expiresAt.toISOString(),
     };
   }
 

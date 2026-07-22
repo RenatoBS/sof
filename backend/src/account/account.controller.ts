@@ -13,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { publicAccount } from '../common/public-shapes';
+import { isValidPhone, normalizePhone } from '../common/phone';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 import { parseOpeningHoursInput } from './opening-hours';
 import {
@@ -38,6 +39,7 @@ export class AccountController {
     @Body()
     body: {
       businessName?: string;
+      phone?: string;
       whatsappPhoneNumberId?: string;
       openingHours?: unknown;
       address?: string;
@@ -47,6 +49,7 @@ export class AccountController {
   ) {
     const data: {
       businessName?: string;
+      phone?: string;
       whatsappPhoneNumberId?: string;
       openingHours?: Prisma.InputJsonValue;
       address?: string;
@@ -57,6 +60,15 @@ export class AccountController {
     if (typeof body?.businessName === 'string') {
       const businessName = body.businessName.trim();
       if (businessName) data.businessName = businessName;
+    }
+    if (body?.phone !== undefined) {
+      const phone = normalizePhone(body.phone);
+      if (!isValidPhone(phone)) {
+        throw new BadRequestException({
+          error: 'Informe um telefone válido com DDD (somente números).',
+        });
+      }
+      data.phone = phone;
     }
     if (typeof body?.whatsappPhoneNumberId === 'string') {
       data.whatsappPhoneNumberId = body.whatsappPhoneNumberId.trim();

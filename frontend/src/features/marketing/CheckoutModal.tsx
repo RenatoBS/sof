@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Linking,
   Modal,
@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { checkoutApi } from '@/src/api/endpoints';
+import { checkoutApi, plansApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { setToken } from '@/src/auth/tokenStorage';
 import { FeatureIcon } from '@/src/components/FeatureIcon';
@@ -20,7 +20,16 @@ import { m } from '@/src/theme/marketing';
 
 const PASSWORD_MIN = 8;
 
-export const PLANS = [
+export type MarketingPlan = {
+  name: string;
+  price: number;
+  desc: string;
+  featured: boolean;
+  features: string[];
+};
+
+/** Fallback se a API de planos estiver indisponível. */
+export const PLANS: MarketingPlan[] = [
   {
     name: 'Essencial',
     price: 99,
@@ -60,19 +69,51 @@ export const PLANS = [
       'Suporte dedicado',
     ],
   },
-] as const;
+];
+
+function toMarketingPlans(
+  rows: { name: string; price: number; features: string[] }[],
+): MarketingPlan[] {
+  const mid = Math.floor(rows.length / 2);
+  return rows.map((p, i) => {
+    const fallback = PLANS.find((f) => f.name === p.name);
+    return {
+      name: p.name,
+      price: p.price,
+      desc: fallback?.desc || 'Plano Sof.',
+      featured: rows.length === 1 ? true : i === mid,
+      features: p.features.length ? p.features : fallback?.features || [],
+    };
+  });
+}
 
 export function PricingCards({
   onSelect,
 }: {
-  onSelect: (plan: (typeof PLANS)[number]) => void;
+  onSelect: (plan: MarketingPlan) => void;
 }) {
   const { width } = useWindowDimensions();
   const stacked = width < 900;
+  const [plans, setPlans] = useState<MarketingPlan[]>(PLANS);
+
+  useEffect(() => {
+    let cancelled = false;
+    plansApi
+      .list()
+      .then((res) => {
+        if (!cancelled && res.plans?.length) {
+          setPlans(toMarketingPlans(res.plans));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <View style={[styles.grid, stacked && { flexDirection: 'column' }]}>
-      {PLANS.map((plan) => (
+      {plans.map((plan) => (
         <View
           key={plan.name}
           style={[
@@ -123,6 +164,7 @@ export function CheckoutModal({
   const { refreshMe } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -130,11 +172,13 @@ export function CheckoutModal({
   const canSubmit =
     Boolean(name.trim()) &&
     Boolean(email.trim()) &&
+    Boolean(phone.replace(/\D/g, '').length >= 10) &&
     password.length >= PASSWORD_MIN;
 
   const reset = () => {
     setName('');
     setEmail('');
+    setPhone('');
     setPassword('');
     setError('');
     setLoading(false);
@@ -154,6 +198,11 @@ export function CheckoutModal({
 
   const submit = async () => {
     setError('');
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setError('Informe um telefone válido com DDD.');
+      return;
+    }
     if (password.length < PASSWORD_MIN) {
       setError(`A senha deve ter pelo menos ${PASSWORD_MIN} caracteres.`);
       return;
@@ -164,6 +213,7 @@ export function CheckoutModal({
         planName,
         name.trim(),
         email.trim(),
+        phoneDigits,
         password,
       );
       if (data.mode === 'redirect' && data.initPoint) {
@@ -222,6 +272,13 @@ export function CheckoutModal({
             onChangeText={setName}
             placeholder="Nome do responsável pela conta"
             autoCapitalize="words"
+          />
+          <SofInput
+            label="Telefone"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholder="DDD + número"
           />
           <SofInput
             label="E-mail"

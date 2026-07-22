@@ -7,8 +7,10 @@ Documento vivo. Atualize junto com mudanças estruturais.
 
 Sof é um monorepo com:
 
-1. **backend/** — API HTTP NestJS (`/api/*`) + Prisma + PostgreSQL  
-2. **frontend/** — Expo (Web, iOS, Android) com expo-router  
+1. **backend/** — API HTTP NestJS (`/api/*`) + Prisma + PostgreSQL (produto)  
+2. **frontend/** — Expo (Web, iOS, Android) com expo-router (produto)  
+3. **admin-backend/** — API NestJS do painel interno Sof (mesmo Postgres)  
+4. **admin-frontend/** — Expo Web do painel interno  
 
 Fluxo principal: cliente agenda pelo WhatsApp (ou simulador) → API persiste `Appointment` → painel recebe via SSE e lista na agenda semanal.
 
@@ -43,6 +45,7 @@ Registrados em `backend/src/app.module.ts`:
 | `EmployeesModule` | profissionais |
 | `ServicesModule` | serviços (cardápio) |
 | `AppointmentsModule` | agendamentos |
+| `PlansModule` | catálogo público `GET /api/plans` + `PlansService` para checkout |
 | `CheckoutModule` | assinatura / Checkout Session Stripe |
 | `PaymentsModule` | webhook Stripe |
 | `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
@@ -71,11 +74,18 @@ Account
   ├── CheckoutSession[]
   ├── WhatsappSession[]
   └── WhatsappHandoff[]  (alerta de escalonamento: reason, status, humanRepliedAt)
+
+AdminUser     (operadores do painel Sof — não é tenant)
+Plan          (catálogo Sof ↔ stripeProductId / stripePriceId)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `openingHours` (JSON 7 dias, 0=domingo).
+Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
 
-`Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
+`Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `features` (JSON), `active`, `sortOrder`. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` se a tabela estiver vazia.
+
+`AdminUser`: email/senha dos operadores do `admin-backend`.
+
+`Employee`: além de nome/cor/serviços/`phone`, tem `email` único, `passwordHash` (null até o profissional definir via link) e `mustChangePassword`. Convites/resets usam `EmployeePasswordToken` (hash SHA-256 do token, `expiresAt` 2h, `usedAt`). JWT distingue `role: account | employee`.
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
@@ -166,11 +176,11 @@ Visual alinhado ao HTML legado (tokens `#F4F4F6`, `#6B6FB5`).
 
 | Ambiente | Banco | API | Front |
 |----------|-------|-----|--------|
-| Local | Docker `sof-postgres` :5433 | :3001 | Expo web :8081 |
-| Staging/prod | Supabase (pooler + direct) | Heroku `sof-agendamento-api` | Heroku `sof-agendamento-web` |
+| Local | Docker `sof-postgres` :5433 | :3001 (+ admin :3011) | Expo web :8081 (+ admin :8091) |
+| Staging/prod | Supabase (pooler + direct) | Heroku `sof-agendamento-api` (+ `sof-agendamento-admin-api`) | Heroku `sof-agendamento-web` (+ `sof-agendamento-admin-web`) |
 
 Heroku monorepo: buildpack subdirectory (`APP_BASE`) + Node.  
-Procfiles: `backend/Procfile` (release migrate + web), `frontend/Procfile` (serve static export).
+Procfiles: `backend/Procfile` (release migrate + web), `frontend/Procfile` / `admin-frontend/Procfile` (serve static export), `admin-backend/Procfile` (web; sem release migrate).
 
 Alternativa documentada: `render.yaml` (API only).
 
@@ -191,3 +201,20 @@ Alternativa documentada: `render.yaml` (API only).
 ```
 
 Hosts diferentes ⇒ Bearer é a fonte confiável; cookie auxiliar com `SameSite=None`.
+
+## Painel admin (`admin-backend/` + `admin-frontend/`)
+
+Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `backend/prisma/`; o generator `adminClient` emite o client Prisma em `admin-backend/node_modules/.prisma/client`.
+
+### admin-backend
+
+- Porta local **3011**; prefixo `/api/*`; health `GET /api/health`.
+- Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
+- Contas: `GET/POST /api/accounts`, `GET/PUT /api/accounts/:id`, `POST /api/accounts/:id/reset-password`.
+- Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado).
+- Envs: ver `admin-backend/.env.example`.
+
+### admin-frontend
+
+- Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
+- Rotas: `/login`, `/accounts`, `/accounts/new`, `/accounts/[id]`, `/plans`, `/plans/new`, `/plans/[id]`.

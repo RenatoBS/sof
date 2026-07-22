@@ -116,6 +116,11 @@ export default function AccountScreen() {
   const [addressError, setAddressError] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
 
+  const [phone, setPhone] = useState('');
+  const [phoneSaved, setPhoneSaved] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
+
   const [reminderMinutes, setReminderMinutes] = useState(120);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
   const [timezoneOpen, setTimezoneOpen] = useState(false);
@@ -172,6 +177,7 @@ export default function AccountScreen() {
     if (account) {
       setHours(normalizeHours(account.openingHours));
       setAddress(account.address || '');
+      setPhone(account.phone || '');
       const lead = Number(account.whatsappReminderMinutes);
       setReminderMinutes(
         Number.isFinite(lead) &&
@@ -304,10 +310,61 @@ export default function AccountScreen() {
             <Text style={styles.metaValue}>{account.email}</Text>
           </View>
           <View style={styles.meta}>
+            <Text style={styles.metaLabel}>Telefone</Text>
+            <Text style={styles.metaValue}>
+              {account.phone ? account.phone : '—'}
+            </Text>
+          </View>
+          <View style={styles.meta}>
             <Text style={styles.metaLabel}>Assinante desde</Text>
             <Text style={styles.metaValue}>{since}</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Telefone de contato</Text>
+        <Text style={[styles.help, { marginBottom: 12 }]}>
+          Telefone do responsável pela conta (com DDD).
+        </Text>
+        <SofInput
+          label="Telefone"
+          value={phone}
+          onChangeText={setPhone}
+          theme="dashboard"
+          placeholder="11999998888"
+          keyboardType="phone-pad"
+        />
+        {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
+        {phoneSaved ? <Text style={styles.saved}>{phoneSaved}</Text> : null}
+        <SofButton
+          title={savingPhone ? 'Salvando…' : 'Salvar telefone'}
+          variant="dark"
+          theme="dashboard"
+          disabled={savingPhone}
+          onPress={async () => {
+            setPhoneError('');
+            setSavingPhone(true);
+            try {
+              const digits = phone.replace(/\D/g, '');
+              const { account: updated } = await dashboardApi.updateAccount({
+                phone: digits,
+              });
+              await setSession(updated);
+              setPhone(updated.phone || digits);
+              setPhoneSaved('Telefone salvo!');
+              setTimeout(() => setPhoneSaved(''), 2000);
+            } catch (err) {
+              setPhoneError(
+                err instanceof Error
+                  ? err.message
+                  : 'Não foi possível salvar.',
+              );
+            } finally {
+              setSavingPhone(false);
+            }
+          }}
+        />
       </View>
 
       <View style={styles.card}>

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -14,7 +15,12 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
-import { hashPassword, verifyPassword } from '../common/password';
+import {
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  hashPassword,
+  isValidAccountPassword,
+  verifyPassword,
+} from '../common/password';
 import {
   EMPLOYEE_COOKIE_NAME,
   cookieOptions,
@@ -25,6 +31,7 @@ import {
   EmployeeAuthGuard,
   type EmployeeAuthedRequest,
 } from './employee-auth.guard';
+import { EmployeePasswordTokenService } from './employee-password-token.service';
 
 function isEmail(value: unknown): value is string {
   return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -35,6 +42,7 @@ export class EmployeeAuthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly passwordTokens: EmployeePasswordTokenService,
   ) {}
 
   @Post('login')
@@ -100,6 +108,99 @@ export class EmployeeAuthController {
     };
   }
 
+  /** Valida o link de convite/reset (público). */
+  @Get('password-setup')
+  @Throttle({ default: { limit: 60, ttl: 15 * 60 * 1000 } })
+  async passwordSetupInfo(@Query('token') token?: string) {
+    const row = await this.passwordTokens.findValidByRawToken(token || '');
+    if (!row) {
+      throw new BadRequestException({
+        error: 'Link inválido, expirado ou já utilizado.',
+      });
+    }
+    return {
+      email: row.employee.email,
+      name: row.employee.name,
+      businessName: row.employee.account.businessName,
+      expiresAt: row.expiresAt.toISOString(),
+    };
+  }
+
+  /** Define senha via link (público) e faz login automático. */
+  @Post('password-setup')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 15 * 60 * 1000 } })
+  async passwordSetup(
+    @Body() body: { token?: string; password?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const password = body?.password;
+    if (!isValidAccountPassword(password)) {
+      throw new BadRequestException({
+        error: `A senha deve ter pelo menos ${ACCOUNT_PASSWORD_MIN_LENGTH} caracteres.`,
+      });
+    }
+
+    const row = await this.passwordTokens.findValidByRawToken(body?.token || '');
+    if (!row) {
+      throw new BadRequestException({
+        error: 'Link inválido, expirado ou já utilizado.',
+      });
+    }
+
+    const passwordHash = await hashPassword(password);
+    const employee = await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.employeePasswordToken.updateMany({
+        where: {
+          id: row.id,
+          usedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { usedAt: new Date() },
+      });
+      if (consumed.count !== 1) {
+        throw new BadRequestException({
+          error: 'Link inválido, expirado ou já utilizado.',
+        });
+      }
+
+      const updated = await tx.employee.update({
+        where: { id: row.employeeId },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        },
+        include: { account: true },
+      });
+
+      await tx.employeePasswordToken.updateMany({
+        where: {
+          employeeId: row.employeeId,
+          usedAt: null,
+          id: { not: row.id },
+        },
+        data: { usedAt: new Date() },
+      });
+      return updated;
+    });
+
+    const jwtToken = signEmployeeToken(
+      employee.id,
+      employee.accountId,
+      this.config.getOrThrow<string>('jwtSecret'),
+    );
+    res.cookie(
+      EMPLOYEE_COOKIE_NAME,
+      jwtToken,
+      cookieOptions(this.config.get<boolean>('isProd') === true),
+    );
+
+    return {
+      employee: publicEmployeeSession(employee, employee.account),
+      token: jwtToken,
+    };
+  }
+
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(EmployeeAuthGuard)
@@ -110,14 +211,17 @@ export class EmployeeAuthController {
     const currentPassword = String(body?.currentPassword || '');
     const newPassword = String(body?.newPassword || '');
 
-    if (!currentPassword || newPassword.length < 6) {
+    if (!currentPassword || !isValidAccountPassword(newPassword)) {
       throw new BadRequestException({
-        error: 'A nova senha deve ter pelo menos 6 caracteres.',
+        error: `A nova senha deve ter pelo menos ${ACCOUNT_PASSWORD_MIN_LENGTH} caracteres.`,
       });
     }
 
     if (!req.employee.passwordHash) {
-      throw new UnauthorizedException({ error: 'Conta sem senha.' });
+      throw new UnauthorizedException({
+        error:
+          'Conta sem senha. Peça um novo link de acesso ao responsável da conta.',
+      });
     }
 
     const ok = await verifyPassword(currentPassword, req.employee.passwordHash);

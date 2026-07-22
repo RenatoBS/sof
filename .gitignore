@@ -7,6 +7,8 @@ node_modules/
 !.env.example
 backend/.env
 frontend/.env
+admin-backend/.env
+admin-frontend/.env
 
 # Build / artefatos compilados
 build/*
@@ -17,9 +19,11 @@ out/
 .nuxt/
 .output/
 backend/dist/
+admin-backend/dist/
 frontend/build/*
 !frontend/build/.gitkeep
 frontend/dist/
+admin-frontend/dist/
 
 # TypeScript
 *.tsbuildinfo
@@ -67,3 +71,5 @@ backend/prisma/seed.d.ts
 .expo/
 frontend/.expo/
 frontend/web-build/
+admin-frontend/.expo/
+admin-frontend/web-build/

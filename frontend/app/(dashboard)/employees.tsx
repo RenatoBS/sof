@@ -22,12 +22,15 @@ export default function EmployeesScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [color, setColor] = useState<string>(EMPLOYEE_COLORS[0]);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [resetPassword, setResetPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [tempPassword, setTempPassword] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteExpiresAt, setInviteExpiresAt] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const isEditing = !!editingId;
 
@@ -43,6 +46,7 @@ export default function EmployeesScreen() {
   const resetForm = () => {
     setName('');
     setEmail('');
+    setPhone('');
     setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
@@ -59,11 +63,14 @@ export default function EmployeesScreen() {
     }
     setName('');
     setEmail('');
+    setPhone('');
     setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
     setError('');
-    setTempPassword('');
+    setInviteLink('');
+    setInviteExpiresAt('');
+    setCopied(false);
     setEditingId(null);
     setShowForm(true);
   };
@@ -72,22 +79,50 @@ export default function EmployeesScreen() {
     setEditingId(employee.id);
     setName(employee.name);
     setEmail(employee.email || '');
+    setPhone(employee.phone || '');
     setColor((employee.color || EMPLOYEE_COLORS[0]).toLowerCase());
     setServiceIds((employee.services || []).map((s) => s.id));
     setResetPassword(false);
     setError('');
-    setTempPassword('');
+    setInviteLink('');
+    setInviteExpiresAt('');
+    setCopied(false);
     setShowForm(true);
+  };
+
+  const showInvite = (link: string, expiresAt?: string) => {
+    setInviteLink(link);
+    setInviteExpiresAt(expiresAt || '');
+    setCopied(false);
+    setShowForm(false);
+    setEditingId(null);
+  };
+
+  const copyInvite = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(inviteLink);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Não foi possível copiar. Selecione o link manualmente.');
+    }
   };
 
   const save = async () => {
     setError('');
     if (serviceIds.length === 0) {
-      setError('Selecione ao menos um servi?o.');
+      setError('Selecione ao menos um serviço.');
       return;
     }
     if (!email.trim()) {
       setError('Informe o e-mail de acesso do profissional.');
+      return;
+    }
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setError('Informe um telefone válido com DDD.');
       return;
     }
     setLoading(true);
@@ -95,30 +130,28 @@ export default function EmployeesScreen() {
       const body = {
         name: name.trim(),
         email: email.trim().toLowerCase(),
+        phone: phoneDigits,
         serviceIds,
         color,
       };
       if (editingId) {
-        const { employee, temporaryPassword } = await dashboardApi.updateEmployee(
-          editingId,
-          { ...body, resetPassword },
-        );
+        const { employee, resetLink, expiresAt } =
+          await dashboardApi.updateEmployee(editingId, {
+            ...body,
+            resetPassword,
+          });
         setEmployees((prev) =>
           prev.map((e) => (e.id === employee.id ? employee : e)),
         );
-        if (temporaryPassword) {
-          setTempPassword(temporaryPassword);
-          setShowForm(false);
-          setEditingId(null);
+        if (resetLink) {
+          showInvite(resetLink, expiresAt);
           return;
         }
       } else {
-        const { employee, temporaryPassword } =
+        const { employee, resetLink, expiresAt } =
           await dashboardApi.createEmployee(body);
         setEmployees((prev) => [...prev, employee]);
-        setTempPassword(temporaryPassword);
-        setShowForm(false);
-        setEditingId(null);
+        showInvite(resetLink, expiresAt);
         return;
       }
       resetForm();
@@ -155,21 +188,41 @@ export default function EmployeesScreen() {
         />
       </View>
 
-      {tempPassword ? (
+      {inviteLink ? (
         <View style={styles.passwordCard}>
-          <Text style={styles.cardTitle}>Senha tempor?ria gerada</Text>
+          <Text style={styles.cardTitle}>Link de acesso gerado</Text>
           <Text style={styles.hint}>
-            Anote e envie ao profissional. No primeiro acesso em{' '}
-            <Text style={styles.code}>/login</Text> ser? pedida a troca de
-            senha.
+            Copie e envie ao profissional (WhatsApp, e-mail, etc.). O link é de
+            uso único e expira em 2 horas. Nele a pessoa define a senha e já
+            entra na agenda — sem precisar da senha antiga.
           </Text>
-          <Text style={styles.tempPass}>{tempPassword}</Text>
-          <SofButton
-            title="Ok, j? anotei"
-            variant="dark"
-            theme="dashboard"
-            onPress={() => setTempPassword('')}
-          />
+          {inviteExpiresAt ? (
+            <Text style={styles.hint}>
+              Válido até{' '}
+              {new Date(inviteExpiresAt).toLocaleString('pt-BR')}
+            </Text>
+          ) : null}
+          <Text selectable style={styles.tempPass}>
+            {inviteLink}
+          </Text>
+          <View style={styles.actions}>
+            <SofButton
+              title={copied ? 'Copiado!' : 'Copiar link'}
+              variant="dark"
+              theme="dashboard"
+              onPress={copyInvite}
+            />
+            <SofButton
+              title="Fechar"
+              variant="light"
+              theme="dashboard"
+              onPress={() => {
+                setInviteLink('');
+                setInviteExpiresAt('');
+                setCopied(false);
+              }}
+            />
+          </View>
         </View>
       ) : null}
 
@@ -186,6 +239,14 @@ export default function EmployeesScreen() {
               theme="dashboard"
               placeholder="Nome completo"
               autoCapitalize="words"
+            />
+            <SofInput
+              label="Telefone"
+              value={phone}
+              onChangeText={setPhone}
+              theme="dashboard"
+              placeholder="11999998888"
+              keyboardType="phone-pad"
             />
             <SofInput
               label="E-mail de acesso"
@@ -247,13 +308,14 @@ export default function EmployeesScreen() {
                   ]}
                 >
                   {resetPassword
-                    ? '? Gerar nova senha tempor?ria'
-                    : 'Gerar nova senha tempor?ria'}
+                    ? '✓ Gerar novo link de senha'
+                    : 'Gerar novo link de senha'}
                 </Text>
               </Pressable>
             ) : (
               <Text style={styles.hint}>
-                Uma senha tempor?ria ser? gerada automaticamente ao salvar.
+                Ao salvar, um link de uso único (válido por 2h) será gerado para
+                o profissional definir a senha.
               </Text>
             )}
           </View>
@@ -290,7 +352,10 @@ export default function EmployeesScreen() {
                 <Text style={styles.name}>{e.name}</Text>
                 <Text style={styles.meta}>{e.email || 'Sem e-mail de acesso'}</Text>
                 <Text style={styles.meta}>
-                  {(e.services || []).map((s) => s.name).join(', ') || '?'}
+                  {e.phone ? e.phone : 'Sem telefone'}
+                </Text>
+                <Text style={styles.meta}>
+                  {(e.services || []).map((s) => s.name).join(', ') || '—'}
                 </Text>
               </View>
               <View style={[styles.dot, { backgroundColor: e.color }]} />
@@ -343,11 +408,12 @@ const styles = StyleSheet.create({
   hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
   code: { fontFamily: 'monospace', color: d.ink },
   tempPass: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
     color: d.ink,
     fontFamily: 'monospace',
+    lineHeight: 20,
   },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   colorSwatch: {

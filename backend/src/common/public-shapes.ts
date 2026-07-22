@@ -27,6 +27,7 @@ export function publicEmployeeSession(
     accountId: employee.accountId,
     name: employee.name,
     email: employee.email || '',
+    phone: employee.phone || '',
     color: employee.color,
     mustChangePassword: employee.mustChangePassword,
     businessName: account.businessName,

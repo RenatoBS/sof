@@ -44,6 +44,24 @@ export const employeeAuthApi = {
       body: { currentPassword, newPassword },
       auth: 'employee',
     }),
+  passwordSetupInfo: (token: string) =>
+    api<{
+      email: string;
+      name: string;
+      businessName: string;
+      expiresAt: string;
+    }>(`/employee-auth/password-setup?token=${encodeURIComponent(token)}`, {
+      auth: false,
+    }),
+  passwordSetup: (token: string, password: string) =>
+    api<{ employee: EmployeeSession; token: string }>(
+      '/employee-auth/password-setup',
+      {
+        method: 'POST',
+        body: { token, password },
+        auth: false,
+      },
+    ),
 };
 
 export const employeeApi = {
@@ -78,7 +96,13 @@ export const employeeApi = {
 };
 
 export const checkoutApi = {
-  create: (planName: string, name: string, email: string, password: string) =>
+  create: (
+    planName: string,
+    name: string,
+    email: string,
+    phone: string,
+    password: string,
+  ) =>
     api<{
       mode: 'redirect' | 'dev-approved';
       sessionId: string;
@@ -86,7 +110,7 @@ export const checkoutApi = {
       token?: string;
     }>('/checkout/create', {
       method: 'POST',
-      body: { planName, name, email, password },
+      body: { planName, name, email, phone, password },
       auth: false,
     }),
   status: (sessionId: string) =>
@@ -98,15 +122,27 @@ export const checkoutApi = {
     }>(`/checkout/status/${sessionId}`, { auth: false }),
 };
 
+export const plansApi = {
+  list: () =>
+    api<{
+      plans: { name: string; price: number; features: string[] }[];
+    }>('/plans', { auth: false }),
+};
+
 export const dashboardApi = {
   employees: () => api<{ employees: Employee[] }>('/employees'),
   createEmployee: (body: {
     name: string;
     email: string;
+    phone: string;
     serviceIds: string[];
     color?: string;
   }) =>
-    api<{ employee: Employee; temporaryPassword: string }>('/employees', {
+    api<{
+      employee: Employee;
+      resetLink: string;
+      expiresAt: string;
+    }>('/employees', {
       method: 'POST',
       body,
     }),
@@ -115,18 +151,20 @@ export const dashboardApi = {
     body: {
       name: string;
       email: string;
+      phone: string;
       serviceIds: string[];
       color?: string;
       resetPassword?: boolean;
     },
   ) =>
-    api<{ employee: Employee; temporaryPassword?: string }>(
-      `/employees/${id}`,
-      {
-        method: 'PUT',
-        body,
-      },
-    ),
+    api<{
+      employee: Employee;
+      resetLink?: string;
+      expiresAt?: string;
+    }>(`/employees/${id}`, {
+      method: 'PUT',
+      body,
+    }),
   deleteEmployee: (id: string) =>
     api<{ ok: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
   services: () => api<{ services: Service[] }>('/services'),
@@ -189,6 +227,7 @@ export const dashboardApi = {
     whatsappPhoneNumberId?: string;
     openingHours?: OpeningHours;
     address?: string;
+    phone?: string;
     businessName?: string;
     whatsappReminderMinutes?: number;
     timezone?: string;

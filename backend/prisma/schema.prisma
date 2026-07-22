@@ -2,6 +2,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+/// Client para o admin-backend (mesmo schema, output separado)
+generator adminClient {
+  provider = "prisma-client-js"
+  output   = "../../admin-backend/node_modules/.prisma/client"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
@@ -13,6 +19,8 @@ model Account {
   businessName          String
   ownerName             String
   email                 String   @unique
+  /// Telefone do responsável / estabelecimento (dígitos, com DDD)
+  phone                 String   @default("")
   passwordHash          String
   plan                  String
   planPrice             Float
@@ -47,16 +55,34 @@ model Employee {
   accountId          String
   name               String
   email              String?  @unique
+  /// Telefone do profissional (dígitos, com DDD)
+  phone              String   @default("")
   passwordHash       String?
   mustChangePassword Boolean  @default(true)
   color              String
   createdAt          DateTime @default(now())
 
-  account      Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
-  services     EmployeeService[]
+  account        Account                 @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  appointments   Appointment[]
+  services       EmployeeService[]
+  passwordTokens EmployeePasswordToken[]
 
   @@index([accountId])
+}
+
+/// Link de convite / reset de senha do profissional (uso único, TTL 2h)
+model EmployeePasswordToken {
+  id         String    @id @default(cuid())
+  employeeId String
+  /// SHA-256 do token opaco enviado no link
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
 }
 
 model Service {
@@ -152,6 +178,8 @@ model CheckoutSession {
   price        Float
   name         String
   email        String
+  /// Telefone informado no checkout (dígitos)
+  phone        String   @default("")
   status       String   @default("pending")
   preferenceId String?
   accountId    String?
@@ -202,4 +230,36 @@ model WhatsappHandoff {
 
   @@index([accountId, status, openedAt])
   @@index([accountId, customerPhone, status])
+}
+
+/// Operador do painel admin Sof (plataforma, não tenant)
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+/// Catálogo de planos Sof ↔ Stripe Product/Price
+model Plan {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  /// Preço mensal em BRL (display / snapshot na Account)
+  price           Float
+  currency        String   @default("brl")
+  /// month | year
+  interval        String   @default("month")
+  stripeProductId String
+  stripePriceId   String
+  paymentLinkUrl  String   @default("")
+  /// Features de marketing (JSON string[])
+  features        Json     @default("[]")
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active, sortOrder])
 }

@@ -35,6 +35,7 @@ export class ProvisionService {
         businessName: session.name,
         ownerName: session.name,
         email: session.email,
+        phone: session.phone || '',
         passwordHash: session.passwordHash,
         plan: session.planName,
         planPrice: session.price,

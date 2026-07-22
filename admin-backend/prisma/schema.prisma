@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Account {
+  id                    String   @id @default(cuid())
+  businessName          String
+  ownerName             String
+  email                 String   @unique
+  /// Telefone do responsável / estabelecimento (dígitos, com DDD)
+  phone                 String   @default("")
+  passwordHash          String
+  plan                  String
+  planPrice             Float
+  whatsappPhoneNumberId String   @default("")
+  /// Token da instância Uazapi/Whazap (nunca expor na API pública)
+  whatsappInstanceToken String   @default("")
+  whatsappConnectedAt   DateTime?
+  /// Json: 7 dias (0=domingo…6=sábado), cada um `{ open, start, end }` HH:MM
+  openingHours          Json     @default("[{\"open\":false,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"}]")
+  /// Endereço do estabelecimento (opcional; bot pode informar na conversa)
+  address               String   @default("")
+  /// Quantas falhas consecutivas do bot abrem alerta de atendimento (1|2|3|5)
+  whatsappHandoffThreshold Int   @default(2)
+  /// Minutos antes do horário para lembrete WhatsApp (0=off; 60|120|180|360|1440)
+  whatsappReminderMinutes Int    @default(120)
+  /// Fuso IANA da conta (interpreta date/time dos agendamentos)
+  timezone              String   @default("America/Sao_Paulo")
+  status                String   @default("active")
+  createdAt             DateTime @default(now())
+
+  employees        Employee[]
+  services         Service[]
+  clients          Client[]
+  appointments     Appointment[]
+  checkoutSessions CheckoutSession[]
+  whatsappSessions WhatsappSession[]
+  whatsappHandoffs WhatsappHandoff[]
+}
+
+model Employee {
+  id                 String   @id @default(cuid())
+  accountId          String
+  name               String
+  email              String?  @unique
+  /// Telefone do profissional (dígitos, com DDD)
+  phone              String   @default("")
+  passwordHash       String?
+  mustChangePassword Boolean  @default(true)
+  color              String
+  createdAt          DateTime @default(now())
+
+  account        Account                 @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  appointments   Appointment[]
+  services       EmployeeService[]
+  passwordTokens EmployeePasswordToken[]
+
+  @@index([accountId])
+}
+
+/// Link de convite / reset de senha do profissional (uso único, TTL 2h)
+model EmployeePasswordToken {
+  id         String    @id @default(cuid())
+  employeeId String
+  /// SHA-256 do token opaco enviado no link
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+
+model Service {
+  id        String   @id @default(cuid())
+  accountId String
+  name      String
+  duration  Int
+  price     Float
+  createdAt DateTime @default(now())
+
+  account      Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  employees    EmployeeService[]
+
+  @@index([accountId])
+}
+
+model EmployeeService {
+  employeeId String
+  serviceId  String
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, serviceId])
+  @@index([serviceId])
+}
+
+model Client {
+  id                  String    @id @default(cuid())
+  accountId           String
+  name                String
+  phone               String
+  /// Se true, bot WhatsApp não responde este cliente até reativar
+  botPausedPermanent  Boolean   @default(false)
+  /// Mute temporário: bot silencioso enquanto > now()
+  botPausedUntil      DateTime?
+  /// Falhas consecutivas do bot (escalonamento humano)
+  botUnresolvedCount  Int       @default(0)
+  createdAt           DateTime  @default(now())
+
+  account      Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  handoffs     WhatsappHandoff[]
+
+  @@unique([accountId, phone])
+  @@index([accountId])
+}
+
+model Appointment {
+  id                String   @id @default(cuid())
+  accountId         String
+  employeeId        String
+  /// `service` = atendimento; `block` = evento livre (almoço, médico, etc.)
+  kind              String   @default("service")
+  /// Título do evento livre (kind=block); vazio em serviços
+  title             String   @default("")
+  /// Duração em minutos; obrigatório em block; em service usa Service.duration se null
+  durationMinutes   Int?
+  serviceId         String?
+  clientId          String?
+  clientName        String   @default("")
+  clientPhone       String   @default("")
+  date              String
+  time              String
+  price             Float    @default(0)
+  status            String   @default("confirmed")
+  source            String   @default("manual")
+  /// Liga ocorrências materializadas da mesma série recorrente
+  recurrenceGroupId String?
+  /// Claim de envio de lembrete (timeout libera para retry)
+  reminderClaimedAt DateTime?
+  /// Lembrete WhatsApp enviado com sucesso (no máximo 1x)
+  reminderSentAt    DateTime?
+  createdAt         DateTime @default(now())
+
+  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  client   Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@index([employeeId])
+  @@index([serviceId])
+  @@index([clientId])
+  @@index([recurrenceGroupId])
+  @@index([status, reminderSentAt, date])
+}
+
+model CheckoutSession {
+  id           String   @id @default(cuid())
+  planName     String
+  price        Float
+  name         String
+  email        String
+  /// Telefone informado no checkout (dígitos)
+  phone        String   @default("")
+  status       String   @default("pending")
+  preferenceId String?
+  accountId    String?
+  passwordHash String?
+  delivered    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+}
+
+model WhatsappSession {
+  id            String   @id @default(cuid())
+  accountId     String
+  customerPhone String
+  step          String   @default("start")
+  data          Json     @default("{}")
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, customerPhone])
+  @@index([accountId])
+}
+
+/// Alerta de conversa que o bot não resolveu / pediu humano
+model WhatsappHandoff {
+  id              String    @id @default(cuid())
+  accountId       String
+  clientId        String?
+  customerPhone   String
+  customerName    String    @default("")
+  lastMessage     String    @default("")
+  /// unresolved | human_requested
+  reason          String
+  /// open | resolved
+  status          String    @default("open")
+  openedAt        DateTime  @default(now())
+  humanRepliedAt  DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, status, openedAt])
+  @@index([accountId, customerPhone, status])
+}
+
+/// Operador do painel admin Sof (plataforma, não tenant)
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+/// Catálogo de planos Sof ↔ Stripe Product/Price
+model Plan {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  /// Preço mensal em BRL (display / snapshot na Account)
+  price           Float
+  currency        String   @default("brl")
+  /// month | year
+  interval        String   @default("month")
+  stripeProductId String
+  stripePriceId   String
+  paymentLinkUrl  String   @default("")
+  /// Features de marketing (JSON string[])
+  features        Json     @default("[]")
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}

@@ -19,8 +19,9 @@ import {
   hashPassword,
   isValidAccountPassword,
 } from '../common/password';
-import { getPlan } from '../common/plans';
+import { isValidPhone, normalizePhone } from '../common/phone';
 import { COOKIE_NAME, cookieOptions, signAccountToken } from '../common/token';
+import { PlansService } from '../plans/plans.service';
 import { ProvisionService } from './provision.service';
 import { StripeService } from './stripe.service';
 
@@ -35,6 +36,7 @@ export class CheckoutController {
     private readonly config: ConfigService,
     private readonly provision: ProvisionService,
     private readonly stripe: StripeService,
+    private readonly plans: PlansService,
   ) {}
 
   @Post('create')
@@ -42,7 +44,13 @@ export class CheckoutController {
   @Throttle({ default: { limit: 15, ttl: 15 * 60 * 1000 } })
   async create(
     @Body()
-    body: { planName?: string; name?: string; email?: string; password?: string },
+    body: {
+      planName?: string;
+      name?: string;
+      email?: string;
+      phone?: string;
+      password?: string;
+    },
     @Res({ passthrough: true }) res: Response,
   ) {
     const planName = String(body?.planName || '').trim();
@@ -50,15 +58,21 @@ export class CheckoutController {
     const email = String(body?.email || '')
       .trim()
       .toLowerCase();
+    const phone = normalizePhone(body?.phone);
     const password = body?.password;
 
-    const plan = getPlan(planName);
+    const plan = await this.plans.getByName(planName);
     if (!plan) throw new BadRequestException({ error: 'Plano inválido.' });
     if (!name) {
       throw new BadRequestException({ error: 'Informe o nome completo.' });
     }
     if (!isEmail(email)) {
       throw new BadRequestException({ error: 'Informe um e-mail válido.' });
+    }
+    if (!isValidPhone(phone)) {
+      throw new BadRequestException({
+        error: 'Informe um telefone válido com DDD (somente números).',
+      });
     }
     if (!isValidAccountPassword(password)) {
       throw new BadRequestException({
@@ -82,6 +96,7 @@ export class CheckoutController {
         price: plan.price,
         name,
         email,
+        phone,
         passwordHash,
         status: 'pending',
       },

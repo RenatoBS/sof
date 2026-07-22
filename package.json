@@ -11,10 +11,16 @@
     "backend:reset-seed": "npm run prisma:reset-seed --prefix backend",
     "frontend:dev": "npm run start --prefix frontend",
     "frontend:web": "npm run web --prefix frontend",
-    "heroku:remotes": "heroku git:remote -a sof-agendamento-api -r heroku-api && heroku git:remote -a sof-agendamento-web -r heroku-web",
+    "admin-backend:dev": "npm run start:dev --prefix admin-backend",
+    "admin-frontend:web": "npm run web --prefix admin-frontend",
+    "admin:sync-schema": "node -e \"const fs=require('fs');const s=fs.readFileSync('backend/prisma/schema.prisma','utf8').replace(/\\n\\/\\/\\/ Client para o admin-backend[\\s\\S]*?generator adminClient \\\\{[^}]+\\\\}\\n/,'\\n');fs.mkdirSync('admin-backend/prisma',{recursive:true});fs.writeFileSync('admin-backend/prisma/schema.prisma',s);console.log('admin-backend/prisma/schema.prisma atualizado');\"",
+    "heroku:remotes": "heroku git:remote -a sof-agendamento-api -r heroku-api && heroku git:remote -a sof-agendamento-web -r heroku-web && heroku git:remote -a sof-agendamento-admin-api -r heroku-admin-api && heroku git:remote -a sof-agendamento-admin-web -r heroku-admin-web",
     "deploy:api": "git push heroku-api HEAD:main",
     "deploy:web": "git push heroku-web HEAD:main",
-    "deploy": "npm run deploy:api && npm run deploy:web"
+    "deploy:admin-api": "git push heroku-admin-api HEAD:main",
+    "deploy:admin-web": "git push heroku-admin-web HEAD:main",
+    "deploy": "npm run deploy:api && npm run deploy:web",
+    "deploy:all": "npm run deploy:api && npm run deploy:web && npm run deploy:admin-api && npm run deploy:admin-web"
   },
   "engines": {
     "node": "22.x"

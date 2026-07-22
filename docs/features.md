@@ -36,9 +36,25 @@ Copy e tokens devem permanecer alinhados à marca Sof.
 
 Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — provisiona na hora e já entra na agenda.
 
-A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada.
+A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
 
-Planos (`plans.ts` + `CheckoutModal`): Essencial 99 / Estúdio 197 / Rede 249 — assinatura mensal Stripe; Payment Links em `paymentLinkUrl` no backend.
+Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback legado em `common/plans.ts` / `CheckoutModal` se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links opcionais em `paymentLinkUrl`.
+
+## Painel admin Sof (plataforma)
+
+Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `admin-backend`.
+
+| Feature | UI | API |
+|---------|-----|-----|
+| Login admin | `/login` | `POST /api/auth/login` |
+| Listar / buscar contas | `/accounts` | `GET /api/accounts?q=` |
+| Criar conta manual | `/accounts/new` | `POST /api/accounts` |
+| Editar conta / plano / status | `/accounts/[id]` | `PUT /api/accounts/:id` |
+| Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
+| Listar planos | `/plans` | `GET /api/plans` |
+| Criar / editar plano (+ Stripe) | `/plans/new`, `/plans/[id]` | `POST/PUT /api/plans` |
+
+Seed: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@sof.com`).
 
 ## Painel (dashboard)
 
@@ -64,18 +80,19 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 - Listagem em cards (cor de identificação).  
 - CRUD: adicionar / **editar** / remover.  
-- Campos: nome, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
+- Campos: nome, **telefone**, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
-- Ao criar (ou resetar senha), o painel gera senha temporária e exibe uma vez; no 1º login o profissional troca a senha.  
-- `PUT /api/employees/:id` substitui nome, e-mail e a lista de serviços (`resetPassword` opcional).  
+- Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/profissional/definir-senha?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
+- `PUT /api/employees/:id` substitui nome, e-mail, telefone e a lista de serviços (`resetPassword` opcional → novo link).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
 
 ### Área do profissional
 
 - Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
+- **Definir senha (convite/reset):** `/profissional/definir-senha?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).  
 - Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
-- Se `mustChangePassword`, redireciona para `/(profissional)/trocar-senha`.
+- Se `mustChangePassword` (legado), redireciona para `/(profissional)/trocar-senha` (exige senha atual).
 
 ### Serviços
 
@@ -156,7 +173,7 @@ Quando `SEED_DEMO_ENABLED=true`, o seed cria (ou recria padrão de demo):
 - Bloqueios fixos por profissional: **Almoço** diário (série) + compromisso semanal (Médico / Reunião / Estoque)  
 - Login profissional demo: `marcelo@demo.sof` (mesma senha do demo; troca no 1º acesso em `/login`)  
 
-Arquivo: `backend/prisma/seed.ts`. Conta já existente: use `npm run backend:reset-seed` (local) para apagar e semear de novo.
+Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Conta demo já existente: use `npm run backend:reset-seed` (local) para apagar e semear de novo.
 
 ## API — mapa rápido
 
@@ -164,7 +181,7 @@ Arquivo: `backend/prisma/seed.ts`. Conta já existente: use `npm run backend:res
 |------|-------------------|
 | Health | `GET /api/health` |
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
-| Employee auth | `POST /api/employee-auth/login`, `logout`, `GET me`, `POST change-password` |
+| Employee auth | `POST /api/employee-auth/login`, `logout`, `GET me`, `POST change-password`, `GET/POST password-setup` |
 | Employee portal | `GET /api/employee/appointments`, `POST …/:id/cancel` |
 | Account | `PUT /api/account`, `GET /api/account/integrations`, `POST/GET /api/account/whatsapp/*` |
 | Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
@@ -173,8 +190,18 @@ Arquivo: `backend/prisma/seed.ts`. Conta já existente: use `npm run backend:res
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
 | WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `POST …/:id/resolve` |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
+| Plans (público) | `GET /api/plans` |
 | Payments | `POST /api/payments/webhook` |
 | WhatsApp | webhooks + `POST /api/whatsapp/simulate` + pareamento em `/api/account/whatsapp` |
 | Events | `GET /api/events/stream` |
+
+### Admin API (`admin-backend`, porta 3011)
+
+| Área | Métodos |
+|------|---------|
+| Health | `GET /api/health` |
+| Auth | `POST /api/auth/login`, `logout`, `GET me` |
+| Accounts | `GET/POST /api/accounts`, `GET/PUT …/:id`, `POST …/:id/reset-password` |
+| Plans | `GET/POST /api/plans`, `GET/PUT …/:id` |
 
 Detalhes de arquitetura: [`architecture.md`](architecture.md).

@@ -12,6 +12,7 @@ export type Account = {
   businessName: string;
   ownerName: string;
   email: string;
+  phone: string;
   plan: string;
   planPrice: number;
   whatsappPhoneNumberId: string;
@@ -40,6 +41,7 @@ export type Employee = {
   accountId: string;
   name: string;
   email: string;
+  phone: string;
   mustChangePassword: boolean;
   color: string;
   services: Service[];
@@ -51,6 +53,7 @@ export type EmployeeSession = {
   accountId: string;
   name: string;
   email: string;
+  phone: string;
   color: string;
   mustChangePassword: boolean;
   businessName: string;

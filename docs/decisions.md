@@ -17,6 +17,33 @@ Formato sugerido:
 
 ---
 
+## 2026-07-22 — Link de uso único para senha do profissional (2h)
+
+- **Contexto:** Reset gerava senha temporária para a conta copiar; o profissional ainda precisava da “senha antiga” no 1º acesso.  
+- **Decisão:** `EmployeePasswordToken` + endpoints públicos `GET/POST /api/employee-auth/password-setup`. Criar profissional ou `resetPassword` emite link `${PUBLIC_URL}/profissional/definir-senha?token=…` (uso único, 2h). A página mostra o e-mail de login; ao definir senha, marca o token usado, limpa `mustChangePassword` e devolve JWT (login automático). Reset invalida senha anterior (`passwordHash=null`).  
+- **Consequências:** Conta só compartilha URL; seed demo continua com senha conhecida. `trocar-senha` autenticado permanece para troca voluntária / legado.  
+- **Alternativas descartadas:** Manter senha temporária + troca forçada; magic link sem senha (fora do escopo).
+
+---
+
+## 2026-07-22 — Telefone no cadastro de conta e profissional
+
+- **Contexto:** Conta e profissionais não tinham telefone próprio (só WhatsApp da instância e telefone de clientes).  
+- **Decisão:** Campos `Account.phone`, `Employee.phone` e `CheckoutSession.phone` (dígitos, DDD; validação 10–15). Obrigatório no checkout, CRUD de profissionais, criação/edição no admin e editável em Conta.  
+- **Consequências:** Contas/profissionais antigos ficam com `phone=""` até atualizar; formulários e APIs passam a exigir telefone em novos cadastros.  
+- **Alternativas descartadas:** Reutilizar `whatsappPhoneNumberId` (é ID de instância, não telefone humano).
+
+---
+
+## 2026-07-22 — Painel admin separado (mesmo Postgres) + catálogo `Plan`
+
+- **Contexto:** Operadores Sof precisavam listar/editar contas e criar/alterar planos na Stripe sem misturar isso no dashboard do tenant.  
+- **Decisão:** Apps novos `admin-backend/` (Nest, porta 3011) e `admin-frontend/` (Expo web, 8091), **mesmo PostgreSQL**. Modelos `AdminUser` e `Plan` no schema do produto. Auth admin com JWT/`sof_admin_session` e `ADMIN_JWT_SECRET`. Criar/editar plano sincroniza Product/Price na Stripe (Prices imutáveis → novo Price + arquiva o anterior). Checkout do produto lê `Plan` via `PlansService` (`GET /api/plans` público); `FALLBACK_PLANS` só se a tabela estiver vazia.  
+- **Consequências:** Migrations só em `backend/prisma/`; generator `adminClient` gera client em `admin-backend/node_modules/.prisma/client`. Seed cria admin (`SEED_ADMIN_*`) e upsert dos 3 planos. Deploy Heroku do admin ainda não provisionado.  
+- **Alternativas descartadas:** Módulo admin dentro do `backend/` do produto (superfície de ataque maior); DB separado; só Dashboard Stripe (sem gestão de contas Sof).
+
+---
+
 ## 2026-07-21 — Lembretes WhatsApp com job 30 min e timezone por conta
 
 - **Contexto:** O bot prometia lembrete na confirmação, mas não havia envio. Precisávamos avisar o cliente antes do horário pela instância Uazapi da conta, 1× por agendamento, com antecedência configurável (padrão 2h).  
