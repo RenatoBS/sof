@@ -2,8 +2,8 @@ import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -40,7 +40,7 @@ export default function AccountsScreen() {
   }, [load]);
 
   return (
-    <View style={styles.wrap}>
+    <ScrollView contentContainerStyle={styles.wrap}>
       <View style={styles.head}>
         <View>
           <Text style={styles.title}>Contas</Text>
@@ -64,47 +64,41 @@ export default function AccountsScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} />
+      ) : accounts.length === 0 ? (
+        <Text style={styles.empty}>Nenhuma conta encontrada.</Text>
       ) : (
-        <FlatList
-          data={accounts}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ gap: space.sm, paddingBottom: 40 }}
-          ListEmptyComponent={
-            <Text style={styles.empty}>Nenhuma conta encontrada.</Text>
-          }
-          renderItem={({ item }) => (
-            <Link href={`/accounts/${item.id}`} asChild>
-              <Pressable style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{item.businessName}</Text>
-                  <Text style={styles.rowMeta}>
-                    {item.email} · {item.ownerName}
-                  </Text>
-                </View>
-                <View style={styles.badges}>
-                  <Text style={styles.plan}>
-                    {item.plan} · R$ {item.planPrice}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.status,
-                      item.status === 'suspended' && styles.statusOff,
-                    ]}
-                  >
-                    {item.status}
-                  </Text>
-                </View>
-              </Pressable>
-            </Link>
-          )}
-        />
+        accounts.map((item) => (
+          <Link key={item.id} href={`/account/${item.id}`} asChild>
+            <Pressable style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{item.businessName}</Text>
+                <Text style={styles.rowMeta}>
+                  {item.email} · {item.ownerName}
+                </Text>
+              </View>
+              <View style={styles.badges}>
+                <Text style={styles.plan}>
+                  {item.plan} · R$ {item.planPrice}
+                </Text>
+                <Text
+                  style={[
+                    styles.status,
+                    item.status === 'suspended' && styles.statusOff,
+                  ]}
+                >
+                  {item.status}
+                </Text>
+              </View>
+            </Pressable>
+          </Link>
+        ))
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1 },
+  wrap: { paddingBottom: 40 },
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -147,6 +141,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 12,
     padding: space.md,
+    marginBottom: space.sm,
   },
   rowTitle: {
     fontFamily: 'HankenGrotesk_600SemiBold',

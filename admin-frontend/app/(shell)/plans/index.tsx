@@ -2,8 +2,8 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -38,7 +38,7 @@ export default function PlansScreen() {
   }, [load]);
 
   return (
-    <View style={styles.wrap}>
+    <ScrollView contentContainerStyle={styles.wrap}>
       <View style={styles.head}>
         <View>
           <Text style={styles.title}>Planos</Text>
@@ -54,36 +54,37 @@ export default function PlansScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
         <ActivityIndicator color={colors.accent} />
+      ) : plans.length === 0 ? (
+        <Text style={styles.empty}>Nenhum plano cadastrado.</Text>
       ) : (
-        <FlatList
-          data={plans}
-          keyExtractor={(p) => p.id}
-          contentContainerStyle={{ gap: space.sm, paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.row}
-              onPress={() => router.push(`/plans/${item.id}`)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{item.name}</Text>
-                <Text style={styles.rowMeta}>
-                  {item.stripePriceId} · {item.active ? 'ativo' : 'inativo'}
-                </Text>
-              </View>
-              <Text style={styles.price}>
-                R$ {item.price}
-                <Text style={styles.per}> / {item.interval === 'year' ? 'ano' : 'mês'}</Text>
+        plans.map((item) => (
+          <Pressable
+            key={item.id}
+            style={styles.row}
+            onPress={() => router.push(`/plan/${item.id}`)}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>{item.name}</Text>
+              <Text style={styles.rowMeta}>
+                {item.stripePriceId} · {item.active ? 'ativo' : 'inativo'}
               </Text>
-            </Pressable>
-          )}
-        />
+            </View>
+            <Text style={styles.price}>
+              R$ {item.price}
+              <Text style={styles.per}>
+                {' '}
+                / {item.interval === 'year' ? 'ano' : 'mês'}
+              </Text>
+            </Text>
+          </Pressable>
+        ))
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1 },
+  wrap: { paddingBottom: 40 },
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -104,6 +105,7 @@ const styles = StyleSheet.create({
     maxWidth: 480,
   },
   error: { color: colors.danger, marginBottom: space.sm },
+  empty: { color: colors.muted, marginTop: space.lg },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -113,6 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: space.md,
     gap: space.md,
+    marginBottom: space.sm,
   },
   rowTitle: {
     fontFamily: 'HankenGrotesk_600SemiBold',

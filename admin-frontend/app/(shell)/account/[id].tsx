@@ -11,8 +11,15 @@ import {
 import { Button, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
+function paramId(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || raw === 'undefined') return '';
+  return raw;
+}
+
 export default function AccountDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = paramId(params.id);
   const [account, setAccount] = useState<AccountRow | null>(null);
   const [stats, setStats] = useState({ employees: 0, appointments: 0 });
   const [plans, setPlans] = useState<PlanRow[]>([]);

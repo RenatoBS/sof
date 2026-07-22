@@ -6,8 +6,15 @@ import { plansApi, type PlanRow } from '@/src/api/endpoints';
 import { Button, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
+function paramId(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || raw === 'undefined') return '';
+  return raw;
+}
+
 export default function PlanDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = paramId(params.id);
   const [plan, setPlan] = useState<PlanRow | null>(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');

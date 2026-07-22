@@ -1,5 +1,4 @@
-import { Link, router, Slot, usePathname } from 'expo-router';
-import { useEffect } from 'react';
+import { Link, Redirect, Slot, usePathname } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
@@ -14,11 +13,7 @@ export default function ShellLayout() {
   const { admin, loading, logout } = useAdminAuth();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (!loading && !admin) router.replace('/login');
-  }, [admin, loading]);
-
-  if (loading || !admin) {
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.accent} />
@@ -26,17 +21,19 @@ export default function ShellLayout() {
     );
   }
 
+  if (!admin) return <Redirect href="/login" />;
+
   return (
     <View style={styles.root}>
       <View style={styles.nav}>
         <Text style={styles.brand}>Sof Admin</Text>
         <View style={styles.links}>
-          <NavLink href="/accounts" label="Contas" active={pathname.startsWith('/accounts')} />
-          <NavLink href="/plans" label="Planos" active={pathname.startsWith('/plans')} />
+          <NavLink href="/accounts" label="Contas" active={pathname.startsWith('/account')} />
+          <NavLink href="/plans" label="Planos" active={pathname.startsWith('/plan')} />
         </View>
         <View style={styles.right}>
           <Text style={styles.email}>{admin.email}</Text>
-          <Pressable onPress={() => logout().then(() => router.replace('/login'))}>
+          <Pressable onPress={() => logout().then(() => undefined)}>
             <Text style={styles.logout}>Sair</Text>
           </Pressable>
         </View>
