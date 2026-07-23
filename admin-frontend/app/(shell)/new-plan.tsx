@@ -43,8 +43,8 @@ export default function NewPlanScreen() {
     <ScrollView contentContainerStyle={styles.wrap}>
       <Text style={styles.title}>Novo plano</Text>
       <Text style={styles.hint}>
-        Com STRIPE_SECRET_KEY, Product e Price são criados automaticamente.
-        Sem Stripe, informe os IDs manuais.
+        Com STRIPE_SECRET_KEY, Product, Price e Payment Link são criados
+        automaticamente. Sem Stripe, informe os IDs manuais.
       </Text>
       <Field label="Nome" value={name} onChangeText={setName} />
       <Field

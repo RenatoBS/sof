@@ -27,6 +27,19 @@ export class StripeCatalogService {
     return this.client;
   }
 
+  async createPaymentLink(priceId: string) {
+    const stripe = this.requireClient();
+    const link = await stripe.paymentLinks.create({
+      line_items: [{ price: priceId, quantity: 1 }],
+    });
+    if (!link.url) {
+      throw new ServiceUnavailableException({
+        error: 'Stripe criou o Payment Link sem URL.',
+      });
+    }
+    return { paymentLinkId: link.id, paymentLinkUrl: link.url };
+  }
+
   async createProductAndPrice(input: {
     name: string;
     priceBrl: number;
@@ -45,9 +58,11 @@ export class StripeCatalogService {
       recurring: { interval: input.interval },
       metadata: { sof_plan: input.name },
     });
+    const link = await this.createPaymentLink(price.id);
     return {
       stripeProductId: product.id,
       stripePriceId: price.id,
+      paymentLinkUrl: link.paymentLinkUrl,
     };
   }
 

@@ -52,7 +52,7 @@ export class PlansController {
       sortOrder?: number;
       active?: boolean;
       paymentLinkUrl?: string;
-      /** Se true e Stripe configurado, cria Product+Price na Stripe */
+      /** Se true e Stripe configurado, cria Product+Price+Payment Link na Stripe */
       syncStripe?: boolean;
       stripeProductId?: string;
       stripePriceId?: string;
@@ -91,6 +91,7 @@ export class PlansController {
 
     let stripeProductId = String(body?.stripeProductId || '').trim();
     let stripePriceId = String(body?.stripePriceId || '').trim();
+    let resolvedPaymentLinkUrl = paymentLinkUrl;
     const syncStripe = body?.syncStripe !== false;
 
     if (syncStripe && this.stripe.isConfigured()) {
@@ -101,6 +102,9 @@ export class PlansController {
       });
       stripeProductId = created.stripeProductId;
       stripePriceId = created.stripePriceId;
+      if (!resolvedPaymentLinkUrl) {
+        resolvedPaymentLinkUrl = created.paymentLinkUrl;
+      }
     } else if (!stripeProductId || !stripePriceId) {
       if (!this.stripe.isConfigured()) {
         throw new BadRequestException({
@@ -118,7 +122,7 @@ export class PlansController {
         interval,
         stripeProductId,
         stripePriceId,
-        paymentLinkUrl,
+        paymentLinkUrl: resolvedPaymentLinkUrl,
         features,
         active,
         sortOrder,
@@ -225,6 +229,12 @@ export class PlansController {
             : undefined,
         });
         data.stripePriceId = replaced.stripePriceId;
+        // Novo Price exige novo Payment Link; só sobrescreve se o admin não
+        // enviou paymentLinkUrl neste mesmo request.
+        if (body.paymentLinkUrl === undefined) {
+          const link = await this.stripe.createPaymentLink(replaced.stripePriceId);
+          data.paymentLinkUrl = link.paymentLinkUrl;
+        }
       }
     }
 

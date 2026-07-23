@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Admin cria Payment Link junto com Product/Price
+
+- **Contexto:** Ao criar plano no painel admin com Stripe, só Product + Price eram sincronizados; `paymentLinkUrl` ficava vazio e o link tinha que ser colado à mão.  
+- **Decisão:** `StripeCatalogService.createProductAndPrice` também cria `paymentLinks.create` e grava a URL no plano. Ao trocar preço/intervalo (novo Price), gera um Payment Link novo e atualiza `paymentLinkUrl` (salvo override manual no mesmo request).  
+- **Consequências:** Novo plano já nasce com link `buy.stripe.com`; edição de preço renova o link. Links antigos na Stripe não são desativados (não há `paymentLinkId` no schema).  
+- **Alternativas descartadas:** Só Checkout Session no app sem Payment Links; botão separado “gerar link” no admin.
+
+---
+
 ## 2026-07-23 — Menu do bot do profissional: concluir condicional + criar unificado
 
 - **Contexto:** “Concluir” no menu poluía quando o prof não estava em atendimento; agendamento e evento eram duas entradas redundantes.  
