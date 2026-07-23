@@ -129,9 +129,9 @@ npm run heroku:remotes
 npm run deploy:api
 npm run deploy:web
 
-# admin
-npm run deploy:admin-api
-npm run deploy:admin-web
+# admin (schema sync + API + web) — ver scripts/deploy-admin.sh
+npm run deploy:admin
+# só um lado: npm run deploy:admin -- --api-only | --web-only
 
 # produto (api → web)
 npm run deploy
