@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Reset de senha do profissional (web + bot)
+
+- **Contexto:** Reset só existia pelo painel da conta; o profissional ficava dependente do responsável.  
+- **Decisão:** `EmployeePasswordResetService` (issue + CTA WhatsApp) compartilhado entre painel, `POST /api/employee-auth/request-password-reset` (público, resposta genérica) e opção **Redefinir senha** no menu/NLU do bot. UI: `/profissional/esqueci-senha` + link em `/login`.  
+- **Consequências:** Sempre invalida a senha atual ao emitir o link; exige telefone do prof + WhatsApp da conta conectado.  
+- **Alternativas descartadas:** E-mail SMTP; reset só por token na web sem WhatsApp; exigir senha atual no forgot.
+
+---
+
 ## 2026-07-23 — Bot WhatsApp para profissionais (telefone cadastrado)
 
 - **Contexto:** Profissionais precisavam operar agenda pelo mesmo WhatsApp do salão, sem cair no fluxo de cliente.  

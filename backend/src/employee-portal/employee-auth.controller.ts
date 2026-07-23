@@ -32,6 +32,7 @@ import {
   type EmployeeAuthedRequest,
 } from './employee-auth.guard';
 import { EmployeePasswordTokenService } from './employee-password-token.service';
+import { EmployeePasswordResetService } from './employee-password-reset.service';
 
 function isEmail(value: unknown): value is string {
   return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -43,6 +44,7 @@ export class EmployeeAuthController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly passwordTokens: EmployeePasswordTokenService,
+    private readonly passwordReset: EmployeePasswordResetService,
   ) {}
 
   @Post('login')
@@ -98,6 +100,52 @@ export class EmployeeAuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(EMPLOYEE_COOKIE_NAME, { path: '/' });
     return { ok: true };
+  }
+
+  /**
+   * Esqueci a senha (profissional). Sempre responde OK genérico.
+   * Se o e-mail existir e tiver WhatsApp, envia o link no telefone cadastrado.
+   */
+  @Post('request-password-reset')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 8, ttl: 15 * 60 * 1000 } })
+  async requestPasswordReset(@Body() body: { email?: string }) {
+    const email = String(body?.email || '')
+      .trim()
+      .toLowerCase();
+
+    const generic = {
+      ok: true,
+      message:
+        'Se houver um profissional com este e-mail e telefone cadastrado, enviamos o link de redefinição no WhatsApp.',
+    };
+
+    if (!isEmail(email)) {
+      throw new BadRequestException({
+        error: 'Informe um e-mail válido.',
+      });
+    }
+
+    const employee = await this.prisma.employee.findUnique({
+      where: { email },
+      include: { account: true },
+    });
+    if (!employee?.email) {
+      return generic;
+    }
+
+    try {
+      await this.passwordReset.issueAndSendWhatsapp({
+        employee,
+        account: employee.account,
+        source: 'self',
+      });
+    } catch {
+      // Não vaza motivo (WhatsApp off, sem telefone, etc.)
+      return generic;
+    }
+
+    return generic;
   }
 
   @Get('me')

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Account, Employee, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +15,7 @@ import {
   checkWithinOpeningHours,
   normalizeOpeningHours,
 } from '../account/opening-hours';
+import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
 import type {
   WhatsappBotResult,
   WhatsappInteractiveMenu,
@@ -52,6 +53,7 @@ export class WhatsappEmployeeBotService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly config: ConfigService,
+    private readonly passwordReset: EmployeePasswordResetService,
   ) {}
 
   async findEmployee(accountId: string, phone: string) {
@@ -395,7 +397,7 @@ export class WhatsappEmployeeBotService {
     }
     // Interrompe fluxo guiado se parecer comando novo (típico de áudio).
     return (
-      /\b(agenda|marcar|agendar|cancelar|desmarcar|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra)\b/i.test(
+      /\b(agenda|marcar|agendar|cancelar|desmarcar|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra|senha|redefinir)\b/i.test(
         text,
       ) || text.trim().split(/\s+/).filter(Boolean).length >= 6
     );
@@ -465,6 +467,9 @@ export class WhatsappEmployeeBotService {
         date: parsed.date,
         time: parsed.time,
       });
+    }
+    if (parsed.intent === 'reset_password') {
+      return this.sendPasswordReset(account, employee, phone);
     }
     if (parsed.intent === 'event') {
       if (parsed.title) {
@@ -539,7 +544,7 @@ export class WhatsappEmployeeBotService {
     text: string,
     account: Account,
   ): {
-    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'other';
+    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'reset_password' | 'other';
     serviceId?: string;
     date?: string;
     time?: string;
@@ -551,6 +556,13 @@ export class WhatsappEmployeeBotService {
     const time = this.parseTimeFromFreeText(text);
     const clientName = this.extractClientNameHeuristic(text);
 
+    if (
+      /\b(redefinir\s+senha|esqueci\s+(a\s+)?senha|trocar\s+senha|nova\s+senha|reset(ar)?\s+senha)\b/.test(
+        lower,
+      )
+    ) {
+      return { intent: 'reset_password' };
+    }
     if (/\b(cancelar|desmarcar|cancela)\b/.test(lower)) {
       return {
         intent: 'cancel',
@@ -755,7 +767,7 @@ export class WhatsappEmployeeBotService {
     services: Array<{ id: string; name: string }>,
     account: Account,
   ): Promise<{
-    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'other';
+    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'reset_password' | 'other';
     serviceId?: string;
     date?: string;
     time?: string;
@@ -787,7 +799,7 @@ export class WhatsappEmployeeBotService {
       serviceList || '(nenhum)',
       '',
       'Responda SOMENTE JSON:',
-      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário) ou "other"',
+      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário de cliente), "reset_password" (redefinir senha de acesso à Sof) ou "other"',
       '- serviceId: id do serviço mais próximo do que foi dito, ou null',
       '- date: YYYY-MM-DD ou null — resolva "hoje", "amanhã", "sexta", "terça que vem", "semana que vem", "28 do 7", "28 de julho", "28 do sétimo", "dia 28 de setembro"',
       '- time: HH:MM 24h ou null — "13h"/"13 horas"=13:00, "9h30"=09:30, "meio-dia"=12:00',
@@ -835,7 +847,11 @@ export class WhatsappEmployeeBotService {
         clientName?: string | null;
       };
       const intent = String(raw.intent || 'other');
-      if (!['agenda', 'book', 'event', 'cancel'].includes(intent)) {
+      if (
+        !['agenda', 'book', 'event', 'cancel', 'reset_password'].includes(
+          intent,
+        )
+      ) {
         return { intent: 'other' };
       }
       const serviceIds = new Set(services.map((s) => s.id));
@@ -861,7 +877,12 @@ export class WhatsappEmployeeBotService {
         .slice(0, 80);
 
       return {
-        intent: intent as 'agenda' | 'book' | 'event' | 'cancel',
+        intent: intent as
+          | 'agenda'
+          | 'book'
+          | 'event'
+          | 'cancel'
+          | 'reset_password',
         serviceId:
           raw.serviceId && serviceIds.has(raw.serviceId)
             ? raw.serviceId
@@ -901,6 +922,7 @@ export class WhatsappEmployeeBotService {
       { id: 'emp:book', title: 'Novo agendamento' },
       { id: 'emp:event', title: 'Novo evento' },
       { id: 'emp:cancel', title: 'Cancelar horário' },
+      { id: 'emp:reset_password', title: 'Redefinir senha' },
     ], { listButton: 'Opções' });
   }
 
@@ -941,7 +963,15 @@ export class WhatsappEmployeeBotService {
     if (text === 'emp:event' || /novo\s+evento|bloquear|almo[cç]o/i.test(lower)) {
       return this.startEvent(account, employee, phone);
     }
-    if (text === 'emp:cancel' || /cancelar/.test(lower)) {
+    if (
+      text === 'emp:reset_password' ||
+      /\b(redefinir\s+senha|esqueci\s+(a\s+)?senha|trocar\s+senha|nova\s+senha)\b/i.test(
+        lower,
+      )
+    ) {
+      return this.sendPasswordReset(account, employee, phone);
+    }
+    if (text === 'emp:cancel' || /\bcancelar\b/.test(lower)) {
       return this.startCancel(account, employee, phone);
     }
 
@@ -956,6 +986,43 @@ export class WhatsappEmployeeBotService {
       phone,
       'Não entendi. Escolha uma opção do menu:',
     );
+  }
+
+  private async sendPasswordReset(
+    account: Account,
+    employee: Employee,
+    phone: string,
+  ): Promise<WhatsappBotResult> {
+    try {
+      await this.passwordReset.issueAndSendWhatsapp({
+        employee,
+        account,
+        source: 'self',
+      });
+      await this.resetSession(account.id, phone);
+      return this.mainMenu(
+        account,
+        employee,
+        phone,
+        'Pronto! Enviei o link para redefinir a senha neste WhatsApp. O link vale 2 horas. O que mais?',
+      );
+    } catch (err) {
+      const msg =
+        err instanceof BadRequestException
+          ? String(
+              (err.getResponse() as { error?: string })?.error ||
+                err.message,
+            )
+          : err instanceof Error
+            ? err.message
+            : 'Não consegui enviar o link agora.';
+      return this.mainMenu(
+        account,
+        employee,
+        phone,
+        `${msg} Peça ajuda ao responsável da conta se precisar.`,
+      );
+    }
   }
 
   private async handleAgendaDayShortcut(

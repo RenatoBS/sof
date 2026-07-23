@@ -65,6 +65,15 @@ export const employeeAuthApi = {
         auth: false,
       },
     ),
+  requestPasswordReset: (email: string) =>
+    api<{ ok: boolean; message: string }>(
+      '/employee-auth/request-password-reset',
+      {
+        method: 'POST',
+        body: { email },
+        auth: false,
+      },
+    ),
 };
 
 export const employeeApi = {
