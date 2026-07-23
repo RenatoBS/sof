@@ -18,6 +18,7 @@ import {
 } from '../appointments/schedule-conflict';
 import { BookingNluService } from './booking-nlu.service';
 import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
+import { EmployeeBookingNotifyService } from './employee-booking-notify.service';
 import { formatReminderLeadLabel } from '../reminders/reminder-window';
 
 type SessionData = {
@@ -89,6 +90,7 @@ export class WhatsappBotService {
     private readonly realtime: RealtimeService,
     private readonly nlu: BookingNluService,
     private readonly employeeBot: WhatsappEmployeeBotService,
+    private readonly employeeBookingNotify: EmployeeBookingNotifyService,
   ) {}
 
   /**
@@ -2088,6 +2090,10 @@ export class WhatsappBotService {
         const shaped = serializeDates(appointment);
         this.realtime.broadcast(account.id, 'appointment:created', {
           appointment: shaped,
+        });
+        await this.employeeBookingNotify.notifyNewServiceBookings({
+          accountId: account.id,
+          appointmentIds: [appointment.id],
         });
         const lead = Number(account.whatsappReminderMinutes) || 0;
         const leadLabel = formatReminderLeadLabel(lead);

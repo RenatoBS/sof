@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Aviso WhatsApp ao profissional no novo agendamento
+
+- **Contexto:** Profissional só via SSE no painel; cliente/painel marcavam horário no nome dele sem WhatsApp.  
+- **Decisão:** `EmployeeBookingNotifyService` envia mensagem da instância da conta para `Employee.phone` após create `kind=service` (bot cliente + API conta). Skip se o próprio prof criou (portal/bot). Best-effort (não falha o create).  
+- **Consequências:** Exige WhatsApp conectado na conta + telefone válido no profissional; recorrência vira uma mensagem com lista de horários.  
+- **Alternativas descartadas:** Template HSM Meta; toggle por conta; notificar também em `kind=block`.
+
+---
+
 ## 2026-07-23 — Apagar plano no admin limpa Stripe via API
 
 - **Contexto:** Product/Payment Link criados por API só se removem por API; o admin não tinha exclusão e deixava órfãos na Stripe.  

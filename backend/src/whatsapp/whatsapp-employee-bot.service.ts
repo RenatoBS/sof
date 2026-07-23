@@ -16,6 +16,7 @@ import {
   normalizeOpeningHours,
 } from '../account/opening-hours';
 import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
+import { EmployeeBookingNotifyService } from './employee-booking-notify.service';
 import {
   APPT_STATUS,
   appointmentDurationMinutes,
@@ -91,6 +92,7 @@ export class WhatsappEmployeeBotService {
     private readonly realtime: RealtimeService,
     private readonly config: ConfigService,
     private readonly passwordReset: EmployeePasswordResetService,
+    private readonly employeeBookingNotify: EmployeeBookingNotifyService,
   ) {}
 
   async findEmployee(accountId: string, phone: string) {
@@ -1912,6 +1914,11 @@ export class WhatsappEmployeeBotService {
       });
       this.realtime.broadcast(account.id, 'appointment:created', {
         appointment: serializeDates(appt),
+      });
+      await this.employeeBookingNotify.notifyNewServiceBookings({
+        accountId: account.id,
+        appointmentIds: [appt.id],
+        skipEmployeeId: employee.id,
       });
       await this.resetSession(account.id, phone);
       return this.mainMenu(

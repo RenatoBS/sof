@@ -17,6 +17,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
 import { RealtimeService } from '../events/realtime.service';
+import { EmployeeBookingNotifyService } from '../whatsapp/employee-booking-notify.service';
 import {
   appointmentCreateRows,
   type AppointmentPayload,
@@ -34,6 +35,7 @@ export class AppointmentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly employeeBookingNotify: EmployeeBookingNotifyService,
   ) {}
 
   @Get()
@@ -110,6 +112,10 @@ export class AppointmentsController {
         appointment,
       });
     }
+    await this.employeeBookingNotify.notifyNewServiceBookings({
+      accountId: req.account.id,
+      appointmentIds: created.map((a) => a.id),
+    });
     return { appointment: shaped[0], appointments: shaped };
   }
 
