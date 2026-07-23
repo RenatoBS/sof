@@ -15,6 +15,9 @@ export function publicAccount(account: Account | null) {
     whatsappConnectedAt: account.whatsappConnectedAt
       ? account.whatsappConnectedAt.toISOString()
       : null,
+    botPausedUntil: account.botPausedUntil
+      ? account.botPausedUntil.toISOString()
+      : null,
   };
 }
 

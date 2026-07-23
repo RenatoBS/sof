@@ -133,6 +133,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - **Endereço** do estabelecimento (opcional); `PUT /api/account` com `address`; o bot informa na conversa.  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
 - **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
+- **Pausa do bot (conta):** na seção Bot do WhatsApp — **Bot ativo**, timer (1 h / 8 h / 24 h / 3 dias / 7 dias) ou **Permanente**. Enquanto pausado, o webhook **não responde a ninguém** (`Account.botPausedPermanent` / `botPausedUntil`). Pausa por cliente continua na aba Clientes.  
 - **Lembrete WhatsApp:** card na Conta com antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário da conta (botão que expande a lista de fusos); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.  
 - Sair da conta.
 
@@ -162,7 +163,8 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Frases livres (NLU):** com `OPENAI_API_KEY`, frases corridas (≥ 3 palavras) no início da conversa ou na escolha de serviço passam por um extrator LLM (`gpt-4o-mini`, JSON) que identifica intenção (marcar/cancelar/ver), serviço, data e hora — ex. "quero marcar um corte amanhã ao meio-dia" pula direto para a confirmação. Falha ou frase vaga caem no fluxo guiado normal (`whatsapp/booking-nlu.service.ts`).  
 - **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
-- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot 1 h e resolve o alerta (ver seção Atendimentos acima).  
+- **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para todos até a data ou até reativar.  
+- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e resolve o alerta (ver seção Atendimentos acima).  
 - **Lembrete automático:** se `whatsappReminderMinutes > 0` e a instância está conectada, um job a cada 30 min avisa o cliente no WhatsApp antes do horário (1× por agendamento; fuso = `Account.timezone`). A confirmação do bot só promete lembrete quando a antecedência está ativa.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  

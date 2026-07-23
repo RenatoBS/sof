@@ -38,6 +38,9 @@ model Account {
   whatsappReminderMinutes Int    @default(120)
   /// Fuso IANA da conta (interpreta date/time dos agendamentos)
   timezone              String   @default("America/Sao_Paulo")
+  /// Pausa o bot para todos os clientes (conta inteira)
+  botPausedPermanent    Boolean  @default(false)
+  botPausedUntil        DateTime?
   status                String   @default("active")
   createdAt             DateTime @default(now())
 

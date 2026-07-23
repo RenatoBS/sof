@@ -82,7 +82,7 @@ AdminUser     (operadores do painel Sof — não é tenant; comentários de supo
 Plan          (catálogo Sof ↔ stripeProductId / stripePriceId)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
+Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
 
 `Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `features` (JSON), `active`, `sortOrder`. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` se a tabela estiver vazia.
 

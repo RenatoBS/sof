@@ -241,6 +241,8 @@ export const dashboardApi = {
     businessName?: string;
     whatsappReminderMinutes?: number;
     timezone?: string;
+    botPausedPermanent?: boolean;
+    botPausedUntil?: string | null;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
     api<{

@@ -35,6 +35,69 @@ const REMINDER_PRESETS: { minutes: number; label: string }[] = [
   { minutes: 1440, label: '24h' },
 ];
 
+type BotPauseMode = 'off' | 'permanent' | '1h' | '8h' | '24h' | '3d' | '7d';
+
+const BOT_PAUSE_PRESETS: {
+  id: BotPauseMode;
+  label: string;
+  hours?: number;
+}[] = [
+  { id: 'off', label: 'Bot ativo' },
+  { id: '1h', label: '1 hora', hours: 1 },
+  { id: '8h', label: '8 horas', hours: 8 },
+  { id: '24h', label: '24 horas', hours: 24 },
+  { id: '3d', label: '3 dias', hours: 24 * 3 },
+  { id: '7d', label: '7 dias', hours: 24 * 7 },
+  { id: 'permanent', label: 'Permanente' },
+];
+
+function botPauseModeFromAccount(account: {
+  botPausedPermanent?: boolean;
+  botPausedUntil?: string | null;
+}): BotPauseMode {
+  if (account.botPausedPermanent) return 'permanent';
+  if (!account.botPausedUntil) return 'off';
+  const until = new Date(account.botPausedUntil);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+    return 'off';
+  }
+  return '24h';
+}
+
+function botPausePayload(mode: BotPauseMode): {
+  botPausedPermanent: boolean;
+  botPausedUntil: string | null;
+} {
+  if (mode === 'off') {
+    return { botPausedPermanent: false, botPausedUntil: null };
+  }
+  if (mode === 'permanent') {
+    return { botPausedPermanent: true, botPausedUntil: null };
+  }
+  const preset = BOT_PAUSE_PRESETS.find((p) => p.id === mode);
+  const hours = preset?.hours || 24;
+  return {
+    botPausedPermanent: false,
+    botPausedUntil: new Date(
+      Date.now() + hours * 60 * 60 * 1000,
+    ).toISOString(),
+  };
+}
+
+function formatBotPauseUntil(iso?: string | null) {
+  if (!iso) return '';
+  const until = new Date(iso);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+    return '';
+  }
+  return until.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
   { value: 'America/Sao_Paulo', label: 'Brasília (SP, RJ, MG, PR, SC, RS…)' },
   { value: 'America/Fortaleza', label: 'Fortaleza (CE, PI, RN, PB, AL, SE)' },
@@ -139,6 +202,11 @@ export default function AccountScreen() {
   const [waError, setWaError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [botPauseMode, setBotPauseMode] = useState<BotPauseMode>('off');
+  const [botPauseSaved, setBotPauseSaved] = useState('');
+  const [botPauseError, setBotPauseError] = useState('');
+  const [savingBotPause, setSavingBotPause] = useState(false);
+
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -186,6 +254,7 @@ export default function AccountScreen() {
           : 120,
       );
       setTimezone(account.timezone || 'America/Sao_Paulo');
+      setBotPauseMode(botPauseModeFromAccount(account));
     }
     dashboardApi.integrations().then((data) => {
       setIntegrations({
@@ -650,6 +719,75 @@ export default function AccountScreen() {
         )}
 
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
+
+        <View style={styles.pauseBlock}>
+          <Text style={styles.label}>Pausa do bot</Text>
+          <Text style={[styles.help, { marginBottom: 8 }]}>
+            Silencia o bot para todos os clientes (conta inteira). Útil em
+            folga, feriado ou quando você atende manualmente no WhatsApp.
+          </Text>
+          <View style={styles.chips}>
+            {BOT_PAUSE_PRESETS.map((p) => {
+              const active = botPauseMode === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => setBotPauseMode(p.id)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  disabled={savingBotPause}
+                >
+                  <Text
+                    style={[styles.chipText, active && styles.chipTextActive]}
+                  >
+                    {p.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {account?.botPausedPermanent ? (
+            <Text style={styles.pauseStatus}>Bot desligado (permanente).</Text>
+          ) : formatBotPauseUntil(account?.botPausedUntil) ? (
+            <Text style={styles.pauseStatus}>
+              Pausado até {formatBotPauseUntil(account?.botPausedUntil)}.
+            </Text>
+          ) : (
+            <Text style={styles.pauseStatus}>Bot ativo para novos clientes.</Text>
+          )}
+          {botPauseError ? (
+            <Text style={styles.error}>{botPauseError}</Text>
+          ) : null}
+          {botPauseSaved ? (
+            <Text style={styles.saved}>{botPauseSaved}</Text>
+          ) : null}
+          <SofButton
+            title={savingBotPause ? 'Salvando…' : 'Salvar pausa do bot'}
+            variant="dark"
+            theme="dashboard"
+            disabled={savingBotPause}
+            onPress={async () => {
+              setBotPauseError('');
+              setSavingBotPause(true);
+              try {
+                const { account: updated } = await dashboardApi.updateAccount(
+                  botPausePayload(botPauseMode),
+                );
+                await setSession(updated);
+                setBotPauseMode(botPauseModeFromAccount(updated));
+                setBotPauseSaved('Pausa do bot atualizada!');
+                setTimeout(() => setBotPauseSaved(''), 2000);
+              } catch (err) {
+                setBotPauseError(
+                  err instanceof Error
+                    ? err.message
+                    : 'Não foi possível salvar.',
+                );
+              } finally {
+                setSavingBotPause(false);
+              }
+            }}
+          />
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -829,6 +967,14 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
   chipText: { color: d.ink, fontSize: 13 },
   chipTextActive: { fontWeight: '700' },
+  pauseBlock: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: d.line,
+    gap: 10,
+  },
+  pauseStatus: { color: d.ink, fontSize: 13, fontWeight: '600' },
   tzButton: {
     flexDirection: 'row',
     alignItems: 'center',

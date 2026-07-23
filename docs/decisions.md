@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Pausa global do bot na Conta (WhatsApp)
+
+- **Contexto:** Dono precisava silenciar o bot por algumas horas/dias sem pausar cliente a cliente.  
+- **Decisão:** `Account.botPausedPermanent` + `botPausedUntil`; UI na seção Bot do WhatsApp (presets 1h/8h/24h/3d/7d/permanente). Webhook/simulador checam pausa da conta antes da pausa por cliente.  
+- **Consequências:** `PUT /api/account` aceita os campos; migration `20260723140000_account_bot_pause`.  
+- **Alternativas descartadas:** Só pausa por cliente; flag booleana sem timer.
+
+---
+
 ## 2026-07-22 — Envio do link de senha do profissional via WhatsApp
 
 - **Contexto:** Conta gerava link para copiar; faltava disparar pelo bot com instruções e CTA.  

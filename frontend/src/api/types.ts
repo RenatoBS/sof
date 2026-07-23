@@ -22,6 +22,9 @@ export type Account = {
   whatsappReminderMinutes?: number;
   /** Fuso IANA da conta. Default America/Sao_Paulo. */
   timezone?: string;
+  /** Pausa o bot para todos os clientes. */
+  botPausedPermanent?: boolean;
+  botPausedUntil?: string | null;
   status: string;
   createdAt: string;
   whatsappConnectedAt?: string | null;

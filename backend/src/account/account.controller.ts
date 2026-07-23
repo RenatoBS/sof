@@ -24,6 +24,38 @@ import {
   REMINDER_LEAD_MINUTES,
 } from '../reminders/reminder-window';
 
+function parseAccountBotPause(body: {
+  botPausedPermanent?: boolean;
+  botPausedUntil?: string | null;
+}):
+  | { botPausedPermanent: boolean; botPausedUntil: Date | null }
+  | { error: string } {
+  if (
+    body.botPausedPermanent === undefined &&
+    body.botPausedUntil === undefined
+  ) {
+    return { error: 'noop' };
+  }
+  const permanent = Boolean(body.botPausedPermanent);
+  if (permanent) {
+    return { botPausedPermanent: true, botPausedUntil: null };
+  }
+  if (body.botPausedUntil === null || body.botPausedUntil === '') {
+    return { botPausedPermanent: false, botPausedUntil: null };
+  }
+  if (body.botPausedUntil === undefined) {
+    return { botPausedPermanent: false, botPausedUntil: null };
+  }
+  const until = new Date(String(body.botPausedUntil));
+  if (Number.isNaN(until.getTime())) {
+    return { error: 'Data de pausa do bot inválida.' };
+  }
+  if (until.getTime() <= Date.now()) {
+    return { botPausedPermanent: false, botPausedUntil: null };
+  }
+  return { botPausedPermanent: false, botPausedUntil: until };
+}
+
 @Controller('api/account')
 @UseGuards(AuthGuard)
 export class AccountController {
@@ -45,6 +77,8 @@ export class AccountController {
       address?: string;
       whatsappReminderMinutes?: number;
       timezone?: string;
+      botPausedPermanent?: boolean;
+      botPausedUntil?: string | null;
     },
   ) {
     const data: {
@@ -55,6 +89,8 @@ export class AccountController {
       address?: string;
       whatsappReminderMinutes?: number;
       timezone?: string;
+      botPausedPermanent?: boolean;
+      botPausedUntil?: Date | null;
     } = {};
 
     if (typeof body?.businessName === 'string') {
@@ -100,6 +136,20 @@ export class AccountController {
         });
       }
       data.timezone = timezone || DEFAULT_ACCOUNT_TIMEZONE;
+    }
+
+    if (
+      body?.botPausedPermanent !== undefined ||
+      body?.botPausedUntil !== undefined
+    ) {
+      const pause = parseAccountBotPause(body);
+      if ('error' in pause && pause.error !== 'noop') {
+        throw new BadRequestException({ error: pause.error });
+      }
+      if (!('error' in pause)) {
+        data.botPausedPermanent = pause.botPausedPermanent;
+        data.botPausedUntil = pause.botPausedUntil;
+      }
     }
 
     const account = await this.prisma.account.update({

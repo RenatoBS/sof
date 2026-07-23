@@ -18,7 +18,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { normalizePhone } from '../common/phone';
-import { isClientBotPaused } from '../clients/client-bot-pause';
+import { isAccountBotPaused, isClientBotPaused } from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
@@ -227,6 +227,10 @@ export class WhatsappController {
         return;
       }
 
+      if (isAccountBotPaused(account)) {
+        return;
+      }
+
       if (await this.isBotPausedForPhone(account.id, customerPhone)) {
         return;
       }
@@ -315,6 +319,10 @@ export class WhatsappController {
       console.warn(
         '[whatsapp] Conta não encontrada para a instância Uazapi — pareie o WhatsApp em Conta.',
       );
+      return;
+    }
+
+    if (isAccountBotPaused(account)) {
       return;
     }
 
@@ -522,6 +530,9 @@ export class WhatsappController {
           if (!account || !message.from) continue;
           const text = this.extractMetaSelection(message);
           if (!text) continue;
+          if (isAccountBotPaused(account)) {
+            continue;
+          }
           if (await this.isBotPausedForPhone(account.id, message.from)) {
             continue;
           }
@@ -634,6 +645,14 @@ export class WhatsappController {
       throw new BadRequestException({
         error: 'Informe uma mensagem para simular.',
       });
+    }
+
+    if (isAccountBotPaused(req.account)) {
+      return {
+        replies: [
+          '(Bot pausado na conta — nenhuma resposta enviada. Reative em Conta → WhatsApp.)',
+        ],
+      };
     }
 
     if (await this.isBotPausedForPhone(req.account.id, customerPhone)) {
