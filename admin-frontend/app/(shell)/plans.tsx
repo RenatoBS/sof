@@ -48,7 +48,7 @@ export default function PlansScreen() {
               : 'Stripe não configurada — use IDs manuais ao criar.'}
           </Text>
         </View>
-        <Button title="Novo plano" onPress={() => router.push('/plans-new')} />
+        <Button title="Novo plano" onPress={() => router.push('/new-plan')} />
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -62,7 +62,7 @@ export default function PlansScreen() {
             key={item.id}
             style={styles.row}
             onPress={() =>
-              router.push({ pathname: '/plan-detail', params: { id: item.id } })
+              router.push({ pathname: '/edit-plan', params: { id: item.id } })
             }
           >
             <View style={{ flex: 1 }}>

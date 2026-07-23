@@ -1,4 +1,4 @@
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -46,7 +46,7 @@ export default function AccountsScreen() {
           <Text style={styles.title}>Contas</Text>
           <Text style={styles.sub}>{total} no total</Text>
         </View>
-        <Button title="Nova conta" onPress={() => router.push('/accounts-new')} />
+        <Button title="Nova conta" onPress={() => router.push('/new-account')} />
       </View>
 
       <View style={styles.searchRow}>
@@ -68,33 +68,33 @@ export default function AccountsScreen() {
         <Text style={styles.empty}>Nenhuma conta encontrada.</Text>
       ) : (
         accounts.map((item) => (
-          <Link
+          <Pressable
             key={item.id}
-            href={{ pathname: '/account-detail', params: { id: item.id } }}
-            asChild
+            style={styles.row}
+            onPress={() =>
+              router.push({ pathname: '/edit-account', params: { id: item.id } })
+            }
           >
-            <Pressable style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{item.businessName}</Text>
-                <Text style={styles.rowMeta}>
-                  {item.email} · {item.ownerName}
-                </Text>
-              </View>
-              <View style={styles.badges}>
-                <Text style={styles.plan}>
-                  {item.plan} · R$ {item.planPrice}
-                </Text>
-                <Text
-                  style={[
-                    styles.status,
-                    item.status === 'suspended' && styles.statusOff,
-                  ]}
-                >
-                  {item.status}
-                </Text>
-              </View>
-            </Pressable>
-          </Link>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>{item.businessName}</Text>
+              <Text style={styles.rowMeta}>
+                {item.email} · {item.ownerName}
+              </Text>
+            </View>
+            <View style={styles.badges}>
+              <Text style={styles.plan}>
+                {item.plan} · R$ {item.planPrice}
+              </Text>
+              <Text
+                style={[
+                  styles.status,
+                  item.status === 'suspended' && styles.statusOff,
+                ]}
+              >
+                {item.status}
+              </Text>
+            </View>
+          </Pressable>
         ))
       )}
     </ScrollView>

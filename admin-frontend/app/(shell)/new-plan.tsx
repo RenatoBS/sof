@@ -31,7 +31,7 @@ export default function NewPlanScreen() {
         stripeProductId: stripeProductId || undefined,
         stripePriceId: stripePriceId || undefined,
       });
-      router.replace({ pathname: '/plan-detail', params: { id: res.plan.id } });
+      router.replace({ pathname: '/edit-plan', params: { id: res.plan.id } });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Falha ao criar.');
     } finally {

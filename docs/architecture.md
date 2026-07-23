@@ -217,4 +217,4 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 ### admin-frontend
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
-- Rotas: `/login`, `/accounts`, `/accounts-new`, `/account-detail`, `/plans`, `/plans-new`, `/plan-detail`.
+- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/plans`, `/new-plan`, `/edit-plan`.

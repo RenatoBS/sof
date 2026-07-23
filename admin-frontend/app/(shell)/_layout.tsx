@@ -31,12 +31,12 @@ export default function ShellLayout() {
           <NavLink
             href="/accounts"
             label="Contas"
-            active={pathname.startsWith('/account')}
+            active={pathname === '/accounts' || pathname.startsWith('/edit-account') || pathname === '/new-account'}
           />
           <NavLink
             href="/plans"
             label="Planos"
-            active={pathname.startsWith('/plan')}
+            active={pathname === '/plans' || pathname.startsWith('/edit-plan') || pathname === '/new-plan'}
           />
         </View>
         <View style={styles.right}>

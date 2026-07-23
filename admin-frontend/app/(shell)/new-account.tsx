@@ -49,7 +49,7 @@ export default function NewAccountScreen() {
         setCreatedId(res.account.id);
       } else
         router.replace({
-          pathname: '/account-detail',
+          pathname: '/edit-account',
           params: { id: res.account.id },
         });
     } catch (e) {
@@ -112,7 +112,7 @@ export default function NewAccountScreen() {
             title="Ver conta"
             onPress={() =>
               router.replace({
-                pathname: '/account-detail',
+                pathname: '/edit-account',
                 params: { id: createdId },
               })
             }
