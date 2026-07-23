@@ -329,7 +329,7 @@ export default function EmployeesScreen() {
                 );
               })}
             </View>
-            <Text style={styles.label}>Servi?os que realiza</Text>
+            <Text style={styles.label}>Serviços que realiza</Text>
             <View style={styles.chips}>
               {services.map((s) => {
                 const active = serviceIds.includes(s.id);
@@ -376,9 +376,9 @@ export default function EmployeesScreen() {
             <SofButton
               title={
                 loading
-                  ? 'Salvando?'
+                  ? 'Salvando…'
                   : isEditing
-                    ? 'Salvar altera??es'
+                    ? 'Salvar alterações'
                     : 'Adicionar'
               }
               variant="dark"
@@ -413,21 +413,24 @@ export default function EmployeesScreen() {
               <View style={[styles.dot, { backgroundColor: e.color }]} />
             </View>
             <View style={styles.cardActions}>
-              <Pressable onPress={() => startEdit(e)}>
-                <Text style={styles.edit}>Editar</Text>
-              </Pressable>
+              <View style={styles.cardActionsRow}>
+                <Pressable onPress={() => startEdit(e)}>
+                  <Text style={styles.edit}>Editar</Text>
+                </Pressable>
+                <Pressable onPress={() => remove(e.id)}>
+                  <Text style={styles.delete}>Remover</Text>
+                </Pressable>
+              </View>
               <Pressable
                 onPress={() => sendInviteWhatsapp(e.id)}
                 disabled={sendingWa}
+                style={styles.waAction}
               >
                 <Text style={styles.edit}>
                   {sendingWa && inviteEmployeeId === e.id
                     ? 'Enviando…'
-                    : 'Enviar link WhatsApp'}
+                    : 'Enviar senha no WhatsApp'}
                 </Text>
-              </Pressable>
-              <Pressable onPress={() => remove(e.id)}>
-                <Text style={styles.delete}>Remover</Text>
               </Pressable>
             </View>
           </View>
@@ -526,7 +529,16 @@ const styles = StyleSheet.create({
   name: { fontSize: 17, fontWeight: '700', color: d.ink },
   meta: { color: d.muted, fontSize: 13, marginTop: 4 },
   dot: { width: 14, height: 14, borderRadius: 7, marginTop: 4 },
-  cardActions: { flexDirection: 'row', gap: 16 },
+  cardActions: { gap: 10 },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  waAction: {
+    alignSelf: 'flex-start',
+    paddingTop: 2,
+  },
   edit: { color: d.accent, fontWeight: '600' },
   delete: { color: '#dc2626', fontWeight: '600' },
 });
