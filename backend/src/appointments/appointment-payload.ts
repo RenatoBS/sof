@@ -9,6 +9,7 @@ import {
   parseRecurrenceInput,
   type RecurrenceInput,
 } from './recurrence';
+import { APPT_STATUS } from './appointment-status';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
@@ -262,7 +263,7 @@ export function appointmentCreateRows(
 
   return recurrenceDates.map((occurrenceDate) => ({
     accountId,
-    status: 'confirmed',
+    status: APPT_STATUS.SCHEDULED,
     source,
     ...base,
     date: occurrenceDate,

@@ -255,7 +255,7 @@ async function main() {
         date: localDateStr(day),
         time: '12:00',
         price: 0,
-        status: 'confirmed',
+        status: 'scheduled',
         source: 'manual',
         recurrenceGroupId: lunchGroup,
       });
@@ -281,7 +281,7 @@ async function main() {
         date: localDateStr(day),
         time: weeklyTime,
         price: 0,
-        status: 'confirmed',
+        status: 'scheduled',
         source: 'manual',
         recurrenceGroupId: weeklyGroup,
       });
@@ -379,7 +379,7 @@ async function main() {
           date,
           time,
           price: primaryService.price,
-          status: 'confirmed',
+          status: 'scheduled',
           source: ci % 2 === 0 ? 'manual' : 'whatsapp',
           recurrenceGroupId: groupId,
         });
@@ -413,7 +413,7 @@ async function main() {
         date,
         time,
         price: service.price,
-        status: 'confirmed',
+        status: 'scheduled',
         source: created % 3 === 0 ? 'whatsapp' : 'manual',
         recurrenceGroupId: null,
       });

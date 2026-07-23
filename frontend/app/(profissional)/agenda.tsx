@@ -55,6 +55,7 @@ export default function ProfissionalAgendaScreen() {
     null,
   );
   const [cancelling, setCancelling] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [error, setError] = useState('');
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
@@ -78,7 +79,9 @@ export default function ProfissionalAgendaScreen() {
         employeeApi.services(),
       ]);
       setAppointments(
-        appts.appointments.filter((a) => a.status === 'confirmed'),
+        appts.appointments.filter(
+          (a) => a.status === 'scheduled' || a.status === 'completed',
+        ),
       );
       setClients(clientsRes.clients);
       setServices(servicesRes.services);
@@ -110,6 +113,27 @@ export default function ProfissionalAgendaScreen() {
       setError(err instanceof Error ? err.message : 'Erro ao cancelar');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const complete = async () => {
+    if (!selected) return;
+    setCompleting(true);
+    setError('');
+    try {
+      const { appointment } = await employeeApi.completeAppointment(
+        selected.id,
+      );
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === appointment.id ? appointment : a)),
+      );
+      setSelected(appointment);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Erro ao marcar como concluído',
+      );
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -267,12 +291,19 @@ export default function ProfissionalAgendaScreen() {
                     setCreateDraft(null);
                     setSelected(a);
                   }}
-                  style={[styles.card, { borderLeftColor: employee.color }]}
+                  style={[
+                    styles.card,
+                    { borderLeftColor: employee.color },
+                    a.status === 'completed' && styles.cardDone,
+                  ]}
                 >
                   <Text style={styles.time}>{a.time}</Text>
                   <Text style={styles.client}>
                     {a.kind === 'block' ? a.title || 'Evento' : a.clientName}
                   </Text>
+                  {a.status === 'completed' ? (
+                    <Text style={styles.doneBadge}>Concluído</Text>
+                  ) : null}
                 </Pressable>
               ))
             )}
@@ -314,6 +345,7 @@ export default function ProfissionalAgendaScreen() {
                       style={[
                         styles.card,
                         { borderLeftColor: employee.color },
+                        a.status === 'completed' && styles.cardDone,
                       ]}
                     >
                       <Text style={styles.time}>{a.time}</Text>
@@ -322,6 +354,9 @@ export default function ProfissionalAgendaScreen() {
                           ? a.title || 'Evento'
                           : a.clientName}
                       </Text>
+                      {a.status === 'completed' ? (
+                        <Text style={styles.doneBadge}>Concluído</Text>
+                      ) : null}
                     </Pressable>
                   ))
                 )}
@@ -359,13 +394,27 @@ export default function ProfissionalAgendaScreen() {
             </>
           )}
           <View style={styles.detailActions}>
-            <SofButton
-              title={cancelling ? 'Cancelando…' : 'Cancelar agendamento'}
-              variant="danger"
-              theme="dashboard"
-              disabled={cancelling}
-              onPress={cancel}
-            />
+            {selected.status === 'scheduled' ? (
+              <SofButton
+                title={completing ? 'Concluindo…' : 'Marcar como concluído'}
+                variant="dark"
+                theme="dashboard"
+                disabled={completing || cancelling}
+                onPress={complete}
+              />
+            ) : null}
+            {selected.status === 'completed' ? (
+              <Text style={styles.detailLine}>Status: Concluído</Text>
+            ) : null}
+            {selected.status === 'scheduled' ? (
+              <SofButton
+                title={cancelling ? 'Cancelando…' : 'Cancelar agendamento'}
+                variant="danger"
+                theme="dashboard"
+                disabled={cancelling || completing}
+                onPress={cancel}
+              />
+            ) : null}
             <SofButton
               title="Fechar"
               variant="light"
@@ -516,8 +565,17 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     gap: 2,
   },
+  cardDone: {
+    opacity: 0.72,
+  },
   time: { fontWeight: '700', color: d.ink, fontSize: 13 },
   client: { color: d.muted, fontSize: 12 },
+  doneBadge: {
+    fontSize: 10,
+    color: '#15803d',
+    fontWeight: '700',
+    marginTop: 2,
+  },
   detail: {
     backgroundColor: d.surface,
     borderRadius: d.radius,

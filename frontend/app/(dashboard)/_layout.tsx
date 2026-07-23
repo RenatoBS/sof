@@ -69,7 +69,11 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       },
       onUpdated: (appointment: Appointment) => {
         setAppointments((prev) => {
-          if (appointment.status && appointment.status !== 'confirmed') {
+          if (
+            appointment.status &&
+            appointment.status !== 'scheduled' &&
+            appointment.status !== 'completed'
+          ) {
             return prev.filter((a) => a.id !== appointment.id);
           }
           return prev.map((a) => (a.id === appointment.id ? appointment : a));

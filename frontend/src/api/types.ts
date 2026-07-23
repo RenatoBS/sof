@@ -115,6 +115,7 @@ export type Appointment = {
   status: string;
   source: 'manual' | 'whatsapp';
   recurrenceGroupId?: string | null;
+  completedAt?: string | null;
   createdAt: string;
 };
 

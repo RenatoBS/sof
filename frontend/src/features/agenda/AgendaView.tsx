@@ -110,7 +110,7 @@ export function AgendaView({
     appointments
       .filter(
         (a) =>
-          a.status === 'confirmed' &&
+          (a.status === 'scheduled' || a.status === 'completed') &&
           a.employeeId === employeeId &&
           a.date === dateStr,
       )
@@ -121,6 +121,7 @@ export function AgendaView({
     opts?: { collapsed?: boolean },
   ) => {
     const isBlock = appt.kind === 'block';
+    const isCompleted = appt.status === 'completed';
     const collapsed = !!opts?.collapsed;
     return (
       <Pressable
@@ -133,6 +134,7 @@ export function AgendaView({
           styles.appt,
           appt.source === 'whatsapp' && styles.apptWa,
           isBlock && styles.apptBlock,
+          isCompleted && styles.apptCompleted,
           collapsed && styles.apptCollapsed,
         ]}
       >
@@ -159,7 +161,10 @@ export function AgendaView({
             </Text>
           )
         ) : null}
-        {!collapsed && appt.source === 'whatsapp' ? (
+        {!collapsed && isCompleted ? (
+          <Text style={styles.doneBadge}>Concluído</Text>
+        ) : null}
+        {!collapsed && !isCompleted && appt.source === 'whatsapp' ? (
           <Text style={styles.waBadge}>WhatsApp</Text>
         ) : null}
       </Pressable>
@@ -221,7 +226,9 @@ export function AgendaView({
               const isToday = ds === todayStr;
               const active = ds === selectedDate;
               const count = appointments.filter(
-                (a) => a.status === 'confirmed' && a.date === ds,
+                (a) =>
+                  (a.status === 'scheduled' || a.status === 'completed') &&
+                  a.date === ds,
               ).length;
               return (
                 <Pressable
@@ -701,6 +708,10 @@ const styles = StyleSheet.create({
     borderLeftColor: '#64748b',
     backgroundColor: '#f8fafc',
   },
+  apptCompleted: {
+    opacity: 0.72,
+    borderLeftColor: '#16a34a',
+  },
   apptTime: { fontWeight: '600', fontSize: 12 },
   apptClient: { color: '#475569', marginTop: 4, fontSize: 12 },
   apptSvc: { color: '#94a3b8', fontSize: 11, marginTop: 4 },
@@ -708,6 +719,12 @@ const styles = StyleSheet.create({
   waBadge: {
     fontSize: 10,
     color: d.waGreenText,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  doneBadge: {
+    fontSize: 10,
+    color: '#15803d',
     fontWeight: '700',
     marginTop: 4,
   },

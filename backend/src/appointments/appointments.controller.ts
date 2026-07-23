@@ -22,6 +22,11 @@ import {
   type AppointmentPayload,
   validateAppointmentPayload,
 } from './appointment-payload';
+import {
+  APPT_STATUS,
+  appointmentDurationMinutes,
+  canCompleteAppointment,
+} from './appointment-status';
 
 @Controller('api/appointments')
 @UseGuards(AuthGuard)
@@ -38,6 +43,45 @@ export class AppointmentsController {
       orderBy: { createdAt: 'asc' },
     });
     return { appointments: appointments.map((a) => serializeDates(a)) };
+  }
+
+  @Post(':appointmentId/complete')
+  async complete(
+    @Req() req: AuthedRequest,
+    @Param('appointmentId') appointmentId: string,
+  ) {
+    const existing = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, accountId: req.account.id },
+      include: { service: { select: { duration: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException({ error: 'Agendamento não encontrado.' });
+    }
+
+    const check = canCompleteAppointment({
+      status: existing.status,
+      date: existing.date,
+      time: existing.time,
+      durationMinutes: appointmentDurationMinutes(existing),
+      timezone: req.account.timezone,
+      actor: 'account',
+    });
+    if (!check.ok) {
+      throw new BadRequestException({ error: check.error });
+    }
+
+    const appointment = await this.prisma.appointment.update({
+      where: { id: existing.id },
+      data: {
+        status: APPT_STATUS.COMPLETED,
+        completedAt: new Date(),
+      },
+    });
+    const shaped = serializeDates(appointment);
+    this.realtime.broadcast(req.account.id, 'appointment:updated', {
+      appointment: shaped,
+    });
+    return { appointment: shaped };
   }
 
   @Post()

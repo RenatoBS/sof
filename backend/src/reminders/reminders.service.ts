@@ -102,7 +102,7 @@ export class RemindersService {
       INNER JOIN "Account" acc ON acc.id = a."accountId"
       INNER JOIN "Employee" e ON e.id = a."employeeId"
       LEFT JOIN "Service" s ON s.id = a."serviceId"
-      WHERE a.status = 'confirmed'
+      WHERE a.status = 'scheduled'
         AND a.kind = 'service'
         AND a."reminderSentAt" IS NULL
         AND a."clientPhone" <> ''
@@ -177,7 +177,7 @@ export class RemindersService {
       UPDATE "Appointment"
       SET "reminderClaimedAt" = ${now}
       WHERE id = ${appointmentId}
-        AND status = 'confirmed'
+        AND status = 'scheduled'
         AND "reminderSentAt" IS NULL
         AND (
           "reminderClaimedAt" IS NULL

@@ -310,7 +310,7 @@ export class WhatsappBotService {
     const rows = await this.prisma.appointment.findMany({
       where: {
         accountId,
-        status: 'confirmed',
+        status: 'scheduled',
         kind: 'service',
         OR: [{ clientId }, { clientPhone: phone }],
         date: { gte: today },
@@ -1501,7 +1501,7 @@ export class WhatsappBotService {
           where: {
             id: apptId,
             accountId: account.id,
-            status: 'confirmed',
+            status: 'scheduled',
             OR: [{ clientId }, { clientPhone: phone }],
           },
           include: {
@@ -1520,7 +1520,7 @@ export class WhatsappBotService {
         where: {
           id: apptId,
           accountId: account.id,
-          status: 'confirmed',
+          status: 'scheduled',
           kind: 'service',
           OR: [{ clientId }, { clientPhone: phone }],
         },
@@ -2066,7 +2066,7 @@ export class WhatsappBotService {
             date,
             time,
             price: service.price,
-            status: 'confirmed',
+            status: 'scheduled',
             source: 'whatsapp',
           },
         });

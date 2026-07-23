@@ -42,6 +42,7 @@ type AppointmentModalProps = {
   onClientCreated?: (client: Client) => void;
   onSaved?: (appointment: Appointment, series?: Appointment[]) => void;
   onDeleted?: (appointmentIds: string[]) => void;
+  onCompleted?: (appointment: Appointment) => void;
   createAppointment?: (
     body: AppointmentWriteBody,
   ) => Promise<{ appointment: Appointment; appointments?: Appointment[] }>;
@@ -53,6 +54,9 @@ type AppointmentModalProps = {
     id: string,
     scope?: 'one' | 'series',
   ) => Promise<unknown>;
+  completeAppointment?: (
+    id: string,
+  ) => Promise<{ appointment: Appointment }>;
   createClient?: (body: {
     name: string;
     phone: string;
@@ -90,9 +94,11 @@ export function AppointmentModal({
   onClientCreated,
   onSaved,
   onDeleted,
+  onCompleted,
   createAppointment,
   updateAppointment,
   deleteAppointment,
+  completeAppointment,
   createClient,
 }: AppointmentModalProps) {
   const dashboard = useOptionalDashboard();
@@ -116,6 +122,8 @@ export function AppointmentModal({
   const isCreate = mode === 'create';
   const isBlock = kind === 'block';
   const inSeries = Boolean(appointment?.recurrenceGroupId);
+  const canMarkComplete =
+    !isCreate && appointment?.status === 'scheduled';
 
   useEffect(() => {
     if (!visible) return;
@@ -311,6 +319,30 @@ export function AppointmentModal({
     }
   };
 
+  const markComplete = async () => {
+    if (!appointment) return;
+    setLoading(true);
+    setError('');
+    try {
+      const fn = completeAppointment || dashboardApi.completeAppointment;
+      const { appointment: updated } = await fn(appointment.id);
+      if (onCompleted) onCompleted(updated);
+      else if (onSaved) onSaved(updated);
+      else if (dashboard) {
+        dashboard.setAppointments((prev) =>
+          prev.map((a) => (a.id === updated.id ? updated : a)),
+        );
+      }
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Erro ao marcar como concluído',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.overlay}>
@@ -481,6 +513,18 @@ export function AppointmentModal({
             />
             {!isCreate ? (
               <>
+                {canMarkComplete ? (
+                  <SofButton
+                    title={loading ? 'Salvando…' : 'Marcar como concluído'}
+                    variant="dark"
+                    theme="dashboard"
+                    onPress={markComplete}
+                    disabled={loading}
+                  />
+                ) : null}
+                {appointment?.status === 'completed' ? (
+                  <Text style={styles.hint}>Status: Concluído</Text>
+                ) : null}
                 <SofButton
                   title={
                     isBlock ? 'Excluir evento' : 'Cancelar agendamento'
@@ -488,6 +532,7 @@ export function AppointmentModal({
                   variant="danger"
                   theme="dashboard"
                   onPress={() => remove('one')}
+                  disabled={loading || appointment?.status === 'completed'}
                 />
                 {inSeries ? (
                   <SofButton
@@ -495,6 +540,7 @@ export function AppointmentModal({
                     variant="danger"
                     theme="dashboard"
                     onPress={() => remove('series')}
+                    disabled={loading}
                   />
                 ) : null}
               </>

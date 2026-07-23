@@ -95,6 +95,14 @@ export const employeeApi = {
       method: 'POST',
       auth: 'employee',
     }),
+  completeAppointment: (id: string) =>
+    api<{ appointment: Appointment }>(
+      `/employee/appointments/${id}/complete`,
+      {
+        method: 'POST',
+        auth: 'employee',
+      },
+    ),
   clients: () =>
     api<{ clients: Client[] }>('/employee/clients', { auth: 'employee' }),
   createClient: (body: { name: string; phone: string }) =>
@@ -230,6 +238,10 @@ export const dashboardApi = {
       `/appointments/${id}${scope === 'series' ? '?scope=series' : ''}`,
       { method: 'DELETE' },
     ),
+  completeAppointment: (id: string) =>
+    api<{ appointment: Appointment }>(`/appointments/${id}/complete`, {
+      method: 'POST',
+    }),
   integrations: () =>
     api<{
       stripe: { configured: boolean };

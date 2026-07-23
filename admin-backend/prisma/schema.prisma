@@ -150,10 +150,11 @@ model Appointment {
   date              String
   time              String
   price             Float    @default(0)
-  status            String   @default("confirmed")
+  status            String   @default("scheduled")
   source            String   @default("manual")
   /// Liga ocorrências materializadas da mesma série recorrente
   recurrenceGroupId String?
+  completedAt       DateTime?
   /// Claim de envio de lembrete (timeout libera para retry)
   reminderClaimedAt DateTime?
   /// Lembrete WhatsApp enviado com sucesso (no máximo 1x)

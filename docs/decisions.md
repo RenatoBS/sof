@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Status `scheduled` / `completed` e liberação antecipada de slot
+
+- **Contexto:** Precisávamos distinguir horário ainda ativo de atendimento já feito, auto-fechar quando a janela acaba, e permitir que o profissional liberasse o restante do slot se terminasse antes.  
+- **Decisão:** Renomear `confirmed` → `scheduled`; adicionar `completed` + `completedAt`. Só `scheduled` entra em `listBusySlots`. Job a cada 5 min (`AppointmentCompletionsService`) marca `completed` quando `now >= endAt` (fuso da conta). Conta conclui via `POST /api/appointments/:id/complete` sem restrição de janela; profissional (web/bot) só dentro de [início, fim]. Bot: menu **Concluir horário** + intent NLU `complete`.  
+- **Consequências:** Conclusão antecipada libera o horário restante para novos agendamentos; concluídos continuam visíveis na agenda com badge. Lembretes e conflitos ignoram `completed`/`cancelled`.  
+- **Alternativas descartadas:** Manter `confirmed` só como label; encurtar `durationMinutes` em vez de mudar status; permitir conclusão do prof fora da janela.
+
+---
+
 ## 2026-07-23 — Reset de senha do profissional (web + bot)
 
 - **Contexto:** Reset só existia pelo painel da conta; o profissional ficava dependente do responsável.  

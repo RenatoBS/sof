@@ -77,6 +77,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Bloco **Bot do WhatsApp — simulador** (telefone + mensagem → `POST /api/whatsapp/simulate`).  
 - Toast + grade atualizam em tempo real via SSE.
 - Faturamento ignora eventos `kind=block` (preço 0).
+- **Status:** `scheduled` (ocupa slot) → `completed` (libera slot; badge “Concluído”) ou `cancelled`. Auto-conclusão quando a hora de fim chega (job a cada 5 min). Conta pode marcar concluído a qualquer momento (`POST /api/appointments/:id/complete`); profissional só na janela do atendimento.
 
 ### Profissionais
 
@@ -95,7 +96,8 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
 - **Esqueci a senha:** `/profissional/esqueci-senha` (link em `/login`) → `POST /api/employee-auth/request-password-reset` (público, throttle). Resposta sempre genérica; se e-mail + telefone + WhatsApp da conta OK, envia CTA no WhatsApp e invalida a senha atual (`EmployeePasswordResetService`).  
 - **Definir senha (convite/reset):** `/profissional/definir-senha?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).  
-- Portal `/(profissional)/agenda`: só os agendamentos `confirmed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.  
+- Portal `/(profissional)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.  
+- Pode **marcar como concluído** (`POST /api/employee/appointments/:id/complete`) **somente dentro da janela** [início, fim] do atendimento; conclusão antecipada libera o restante do slot.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
 - Se `mustChangePassword` (legado), redireciona para `/(profissional)/trocar-senha` (exige senha atual).
 
@@ -125,8 +127,8 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Faturamento
 
-- Cards: Hoje / Esta Semana / Este Mês (confirmed).  
-- Lista “Agendamentos Confirmados”.  
+- Cards: Hoje / Esta Semana / Este Mês (`scheduled` + `completed`).  
+- Lista “Agendamentos” (serviço; ignora `block`).  
 - Copy: “Acompanhe a receita de seus serviços”.
 
 ### Conta
@@ -158,7 +160,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 
 ### Fluxo do cliente
 - Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
-- **Menu inicial:** se o cliente já tem agendamento **futuro** (`confirmed`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
+- **Menu inicial:** se o cliente já tem agendamento **futuro** (`scheduled`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
 - **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher).  
 - **Dia e horário (duas perguntas):** 1) Hoje, Amanhã (só se houver vaga) ou Outra data (`dd/mm`); 2) até 5 horários livres daquele dia + **Outro horário** (`hh:mm`).  
 - **Menus interativos:** escolhas de serviço (com **preço**), caminho/profissional, dia, horário e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
@@ -176,12 +178,13 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 
 ### Fluxo do profissional
 - Se o remetente casa com o **telefone** de um `Employee` da conta (exato ou sufixo BR com/sem DDI `55`), o bot **não** usa o fluxo de cliente — `WhatsappEmployeeBotService` (steps `emp:*`).  
-- Menu: **Agenda de hoje** | **Agenda de outro dia** | **Novo agendamento** | **Novo evento** | **Cancelar horário** | **Redefinir senha**.  
+- Menu: **Agenda de hoje** | **Agenda de outro dia** | **Novo agendamento** | **Novo evento** | **Concluir horário** | **Cancelar horário** | **Redefinir senha**.  
 - Agendamento: serviço vinculado ao prof → dia → horário livre → nome/telefone do cliente → confirma → `kind=service` `source=whatsapp`.  
 - Evento: título → duração (30/60/90/120) → dia → horário → confirma → `kind=block`.  
-- Cancelar: lista próximos confirmados daquele profissional → confirma → `status=cancelled`.  
+- **Concluir:** lista só atendimentos **dentro da janela** [início, fim]; confirma → `status=completed` + `completedAt` (libera o restante do slot).  
+- Cancelar: lista próximos `scheduled` daquele profissional → confirma → `status=cancelled`.  
 - **Redefinir senha:** envia o mesmo CTA/link de uso único (2h) no WhatsApp do profissional (`source=self`).  
-- **Áudio + NLU:** mesma transcrição do webhook; NLU no menu e como interrupção no meio do fluxo. LLM + heurística (datas faladas: “28 do 7”, “terça que vem”; `clientName`; horário `9h30`; intent `reset_password`). Cancelamento com nome/data/hora tenta achar o horário direto. Log `NLU emp: …` no servidor.  
+- **Áudio + NLU:** mesma transcrição do webhook; NLU no menu e como interrupção no meio do fluxo. LLM + heurística (datas faladas: “28 do 7”, “terça que vem”; `clientName`; horário `9h30`; intents `complete` / `reset_password`). Cancelamento/conclusão com nome/data/hora tenta achar o horário direto. Log `NLU emp: …` no servidor.  
 - Simulador: `POST /api/whatsapp/simulate` com o telefone do profissional.
 
 Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, sem QR no painel.

@@ -16,6 +16,11 @@ import {
   normalizeOpeningHours,
 } from '../account/opening-hours';
 import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
+import {
+  APPT_STATUS,
+  appointmentDurationMinutes,
+  canCompleteAppointment,
+} from '../appointments/appointment-status';
 import type {
   WhatsappBotResult,
   WhatsappInteractiveMenu,
@@ -172,6 +177,9 @@ export class WhatsappEmployeeBotService {
       // "cancelar" no menu = cancelar horário (não resetar sessão)
       if (lower === 'cancelar') {
         return this.startCancel(account, employee, phone);
+      }
+      if (/\b(concluir|conclu[ií]do|finalizar)\b/.test(lower)) {
+        return this.startComplete(account, employee, phone);
       }
       return this.handleMainAction(account, employee, phone, trimmed);
     }
@@ -332,9 +340,9 @@ export class WhatsappEmployeeBotService {
             id: data.cancelAppointmentId,
             accountId: account.id,
             employeeId: employee.id,
-            status: 'confirmed',
+            status: APPT_STATUS.SCHEDULED,
           },
-          data: { status: 'cancelled' },
+          data: { status: APPT_STATUS.CANCELLED },
         });
         await this.resetSession(account.id, phone);
         if (updated.count === 0) {
@@ -367,6 +375,90 @@ export class WhatsappEmployeeBotService {
       return this.confirmMenu('Confirma o cancelamento? Sim ou Não.');
     }
 
+    if (step === 'emp:awaiting_complete_pick') {
+      const idMatch = /^appt:(.+)$/.exec(trimmed);
+      const list = await this.listCompletableForEmployee(
+        account,
+        employee.id,
+      );
+      const byNum = this.parseChoice(trimmed, list.length);
+      const appt =
+        (idMatch && list.find((a) => a.id === idMatch[1])) ||
+        (byNum !== null ? list[byNum] : null);
+      if (!appt) {
+        return {
+          replies: ['Não achei esse horário. Escolha na lista.'],
+          unresolved: true,
+        };
+      }
+      await this.saveSession(account.id, phone, {
+        step: 'emp:awaiting_complete_confirm',
+        data: { ...data, cancelAppointmentId: appt.id },
+      });
+      return this.confirmMenu(
+        `Marcar como concluído: ${this.formatApptLine(appt)}? O restante do horário fica livre na agenda.`,
+      );
+    }
+
+    if (step === 'emp:awaiting_complete_confirm') {
+      if (AFFIRMATIVE.includes(lower) && data.cancelAppointmentId) {
+        const existing = await this.prisma.appointment.findFirst({
+          where: {
+            id: data.cancelAppointmentId,
+            accountId: account.id,
+            employeeId: employee.id,
+          },
+          include: { service: { select: { duration: true } } },
+        });
+        await this.resetSession(account.id, phone);
+        if (!existing) {
+          return this.mainMenu(
+            account,
+            employee,
+            phone,
+            'Esse horário já não estava ativo.',
+          );
+        }
+        const check = canCompleteAppointment({
+          status: existing.status,
+          date: existing.date,
+          time: existing.time,
+          durationMinutes: appointmentDurationMinutes(existing),
+          timezone: account.timezone,
+          actor: 'employee',
+        });
+        if (!check.ok) {
+          return this.mainMenu(account, employee, phone, check.error);
+        }
+        const appt = await this.prisma.appointment.update({
+          where: { id: existing.id },
+          data: {
+            status: APPT_STATUS.COMPLETED,
+            completedAt: new Date(),
+          },
+        });
+        this.realtime.broadcast(account.id, 'appointment:updated', {
+          appointment: serializeDates(appt),
+        });
+        return this.mainMenu(
+          account,
+          employee,
+          phone,
+          'Marcado como concluído — o restante do horário ficou livre. Mais alguma coisa?',
+        );
+      }
+      if (NEGATIVE.includes(lower)) {
+        await this.resetSession(account.id, phone);
+        return this.mainMenu(
+          account,
+          employee,
+          phone,
+          'Ok, mantive como agendado.',
+        );
+      }
+      return this.confirmMenu('Confirma a conclusão? Sim ou Não.');
+    }
+
     await this.resetSession(account.id, phone);
     return this.mainMenu(account, employee, phone);
   }
@@ -387,6 +479,7 @@ export class WhatsappEmployeeBotService {
     if (
       step === 'emp:awaiting_confirmation' ||
       step === 'emp:awaiting_cancel_confirm' ||
+      step === 'emp:awaiting_complete_confirm' ||
       step === 'emp:awaiting_custom_time' ||
       step === 'emp:awaiting_client_phone'
     ) {
@@ -397,7 +490,7 @@ export class WhatsappEmployeeBotService {
     }
     // Interrompe fluxo guiado se parecer comando novo (típico de áudio).
     return (
-      /\b(agenda|marcar|agendar|cancelar|desmarcar|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra|senha|redefinir)\b/i.test(
+      /\b(agenda|marcar|agendar|cancelar|desmarcar|concluir|finalizar|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra|senha|redefinir)\b/i.test(
         text,
       ) || text.trim().split(/\s+/).filter(Boolean).length >= 6
     );
@@ -463,6 +556,13 @@ export class WhatsappEmployeeBotService {
     }
     if (parsed.intent === 'cancel') {
       return this.startCancel(account, employee, phone, {
+        clientName: parsed.clientName,
+        date: parsed.date,
+        time: parsed.time,
+      });
+    }
+    if (parsed.intent === 'complete') {
+      return this.startComplete(account, employee, phone, {
         clientName: parsed.clientName,
         date: parsed.date,
         time: parsed.time,
@@ -544,7 +644,14 @@ export class WhatsappEmployeeBotService {
     text: string,
     account: Account,
   ): {
-    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'reset_password' | 'other';
+    intent:
+      | 'agenda'
+      | 'book'
+      | 'event'
+      | 'cancel'
+      | 'complete'
+      | 'reset_password'
+      | 'other';
     serviceId?: string;
     date?: string;
     time?: string;
@@ -566,6 +673,18 @@ export class WhatsappEmployeeBotService {
     if (/\b(cancelar|desmarcar|cancela)\b/.test(lower)) {
       return {
         intent: 'cancel',
+        date: relativeDate || undefined,
+        time: time || undefined,
+        clientName: clientName || undefined,
+      };
+    }
+    if (
+      /\b(concluir|conclu[ií]do|finalizar|terminei|já\s+terminei|ja\s+terminei)\b/.test(
+        lower,
+      )
+    ) {
+      return {
+        intent: 'complete',
         date: relativeDate || undefined,
         time: time || undefined,
         clientName: clientName || undefined,
@@ -767,7 +886,14 @@ export class WhatsappEmployeeBotService {
     services: Array<{ id: string; name: string }>,
     account: Account,
   ): Promise<{
-    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'reset_password' | 'other';
+    intent:
+      | 'agenda'
+      | 'book'
+      | 'event'
+      | 'cancel'
+      | 'complete'
+      | 'reset_password'
+      | 'other';
     serviceId?: string;
     date?: string;
     time?: string;
@@ -799,7 +925,7 @@ export class WhatsappEmployeeBotService {
       serviceList || '(nenhum)',
       '',
       'Responda SOMENTE JSON:',
-      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário de cliente), "reset_password" (redefinir senha de acesso à Sof) ou "other"',
+      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário de cliente), "complete" (marcar atendimento como concluído — só na janela do horário), "reset_password" (redefinir senha de acesso à Sof) ou "other"',
       '- serviceId: id do serviço mais próximo do que foi dito, ou null',
       '- date: YYYY-MM-DD ou null — resolva "hoje", "amanhã", "sexta", "terça que vem", "semana que vem", "28 do 7", "28 de julho", "28 do sétimo", "dia 28 de setembro"',
       '- time: HH:MM 24h ou null — "13h"/"13 horas"=13:00, "9h30"=09:30, "meio-dia"=12:00',
@@ -848,9 +974,14 @@ export class WhatsappEmployeeBotService {
       };
       const intent = String(raw.intent || 'other');
       if (
-        !['agenda', 'book', 'event', 'cancel', 'reset_password'].includes(
-          intent,
-        )
+        ![
+          'agenda',
+          'book',
+          'event',
+          'cancel',
+          'complete',
+          'reset_password',
+        ].includes(intent)
       ) {
         return { intent: 'other' };
       }
@@ -882,6 +1013,7 @@ export class WhatsappEmployeeBotService {
           | 'book'
           | 'event'
           | 'cancel'
+          | 'complete'
           | 'reset_password',
         serviceId:
           raw.serviceId && serviceIds.has(raw.serviceId)
@@ -921,6 +1053,7 @@ export class WhatsappEmployeeBotService {
       { id: 'emp:agenda_other', title: 'Agenda de outro dia' },
       { id: 'emp:book', title: 'Novo agendamento' },
       { id: 'emp:event', title: 'Novo evento' },
+      { id: 'emp:complete', title: 'Concluir horário' },
       { id: 'emp:cancel', title: 'Cancelar horário' },
       { id: 'emp:reset_password', title: 'Redefinir senha' },
     ], { listButton: 'Opções' });
@@ -973,6 +1106,12 @@ export class WhatsappEmployeeBotService {
     }
     if (text === 'emp:cancel' || /\bcancelar\b/.test(lower)) {
       return this.startCancel(account, employee, phone);
+    }
+    if (
+      text === 'emp:complete' ||
+      /\b(concluir|finalizar|marcar\s+como\s+conclu[ií]do)\b/.test(lower)
+    ) {
+      return this.startComplete(account, employee, phone);
     }
 
     // Atalhos de data no submenu de agenda
@@ -1054,7 +1193,7 @@ export class WhatsappEmployeeBotService {
         accountId: account.id,
         employeeId: employee.id,
         date,
-        status: 'confirmed',
+        status: { in: [APPT_STATUS.SCHEDULED, APPT_STATUS.COMPLETED] },
       },
       orderBy: { time: 'asc' },
     });
@@ -1068,7 +1207,13 @@ export class WhatsappEmployeeBotService {
         `Agenda de ${label}: livre. O que mais?`,
       );
     }
-    const lines = rows.map((a) => `• ${this.formatApptLine(a)}`).join('\n');
+    const lines = rows
+      .map((a) => {
+        const mark =
+          a.status === APPT_STATUS.COMPLETED ? ' (concluído)' : '';
+        return `• ${this.formatApptLine(a)}${mark}`;
+      })
+      .join('\n');
     return this.mainMenu(
       account,
       employee,
@@ -1128,6 +1273,83 @@ export class WhatsappEmployeeBotService {
     return {
       replies: ['Qual o título do evento? (ex.: Almoço, Médico, Reunião)'],
     };
+  }
+
+  private async startComplete(
+    account: Account,
+    employee: Employee,
+    phone: string,
+    filter?: { clientName?: string; date?: string; time?: string },
+  ) {
+    let list = await this.listCompletableForEmployee(account, employee.id);
+    if (list.length === 0) {
+      return this.mainMenu(
+        account,
+        employee,
+        phone,
+        'Nenhum atendimento em andamento agora. Só dá para concluir dentro da janela do horário.',
+      );
+    }
+
+    if (filter?.date || filter?.time || filter?.clientName) {
+      const nameNeedle = (filter.clientName || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const filtered = list.filter((a) => {
+        if (filter.date && a.date !== filter.date) return false;
+        if (filter.time && a.time !== filter.time) return false;
+        if (nameNeedle) {
+          const client = String(a.clientName || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+          if (!client.includes(nameNeedle) && !nameNeedle.includes(client)) {
+            const tokens = nameNeedle.split(/\s+/).filter((t) => t.length >= 3);
+            if (!tokens.every((t) => client.includes(t))) return false;
+          }
+        }
+        return true;
+      });
+      if (filtered.length === 1) {
+        const appt = filtered[0];
+        await this.saveSession(account.id, phone, {
+          step: 'emp:awaiting_complete_confirm',
+          data: {
+            role: 'employee',
+            employeeId: employee.id,
+            cancelAppointmentId: appt.id,
+          },
+        });
+        return this.confirmMenu(
+          `Marcar como concluído: ${this.formatApptLine(appt)}? O restante do horário fica livre.`,
+        );
+      }
+      if (filtered.length > 1) {
+        list = filtered;
+      } else if (filter.date || filter.time || filter.clientName) {
+        return this.mainMenu(
+          account,
+          employee,
+          phone,
+          'Não achei um atendimento em andamento com esses dados.',
+        );
+      }
+    }
+
+    await this.saveSession(account.id, phone, {
+      step: 'emp:awaiting_complete_pick',
+      data: { role: 'employee', employeeId: employee.id },
+    });
+    return this.menuReply(
+      'Qual horário concluir? (só os que estão na janela agora)',
+      list.slice(0, 10).map((a) => ({
+        id: `appt:${a.id}`,
+        title: `${a.time} · ${a.date.split('-').reverse().join('/')}`,
+        description: this.formatApptLine(a),
+      })),
+      { listButton: 'Horários' },
+    );
   }
 
   private async startCancel(
@@ -1534,7 +1756,7 @@ export class WhatsappEmployeeBotService {
           date: data.date!,
           time: data.time!,
           price: service.price,
-          status: 'confirmed',
+          status: APPT_STATUS.SCHEDULED,
           source: 'whatsapp',
         },
       });
@@ -1564,7 +1786,7 @@ export class WhatsappEmployeeBotService {
         date: data.date!,
         time: data.time!,
         price: 0,
-        status: 'confirmed',
+        status: APPT_STATUS.SCHEDULED,
         source: 'whatsapp',
       },
     });
@@ -1614,7 +1836,7 @@ export class WhatsappEmployeeBotService {
       where: {
         accountId,
         employeeId,
-        status: 'confirmed',
+        status: APPT_STATUS.SCHEDULED,
         OR: [
           { date: { gt: today } },
           { date: today, time: { gte: this.localTimeStr(new Date()) } },
@@ -1622,6 +1844,36 @@ export class WhatsappEmployeeBotService {
       },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
       take: 15,
+    });
+  }
+
+  /** Agendamentos do prof que ainda estão `scheduled` e dentro da janela [início, fim]. */
+  private async listCompletableForEmployee(
+    account: Account,
+    employeeId: string,
+  ) {
+    const today = this.localDateStr(this.nowInAccount(account));
+    const rows = await this.prisma.appointment.findMany({
+      where: {
+        accountId: account.id,
+        employeeId,
+        status: APPT_STATUS.SCHEDULED,
+        date: { lte: today },
+      },
+      include: { service: { select: { duration: true } } },
+      orderBy: [{ date: 'desc' }, { time: 'desc' }],
+      take: 40,
+    });
+    return rows.filter((a) => {
+      const check = canCompleteAppointment({
+        status: a.status,
+        date: a.date,
+        time: a.time,
+        durationMinutes: appointmentDurationMinutes(a),
+        timezone: account.timezone,
+        actor: 'employee',
+      });
+      return check.ok;
     });
   }
 
