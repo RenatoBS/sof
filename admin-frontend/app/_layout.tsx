@@ -16,6 +16,8 @@ import { colors } from '@/src/theme/admin';
 
 SplashScreen.preventAutoHideAsync();
 
+export { ErrorBoundary } from 'expo-router';
+
 export default function RootLayout() {
   const [loaded] = useFonts({
     HankenGrotesk_400Regular,
@@ -38,7 +40,11 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: colors.bg },
         }}
-      />
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(shell)" />
+      </Stack>
     </AdminAuthProvider>
   );
 }

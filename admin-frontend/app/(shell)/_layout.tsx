@@ -1,4 +1,4 @@
-import { Link, Redirect, Slot, usePathname } from 'expo-router';
+import { Redirect, Slot, usePathname, router } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
@@ -29,14 +29,22 @@ export default function ShellLayout() {
         <Text style={styles.brand}>Sof Admin</Text>
         <View style={styles.links}>
           <NavLink
-            href="/accounts"
             label="Contas"
-            active={pathname === '/accounts' || pathname.startsWith('/edit-account') || pathname === '/new-account'}
+            active={
+              pathname === '/accounts' ||
+              pathname.startsWith('/edit-account') ||
+              pathname === '/new-account'
+            }
+            onPress={() => router.push('/accounts')}
           />
           <NavLink
-            href="/plans"
             label="Planos"
-            active={pathname === '/plans' || pathname.startsWith('/edit-plan') || pathname === '/new-plan'}
+            active={
+              pathname === '/plans' ||
+              pathname.startsWith('/edit-plan') ||
+              pathname === '/new-plan'
+            }
+            onPress={() => router.push('/plans')}
           />
         </View>
         <View style={styles.right}>
@@ -54,22 +62,23 @@ export default function ShellLayout() {
 }
 
 function NavLink({
-  href,
   label,
   active,
+  onPress,
 }: {
-  href: '/accounts' | '/plans';
   label: string;
   active: boolean;
+  onPress: () => void;
 }) {
   return (
-    <Link href={href} asChild>
-      <Pressable style={[styles.link, active && styles.linkActive]}>
-        <Text style={[styles.linkText, active && styles.linkTextActive]}>
-          {label}
-        </Text>
-      </Pressable>
-    </Link>
+    <Pressable
+      style={[styles.link, active ? styles.linkActive : null]}
+      onPress={onPress}
+    >
+      <Text style={[styles.linkText, active ? styles.linkTextActive : null]}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -79,7 +88,6 @@ const styles = StyleSheet.create({
   nav: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.lg,
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
     backgroundColor: colors.paper,
@@ -91,21 +99,38 @@ const styles = StyleSheet.create({
     fontFamily: 'HankenGrotesk_700Bold',
     fontSize: 18,
     color: colors.accent,
+    marginRight: space.lg,
   },
-  links: { flexDirection: 'row', gap: space.sm, flex: 1 },
-  link: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  links: { flexDirection: 'row', flex: 1 },
+  link: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginRight: space.sm,
+  },
   linkActive: { backgroundColor: colors.accentSoft },
   linkText: {
     fontFamily: 'Inter_500Medium',
     color: colors.muted,
   },
   linkTextActive: { color: colors.accent },
-  right: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  email: { fontFamily: 'Inter_400Regular', color: colors.muted, fontSize: 13 },
+  right: { flexDirection: 'row', alignItems: 'center' },
+  email: {
+    fontFamily: 'Inter_400Regular',
+    color: colors.muted,
+    fontSize: 13,
+    marginRight: space.md,
+  },
   logout: {
     fontFamily: 'Inter_500Medium',
     color: colors.danger,
     fontSize: 13,
   },
-  body: { flex: 1, padding: space.lg, maxWidth: 1100, width: '100%', alignSelf: 'center' },
+  body: {
+    flex: 1,
+    padding: space.lg,
+    maxWidth: 1100,
+    width: '100%',
+    alignSelf: 'center',
+  },
 });
