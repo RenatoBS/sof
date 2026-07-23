@@ -17,10 +17,19 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Bot WhatsApp para profissionais (telefone cadastrado)
+
+- **Contexto:** Profissionais precisavam operar agenda pelo mesmo WhatsApp do salão, sem cair no fluxo de cliente.  
+- **Decisão:** Se o remetente casa com `Employee.phone` da conta, `WhatsappBotService` delega a `WhatsappEmployeeBotService` (steps `emp:*`): ver agenda (hoje/outro dia), marcar serviço, criar evento/`block`, cancelar. Áudio segue a mesma transcrição do webhook; NLU próprio no menu inicial (`agenda|book|event|cancel`). Profissionais **não** são silenciados por pausa da conta nem por pausa de cliente.  
+- **Consequências:** Telefone do profissional precisa estar cadastrado (com ou sem DDI 55). Simulador testa com o mesmo número.  
+- **Alternativas descartadas:** Código/PIN especial; fluxo único com flag; silenciar prof junto com a pausa global.
+
+---
+
 ## 2026-07-23 — Pausa global do bot na Conta (WhatsApp)
 
 - **Contexto:** Dono precisava silenciar o bot por algumas horas/dias sem pausar cliente a cliente.  
-- **Decisão:** `Account.botPausedPermanent` + `botPausedUntil`; UI na seção Bot do WhatsApp (presets 1h/8h/24h/3d/7d/permanente). Webhook/simulador checam pausa da conta antes da pausa por cliente.  
+- **Decisão:** `Account.botPausedPermanent` + `botPausedUntil`; UI na seção Bot do WhatsApp (presets 1h/8h/24h/3d/7d/permanente). Webhook/simulador checam pausa da conta antes da pausa por cliente; **exceção:** telefone de `Employee` continua no bot operacional.  
 - **Consequências:** `PUT /api/account` aceita os campos; migration `20260723140000_account_bot_pause`.  
 - **Alternativas descartadas:** Só pausa por cliente; flag booleana sem timer.
 

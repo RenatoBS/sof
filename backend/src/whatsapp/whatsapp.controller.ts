@@ -21,6 +21,7 @@ import { normalizePhone } from '../common/phone';
 import { isAccountBotPaused, isClientBotPaused } from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
+import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
 import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
 
@@ -97,6 +98,7 @@ export class WhatsappController {
     private readonly prisma: PrismaService,
     private readonly api: WhatsappApiService,
     private readonly bot: WhatsappBotService,
+    private readonly employeeBot: WhatsappEmployeeBotService,
     private readonly handoffs: WhatsappHandoffsService,
   ) {}
 
@@ -227,11 +229,7 @@ export class WhatsappController {
         return;
       }
 
-      if (isAccountBotPaused(account)) {
-        return;
-      }
-
-      if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+      if (await this.shouldSilenceIncoming(account, customerPhone)) {
         return;
       }
 
@@ -322,11 +320,7 @@ export class WhatsappController {
       return;
     }
 
-    if (isAccountBotPaused(account)) {
-      return;
-    }
-
-    if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+    if (await this.shouldSilenceIncoming(account, customerPhone)) {
       return;
     }
 
@@ -401,6 +395,13 @@ export class WhatsappController {
     /** Se true, não envia aviso ao WhatsApp (ex.: simulador). */
     skipOutboundNotice?: boolean;
   }): Promise<{ handoffOpened: boolean }> {
+    // Profissionais não entram no escalonamento de atendimento humano.
+    if (
+      await this.employeeBot.findEmployee(opts.accountId, opts.customerPhone)
+    ) {
+      return { handoffOpened: false };
+    }
+
     if (opts.result.humanRequested) {
       const opened = await this.handoffs.openOrRefresh({
         accountId: opts.accountId,
@@ -530,10 +531,7 @@ export class WhatsappController {
           if (!account || !message.from) continue;
           const text = this.extractMetaSelection(message);
           if (!text) continue;
-          if (isAccountBotPaused(account)) {
-            continue;
-          }
-          if (await this.isBotPausedForPhone(account.id, message.from)) {
+          if (await this.shouldSilenceIncoming(account, message.from)) {
             continue;
           }
           const result = await this.bot.handleIncomingMessage({
@@ -587,6 +585,19 @@ export class WhatsappController {
       select: { botPausedPermanent: true, botPausedUntil: true },
     });
     return isClientBotPaused(client);
+  }
+
+  /** Profissionais usam o bot mesmo com pausa de cliente/conta (agenda operacional). */
+  private async shouldSilenceIncoming(
+    account: { id: string; botPausedPermanent?: boolean; botPausedUntil?: Date | null },
+    rawPhone: string,
+  ) {
+    const phone = normalizePhone(rawPhone) || this.extractPhone(rawPhone);
+    if (phone && (await this.employeeBot.findEmployee(account.id, phone))) {
+      return false;
+    }
+    if (isAccountBotPaused(account)) return true;
+    return this.isBotPausedForPhone(account.id, rawPhone);
   }
 
   private async resolveAccount(opts: {
@@ -647,18 +658,12 @@ export class WhatsappController {
       });
     }
 
-    if (isAccountBotPaused(req.account)) {
+    if (await this.shouldSilenceIncoming(req.account, customerPhone)) {
       return {
         replies: [
-          '(Bot pausado na conta — nenhuma resposta enviada. Reative em Conta → WhatsApp.)',
-        ],
-      };
-    }
-
-    if (await this.isBotPausedForPhone(req.account.id, customerPhone)) {
-      return {
-        replies: [
-          '(Bot pausado para este cliente — nenhuma resposta enviada.)',
+          isAccountBotPaused(req.account)
+            ? '(Bot pausado na conta — nenhuma resposta enviada. Reative em Conta → WhatsApp.)'
+            : '(Bot pausado para este cliente — nenhuma resposta enviada.)',
         ],
       };
     }

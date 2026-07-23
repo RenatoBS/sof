@@ -17,6 +17,7 @@ import {
   timeToMinutes,
 } from '../appointments/schedule-conflict';
 import { BookingNluService } from './booking-nlu.service';
+import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { formatReminderLeadLabel } from '../reminders/reminder-window';
 
 type SessionData = {
@@ -87,6 +88,7 @@ export class WhatsappBotService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly nlu: BookingNluService,
+    private readonly employeeBot: WhatsappEmployeeBotService,
   ) {}
 
   /**
@@ -1202,6 +1204,17 @@ export class WhatsappBotService {
     const trimmed = String(text || '').trim();
     const lower = trimmed.toLowerCase();
     const phone = normalizePhone(customerPhone) || customerPhone;
+
+    // Profissional com telefone cadastrado → fluxo próprio (não o de cliente).
+    const employee = await this.employeeBot.findEmployee(account.id, phone);
+    if (employee) {
+      return this.employeeBot.handleIncomingMessage({
+        account,
+        employee,
+        customerPhone: phone,
+        text: trimmed,
+      });
+    }
 
     if (lower === 'cancelar' || lower === '/reset' || lower === 'reset') {
       await this.resetSession(account.id, phone);

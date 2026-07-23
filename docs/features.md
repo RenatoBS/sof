@@ -133,7 +133,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - **Endereço** do estabelecimento (opcional); `PUT /api/account` com `address`; o bot informa na conversa.  
 - **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
 - **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
-- **Pausa do bot (conta):** na seção Bot do WhatsApp — **Bot ativo**, timer (1 h / 8 h / 24 h / 3 dias / 7 dias) ou **Permanente**. Enquanto pausado, o webhook **não responde a ninguém** (`Account.botPausedPermanent` / `botPausedUntil`). Pausa por cliente continua na aba Clientes.  
+- **Pausa do bot (conta):** na seção Bot do WhatsApp — **Bot ativo**, timer (1 h / 8 h / 24 h / 3 dias / 7 dias) ou **Permanente**. Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.  
 - **Lembrete WhatsApp:** card na Conta com antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário da conta (botão que expande a lista de fusos); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.  
 - Sair da conta.
 
@@ -153,6 +153,8 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Pareamento no painel Conta (QR ou código com telefone).  
 - Ao conectar, a API configura o webhook da instância para `API_PUBLIC_URL/api/whatsapp/webhook`.  
 - Webhook `GET/POST /api/whatsapp/webhook`.  
+
+### Fluxo do cliente
 - Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
 - **Menu inicial:** se o cliente já tem agendamento **futuro** (`confirmed`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
 - **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher).  
@@ -163,12 +165,21 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Frases livres (NLU):** com `OPENAI_API_KEY`, frases corridas (≥ 3 palavras) no início da conversa ou na escolha de serviço passam por um extrator LLM (`gpt-4o-mini`, JSON) que identifica intenção (marcar/cancelar/ver), serviço, data e hora — ex. "quero marcar um corte amanhã ao meio-dia" pula direto para a confirmação. Falha ou frase vaga caem no fluxo guiado normal (`whatsapp/booking-nlu.service.ts`).  
 - **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
-- **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para todos até a data ou até reativar.  
+- **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para **clientes** até a data ou até reativar (profissionais cadastrados continuam no fluxo operacional).  
 - **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e resolve o alerta (ver seção Atendimentos acima).  
 - **Lembrete automático:** se `whatsappReminderMinutes > 0` e a instância está conectada, um job a cada 30 min avisa o cliente no WhatsApp antes do horário (1× por agendamento; fuso = `Account.timezone`). A confirmação do bot só promete lembrete quando a antecedência está ativa.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).
+
+### Fluxo do profissional
+- Se o remetente casa com o **telefone** de um `Employee` da conta (exato ou sufixo BR com/sem DDI `55`), o bot **não** usa o fluxo de cliente — `WhatsappEmployeeBotService` (steps `emp:*`).  
+- Menu: **Agenda de hoje** | **Agenda de outro dia** | **Novo agendamento** | **Novo evento** | **Cancelar horário**.  
+- Agendamento: serviço vinculado ao prof → dia → horário livre → nome/telefone do cliente → confirma → `kind=service` `source=whatsapp`.  
+- Evento: título → duração (30/60/90/120) → dia → horário → confirma → `kind=block`.  
+- Cancelar: lista próximos confirmados daquele profissional → confirma → `status=cancelled`.  
+- **Áudio + NLU:** mesma transcrição do webhook; no menu inicial, frases livres (≥ 3 palavras) com intents `agenda` / `book` / `event` / `cancel`.  
+- Simulador: `POST /api/whatsapp/simulate` com o telefone do profissional.
 
 Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, sem QR no painel.
 
