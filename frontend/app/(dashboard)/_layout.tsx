@@ -84,8 +84,10 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       },
       onHandoffOpened: (handoff: WhatsappHandoff) => {
         upsertHandoff(handoff);
+        const who =
+          handoff.party === 'employee' ? 'Profissional' : 'Cliente';
         showToast(
-          `${handoff.customerName || 'Cliente'} precisa de atendimento no WhatsApp`,
+          `${who}: ${handoff.customerName || 'contato'} precisa de atendimento no WhatsApp`,
         );
       },
       onHandoffUpdated: upsertHandoff,

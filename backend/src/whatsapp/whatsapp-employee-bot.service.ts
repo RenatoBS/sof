@@ -47,6 +47,8 @@ const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'fecha', 'fechad
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
 const CUSTOM_TIME_RE = /^(outro|outra|custom|time:custom)$/i;
 const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;
+const HUMAN_REQUEST_RE =
+  /\b(falar\s+com\s+(algu[eé]m|um\s+humano|(um[a]?\s+)?atendente|uma\s+pessoa(\s+real)?|a\s+conta|o\s+sal[aã]o)|quero\s+(um[a]?\s+)?atendente|chama(r)?\s+(um[a]?\s+)?atendente|me\s+passa\s+(pro|para\s+[oa])\s+atendente|atendimento\s+humano|ajuda\s+humana|n[aã]o\s+quero\s+falar\s+com\s+(rob[oô]|bot))\b/i;
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
@@ -121,6 +123,10 @@ export class WhatsappEmployeeBotService {
       };
     }
 
+    if (HUMAN_REQUEST_RE.test(trimmed)) {
+      return this.requestHuman(account, employee, phone);
+    }
+
     const session = await this.prisma.whatsappSession.findUnique({
       where: {
         accountId_customerPhone: {
@@ -181,7 +187,48 @@ export class WhatsappEmployeeBotService {
       if (/\b(concluir|conclu[ií]do|finalizar)\b/.test(lower)) {
         return this.startComplete(account, employee, phone);
       }
+      if (
+        trimmed === 'emp:human' ||
+        /\b(falar\s+com\s+(humano|atendente|algu[eé]m)|atendimento\s+humano)\b/.test(
+          lower,
+        )
+      ) {
+        return this.requestHuman(account, employee, phone);
+      }
       return this.handleMainAction(account, employee, phone, trimmed);
+    }
+
+    if (step === 'emp:awaiting_create_kind') {
+      if (
+        trimmed === 'emp:book' ||
+        /\b(agendamento|cliente|servi[cç]o|marcar)\b/.test(lower)
+      ) {
+        return this.startBooking(account, employee, phone);
+      }
+      if (
+        trimmed === 'emp:event' ||
+        /\b(evento|bloqueio|bloquear|almo[cç]o|m[eé]dico|reuni[aã]o)\b/.test(
+          lower,
+        )
+      ) {
+        return this.startEvent(account, employee, phone);
+      }
+      return this.menuReply(
+        'O que você quer criar?',
+        [
+          {
+            id: 'emp:book',
+            title: 'Agendamento',
+            description: 'Serviço para um cliente',
+          },
+          {
+            id: 'emp:event',
+            title: 'Evento',
+            description: 'Almoço, médico, reunião…',
+          },
+        ],
+        { listButton: 'Tipo' },
+      );
     }
 
     if (step === 'emp:awaiting_service') {
@@ -490,7 +537,7 @@ export class WhatsappEmployeeBotService {
     }
     // Interrompe fluxo guiado se parecer comando novo (típico de áudio).
     return (
-      /\b(agenda|marcar|agendar|cancelar|desmarcar|concluir|finalizar|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra|senha|redefinir)\b/i.test(
+      /\b(agenda|marcar|agendar|cancelar|desmarcar|concluir|finalizar|humano|atendente|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra|senha|redefinir)\b/i.test(
         text,
       ) || text.trim().split(/\s+/).filter(Boolean).length >= 6
     );
@@ -567,6 +614,9 @@ export class WhatsappEmployeeBotService {
         date: parsed.date,
         time: parsed.time,
       });
+    }
+    if (parsed.intent === 'human') {
+      return this.requestHuman(account, employee, phone);
     }
     if (parsed.intent === 'reset_password') {
       return this.sendPasswordReset(account, employee, phone);
@@ -650,6 +700,7 @@ export class WhatsappEmployeeBotService {
       | 'event'
       | 'cancel'
       | 'complete'
+      | 'human'
       | 'reset_password'
       | 'other';
     serviceId?: string;
@@ -669,6 +720,9 @@ export class WhatsappEmployeeBotService {
       )
     ) {
       return { intent: 'reset_password' };
+    }
+    if (HUMAN_REQUEST_RE.test(text) || /\b(falar\s+com\s+humano|ajuda\s+humana)\b/.test(lower)) {
+      return { intent: 'human' };
     }
     if (/\b(cancelar|desmarcar|cancela)\b/.test(lower)) {
       return {
@@ -892,6 +946,7 @@ export class WhatsappEmployeeBotService {
       | 'event'
       | 'cancel'
       | 'complete'
+      | 'human'
       | 'reset_password'
       | 'other';
     serviceId?: string;
@@ -925,7 +980,7 @@ export class WhatsappEmployeeBotService {
       serviceList || '(nenhum)',
       '',
       'Responda SOMENTE JSON:',
-      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário de cliente), "complete" (marcar atendimento como concluído — só na janela do horário), "reset_password" (redefinir senha de acesso à Sof) ou "other"',
+      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário de cliente), "complete" (marcar atendimento como concluído — só na janela do horário), "human" (falar com a conta / atendente humano), "reset_password" (redefinir senha de acesso à Sof) ou "other"',
       '- serviceId: id do serviço mais próximo do que foi dito, ou null',
       '- date: YYYY-MM-DD ou null — resolva "hoje", "amanhã", "sexta", "terça que vem", "semana que vem", "28 do 7", "28 de julho", "28 do sétimo", "dia 28 de setembro"',
       '- time: HH:MM 24h ou null — "13h"/"13 horas"=13:00, "9h30"=09:30, "meio-dia"=12:00',
@@ -980,6 +1035,7 @@ export class WhatsappEmployeeBotService {
           'event',
           'cancel',
           'complete',
+          'human',
           'reset_password',
         ].includes(intent)
       ) {
@@ -1014,6 +1070,7 @@ export class WhatsappEmployeeBotService {
           | 'event'
           | 'cancel'
           | 'complete'
+          | 'human'
           | 'reset_password',
         serviceId:
           raw.serviceId && serviceIds.has(raw.serviceId)
@@ -1048,15 +1105,32 @@ export class WhatsappEmployeeBotService {
     const header =
       intro ||
       `Oi, ${employee.name}! Aqui é a Sof — menu do profissional (${account.businessName}).`;
-    return this.menuReply(header, [
+
+    const completable = await this.listCompletableForEmployee(
+      account,
+      employee.id,
+    );
+    const choices: WhatsappMenuChoice[] = [];
+    if (completable.length > 0) {
+      choices.push({
+        id: 'emp:complete',
+        title: 'Concluir agendamento',
+      });
+    }
+    choices.push(
       { id: 'emp:agenda_today', title: 'Agenda de hoje' },
       { id: 'emp:agenda_other', title: 'Agenda de outro dia' },
-      { id: 'emp:book', title: 'Novo agendamento' },
-      { id: 'emp:event', title: 'Novo evento' },
-      { id: 'emp:complete', title: 'Concluir horário' },
+      {
+        id: 'emp:create',
+        title: 'Novo na agenda',
+        description: 'Agendamento ou evento',
+      },
       { id: 'emp:cancel', title: 'Cancelar horário' },
+      { id: 'emp:human', title: 'Falar com humano' },
       { id: 'emp:reset_password', title: 'Redefinir senha' },
-    ], { listButton: 'Opções' });
+    );
+
+    return this.menuReply(header, choices, { listButton: 'Opções' });
   }
 
   private async handleMainAction(
@@ -1090,6 +1164,14 @@ export class WhatsappEmployeeBotService {
         { id: 'day:custom', title: 'Outra data' },
       ]);
     }
+    if (
+      text === 'emp:create' ||
+      /novo\s+na\s+agenda|criar\s+(na\s+)?agenda|nova\s+op[cç][aã]o/i.test(
+        lower,
+      )
+    ) {
+      return this.startCreate(account, employee, phone);
+    }
     if (text === 'emp:book' || /novo\s+agendamento|marcar\s+(cliente|hor[aá]rio)/i.test(lower)) {
       return this.startBooking(account, employee, phone);
     }
@@ -1113,18 +1195,43 @@ export class WhatsappEmployeeBotService {
     ) {
       return this.startComplete(account, employee, phone);
     }
+    if (
+      text === 'emp:human' ||
+      /\b(falar\s+com\s+(humano|atendente|algu[eé]m)|atendimento\s+humano)\b/.test(
+        lower,
+      )
+    ) {
+      return this.requestHuman(account, employee, phone);
+    }
 
     // Atalhos de data no submenu de agenda
     if (text === 'day:today' || text === 'day:tomorrow' || text === 'day:custom') {
       return this.handleAgendaDayShortcut(account, employee, phone, text);
     }
 
-    return this.mainMenu(
-      account,
-      employee,
-      phone,
-      'Não entendi. Escolha uma opção do menu:',
-    );
+    return {
+      ...(await this.mainMenu(
+        account,
+        employee,
+        phone,
+        'Não entendi. Escolha uma opção do menu:',
+      )),
+      unresolved: true,
+    };
+  }
+
+  private async requestHuman(
+    account: Account,
+    employee: Employee,
+    phone: string,
+  ): Promise<WhatsappBotResult> {
+    await this.resetSession(account.id, phone);
+    return {
+      replies: [
+        `Combinado, ${employee.name} — vou avisar a conta para te atender por aqui.`,
+      ],
+      humanRequested: true,
+    };
   }
 
   private async sendPasswordReset(
@@ -1219,6 +1326,33 @@ export class WhatsappEmployeeBotService {
       employee,
       phone,
       `Agenda de ${label}:\n${lines}\n\nO que mais?`,
+    );
+  }
+
+  private async startCreate(
+    account: Account,
+    employee: Employee,
+    phone: string,
+  ): Promise<WhatsappBotResult> {
+    await this.saveSession(account.id, phone, {
+      step: 'emp:awaiting_create_kind',
+      data: { role: 'employee', employeeId: employee.id },
+    });
+    return this.menuReply(
+      'O que você quer criar?',
+      [
+        {
+          id: 'emp:book',
+          title: 'Agendamento',
+          description: 'Serviço para um cliente',
+        },
+        {
+          id: 'emp:event',
+          title: 'Evento',
+          description: 'Almoço, médico, reunião…',
+        },
+      ],
+      { listButton: 'Tipo' },
     );
   }
 
@@ -1342,13 +1476,13 @@ export class WhatsappEmployeeBotService {
       data: { role: 'employee', employeeId: employee.id },
     });
     return this.menuReply(
-      'Qual horário concluir? (só os que estão na janela agora)',
+      'Qual agendamento concluir? (só os que estão na janela agora)',
       list.slice(0, 10).map((a) => ({
         id: `appt:${a.id}`,
         title: `${a.time} · ${a.date.split('-').reverse().join('/')}`,
         description: this.formatApptLine(a),
       })),
-      { listButton: 'Horários' },
+      { listButton: 'Agendamentos' },
     );
   }
 

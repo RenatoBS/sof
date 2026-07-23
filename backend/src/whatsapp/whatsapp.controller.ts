@@ -387,9 +387,16 @@ export class WhatsappController {
     });
     if (!account) return;
 
+    const employee = await this.employeeBot.findEmployee(
+      account.id,
+      customerPhone,
+    );
     await this.handoffs.onHumanReply({
       accountId: account.id,
       phone: customerPhone,
+      party: employee ? 'employee' : 'client',
+      employeeId: employee?.id,
+      displayName: employee?.name,
     });
   }
 
@@ -402,12 +409,16 @@ export class WhatsappController {
     /** Se true, não envia aviso ao WhatsApp (ex.: simulador). */
     skipOutboundNotice?: boolean;
   }): Promise<{ handoffOpened: boolean }> {
-    // Profissionais não entram no escalonamento de atendimento humano.
-    if (
-      await this.employeeBot.findEmployee(opts.accountId, opts.customerPhone)
-    ) {
-      return { handoffOpened: false };
-    }
+    const employee = await this.employeeBot.findEmployee(
+      opts.accountId,
+      opts.customerPhone,
+    );
+    const party = employee ? 'employee' : 'client';
+    const partyOpts = {
+      party: party as 'client' | 'employee',
+      employeeId: employee?.id,
+      displayName: employee?.name,
+    };
 
     if (opts.result.humanRequested) {
       const opened = await this.handoffs.openOrRefresh({
@@ -415,8 +426,13 @@ export class WhatsappController {
         phone: opts.customerPhone,
         lastMessage: opts.text,
         reason: 'human_requested',
+        ...partyOpts,
       });
-      await this.handoffs.resetUnresolved(opts.accountId, opts.customerPhone);
+      await this.handoffs.resetUnresolved(
+        opts.accountId,
+        opts.customerPhone,
+        partyOpts,
+      );
       if (opened?.created && !opts.skipOutboundNotice) {
         await this.api
           .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
@@ -429,6 +445,7 @@ export class WhatsappController {
       const bump = await this.handoffs.bumpUnresolved({
         accountId: opts.accountId,
         phone: opts.customerPhone,
+        ...partyOpts,
       });
       if (bump.reached) {
         const opened = await this.handoffs.openOrRefresh({
@@ -436,6 +453,7 @@ export class WhatsappController {
           phone: opts.customerPhone,
           lastMessage: opts.text,
           reason: 'unresolved',
+          ...partyOpts,
         });
         if (opened?.created && !opts.skipOutboundNotice) {
           await this.api
@@ -447,7 +465,11 @@ export class WhatsappController {
       return { handoffOpened: false };
     }
 
-    await this.handoffs.resetUnresolved(opts.accountId, opts.customerPhone);
+    await this.handoffs.resetUnresolved(
+      opts.accountId,
+      opts.customerPhone,
+      partyOpts,
+    );
     return { handoffOpened: false };
   }
 

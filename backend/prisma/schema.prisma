@@ -64,12 +64,15 @@ model Employee {
   passwordHash       String?
   mustChangePassword Boolean  @default(true)
   color              String
+  /// Falhas consecutivas do bot (escalonamento humano, espelho do Client)
+  botUnresolvedCount Int      @default(0)
   createdAt          DateTime @default(now())
 
   account              Account                 @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments         Appointment[]
   services             EmployeeService[]
   passwordTokens       EmployeePasswordToken[]
+  handoffs             WhatsappHandoff[]
   supportTicketsCreated SupportTicket[]        @relation("SupportTicketCreator")
   supportTicketComments SupportTicketComment[] @relation("SupportTicketCommentEmployee")
 
@@ -221,6 +224,9 @@ model WhatsappHandoff {
   id              String    @id @default(cuid())
   accountId       String
   clientId        String?
+  employeeId      String?
+  /// client | employee — quem está na ponta do WhatsApp
+  party           String    @default("client")
   customerPhone   String
   customerName    String    @default("")
   lastMessage     String    @default("")
@@ -234,11 +240,13 @@ model WhatsappHandoff {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  client   Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
   @@index([accountId, status, openedAt])
   @@index([accountId, customerPhone, status])
+  @@index([employeeId])
 }
 
 /// Operador do painel admin Sof (plataforma, não tenant)

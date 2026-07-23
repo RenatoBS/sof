@@ -102,9 +102,10 @@ export default function HandoffsScreen() {
         <View>
           <Text style={styles.h2}>Atendimentos</Text>
           <Text style={styles.sub}>
-            Conversas em que o bot precisou de ajuda humana. Ao responder pelo
-            WhatsApp, o bot pausa por 1 hora para aquele cliente e o alerta é
-            resolvido automaticamente.
+            Conversas em que o bot precisou de ajuda humana — de clientes ou
+            profissionais. Ao responder um cliente pelo WhatsApp, o bot pausa
+            por 1 hora para aquele número e o alerta é resolvido. Resposta a
+            profissional resolve o alerta sem pausar o bot operacional.
           </Text>
         </View>
       </View>
@@ -112,8 +113,9 @@ export default function HandoffsScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Configuração</Text>
         <Text style={styles.hint}>
-          Quantas respostas "não entendi" seguidas do bot abrem um alerta aqui.
-          Pedidos explícitos por atendente sempre alertam na hora.
+          Quantas respostas "não entendi" seguidas do bot abrem um alerta aqui
+          (vale para cliente e profissional). Pedidos explícitos por atendente
+          sempre alertam na hora.
         </Text>
         <View style={styles.chips}>
           {allowed.map((value) => {
@@ -148,11 +150,29 @@ export default function HandoffsScreen() {
         ) : (
           <View style={styles.list}>
             {open.map((h) => (
-              <View key={h.id} style={styles.entity}>
+              <View
+                key={h.id}
+                style={[
+                  styles.entity,
+                  h.party === 'employee' && styles.entityEmployee,
+                ]}
+              >
                 <View style={styles.rowTop}>
-                  <Text style={styles.name}>
-                    {h.customerName || formatPhone(h.customerPhone)}
-                  </Text>
+                  <View style={styles.nameBlock}>
+                    <Text
+                      style={[
+                        styles.partyBadge,
+                        h.party === 'employee'
+                          ? styles.partyBadgeEmployee
+                          : styles.partyBadgeClient,
+                      ]}
+                    >
+                      {h.party === 'employee' ? 'Profissional' : 'Cliente'}
+                    </Text>
+                    <Text style={styles.name}>
+                      {h.customerName || formatPhone(h.customerPhone)}
+                    </Text>
+                  </View>
                   <Text
                     style={[
                       styles.badge,
@@ -200,11 +220,30 @@ export default function HandoffsScreen() {
           <Text style={styles.sectionTitle}>Resolvidos recentes</Text>
           <View style={styles.list}>
             {resolved.map((h) => (
-              <View key={h.id} style={[styles.entity, styles.entityResolved]}>
+              <View
+                key={h.id}
+                style={[
+                  styles.entity,
+                  styles.entityResolved,
+                  h.party === 'employee' && styles.entityEmployee,
+                ]}
+              >
                 <View style={styles.rowTop}>
-                  <Text style={styles.name}>
-                    {h.customerName || formatPhone(h.customerPhone)}
-                  </Text>
+                  <View style={styles.nameBlock}>
+                    <Text
+                      style={[
+                        styles.partyBadge,
+                        h.party === 'employee'
+                          ? styles.partyBadgeEmployee
+                          : styles.partyBadgeClient,
+                      ]}
+                    >
+                      {h.party === 'employee' ? 'Profissional' : 'Cliente'}
+                    </Text>
+                    <Text style={styles.name}>
+                      {h.customerName || formatPhone(h.customerPhone)}
+                    </Text>
+                  </View>
                   <Text style={[styles.badge, styles.badgeResolved]}>
                     {h.humanRepliedAt ? 'Respondido no WhatsApp' : 'Resolvido'}
                   </Text>
@@ -279,13 +318,37 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     gap: 8,
   },
+  entityEmployee: {
+    borderColor: '#c4b5fd',
+    backgroundColor: '#f5f3ff',
+  },
   entityResolved: { opacity: 0.75 },
   rowTop: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+  },
+  nameBlock: { flex: 1, minWidth: 140, gap: 6 },
+  partyBadge: {
+    alignSelf: 'flex-start',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  partyBadgeClient: {
+    color: '#1e40af',
+    backgroundColor: '#dbeafe',
+  },
+  partyBadgeEmployee: {
+    color: '#5b21b6',
+    backgroundColor: '#ede9fe',
   },
   name: { fontSize: 17, fontWeight: '700', color: d.ink },
   badge: {

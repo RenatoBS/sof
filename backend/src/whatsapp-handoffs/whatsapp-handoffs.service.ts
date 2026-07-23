@@ -12,6 +12,7 @@ export const HANDOFF_THRESHOLDS = [1, 2, 3, 5] as const;
 export type HandoffThreshold = (typeof HANDOFF_THRESHOLDS)[number];
 
 export type HandoffReason = 'unresolved' | 'human_requested';
+export type HandoffParty = 'client' | 'employee';
 
 const HUMAN_PAUSE_MS = 60 * 60 * 1000;
 
@@ -91,9 +92,22 @@ export class WhatsappHandoffsService {
     return shaped;
   }
 
-  async resetUnresolved(accountId: string, phoneRaw: string) {
+  async resetUnresolved(
+    accountId: string,
+    phoneRaw: string,
+    opts?: { party?: HandoffParty; employeeId?: string },
+  ) {
     const phone = normalizePhone(phoneRaw) || phoneRaw.replace(/\D/g, '');
     if (!phone) return;
+
+    if (opts?.party === 'employee' && opts.employeeId) {
+      await this.prisma.employee.updateMany({
+        where: { id: opts.employeeId, accountId },
+        data: { botUnresolvedCount: 0 },
+      });
+      return;
+    }
+
     await this.prisma.client.updateMany({
       where: { accountId, phone },
       data: { botUnresolvedCount: 0 },
@@ -106,7 +120,9 @@ export class WhatsappHandoffsService {
   async bumpUnresolved(opts: {
     accountId: string;
     phone: string;
-    clientName?: string;
+    displayName?: string;
+    party?: HandoffParty;
+    employeeId?: string;
   }): Promise<{ count: number; threshold: number; reached: boolean }> {
     const phone =
       normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
@@ -117,6 +133,18 @@ export class WhatsappHandoffsService {
     const settings = await this.getSettings(opts.accountId);
     const threshold = settings.threshold;
 
+    if (opts.party === 'employee' && opts.employeeId) {
+      const employee = await this.prisma.employee.update({
+        where: { id: opts.employeeId },
+        data: { botUnresolvedCount: { increment: 1 } },
+      });
+      return {
+        count: employee.botUnresolvedCount,
+        threshold,
+        reached: employee.botUnresolvedCount >= threshold,
+      };
+    }
+
     const client = await this.prisma.client.upsert({
       where: {
         accountId_phone: { accountId: opts.accountId, phone },
@@ -124,12 +152,12 @@ export class WhatsappHandoffsService {
       create: {
         accountId: opts.accountId,
         phone,
-        name: opts.clientName || `Cliente WhatsApp ${phone.slice(-4)}`,
+        name: opts.displayName || `Cliente WhatsApp ${phone.slice(-4)}`,
         botUnresolvedCount: 1,
       },
       update: {
         botUnresolvedCount: { increment: 1 },
-        ...(opts.clientName ? { name: opts.clientName } : {}),
+        ...(opts.displayName ? { name: opts.displayName } : {}),
       },
     });
 
@@ -147,25 +175,51 @@ export class WhatsappHandoffsService {
   async openOrRefresh(opts: {
     accountId: string;
     phone: string;
-    clientName?: string;
+    displayName?: string;
     lastMessage: string;
     reason: HandoffReason;
+    party?: HandoffParty;
+    employeeId?: string;
   }) {
     const phone =
       normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
     if (!phone) return null;
 
-    const client = await this.prisma.client.upsert({
-      where: {
-        accountId_phone: { accountId: opts.accountId, phone },
-      },
-      create: {
-        accountId: opts.accountId,
-        phone,
-        name: opts.clientName || `Cliente WhatsApp ${phone.slice(-4)}`,
-      },
-      update: opts.clientName ? { name: opts.clientName } : {},
-    });
+    const party: HandoffParty =
+      opts.party === 'employee' && opts.employeeId ? 'employee' : 'client';
+
+    let clientId: string | null = null;
+    let employeeId: string | null = null;
+    let customerName =
+      opts.displayName ||
+      (party === 'employee'
+        ? `Profissional ${phone.slice(-4)}`
+        : `Cliente WhatsApp ${phone.slice(-4)}`);
+
+    if (party === 'employee' && opts.employeeId) {
+      employeeId = opts.employeeId;
+      const employee = await this.prisma.employee.findFirst({
+        where: { id: opts.employeeId, accountId: opts.accountId },
+        select: { id: true, name: true },
+      });
+      if (employee) {
+        customerName = opts.displayName || employee.name;
+      }
+    } else {
+      const client = await this.prisma.client.upsert({
+        where: {
+          accountId_phone: { accountId: opts.accountId, phone },
+        },
+        create: {
+          accountId: opts.accountId,
+          phone,
+          name: customerName,
+        },
+        update: opts.displayName ? { name: opts.displayName } : {},
+      });
+      clientId = client.id;
+      customerName = client.name;
+    }
 
     const open = await this.prisma.whatsappHandoff.findFirst({
       where: {
@@ -182,8 +236,10 @@ export class WhatsappHandoffsService {
         data: {
           lastMessage: opts.lastMessage.slice(0, 500),
           reason: opts.reason,
-          customerName: client.name,
-          clientId: client.id,
+          customerName,
+          party,
+          clientId,
+          employeeId,
         },
       });
       const shaped = this.shape(updated);
@@ -196,9 +252,11 @@ export class WhatsappHandoffsService {
     const created = await this.prisma.whatsappHandoff.create({
       data: {
         accountId: opts.accountId,
-        clientId: client.id,
+        clientId,
+        employeeId,
+        party,
         customerPhone: phone,
-        customerName: client.name,
+        customerName,
         lastMessage: opts.lastMessage.slice(0, 500),
         reason: opts.reason,
         status: 'open',
@@ -212,16 +270,61 @@ export class WhatsappHandoffsService {
   }
 
   /**
-   * Humano respondeu no WhatsApp: pausa bot 1h e resolve alertas abertos.
+   * Humano respondeu no WhatsApp: resolve alertas abertos.
+   * Cliente: pausa bot 1h. Profissional: só resolve (não silencia o bot do prof).
    */
   async onHumanReply(opts: {
     accountId: string;
     phone: string;
-    clientName?: string;
+    displayName?: string;
+    party?: HandoffParty;
+    employeeId?: string;
   }) {
     const phone =
       normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
     if (!phone) return { pausedUntil: null as Date | null, resolved: [] };
+
+    const party: HandoffParty =
+      opts.party === 'employee' && opts.employeeId ? 'employee' : 'client';
+    const now = new Date();
+
+    if (party === 'employee' && opts.employeeId) {
+      await this.prisma.employee.updateMany({
+        where: { id: opts.employeeId, accountId: opts.accountId },
+        data: { botUnresolvedCount: 0 },
+      });
+
+      const open = await this.prisma.whatsappHandoff.findMany({
+        where: {
+          accountId: opts.accountId,
+          customerPhone: phone,
+          status: 'open',
+        },
+      });
+
+      const resolved = [];
+      for (const row of open) {
+        const updated = await this.prisma.whatsappHandoff.update({
+          where: { id: row.id },
+          data: {
+            status: 'resolved',
+            humanRepliedAt: now,
+            resolvedAt: now,
+            party: 'employee',
+            employeeId: opts.employeeId,
+            clientId: null,
+            ...(opts.displayName ? { customerName: opts.displayName } : {}),
+          },
+        });
+        const shaped = this.shape(updated);
+        resolved.push(shaped);
+        this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:resolved', {
+          handoff: shaped,
+        });
+      }
+
+      return { pausedUntil: null as Date | null, resolved };
+    }
 
     const pausedUntil = new Date(Date.now() + HUMAN_PAUSE_MS);
 
@@ -232,7 +335,7 @@ export class WhatsappHandoffsService {
       create: {
         accountId: opts.accountId,
         phone,
-        name: opts.clientName || `Cliente WhatsApp ${phone.slice(-4)}`,
+        name: opts.displayName || `Cliente WhatsApp ${phone.slice(-4)}`,
         botPausedUntil: pausedUntil,
         botPausedPermanent: false,
         botUnresolvedCount: 0,
@@ -241,7 +344,7 @@ export class WhatsappHandoffsService {
         botPausedUntil: pausedUntil,
         botPausedPermanent: false,
         botUnresolvedCount: 0,
-        ...(opts.clientName ? { name: opts.clientName } : {}),
+        ...(opts.displayName ? { name: opts.displayName } : {}),
       },
     });
 
@@ -253,7 +356,6 @@ export class WhatsappHandoffsService {
       },
     });
 
-    const now = new Date();
     const resolved = [];
     for (const row of open) {
       const updated = await this.prisma.whatsappHandoff.update({
@@ -264,6 +366,8 @@ export class WhatsappHandoffsService {
           resolvedAt: now,
           clientId: client.id,
           customerName: client.name,
+          party: 'client',
+          employeeId: null,
         },
       });
       const shaped = this.shape(updated);

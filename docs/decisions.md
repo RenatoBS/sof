@@ -17,6 +17,24 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Menu do bot do profissional: concluir condicional + criar unificado
+
+- **Contexto:** “Concluir” no menu poluía quando o prof não estava em atendimento; agendamento e evento eram duas entradas redundantes.  
+- **Decisão:** **Concluir agendamento** só aparece (e em 1º) se houver horário `scheduled` na janela atual. **Novo na agenda** pergunta se é agendamento de cliente ou evento (almoço/médico). NLU/atalhos de `book`/`event` seguem diretos.  
+- **Consequências:** Menu mais curto no dia a dia; conclusão antecipada continua liberando o slot.  
+- **Alternativas descartadas:** Manter dois botões fixos; concluir sempre visível com erro se fora da janela.
+
+---
+
+## 2026-07-23 — Handoff humano também para profissionais
+
+- **Contexto:** Profissionais no bot WhatsApp precisavam pedir ajuda da conta; a aba Atendimentos só cobria clientes e o webhook ignorava telefone de `Employee`.  
+- **Decisão:** `WhatsappHandoff.party` (`client` | `employee`) + `employeeId`; `Employee.botUnresolvedCount`. Bot do prof: menu **Falar com humano**, regex/NLU `human`, e `unresolved` no fallback do menu. `afterBotResult` escala ambos. UI: badge Cliente (azul) vs Profissional (lilás). Resposta `fromMe` em prof resolve sem pausar o bot operacional.  
+- **Consequências:** Mesmo threshold da conta; não cria `Client` fantasma para o telefone do prof.  
+- **Alternativas descartadas:** Canal separado só para prof; silenciar bot do prof após handoff como no cliente.
+
+---
+
 ## 2026-07-23 — Status `scheduled` / `completed` e liberação antecipada de slot
 
 - **Contexto:** Precisávamos distinguir horário ainda ativo de atendimento já feito, auto-fechar quando a janela acaba, e permitir que o profissional liberasse o restante do slot se terminasse antes.  

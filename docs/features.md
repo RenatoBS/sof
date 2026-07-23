@@ -118,11 +118,12 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 ### Atendimentos (escalonamento humano)
 
 - Aba **Atendimentos** com **badge vermelho** na tabbar contando alertas abertos (tempo real via SSE).  
-- Alerta abre quando: (a) o cliente **pede atendente explicitamente** (regex + intent `human` do NLU) — imediato; ou (b) o bot responde "não entendi" **N vezes seguidas** (default 2; configurável na aba: 1 / 2 / 3 / 5, salvo em `Account.whatsappHandoffThreshold`).  
-- Cada card mostra nome/telefone, motivo (Pediu atendente / Bot não entendeu), última mensagem e desde quando; botões **Abrir no WhatsApp** (WhatsApp Web no navegador, `wa.me` no celular) e **Marcar resolvido**.  
-- Quando o alerta abre, o cliente recebe no WhatsApp: "Avisei a equipe — alguém vai te responder por aqui em breve."  
-- **Resposta humana** (mensagem `fromMe` que não veio da API — celular ou WhatsApp Web): pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e **resolve** o alerta automaticamente.  
-- Intents `cancel`/`list`/`book` do NLU continuam tratadas pelo bot — só o pedido explícito por humano escala na hora.  
+- Alerta abre quando: (a) o interlocutor **pede atendente explicitamente** (regex + intent `human` do NLU) — imediato; ou (b) o bot responde "não entendi" **N vezes seguidas** (default 2; configurável na aba: 1 / 2 / 3 / 5, salvo em `Account.whatsappHandoffThreshold`). Vale para **cliente** e **profissional**.  
+- Cada card mostra badge **Cliente** (azul) ou **Profissional** (lilás), nome/telefone, motivo (Pediu atendente / Bot não entendeu), última mensagem e desde quando; botões **Abrir no WhatsApp** (WhatsApp Web no navegador, `wa.me` no celular) e **Marcar resolvido**.  
+- Quando o alerta abre, a pessoa recebe no WhatsApp: "Avisei a equipe — alguém vai te responder por aqui em breve."  
+- **Resposta humana** (mensagem `fromMe` que não veio da API — celular ou WhatsApp Web): em **cliente**, pausa o bot **1 h** (`Client.botPausedUntil`), zera o contador e resolve o alerta; em **profissional**, só resolve o alerta e zera `Employee.botUnresolvedCount` (sem pausar o bot operacional).  
+- Intents `cancel`/`list`/`book` do NLU (cliente) e intents operacionais do prof continuam pelo bot — só o pedido explícito por humano escala na hora.  
+- Modelo: `WhatsappHandoff.party` (`client` | `employee`) + `employeeId` opcional.  
 - API: `GET /api/whatsapp-handoffs` (`?status=open|resolved`), `GET/PUT …/settings`, `POST …/:id/resolve`. SSE: `whatsapp-handoff:opened|updated|resolved`.
 
 ### Faturamento
@@ -178,13 +179,14 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 
 ### Fluxo do profissional
 - Se o remetente casa com o **telefone** de um `Employee` da conta (exato ou sufixo BR com/sem DDI `55`), o bot **não** usa o fluxo de cliente — `WhatsappEmployeeBotService` (steps `emp:*`).  
-- Menu: **Agenda de hoje** | **Agenda de outro dia** | **Novo agendamento** | **Novo evento** | **Concluir horário** | **Cancelar horário** | **Redefinir senha**.  
+- Menu: **Concluir agendamento** (só se o prof estiver na janela de um atendimento) | **Agenda de hoje** | **Agenda de outro dia** | **Novo na agenda** (pergunta: agendamento de cliente ou evento) | **Cancelar horário** | **Falar com humano** | **Redefinir senha**.  
 - Agendamento: serviço vinculado ao prof → dia → horário livre → nome/telefone do cliente → confirma → `kind=service` `source=whatsapp`.  
 - Evento: título → duração (30/60/90/120) → dia → horário → confirma → `kind=block`.  
 - **Concluir:** lista só atendimentos **dentro da janela** [início, fim]; confirma → `status=completed` + `completedAt` (libera o restante do slot).  
 - Cancelar: lista próximos `scheduled` daquele profissional → confirma → `status=cancelled`.  
+- **Falar com humano:** abre alerta na aba Atendimentos (`party=employee`, motivo `human_requested`); N “não entendi” no menu também escalam (`unresolved`), com o mesmo threshold da conta.  
 - **Redefinir senha:** envia o mesmo CTA/link de uso único (2h) no WhatsApp do profissional (`source=self`).  
-- **Áudio + NLU:** mesma transcrição do webhook; NLU no menu e como interrupção no meio do fluxo. LLM + heurística (datas faladas: “28 do 7”, “terça que vem”; `clientName`; horário `9h30`; intents `complete` / `reset_password`). Cancelamento/conclusão com nome/data/hora tenta achar o horário direto. Log `NLU emp: …` no servidor.  
+- **Áudio + NLU:** mesma transcrição do webhook; NLU no menu e como interrupção no meio do fluxo. LLM + heurística (datas faladas: “28 do 7”, “terça que vem”; `clientName`; horário `9h30`; intents `book`/`event`/`complete`/`human`/`reset_password`). Frases diretas de marcar/evento pulam a pergunta de tipo. Log `NLU emp: …` no servidor.  
 - Simulador: `POST /api/whatsapp/simulate` com o telefone do profissional.
 
 Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, sem QR no painel.

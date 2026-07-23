@@ -77,6 +77,9 @@ export type WhatsappHandoff = {
   id: string;
   accountId: string;
   clientId?: string | null;
+  employeeId?: string | null;
+  /** Quem está na ponta do WhatsApp (default client em registros antigos) */
+  party?: 'client' | 'employee' | string | null;
   customerPhone: string;
   customerName: string;
   lastMessage: string;
