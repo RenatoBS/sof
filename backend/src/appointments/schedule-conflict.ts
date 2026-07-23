@@ -1,4 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { APPT_STATUS } from './appointment-status';
 
 export function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map((n) => parseInt(n, 10));
@@ -38,7 +39,7 @@ export async function listBusySlots(
       accountId: params.accountId,
       employeeId: params.employeeId,
       date: params.date,
-      status: 'confirmed',
+      status: APPT_STATUS.SCHEDULED,
       ...(params.excludeAppointmentId
         ? { id: { not: params.excludeAppointmentId } }
         : {}),

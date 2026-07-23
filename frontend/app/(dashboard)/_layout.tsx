@@ -16,13 +16,15 @@ import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
 import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
-import type { Appointment } from '@/src/api/types';
+import type { Appointment, WhatsappHandoff } from '@/src/api/types';
 
 const TABS = [
   { href: '/(dashboard)/agenda', label: 'Agenda', match: 'agenda' },
   { href: '/(dashboard)/employees', label: 'Profissionais', match: 'employees' },
   { href: '/(dashboard)/services', label: 'Serviços', match: 'services' },
   { href: '/(dashboard)/clients', label: 'Clientes', match: 'clients' },
+  { href: '/(dashboard)/handoffs', label: 'Atendimentos', match: 'handoffs' },
+  { href: '/(dashboard)/support', label: 'Suporte', match: 'support' },
   { href: '/(dashboard)/billing', label: 'Faturamento', match: 'billing' },
   { href: '/(dashboard)/account', label: 'Conta', match: 'account' },
 ] as const;
@@ -31,9 +33,20 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 720;
   const { account, loading, logout } = useAuth();
-  const { loadAll, setAppointments, setClients } = useDashboard();
+  const { loadAll, setAppointments, setClients, handoffs, setHandoffs } =
+    useDashboard();
   const { showToast } = useToast();
   const pathname = usePathname();
+
+  const openHandoffs = handoffs.filter((h) => h.status === 'open').length;
+
+  const upsertHandoff = (handoff: WhatsappHandoff) => {
+    setHandoffs((prev) => {
+      const idx = prev.findIndex((h) => h.id === handoff.id);
+      if (idx < 0) return [handoff, ...prev];
+      return prev.map((h) => (h.id === handoff.id ? handoff : h));
+    });
+  };
 
   useEffect(() => {
     if (account) loadAll().catch(() => undefined);
@@ -56,7 +69,11 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       },
       onUpdated: (appointment: Appointment) => {
         setAppointments((prev) => {
-          if (appointment.status && appointment.status !== 'confirmed') {
+          if (
+            appointment.status &&
+            appointment.status !== 'scheduled' &&
+            appointment.status !== 'completed'
+          ) {
             return prev.filter((a) => a.id !== appointment.id);
           }
           return prev.map((a) => (a.id === appointment.id ? appointment : a));
@@ -65,6 +82,16 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       onDeleted: (appointmentId: string) => {
         setAppointments((prev) => prev.filter((a) => a.id !== appointmentId));
       },
+      onHandoffOpened: (handoff: WhatsappHandoff) => {
+        upsertHandoff(handoff);
+        const who =
+          handoff.party === 'employee' ? 'Profissional' : 'Cliente';
+        showToast(
+          `${who}: ${handoff.customerName || 'contato'} precisa de atendimento no WhatsApp`,
+        );
+      },
+      onHandoffUpdated: upsertHandoff,
+      onHandoffResolved: upsertHandoff,
     },
     !!account,
   );
@@ -120,15 +147,27 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         >
           {TABS.map((tab) => {
             const active = pathname.includes(tab.match);
+            const badgeCount = tab.match === 'handoffs' ? openHandoffs : 0;
             return (
               <Pressable
                 key={tab.match}
                 onPress={() => router.push(tab.href as '/')}
                 style={[styles.tabBtn, active && styles.tabActive]}
               >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {tab.label}
-                </Text>
+                <View style={styles.tabLabelRow}>
+                  <Text
+                    style={[styles.tabText, active && styles.tabTextActive]}
+                  >
+                    {tab.label}
+                  </Text>
+                  {badgeCount > 0 ? (
+                    <View style={styles.tabBadge}>
+                      <Text style={styles.tabBadgeText}>
+                        {badgeCount > 9 ? '9+' : badgeCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
             );
           })}
@@ -207,8 +246,19 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabActive: { borderBottomColor: d.ink },
+  tabLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: { fontSize: 15, color: d.muted, fontWeight: '500' },
   tabTextActive: { color: d.ink, fontWeight: '600' },
+  tabBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: d.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  tabBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   main: { flex: 1 },
   mainContent: { padding: 32, gap: 32 },
   mainContentCompact: { padding: 16, gap: 20 },

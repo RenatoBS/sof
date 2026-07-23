@@ -18,13 +18,18 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { normalizePhone } from '../common/phone';
-import { isClientBotPaused } from '../clients/client-bot-pause';
+import { isAccountBotPaused, isClientBotPaused } from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
+import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
+import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
 
 const AUDIO_FALLBACK_REPLY =
   'Não consegui ouvir seu áudio 😅 Pode escrever ou tocar numa das opções?';
+
+const HANDOFF_NOTICE =
+  'Avisei a equipe — alguém vai te responder por aqui em breve.';
 
 type MetaWebhookBody = {
   entry?: Array<{
@@ -93,6 +98,8 @@ export class WhatsappController {
     private readonly prisma: PrismaService,
     private readonly api: WhatsappApiService,
     private readonly bot: WhatsappBotService,
+    private readonly employeeBot: WhatsappEmployeeBotService,
+    private readonly handoffs: WhatsappHandoffsService,
   ) {}
 
   @Get('webhook')
@@ -157,9 +164,22 @@ export class WhatsappController {
 
     const message = body?.message;
     if (!message) return;
-    if (message.fromMe || message.wasSentByApi) return;
-    if (message.source === 'api' || message.source === 'system') return;
     if (message.isGroup || body?.chat?.wa_isGroup) return;
+
+    // Mensagens da API Sof — nunca tratar como humano nem processar no bot.
+    if (
+      message.wasSentByApi ||
+      message.source === 'api' ||
+      message.source === 'system'
+    ) {
+      return;
+    }
+
+    // Humano respondeu pelo WhatsApp (celular / Web): pausa bot 1h.
+    if (message.fromMe) {
+      await this.handleHumanOutbound(body, message, event);
+      return;
+    }
 
     const customerPhone = this.extractPhone(
       message.sender_pn ||
@@ -209,7 +229,7 @@ export class WhatsappController {
         return;
       }
 
-      if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+      if (await this.shouldSilenceIncoming(account, customerPhone)) {
         return;
       }
 
@@ -246,6 +266,9 @@ export class WhatsappController {
       }
 
       if (!text) {
+        console.warn(
+          `[whatsapp] Áudio sem transcrição (id=${messageId.slice(0, 40)})`,
+        );
         await this.api.sendText(
           customerPhone,
           AUDIO_FALLBACK_REPLY,
@@ -253,6 +276,10 @@ export class WhatsappController {
         );
         return;
       }
+
+      console.log(
+        `[whatsapp] Áudio transcrito (${customerPhone.slice(-4)}): ${text.slice(0, 120)}`,
+      );
 
       const result = await this.bot.handleIncomingMessage({
         account,
@@ -264,6 +291,13 @@ export class WhatsappController {
         result,
         account.whatsappInstanceToken ?? undefined,
       );
+      await this.afterBotResult({
+        accountId: account.id,
+        customerPhone,
+        text,
+        result,
+        instanceToken: account.whatsappInstanceToken ?? undefined,
+      });
       return;
     }
 
@@ -293,7 +327,7 @@ export class WhatsappController {
       return;
     }
 
-    if (await this.isBotPausedForPhone(account.id, customerPhone)) {
+    if (await this.shouldSilenceIncoming(account, customerPhone)) {
       return;
     }
 
@@ -307,6 +341,136 @@ export class WhatsappController {
       result,
       account.whatsappInstanceToken,
     );
+    await this.afterBotResult({
+      accountId: account.id,
+      customerPhone,
+      text,
+      result,
+      instanceToken: account.whatsappInstanceToken ?? undefined,
+    });
+  }
+
+  private async handleHumanOutbound(
+    body: UazapiWebhookBody,
+    message: NonNullable<UazapiWebhookBody['message']>,
+    event: string,
+  ) {
+    const customerPhone = this.extractPhone(
+      body?.chat?.phone ||
+        message.chatid ||
+        body?.chat?.wa_chatid ||
+        message.sender_pn ||
+        message.sender ||
+        '',
+    );
+    if (!customerPhone) return;
+
+    const messageId =
+      message.id ||
+      message.messageid ||
+      message.messageId ||
+      message.key?.id ||
+      '';
+    const dedupeKey = webhookDedupeKey({
+      messageId,
+      token: body?.token,
+      phone: customerPhone,
+      text: 'fromMe',
+      event,
+    });
+    if (isDuplicateWebhook(dedupeKey)) return;
+
+    const account = await this.resolveAccount({
+      instanceKey: this.api.instanceKey(),
+      owner: body?.owner,
+      token: body?.token,
+    });
+    if (!account) return;
+
+    const employee = await this.employeeBot.findEmployee(
+      account.id,
+      customerPhone,
+    );
+    await this.handoffs.onHumanReply({
+      accountId: account.id,
+      phone: customerPhone,
+      party: employee ? 'employee' : 'client',
+      employeeId: employee?.id,
+      displayName: employee?.name,
+    });
+  }
+
+  private async afterBotResult(opts: {
+    accountId: string;
+    customerPhone: string;
+    text: string;
+    result: Awaited<ReturnType<WhatsappBotService['handleIncomingMessage']>>;
+    instanceToken?: string;
+    /** Se true, não envia aviso ao WhatsApp (ex.: simulador). */
+    skipOutboundNotice?: boolean;
+  }): Promise<{ handoffOpened: boolean }> {
+    const employee = await this.employeeBot.findEmployee(
+      opts.accountId,
+      opts.customerPhone,
+    );
+    const party = employee ? 'employee' : 'client';
+    const partyOpts = {
+      party: party as 'client' | 'employee',
+      employeeId: employee?.id,
+      displayName: employee?.name,
+    };
+
+    if (opts.result.humanRequested) {
+      const opened = await this.handoffs.openOrRefresh({
+        accountId: opts.accountId,
+        phone: opts.customerPhone,
+        lastMessage: opts.text,
+        reason: 'human_requested',
+        ...partyOpts,
+      });
+      await this.handoffs.resetUnresolved(
+        opts.accountId,
+        opts.customerPhone,
+        partyOpts,
+      );
+      if (opened?.created && !opts.skipOutboundNotice) {
+        await this.api
+          .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
+          .catch(() => undefined);
+      }
+      return { handoffOpened: Boolean(opened?.created) };
+    }
+
+    if (opts.result.unresolved) {
+      const bump = await this.handoffs.bumpUnresolved({
+        accountId: opts.accountId,
+        phone: opts.customerPhone,
+        ...partyOpts,
+      });
+      if (bump.reached) {
+        const opened = await this.handoffs.openOrRefresh({
+          accountId: opts.accountId,
+          phone: opts.customerPhone,
+          lastMessage: opts.text,
+          reason: 'unresolved',
+          ...partyOpts,
+        });
+        if (opened?.created && !opts.skipOutboundNotice) {
+          await this.api
+            .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
+            .catch(() => undefined);
+        }
+        return { handoffOpened: Boolean(opened?.created) };
+      }
+      return { handoffOpened: false };
+    }
+
+    await this.handoffs.resetUnresolved(
+      opts.accountId,
+      opts.customerPhone,
+      partyOpts,
+    );
+    return { handoffOpened: false };
   }
 
   private extractUazapiSelection(
@@ -396,7 +560,7 @@ export class WhatsappController {
           if (!account || !message.from) continue;
           const text = this.extractMetaSelection(message);
           if (!text) continue;
-          if (await this.isBotPausedForPhone(account.id, message.from)) {
+          if (await this.shouldSilenceIncoming(account, message.from)) {
             continue;
           }
           const result = await this.bot.handleIncomingMessage({
@@ -450,6 +614,19 @@ export class WhatsappController {
       select: { botPausedPermanent: true, botPausedUntil: true },
     });
     return isClientBotPaused(client);
+  }
+
+  /** Profissionais usam o bot mesmo com pausa de cliente/conta (agenda operacional). */
+  private async shouldSilenceIncoming(
+    account: { id: string; botPausedPermanent?: boolean; botPausedUntil?: Date | null },
+    rawPhone: string,
+  ) {
+    const phone = normalizePhone(rawPhone) || this.extractPhone(rawPhone);
+    if (phone && (await this.employeeBot.findEmployee(account.id, phone))) {
+      return false;
+    }
+    if (isAccountBotPaused(account)) return true;
+    return this.isBotPausedForPhone(account.id, rawPhone);
   }
 
   private async resolveAccount(opts: {
@@ -510,10 +687,12 @@ export class WhatsappController {
       });
     }
 
-    if (await this.isBotPausedForPhone(req.account.id, customerPhone)) {
+    if (await this.shouldSilenceIncoming(req.account, customerPhone)) {
       return {
         replies: [
-          '(Bot pausado para este cliente — nenhuma resposta enviada.)',
+          isAccountBotPaused(req.account)
+            ? '(Bot pausado na conta — nenhuma resposta enviada. Reative em Conta → WhatsApp.)'
+            : '(Bot pausado para este cliente — nenhuma resposta enviada.)',
         ],
       };
     }

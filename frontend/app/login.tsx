@@ -88,6 +88,12 @@ export default function LoginScreen() {
             disabled={loading}
             onPress={submit}
           />
+          <Text
+            style={styles.forgot}
+            onPress={() => router.push('/profissional/esqueci-senha')}
+          >
+            Esqueci minha senha (profissional)
+          </Text>
           <Text style={styles.alt}>
             Ainda não tem conta?{' '}
             <Text style={styles.altLink} onPress={() => router.push('/pricing')}>
@@ -130,6 +136,13 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginBottom: 14,
+  },
+  forgot: {
+    marginTop: 14,
+    textAlign: 'center',
+    color: m.accentInk,
+    fontSize: 14,
+    fontWeight: '600',
   },
   alt: { marginTop: 20, textAlign: 'center', color: m.muted, fontSize: 14 },
   altLink: { color: m.accentInk, fontWeight: '600' },

@@ -12,9 +12,13 @@ import { ClientsModule } from './clients/clients.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PlansModule } from './plans/plans.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { WhatsappHandoffsModule } from './whatsapp-handoffs/whatsapp-handoffs.module';
+import { RemindersModule } from './reminders/reminders.module';
 import { EventsModule } from './events/events.module';
 import { EmployeePortalModule } from './employee-portal/employee-portal.module';
+import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -36,11 +40,15 @@ import { HealthController } from './health/health.controller';
     ServicesModule,
     ClientsModule,
     AppointmentsModule,
+    PlansModule,
     CheckoutModule,
     PaymentsModule,
     WhatsappModule,
+    WhatsappHandoffsModule,
+    RemindersModule,
     EventsModule,
     EmployeePortalModule,
+    SupportTicketsModule,
   ],
   controllers: [HealthController],
   providers: [

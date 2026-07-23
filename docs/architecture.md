@@ -7,8 +7,10 @@ Documento vivo. Atualize junto com mudanças estruturais.
 
 Sof é um monorepo com:
 
-1. **backend/** — API HTTP NestJS (`/api/*`) + Prisma + PostgreSQL  
-2. **frontend/** — Expo (Web, iOS, Android) com expo-router  
+1. **backend/** — API HTTP NestJS (`/api/*`) + Prisma + PostgreSQL (produto)  
+2. **frontend/** — Expo (Web, iOS, Android) com expo-router (produto)  
+3. **admin-backend/** — API NestJS do painel interno Sof (mesmo Postgres)  
+4. **admin-frontend/** — Expo Web do painel interno  
 
 Fluxo principal: cliente agenda pelo WhatsApp (ou simulador) → API persiste `Appointment` → painel recebe via SSE e lista na agenda semanal.
 
@@ -43,10 +45,14 @@ Registrados em `backend/src/app.module.ts`:
 | `EmployeesModule` | profissionais |
 | `ServicesModule` | serviços (cardápio) |
 | `AppointmentsModule` | agendamentos |
+| `PlansModule` | catálogo público `GET /api/plans` + `PlansService` para checkout |
 | `CheckoutModule` | assinatura / Checkout Session Stripe |
 | `PaymentsModule` | webhook Stripe |
-| `WhatsappModule` | webhook Meta + simulador |
-| `EventsModule` | SSE de appointments |
+| `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
+| `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
+| `RemindersModule` | job de lembretes WhatsApp (a cada 30 min) |
+| `EventsModule` | SSE de appointments + handoffs |
+| `SupportTicketsModule` | tickets de suporte (conta + profissional) |
 | `HealthController` | `GET /api/health` |
 
 ### Auth
@@ -64,21 +70,37 @@ Account
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Client[]  (botPausedPermanent / botPausedUntil)
+  ├── Client[]  (botPausedPermanent / botPausedUntil / botUnresolvedCount)
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
-  └── WhatsappSession[]
+  ├── WhatsappSession[]
+  ├── WhatsappHandoff[]  (alerta de escalonamento: reason, status, humanRepliedAt)
+  └── SupportTicket[]
+        └── SupportTicketComment[]  (authorRole: account|employee|admin)
+
+AdminUser     (operadores do painel Sof — não é tenant; comentários de suporte)
+Plan          (catálogo Sof ↔ stripeProductId / stripePriceId)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `openingHours` (JSON 7 dias, 0=domingo).
+Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
 
-`Employee`: além de nome/cor/serviços, pode ter `email` único, `passwordHash` e `mustChangePassword` para o portal do profissional. JWT distingue `role: account | employee`.
+`Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `features` (JSON), `active`, `sortOrder`. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` se a tabela estiver vazia.
+
+`AdminUser`: email/senha dos operadores do `admin-backend`.
+
+`Employee`: além de nome/cor/serviços/`phone`, tem `email` único, `passwordHash` (null até o profissional definir via link) e `mustChangePassword`. Convites/resets usam `EmployeePasswordToken` (hash SHA-256 do token, `expiresAt` 2h, `usedAt`). JWT distingue `role: account | employee`.
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`).
+`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`); `botUnresolvedCount` conta "não entendi" consecutivos para escalonamento.
 
-`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`confirmed` | `cancelled`), `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts`). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Cancelamento pelo profissional usa soft-cancel (`cancelled`).
+`WhatsappHandoff`: alerta de atendimento humano por conversa — `party` (`client` | `employee`), `clientId` / `employeeId` opcionais, `reason` (`unresolved` | `human_requested`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). Contadores: `Client.botUnresolvedCount` e `Employee.botUnresolvedCount`. `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta (cliente e prof). Fluxo: webhook detecta `fromMe` sem `wasSentByApi` → `onHumanReply`: em cliente pausa bot 1 h e resolve; em profissional só resolve (sem pausar o bot operacional). Webhook Uazapi **sem** excluir `fromMe` (só `wasSentByApi` + grupos); `GET /api/account/whatsapp/status` ressincroniza a config no máx. 1x/hora por instância.
+
+`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`scheduled` | `completed` | `cancelled`), `completedAt`, `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts` — só `scheduled` ocupa slot). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Conclusão: manual (conta sem restrição de janela; profissional só em [início, fim]) ou job `AppointmentCompletionsScheduler` (~5 min) quando `now >= endAt`; SSE `appointment:updated`. Cancelamento usa soft-cancel (`cancelled`). Lembrete WhatsApp: `reminderClaimedAt` / `reminderSentAt` (no máximo 1 envio bem-sucedido; job em `reminders/`; só `scheduled`).
+
+### Lembretes WhatsApp
+
+`RemindersModule` (`@nestjs/schedule`): tick no bootstrap + a cada 30 minutos. Interpreta `Appointment.date`/`time` no `Account.timezone`, calcula due = início − `whatsappReminderMinutes`, envia via `WhatsappApiService.sendText` com o token da conta. Claim atômico no Postgres evita double-send entre dynos/ticks; falha de envio libera o claim para retry.
 
 Datasource usa:
 
@@ -90,7 +112,7 @@ Datasource usa:
 | Integração | Sem credencial | Com credencial |
 |------------|----------------|----------------|
 | Stripe | Checkout demo (aprova em fluxo mock) | Checkout Session + webhook real |
-| WhatsApp (Uazapi, default) | Bot off; simulador na Agenda | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta; menus via `/send/menu`; áudio transcrito via `/message/download` + `OPENAI_API_KEY` |
+| WhatsApp (Uazapi, default) | Bot off; simulador na Agenda | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta; menus via `/send/menu`; áudio transcrito via `/message/download` + `OPENAI_API_KEY`; se o telefone for de um `Employee`, FSM em `whatsapp-employee-bot.service.ts` (agenda / marcar / evento / concluir / cancelar / falar com estabelecimento + NLU próprio) |
 | OpenAI (NLU do bot) | Frases livres caem no fluxo guiado | `OPENAI_API_KEY`: transcrição de áudio (via Uazapi) + extração de intenção/serviço/data/hora com `gpt-4o-mini` (`whatsapp/booking-nlu.service.ts`) |
 | WhatsApp Cloud (Meta) | Bot off; simulador | `WHATSAPP_PROVIDER=meta` + token + Phone Number ID (sem QR no painel); menus `interactive` |
 
@@ -102,7 +124,7 @@ URLs:
 
 ### Tempo real
 
-`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`frontend/src/hooks/useRealtime.ts`). Eventos tipados: created / updated / deleted de appointment.
+`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted` e `whatsapp-handoff:opened|updated|resolved`.
 
 ## Frontend (`frontend/`)
 
@@ -125,10 +147,13 @@ URLs:
 | `/(dashboard)/agenda` | Agenda semanal + simulador WA |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
+| `/(dashboard)/handoffs` | Atendimentos (alertas de escalonamento + config) |
+| `/(dashboard)/support` | Tickets de suporte Sof |
 | `/(dashboard)/billing` | Faturamento |
 | `/(dashboard)/account` | Conta / horários / integrações |
 | `/profissional/login` | Redirect → `/login` |
 | `/(profissional)/agenda` | Agenda do profissional |
+| `/(profissional)/support` | Tickets da conta (comentar / status) |
 | `/(profissional)/trocar-senha` | Troca de senha (obrigatória no 1º acesso) |
 
 Gate do dashboard: sem `account` → redirect `/login` (`(dashboard)/_layout.tsx`).  
@@ -138,7 +163,7 @@ Gate do portal profissional: sem sessão employee → `/login`; com `mustChangeP
 
 - `AuthProvider` — sessão da conta  
 - `EmployeeAuthProvider` — sessão do profissional  
-- `DashboardProvider` — employees, services, appointments  
+- `DashboardProvider` — employees, services, clients, appointments, handoffs  
 - `ToastProvider` — toasts (ex.: novo WA)  
 
 ### API client
@@ -156,11 +181,11 @@ Visual alinhado ao HTML legado (tokens `#F4F4F6`, `#6B6FB5`).
 
 | Ambiente | Banco | API | Front |
 |----------|-------|-----|--------|
-| Local | Docker `sof-postgres` :5433 | :3001 | Expo web :8081 |
-| Staging/prod | Supabase (pooler + direct) | Heroku `sof-agendamento-api` | Heroku `sof-agendamento-web` |
+| Local | Docker `sof-postgres` :5433 | :3001 (+ admin :3011) | Expo web :8081 (+ admin :8091) |
+| Staging/prod | Supabase (pooler + direct) | Heroku `sof-agendamento-api` (+ `sof-agendamento-admin-api`) | Heroku `sof-agendamento-web` (+ `sof-agendamento-admin-web`) |
 
 Heroku monorepo: buildpack subdirectory (`APP_BASE`) + Node.  
-Procfiles: `backend/Procfile` (release migrate + web), `frontend/Procfile` (serve static export).
+Procfiles: `backend/Procfile` (release migrate + web), `frontend/Procfile` / `admin-frontend/Procfile` (serve static export), `admin-backend/Procfile` (web; sem release migrate).
 
 Alternativa documentada: `render.yaml` (API only).
 
@@ -181,3 +206,21 @@ Alternativa documentada: `render.yaml` (API only).
 ```
 
 Hosts diferentes ⇒ Bearer é a fonte confiável; cookie auxiliar com `SameSite=None`.
+
+## Painel admin (`admin-backend/` + `admin-frontend/`)
+
+Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `backend/prisma/`; o generator `adminClient` emite o client Prisma em `admin-backend/node_modules/.prisma/client`.
+
+### admin-backend
+
+- Porta local **3011**; prefixo `/api/*`; health `GET /api/health`.
+- Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
+- Contas: `GET/POST /api/accounts`, `GET/PUT /api/accounts/:id`, `POST /api/accounts/:id/reset-password`.
+- Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado).
+- Tickets: `GET /api/tickets`, `GET/POST/PATCH /api/tickets/:id…` (comentários e status).
+- Envs: ver `admin-backend/.env.example`.
+
+### admin-frontend
+
+- Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
+- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`.

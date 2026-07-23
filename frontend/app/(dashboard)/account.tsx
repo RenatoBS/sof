@@ -26,6 +26,93 @@ const DAY_LABELS = [
 
 const DAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const;
 
+const REMINDER_PRESETS: { minutes: number; label: string }[] = [
+  { minutes: 0, label: 'Desativado' },
+  { minutes: 60, label: '1h' },
+  { minutes: 120, label: '2h' },
+  { minutes: 180, label: '3h' },
+  { minutes: 360, label: '6h' },
+  { minutes: 1440, label: '24h' },
+];
+
+type BotPauseMode = 'off' | 'permanent' | '1h' | '8h' | '24h' | '3d' | '7d';
+
+const BOT_PAUSE_PRESETS: {
+  id: BotPauseMode;
+  label: string;
+  hours?: number;
+}[] = [
+  { id: 'off', label: 'Bot ativo' },
+  { id: '1h', label: '1 hora', hours: 1 },
+  { id: '8h', label: '8 horas', hours: 8 },
+  { id: '24h', label: '24 horas', hours: 24 },
+  { id: '3d', label: '3 dias', hours: 24 * 3 },
+  { id: '7d', label: '7 dias', hours: 24 * 7 },
+  { id: 'permanent', label: 'Permanente' },
+];
+
+function botPauseModeFromAccount(account: {
+  botPausedPermanent?: boolean;
+  botPausedUntil?: string | null;
+}): BotPauseMode {
+  if (account.botPausedPermanent) return 'permanent';
+  if (!account.botPausedUntil) return 'off';
+  const until = new Date(account.botPausedUntil);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+    return 'off';
+  }
+  return '24h';
+}
+
+function botPausePayload(mode: BotPauseMode): {
+  botPausedPermanent: boolean;
+  botPausedUntil: string | null;
+} {
+  if (mode === 'off') {
+    return { botPausedPermanent: false, botPausedUntil: null };
+  }
+  if (mode === 'permanent') {
+    return { botPausedPermanent: true, botPausedUntil: null };
+  }
+  const preset = BOT_PAUSE_PRESETS.find((p) => p.id === mode);
+  const hours = preset?.hours || 24;
+  return {
+    botPausedPermanent: false,
+    botPausedUntil: new Date(
+      Date.now() + hours * 60 * 60 * 1000,
+    ).toISOString(),
+  };
+}
+
+function formatBotPauseUntil(iso?: string | null) {
+  if (!iso) return '';
+  const until = new Date(iso);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+    return '';
+  }
+  return until.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'America/Sao_Paulo', label: 'Brasília (SP, RJ, MG, PR, SC, RS…)' },
+  { value: 'America/Fortaleza', label: 'Fortaleza (CE, PI, RN, PB, AL, SE)' },
+  { value: 'America/Recife', label: 'Recife (PE)' },
+  { value: 'America/Bahia', label: 'Bahia (BA)' },
+  { value: 'America/Belem', label: 'Belém (PA, AP, MA)' },
+  { value: 'America/Manaus', label: 'Manaus (AM)' },
+  { value: 'America/Cuiaba', label: 'Cuiabá (MT)' },
+  { value: 'America/Campo_Grande', label: 'Campo Grande (MS)' },
+  { value: 'America/Porto_Velho', label: 'Porto Velho (RO)' },
+  { value: 'America/Boa_Vista', label: 'Boa Vista (RR)' },
+  { value: 'America/Rio_Branco', label: 'Rio Branco (AC)' },
+  { value: 'America/Noronha', label: 'Fernando de Noronha' },
+];
+
 const DEFAULT_HOURS: OpeningHours = [
   { open: false, start: '09:00', end: '18:00' },
   { open: true, start: '09:00', end: '18:00' },
@@ -92,6 +179,18 @@ export default function AccountScreen() {
   const [addressError, setAddressError] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
 
+  const [phone, setPhone] = useState('');
+  const [phoneSaved, setPhoneSaved] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
+
+  const [reminderMinutes, setReminderMinutes] = useState(120);
+  const [timezone, setTimezone] = useState('America/Sao_Paulo');
+  const [timezoneOpen, setTimezoneOpen] = useState(false);
+  const [reminderSaved, setReminderSaved] = useState('');
+  const [reminderError, setReminderError] = useState('');
+  const [savingReminder, setSavingReminder] = useState(false);
+
   const [waMode, setWaMode] = useState<PairingMode>('idle');
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waLinked, setWaLinked] = useState(false);
@@ -102,6 +201,11 @@ export default function AccountScreen() {
   const [waBusy, setWaBusy] = useState(false);
   const [waError, setWaError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [botPauseMode, setBotPauseMode] = useState<BotPauseMode>('off');
+  const [botPauseSaved, setBotPauseSaved] = useState('');
+  const [botPauseError, setBotPauseError] = useState('');
+  const [savingBotPause, setSavingBotPause] = useState(false);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -141,6 +245,16 @@ export default function AccountScreen() {
     if (account) {
       setHours(normalizeHours(account.openingHours));
       setAddress(account.address || '');
+      setPhone(account.phone || '');
+      const lead = Number(account.whatsappReminderMinutes);
+      setReminderMinutes(
+        Number.isFinite(lead) &&
+          REMINDER_PRESETS.some((p) => p.minutes === lead)
+          ? lead
+          : 120,
+      );
+      setTimezone(account.timezone || 'America/Sao_Paulo');
+      setBotPauseMode(botPauseModeFromAccount(account));
     }
     dashboardApi.integrations().then((data) => {
       setIntegrations({
@@ -265,10 +379,61 @@ export default function AccountScreen() {
             <Text style={styles.metaValue}>{account.email}</Text>
           </View>
           <View style={styles.meta}>
+            <Text style={styles.metaLabel}>Telefone</Text>
+            <Text style={styles.metaValue}>
+              {account.phone ? account.phone : '—'}
+            </Text>
+          </View>
+          <View style={styles.meta}>
             <Text style={styles.metaLabel}>Assinante desde</Text>
             <Text style={styles.metaValue}>{since}</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Telefone de contato</Text>
+        <Text style={[styles.help, { marginBottom: 12 }]}>
+          Telefone do responsável pela conta (com DDD).
+        </Text>
+        <SofInput
+          label="Telefone"
+          value={phone}
+          onChangeText={setPhone}
+          theme="dashboard"
+          placeholder="11999998888"
+          keyboardType="phone-pad"
+        />
+        {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
+        {phoneSaved ? <Text style={styles.saved}>{phoneSaved}</Text> : null}
+        <SofButton
+          title={savingPhone ? 'Salvando…' : 'Salvar telefone'}
+          variant="dark"
+          theme="dashboard"
+          disabled={savingPhone}
+          onPress={async () => {
+            setPhoneError('');
+            setSavingPhone(true);
+            try {
+              const digits = phone.replace(/\D/g, '');
+              const { account: updated } = await dashboardApi.updateAccount({
+                phone: digits,
+              });
+              await setSession(updated);
+              setPhone(updated.phone || digits);
+              setPhoneSaved('Telefone salvo!');
+              setTimeout(() => setPhoneSaved(''), 2000);
+            } catch (err) {
+              setPhoneError(
+                err instanceof Error
+                  ? err.message
+                  : 'Não foi possível salvar.',
+              );
+            } finally {
+              setSavingPhone(false);
+            }
+          }}
+        />
       </View>
 
       <View style={styles.card}>
@@ -554,6 +719,175 @@ export default function AccountScreen() {
         )}
 
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
+
+        <View style={styles.pauseBlock}>
+          <Text style={styles.label}>Pausa do bot</Text>
+          <Text style={[styles.help, { marginBottom: 8 }]}>
+            Silencia o bot para todos os clientes (conta inteira). Útil em
+            folga, feriado ou quando você atende manualmente no WhatsApp.
+          </Text>
+          <View style={styles.chips}>
+            {BOT_PAUSE_PRESETS.map((p) => {
+              const active = botPauseMode === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => setBotPauseMode(p.id)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  disabled={savingBotPause}
+                >
+                  <Text
+                    style={[styles.chipText, active && styles.chipTextActive]}
+                  >
+                    {p.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {account?.botPausedPermanent ? (
+            <Text style={styles.pauseStatus}>Bot desligado (permanente).</Text>
+          ) : formatBotPauseUntil(account?.botPausedUntil) ? (
+            <Text style={styles.pauseStatus}>
+              Pausado até {formatBotPauseUntil(account?.botPausedUntil)}.
+            </Text>
+          ) : (
+            <Text style={styles.pauseStatus}>Bot ativo para novos clientes.</Text>
+          )}
+          {botPauseError ? (
+            <Text style={styles.error}>{botPauseError}</Text>
+          ) : null}
+          {botPauseSaved ? (
+            <Text style={styles.saved}>{botPauseSaved}</Text>
+          ) : null}
+          <SofButton
+            title={savingBotPause ? 'Salvando…' : 'Salvar pausa do bot'}
+            variant="dark"
+            theme="dashboard"
+            disabled={savingBotPause}
+            onPress={async () => {
+              setBotPauseError('');
+              setSavingBotPause(true);
+              try {
+                const { account: updated } = await dashboardApi.updateAccount(
+                  botPausePayload(botPauseMode),
+                );
+                await setSession(updated);
+                setBotPauseMode(botPauseModeFromAccount(updated));
+                setBotPauseSaved('Pausa do bot atualizada!');
+                setTimeout(() => setBotPauseSaved(''), 2000);
+              } catch (err) {
+                setBotPauseError(
+                  err instanceof Error
+                    ? err.message
+                    : 'Não foi possível salvar.',
+                );
+              } finally {
+                setSavingBotPause(false);
+              }
+            }}
+          />
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
+        <Text style={[styles.help, { marginBottom: 8 }]}>
+          A Sof envia um lembrete automático pela instância conectada, no máximo
+          1× por agendamento. O job roda a cada 30 minutos — o aviso pode sair
+          até meia hora depois do horário estimado.
+        </Text>
+        <Text style={styles.label}>Antecedência</Text>
+        <View style={styles.chips}>
+          {REMINDER_PRESETS.map((preset) => {
+            const active = reminderMinutes === preset.minutes;
+            return (
+              <Pressable
+                key={preset.minutes}
+                onPress={() => setReminderMinutes(preset.minutes)}
+                style={[styles.chip, active && styles.chipActive]}
+                disabled={savingReminder}
+              >
+                <Text
+                  style={[styles.chipText, active && styles.chipTextActive]}
+                >
+                  {preset.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={[styles.label, { marginTop: 8 }]}>Fuso horário</Text>
+        <Pressable
+          onPress={() => setTimezoneOpen((prev) => !prev)}
+          style={styles.tzButton}
+          disabled={savingReminder}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: timezoneOpen }}
+        >
+          <Text style={styles.tzButtonText}>
+            {TIMEZONE_OPTIONS.find((opt) => opt.value === timezone)?.label ||
+              timezone}
+          </Text>
+          <Text style={styles.tzChevron}>{timezoneOpen ? '▲' : '▼'}</Text>
+        </Pressable>
+        {timezoneOpen ? (
+          <View style={styles.tzList}>
+            {TIMEZONE_OPTIONS.map((opt) => {
+              const active = timezone === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => {
+                    setTimezone(opt.value);
+                    setTimezoneOpen(false);
+                  }}
+                  style={[styles.tzOption, active && styles.tzOptionActive]}
+                  disabled={savingReminder}
+                >
+                  <Text
+                    style={[
+                      styles.tzOptionText,
+                      active && styles.tzOptionTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {active ? <Text style={styles.tzCheck}>✓</Text> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+        {reminderError ? <Text style={styles.error}>{reminderError}</Text> : null}
+        {reminderSaved ? <Text style={styles.saved}>{reminderSaved}</Text> : null}
+        <SofButton
+          title={savingReminder ? 'Salvando…' : 'Salvar lembrete'}
+          variant="dark"
+          theme="dashboard"
+          disabled={savingReminder}
+          onPress={async () => {
+            setReminderError('');
+            setSavingReminder(true);
+            try {
+              const { account: updated } = await dashboardApi.updateAccount({
+                whatsappReminderMinutes: reminderMinutes,
+                timezone,
+              });
+              await setSession(updated);
+              setReminderSaved('Configuração de lembrete salva!');
+              setTimeout(() => setReminderSaved(''), 2000);
+            } catch (err) {
+              setReminderError(
+                err instanceof Error
+                  ? err.message
+                  : 'Não foi possível salvar.',
+              );
+            } finally {
+              setSavingReminder(false);
+            }
+          }}
+        />
       </View>
 
       <View style={styles.card}>
@@ -620,6 +954,62 @@ const styles = StyleSheet.create({
   metaLabel: { color: d.muted, fontSize: 13, marginBottom: 4 },
   metaValue: { fontWeight: '700', fontSize: 15, color: d.ink },
   help: { color: d.muted, fontSize: 14, lineHeight: 22 },
+  label: { fontWeight: '600', color: d.ink, fontSize: 14 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+  },
+  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  chipText: { color: d.ink, fontSize: 13 },
+  chipTextActive: { fontWeight: '700' },
+  pauseBlock: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: d.line,
+    gap: 10,
+  },
+  pauseStatus: { color: d.ink, fontSize: 13, fontWeight: '600' },
+  tzButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  tzButtonText: { color: d.ink, fontSize: 14, fontWeight: '600' },
+  tzChevron: { color: d.muted, fontSize: 11 },
+  tzList: {
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  tzOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: d.line,
+  },
+  tzOptionActive: { backgroundColor: '#eff6ff' },
+  tzOptionText: { color: d.ink, fontSize: 14 },
+  tzOptionTextActive: { fontWeight: '700' },
+  tzCheck: { color: d.accent, fontWeight: '700' },
   badge: { fontWeight: '700' },
   on: { color: '#0d9c53' },
   off: { color: '#94a3b8' },

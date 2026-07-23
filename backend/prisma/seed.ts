@@ -2,12 +2,71 @@ import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { DEFAULT_OPENING_HOURS } from '../src/account/opening-hours';
+import {
+  FALLBACK_PLANS,
+  slugifyPlanName,
+} from '../src/common/plans';
 
 const prisma = new PrismaClient();
 
 function bool(value: string | undefined, fallback: boolean) {
   if (value === undefined || value === '') return fallback;
   return value === 'true' || value === '1';
+}
+
+async function seedPlansAndAdmin() {
+  const planEntries = Object.values(FALLBACK_PLANS);
+  for (let i = 0; i < planEntries.length; i++) {
+    const p = planEntries[i];
+    const slug = slugifyPlanName(p.name);
+    await prisma.plan.upsert({
+      where: { slug },
+      create: {
+        name: p.name,
+        slug,
+        price: p.price,
+        stripeProductId: `seed_${slug}`,
+        stripePriceId: p.stripePriceId,
+        paymentLinkUrl: p.paymentLinkUrl,
+        features: p.features || [],
+        active: true,
+        sortOrder: i,
+      },
+      update: {
+        name: p.name,
+        price: p.price,
+        stripePriceId: p.stripePriceId,
+        paymentLinkUrl: p.paymentLinkUrl,
+        features: p.features || [],
+        active: true,
+        sortOrder: i,
+      },
+    });
+  }
+  console.log(`[seed] ${planEntries.length} planos no catálogo.`);
+
+  if (!bool(process.env.SEED_ADMIN_ENABLED, true)) return;
+
+  const adminEmail = (
+    process.env.SEED_ADMIN_EMAIL || 'admin@sof.com'
+  ).toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+  const existingAdmin = await prisma.adminUser.findUnique({
+    where: { email: adminEmail },
+  });
+  if (existingAdmin) {
+    console.log(`[seed] Admin já existe: ${adminEmail}`);
+    return;
+  }
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+  await prisma.adminUser.create({
+    data: {
+      email: adminEmail,
+      name: 'Admin Sof',
+      passwordHash,
+    },
+  });
+  console.log(`[seed] Admin criado: ${adminEmail} / ${adminPassword}`);
 }
 
 function pad(n: number) {
@@ -66,6 +125,8 @@ const SLOT_TIMES = [
 ];
 
 async function main() {
+  await seedPlansAndAdmin();
+
   if (!bool(process.env.SEED_DEMO_ENABLED, true)) return;
 
   const email = (process.env.SEED_DEMO_EMAIL || 'demo@sof.com').toLowerCase();
@@ -80,6 +141,7 @@ async function main() {
       businessName: 'Santa Madalena',
       ownerName: 'Conta Demo',
       email,
+      phone: '11999990000',
       passwordHash,
       plan: 'Estúdio',
       planPrice: 197,
@@ -111,6 +173,7 @@ async function main() {
       accountId: account.id,
       name: 'Marcelo Silva',
       email: 'marcelo@demo.sof',
+      phone: '11988881111',
       passwordHash: employeePasswordHash,
       mustChangePassword: true,
       color: '#3b82f6',
@@ -124,6 +187,7 @@ async function main() {
       accountId: account.id,
       name: 'Bruno Costa',
       email: 'bruno@demo.sof',
+      phone: '11988882222',
       passwordHash: employeePasswordHash,
       mustChangePassword: true,
       color: '#10b981',
@@ -137,6 +201,7 @@ async function main() {
       accountId: account.id,
       name: 'Kaique Santos',
       email: 'kaique@demo.sof',
+      phone: '11988883333',
       passwordHash: employeePasswordHash,
       mustChangePassword: true,
       color: '#f59e0b',
@@ -190,7 +255,7 @@ async function main() {
         date: localDateStr(day),
         time: '12:00',
         price: 0,
-        status: 'confirmed',
+        status: 'scheduled',
         source: 'manual',
         recurrenceGroupId: lunchGroup,
       });
@@ -216,7 +281,7 @@ async function main() {
         date: localDateStr(day),
         time: weeklyTime,
         price: 0,
-        status: 'confirmed',
+        status: 'scheduled',
         source: 'manual',
         recurrenceGroupId: weeklyGroup,
       });
@@ -314,7 +379,7 @@ async function main() {
           date,
           time,
           price: primaryService.price,
-          status: 'confirmed',
+          status: 'scheduled',
           source: ci % 2 === 0 ? 'manual' : 'whatsapp',
           recurrenceGroupId: groupId,
         });
@@ -348,7 +413,7 @@ async function main() {
         date,
         time,
         price: service.price,
-        status: 'confirmed',
+        status: 'scheduled',
         source: created % 3 === 0 ? 'whatsapp' : 'manual',
         recurrenceGroupId: null,
       });

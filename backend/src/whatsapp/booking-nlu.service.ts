@@ -16,7 +16,7 @@ const WEEKDAYS_PT = [
 ];
 
 export type BookingIntent = {
-  intent: 'book' | 'cancel' | 'list' | 'other';
+  intent: 'book' | 'cancel' | 'list' | 'human' | 'other';
   serviceId?: string;
   date?: string; // YYYY-MM-DD
   time?: string; // HH:MM
@@ -63,7 +63,7 @@ export class BookingNluService {
       serviceList,
       '',
       'Responda SOMENTE um JSON com os campos:',
-      '- intent: "book" (quer marcar), "cancel" (quer cancelar), "list" (quer ver agendamentos) ou "other"',
+      '- intent: "book" (quer marcar), "cancel" (quer cancelar), "list" (quer ver agendamentos), "human" (quer falar com atendente/humano) ou "other"',
       '- serviceId: id do serviço citado (escolha o mais próximo do que a pessoa falou) ou null',
       '- date: data desejada em YYYY-MM-DD ou null (resolva termos como hoje, amanhã, sexta que vem)',
       '- time: hora desejada em HH:MM (24h) ou null (meio-dia = 12:00, "3 da tarde" = 15:00)',
@@ -130,7 +130,8 @@ export class BookingNluService {
     const intent: BookingIntent['intent'] =
       intentRaw === 'book' ||
       intentRaw === 'cancel' ||
-      intentRaw === 'list'
+      intentRaw === 'list' ||
+      intentRaw === 'human'
         ? intentRaw
         : 'other';
 

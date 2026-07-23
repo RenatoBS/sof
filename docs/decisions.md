@@ -17,6 +17,128 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Menu do bot do profissional: concluir condicional + criar unificado
+
+- **Contexto:** “Concluir” no menu poluía quando o prof não estava em atendimento; agendamento e evento eram duas entradas redundantes.  
+- **Decisão:** **Concluir agendamento** só aparece (e em 1º) se houver horário `scheduled` na janela atual. **Novo na agenda** pergunta se é agendamento de cliente ou evento (almoço/médico). NLU/atalhos de `book`/`event` seguem diretos.  
+- **Consequências:** Menu mais curto no dia a dia; conclusão antecipada continua liberando o slot.  
+- **Alternativas descartadas:** Manter dois botões fixos; concluir sempre visível com erro se fora da janela.
+
+---
+
+## 2026-07-23 — Handoff humano também para profissionais
+
+- **Contexto:** Profissionais no bot WhatsApp precisavam pedir ajuda da conta; a aba Atendimentos só cobria clientes e o webhook ignorava telefone de `Employee`.  
+- **Decisão:** `WhatsappHandoff.party` (`client` | `employee`) + `employeeId`; `Employee.botUnresolvedCount`. Bot do prof: menu **Falar com estabelecimento**, regex/NLU `human`, e `unresolved` no fallback do menu. `afterBotResult` escala ambos. UI: badge Cliente (azul) vs Profissional (lilás). Resposta `fromMe` em prof resolve sem pausar o bot operacional.  
+- **Consequências:** Mesmo threshold da conta; não cria `Client` fantasma para o telefone do prof.  
+- **Alternativas descartadas:** Canal separado só para prof; silenciar bot do prof após handoff como no cliente.
+
+---
+
+## 2026-07-23 — Status `scheduled` / `completed` e liberação antecipada de slot
+
+- **Contexto:** Precisávamos distinguir horário ainda ativo de atendimento já feito, auto-fechar quando a janela acaba, e permitir que o profissional liberasse o restante do slot se terminasse antes.  
+- **Decisão:** Renomear `confirmed` → `scheduled`; adicionar `completed` + `completedAt`. Só `scheduled` entra em `listBusySlots`. Job a cada 5 min (`AppointmentCompletionsService`) marca `completed` quando `now >= endAt` (fuso da conta). Conta conclui via `POST /api/appointments/:id/complete` sem restrição de janela; profissional (web/bot) só dentro de [início, fim]. Bot: menu **Concluir horário** + intent NLU `complete`.  
+- **Consequências:** Conclusão antecipada libera o horário restante para novos agendamentos; concluídos continuam visíveis na agenda com badge. Lembretes e conflitos ignoram `completed`/`cancelled`.  
+- **Alternativas descartadas:** Manter `confirmed` só como label; encurtar `durationMinutes` em vez de mudar status; permitir conclusão do prof fora da janela.
+
+---
+
+## 2026-07-23 — Reset de senha do profissional (web + bot)
+
+- **Contexto:** Reset só existia pelo painel da conta; o profissional ficava dependente do responsável.  
+- **Decisão:** `EmployeePasswordResetService` (issue + CTA WhatsApp) compartilhado entre painel, `POST /api/employee-auth/request-password-reset` (público, resposta genérica) e opção **Redefinir senha** no menu/NLU do bot. UI: `/profissional/esqueci-senha` + link em `/login`.  
+- **Consequências:** Sempre invalida a senha atual ao emitir o link; exige telefone do prof + WhatsApp da conta conectado.  
+- **Alternativas descartadas:** E-mail SMTP; reset só por token na web sem WhatsApp; exigir senha atual no forgot.
+
+---
+
+## 2026-07-23 — Bot WhatsApp para profissionais (telefone cadastrado)
+
+- **Contexto:** Profissionais precisavam operar agenda pelo mesmo WhatsApp do salão, sem cair no fluxo de cliente.  
+- **Decisão:** Se o remetente casa com `Employee.phone` da conta, `WhatsappBotService` delega a `WhatsappEmployeeBotService` (steps `emp:*`): ver agenda (hoje/outro dia), marcar serviço, criar evento/`block`, cancelar. Áudio segue a mesma transcrição do webhook; NLU próprio no menu inicial (`agenda|book|event|cancel`). Profissionais **não** são silenciados por pausa da conta nem por pausa de cliente.  
+- **Consequências:** Telefone do profissional precisa estar cadastrado (com ou sem DDI 55). Simulador testa com o mesmo número.  
+- **Alternativas descartadas:** Código/PIN especial; fluxo único com flag; silenciar prof junto com a pausa global.
+
+---
+
+## 2026-07-23 — Pausa global do bot na Conta (WhatsApp)
+
+- **Contexto:** Dono precisava silenciar o bot por algumas horas/dias sem pausar cliente a cliente.  
+- **Decisão:** `Account.botPausedPermanent` + `botPausedUntil`; UI na seção Bot do WhatsApp (presets 1h/8h/24h/3d/7d/permanente). Webhook/simulador checam pausa da conta antes da pausa por cliente; **exceção:** telefone de `Employee` continua no bot operacional.  
+- **Consequências:** `PUT /api/account` aceita os campos; migration `20260723140000_account_bot_pause`.  
+- **Alternativas descartadas:** Só pausa por cliente; flag booleana sem timer.
+
+---
+
+## 2026-07-22 — Envio do link de senha do profissional via WhatsApp
+
+- **Contexto:** Conta gerava link para copiar; faltava disparar pelo bot com instruções e CTA.  
+- **Decisão:** `POST /api/employees/:id/send-password-link` emite token, zera senha e chama `WhatsappApiService.sendCtaUrl` (Meta `interactive/cta_url`; Uazapi tenta CTA em `/send/menu` e faz fallback para texto com o link). UI: botão no card do link e “Enviar link WhatsApp” no card do profissional.  
+- **Consequências:** Requer telefone do profissional + WhatsApp da conta conectado.  
+- **Alternativas descartadas:** Só texto sem CTA; e-mail (fora do escopo).
+
+---
+
+## 2026-07-22 — Tickets de suporte (conta + admin + profissional)
+
+- **Contexto:** Estabelecimento precisa falar com a Sof; admin precisa ver abertos e responder; profissional também participa.  
+- **Decisão:** Modelos `SupportTicket` + `SupportTicketComment` (status string `open|in_progress|resolved|closed`). Conta abre ticket; conta, profissional e admin comentam e mudam status. API produto com `TenantAuthGuard` (cookie/Bearer de conta **ou** profissional); admin em `admin-backend` `/api/tickets`. UI: aba Suporte no dashboard, portal profissional, Tickets no admin.  
+- **Consequências:** Migration `20260722220000_support_tickets`; comentário do admin em ticket `open` promove para `in_progress`.  
+- **Alternativas descartadas:** Só e-mail externo; chat em tempo real (SSE) nesta versão.
+
+---
+
+## 2026-07-22 — Rotas planas no admin-frontend (sem `[id]` irmão de lista)
+
+- **Contexto:** No Expo Router web, rotas dinâmicas sob o mesmo shell (`accounts/index` + `accounts/[id]`) faziam a URL virar `/…/undefined` e a UI ficava em branco após login. `FlatList`+`gap` no RN Web também crashava.  
+- **Decisão:** Rotas planas: `/accounts`, `/new-account`, `/edit-account`, `/plans`, `/new-plan`, `/edit-plan` (id via search params). Listas com `ScrollView`. Nav do shell sem `Link asChild`.  
+- **Consequências:** URLs de detalhe mudam; docs atualizados.  
+- **Alternativas descartadas:** Manter pastas `[id]` com workarounds de href.
+
+---
+
+## 2026-07-22 — Link de uso único para senha do profissional (2h)
+
+- **Contexto:** Reset gerava senha temporária para a conta copiar; o profissional ainda precisava da “senha antiga” no 1º acesso.  
+- **Decisão:** `EmployeePasswordToken` + endpoints públicos `GET/POST /api/employee-auth/password-setup`. Criar profissional ou `resetPassword` emite link `${PUBLIC_URL}/profissional/definir-senha?token=…` (uso único, 2h). A página mostra o e-mail de login; ao definir senha, marca o token usado, limpa `mustChangePassword` e devolve JWT (login automático). Reset invalida senha anterior (`passwordHash=null`).  
+- **Consequências:** Conta só compartilha URL; seed demo continua com senha conhecida. `trocar-senha` autenticado permanece para troca voluntária / legado.  
+- **Alternativas descartadas:** Manter senha temporária + troca forçada; magic link sem senha (fora do escopo).
+
+---
+
+## 2026-07-22 — Telefone no cadastro de conta e profissional
+
+- **Contexto:** Conta e profissionais não tinham telefone próprio (só WhatsApp da instância e telefone de clientes).  
+- **Decisão:** Campos `Account.phone`, `Employee.phone` e `CheckoutSession.phone` (dígitos, DDD; validação 10–15). Obrigatório no checkout, CRUD de profissionais, criação/edição no admin e editável em Conta.  
+- **Consequências:** Contas/profissionais antigos ficam com `phone=""` até atualizar; formulários e APIs passam a exigir telefone em novos cadastros.  
+- **Alternativas descartadas:** Reutilizar `whatsappPhoneNumberId` (é ID de instância, não telefone humano).
+
+---
+
+## 2026-07-22 — Painel admin separado (mesmo Postgres) + catálogo `Plan`
+
+- **Contexto:** Operadores Sof precisavam listar/editar contas e criar/alterar planos na Stripe sem misturar isso no dashboard do tenant.  
+- **Decisão:** Apps novos `admin-backend/` (Nest, porta 3011) e `admin-frontend/` (Expo web, 8091), **mesmo PostgreSQL**. Modelos `AdminUser` e `Plan` no schema do produto. Auth admin com JWT/`sof_admin_session` e `ADMIN_JWT_SECRET`. Criar/editar plano sincroniza Product/Price na Stripe (Prices imutáveis → novo Price + arquiva o anterior). Checkout do produto lê `Plan` via `PlansService` (`GET /api/plans` público); `FALLBACK_PLANS` só se a tabela estiver vazia.  
+- **Consequências:** Migrations só em `backend/prisma/`; generator `adminClient` gera client em `admin-backend/node_modules/.prisma/client`. Seed cria admin (`SEED_ADMIN_*`) e upsert dos 3 planos. Deploy Heroku do admin ainda não provisionado.  
+- **Alternativas descartadas:** Módulo admin dentro do `backend/` do produto (superfície de ataque maior); DB separado; só Dashboard Stripe (sem gestão de contas Sof).
+
+---
+
+## 2026-07-21 — Lembretes WhatsApp com job 30 min e timezone por conta
+
+- **Contexto:** O bot prometia lembrete na confirmação, mas não havia envio. Precisávamos avisar o cliente antes do horário pela instância Uazapi da conta, 1× por agendamento, com antecedência configurável (padrão 2h).  
+- **Decisão:** `Account.whatsappReminderMinutes` (0|60|120|180|360|1440; 0=off) + `Account.timezone` (IANA, default `America/Sao_Paulo`). Em `Appointment`: `reminderClaimedAt` / `reminderSentAt`. `RemindersModule` com `@nestjs/schedule` (`@Interval` 30 min + tick no bootstrap). Candidatos: `kind=service`, `confirmed`, telefone, ainda não enviados, conta ativa com instância conectada e lead > 0. `date`/`time` interpretados no fuso da conta; envia se `now ∈ [start−lead, start)`. Claim SQL atômico antes do `sendText`; em falha libera claim para retry; sucesso grava `reminderSentAt`. UI na Conta (chips de antecedência + dropdown de fuso). Copy do bot/marketing alinhada ao WhatsApp (não SMS).  
+- **Consequências:** Precisão de até ~30 min após o horário estimado; multi-dyno coberto pelo claim; risco residual raro de duplicata se a Uazapi aceitar o envio e o processo cair antes de persistir `reminderSentAt` (sem idempotency key na API).  
+- **Alternativas descartadas:** Worker Heroku separado (complexidade sem ganho no MVP); Redis/Bull (add-on extra); SMS (canal diferente do bot); fuso só no servidor UTC (quebra horários BR).
+
+## 2026-07-21 — Escalonamento humano com pausa por resposta no WhatsApp
+
+- **Contexto:** Quando o bot não resolve (cliente pede atendente ou o bot repete "não entendi"), o dono não ficava sabendo e o bot continuava atrapalhando a conversa se um humano assumisse.  
+- **Decisão:** Novo modelo `WhatsappHandoff` (1 alerta aberto por telefone) + `Client.botUnresolvedCount` + `Account.whatsappHandoffThreshold` (1|2|3|5, default 2). Pedido explícito por humano (regex estrita + intent `human` do NLU) abre alerta imediato; N "não entendi" seguidos abrem por contagem — intents `cancel`/`list`/`book` continuam no bot. Alertas aparecem na aba **Atendimentos** (badge SSE na tabbar, link para WhatsApp Web/`wa.me`). Detecção de resposta humana: webhook Uazapi passa a receber `fromMe` (exclui só `wasSentByApi` + grupos); mensagem `fromMe` não-API pausa o bot 1 h (`botPausedUntil`), zera contador e resolve o alerta. `GET /account/whatsapp/status` ressincroniza a config do webhook (máx. 1x/h por instância) para cobrir instâncias pareadas antes da mudança.  
+- **Consequências:** Todo envio manual do dono pelo WhatsApp silencia o bot por 1 h naquela conversa (comportamento desejado); mais eventos de webhook (`fromMe`) para processar; cliente recebe aviso "avisei a equipe" quando o alerta abre.  
+- **Alternativas descartadas:** Detectar humano via app próprio (não existe inbox no painel); pausar bot permanente na resposta humana (dono teria que reativar manualmente); webhook separado para eventos `fromMe` (complexidade sem ganho).
+
 ## 2026-07-21 — NLU com LLM para frases livres no bot
 
 - **Contexto:** Áudios transcritos chegavam como frases corridas ("quero marcar um corte amanhã ao meio-dia") e o fluxo guiado só entendia opções exatas de menu, respondendo "Não entendi".  

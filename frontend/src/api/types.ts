@@ -12,11 +12,19 @@ export type Account = {
   businessName: string;
   ownerName: string;
   email: string;
+  phone: string;
   plan: string;
   planPrice: number;
   whatsappPhoneNumberId: string;
   openingHours: OpeningHours;
   address: string;
+  /** Minutos antes do horário (0 = desativado). Default 120. */
+  whatsappReminderMinutes?: number;
+  /** Fuso IANA da conta. Default America/Sao_Paulo. */
+  timezone?: string;
+  /** Pausa o bot para todos os clientes. */
+  botPausedPermanent?: boolean;
+  botPausedUntil?: string | null;
   status: string;
   createdAt: string;
   whatsappConnectedAt?: string | null;
@@ -36,6 +44,7 @@ export type Employee = {
   accountId: string;
   name: string;
   email: string;
+  phone: string;
   mustChangePassword: boolean;
   color: string;
   services: Service[];
@@ -47,6 +56,7 @@ export type EmployeeSession = {
   accountId: string;
   name: string;
   email: string;
+  phone: string;
   color: string;
   mustChangePassword: boolean;
   businessName: string;
@@ -61,6 +71,25 @@ export type Client = {
   botPausedPermanent: boolean;
   botPausedUntil?: string | null;
   createdAt: string;
+};
+
+export type WhatsappHandoff = {
+  id: string;
+  accountId: string;
+  clientId?: string | null;
+  employeeId?: string | null;
+  /** Quem está na ponta do WhatsApp (default client em registros antigos) */
+  party?: 'client' | 'employee' | string | null;
+  customerPhone: string;
+  customerName: string;
+  lastMessage: string;
+  reason: 'unresolved' | 'human_requested';
+  status: 'open' | 'resolved';
+  openedAt: string;
+  humanRepliedAt?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AppointmentKind = 'service' | 'block';
@@ -89,6 +118,7 @@ export type Appointment = {
   status: string;
   source: 'manual' | 'whatsapp';
   recurrenceGroupId?: string | null;
+  completedAt?: string | null;
   createdAt: string;
 };
 
@@ -104,4 +134,36 @@ export type AppointmentWriteBody = {
   employeeId: string;
   serviceId?: string;
   recurrence?: AppointmentRecurrence;
+};
+
+export type SupportTicketStatus =
+  | 'open'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed';
+
+export type SupportTicketComment = {
+  id: string;
+  body: string;
+  authorRole: 'account' | 'employee' | 'admin' | string;
+  authorName: string;
+  authorEmployeeId?: string | null;
+  authorAdminId?: string | null;
+  createdAt: string;
+};
+
+export type SupportTicket = {
+  id: string;
+  accountId: string;
+  title: string;
+  description: string;
+  status: SupportTicketStatus | string;
+  createdByRole: string;
+  createdByEmployeeId?: string | null;
+  createdByName: string;
+  account?: { id: string; businessName: string; email: string };
+  commentCount: number;
+  comments?: SupportTicketComment[];
+  createdAt: string;
+  updatedAt: string;
 };

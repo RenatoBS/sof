@@ -82,25 +82,42 @@ Para testar Stripe de verdade em local:
 3. Cole o `whsec_…` em `STRIPE_WEBHOOK_SECRET`
 4. Reinicie a API
 
+## Admin (painel Sof)
+
+```bash
+# API admin (porta 3011)
+cd admin-backend && cp .env.example .env && npm install && npm run start:dev
+
+# UI admin (porta 8091)
+cd admin-frontend && cp .env.example .env && npm install && npm run web
+```
+
+Na raiz: `npm run admin-backend:dev` / `npm run admin-frontend:web`.  
+Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan`.  
+Login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@sof.com` / `admin123`).
+
 ## Conta de teste
 
 - Email: `demo@sof.com` (ou `SEED_DEMO_EMAIL`)  
 - Senha: valor de `SEED_DEMO_PASSWORD` no `backend/.env`  
 - Profissional demo (após seed): `marcelo@demo.sof` / mesma senha — em `/login` (troca no 1º acesso)  
+- Admin Sof: `admin@sof.com` (ou `SEED_ADMIN_EMAIL`) — painel em `:8091`
 
 Não commitar `.env`.
 
 ## Variáveis locais importantes
 
-Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
+Ver lista completa em `backend/.env.example`, `frontend/.env.example`, `admin-backend/.env.example`, `admin-frontend/.env.example`.
 
 | Variável | Uso local típico |
 |----------|------------------|
-| `CORS_ORIGIN` | `http://localhost:8081` |
+| `CORS_ORIGIN` | `http://localhost:8081` (produto); admin: `http://localhost:8091` |
 | `PUBLIC_URL` | `http://localhost:8081` |
 | `API_PUBLIC_URL` | URL pública da API (webhook WA); local pode ficar vazio → `http://localhost:3001` |
 | `JWT_SECRET` | qualquer string longa em dev |
-| `EXPO_PUBLIC_API_URL` | `http://localhost:3001` |
+| `ADMIN_JWT_SECRET` | segredo do painel admin (admin-backend) |
+| `EXPO_PUBLIC_API_URL` | produto → `:3001`; admin-frontend → `:3011` |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | operador do painel admin |
 | `WHATSAPP_PROVIDER` | default `uazapi` (ou `meta`) |
 | `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
 | `WHATSAPP_ADMIN_TOKEN` | admin token Uazapi (cria instância por conta) |
@@ -114,7 +131,8 @@ Ver lista completa em `backend/.env.example` e `frontend/.env.example`.
 3. Para webhook real, use túnel HTTPS (ex. ngrok) em `API_PUBLIC_URL`.  
 4. No painel Conta → Bot do WhatsApp → Escanear QR ou Usar código.  
 5. Sem essas envs, o simulador na Agenda continua disponível.  
-6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).
+6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).  
+7. Lembretes: com a API no ar (`backend:dev`), o job roda no boot e a cada 30 min. Configure antecedência/fuso em Conta → Lembrete WhatsApp (default 2h, `America/Sao_Paulo`). Precisa de instância conectada para enviar de verdade.
 
 ## Troubleshooting
 
@@ -134,4 +152,6 @@ npm run db:up
 npm run db:down
 npm run backend:dev
 npm run frontend:web
+npm run admin-backend:dev
+npm run admin-frontend:web
 ```

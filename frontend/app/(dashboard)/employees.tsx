@@ -22,12 +22,18 @@ export default function EmployeesScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [color, setColor] = useState<string>(EMPLOYEE_COLORS[0]);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [resetPassword, setResetPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [tempPassword, setTempPassword] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteExpiresAt, setInviteExpiresAt] = useState('');
+  const [inviteEmployeeId, setInviteEmployeeId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [sendingWa, setSendingWa] = useState(false);
+  const [waSent, setWaSent] = useState(false);
 
   const isEditing = !!editingId;
 
@@ -43,6 +49,7 @@ export default function EmployeesScreen() {
   const resetForm = () => {
     setName('');
     setEmail('');
+    setPhone('');
     setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
@@ -59,11 +66,16 @@ export default function EmployeesScreen() {
     }
     setName('');
     setEmail('');
+    setPhone('');
     setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
     setError('');
-    setTempPassword('');
+    setInviteLink('');
+    setInviteExpiresAt('');
+    setInviteEmployeeId(null);
+    setCopied(false);
+    setWaSent(false);
     setEditingId(null);
     setShowForm(true);
   };
@@ -72,22 +84,80 @@ export default function EmployeesScreen() {
     setEditingId(employee.id);
     setName(employee.name);
     setEmail(employee.email || '');
+    setPhone(employee.phone || '');
     setColor((employee.color || EMPLOYEE_COLORS[0]).toLowerCase());
     setServiceIds((employee.services || []).map((s) => s.id));
     setResetPassword(false);
     setError('');
-    setTempPassword('');
+    setInviteLink('');
+    setInviteExpiresAt('');
+    setInviteEmployeeId(null);
+    setCopied(false);
+    setWaSent(false);
     setShowForm(true);
+  };
+
+  const showInvite = (
+    link: string,
+    expiresAt?: string,
+    employeeId?: string,
+  ) => {
+    setInviteLink(link);
+    setInviteExpiresAt(expiresAt || '');
+    setInviteEmployeeId(employeeId || null);
+    setCopied(false);
+    setWaSent(false);
+    setShowForm(false);
+    setEditingId(null);
+  };
+
+  const copyInvite = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(inviteLink);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Não foi possível copiar. Selecione o link manualmente.');
+    }
+  };
+
+  const sendInviteWhatsapp = async (employeeId?: string | null) => {
+    const id = employeeId || inviteEmployeeId;
+    if (!id) {
+      setError('Salve o profissional antes de enviar o link no WhatsApp.');
+      return;
+    }
+    setInviteEmployeeId(id);
+    setSendingWa(true);
+    setError('');
+    try {
+      const res = await dashboardApi.sendEmployeePasswordLink(id);
+      setInviteLink(res.resetLink);
+      setInviteExpiresAt(res.expiresAt);
+      setWaSent(true);
+      setShowForm(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao enviar no WhatsApp.');
+    } finally {
+      setSendingWa(false);
+    }
   };
 
   const save = async () => {
     setError('');
     if (serviceIds.length === 0) {
-      setError('Selecione ao menos um servi?o.');
+      setError('Selecione ao menos um serviço.');
       return;
     }
     if (!email.trim()) {
       setError('Informe o e-mail de acesso do profissional.');
+      return;
+    }
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setError('Informe um telefone válido com DDD.');
       return;
     }
     setLoading(true);
@@ -95,30 +165,28 @@ export default function EmployeesScreen() {
       const body = {
         name: name.trim(),
         email: email.trim().toLowerCase(),
+        phone: phoneDigits,
         serviceIds,
         color,
       };
       if (editingId) {
-        const { employee, temporaryPassword } = await dashboardApi.updateEmployee(
-          editingId,
-          { ...body, resetPassword },
-        );
+        const { employee, resetLink, expiresAt } =
+          await dashboardApi.updateEmployee(editingId, {
+            ...body,
+            resetPassword,
+          });
         setEmployees((prev) =>
           prev.map((e) => (e.id === employee.id ? employee : e)),
         );
-        if (temporaryPassword) {
-          setTempPassword(temporaryPassword);
-          setShowForm(false);
-          setEditingId(null);
+        if (resetLink) {
+          showInvite(resetLink, expiresAt, editingId);
           return;
         }
       } else {
-        const { employee, temporaryPassword } =
+        const { employee, resetLink, expiresAt } =
           await dashboardApi.createEmployee(body);
         setEmployees((prev) => [...prev, employee]);
-        setTempPassword(temporaryPassword);
-        setShowForm(false);
-        setEditingId(null);
+        showInvite(resetLink, expiresAt, employee.id);
         return;
       }
       resetForm();
@@ -155,21 +223,58 @@ export default function EmployeesScreen() {
         />
       </View>
 
-      {tempPassword ? (
+      {inviteLink ? (
         <View style={styles.passwordCard}>
-          <Text style={styles.cardTitle}>Senha tempor?ria gerada</Text>
+          <Text style={styles.cardTitle}>Link de acesso gerado</Text>
           <Text style={styles.hint}>
-            Anote e envie ao profissional. No primeiro acesso em{' '}
-            <Text style={styles.code}>/login</Text> ser? pedida a troca de
-            senha.
+            Envie pelo WhatsApp do estabelecimento (mensagem com instruções +
+            botão &quot;Redefinir senha&quot;) ou copie o link. Uso único, expira
+            em 2 horas — ao abrir, o profissional define a senha e já entra na
+            agenda.
           </Text>
-          <Text style={styles.tempPass}>{tempPassword}</Text>
-          <SofButton
-            title="Ok, j? anotei"
-            variant="dark"
-            theme="dashboard"
-            onPress={() => setTempPassword('')}
-          />
+          {inviteExpiresAt ? (
+            <Text style={styles.hint}>
+              Válido até{' '}
+              {new Date(inviteExpiresAt).toLocaleString('pt-BR')}
+            </Text>
+          ) : null}
+          <Text selectable style={styles.tempPass}>
+            {inviteLink}
+          </Text>
+          <View style={styles.actions}>
+            <SofButton
+              title={
+                sendingWa
+                  ? 'Enviando…'
+                  : waSent
+                    ? 'Enviado no WhatsApp'
+                    : 'Enviar no WhatsApp'
+              }
+              variant="dark"
+              theme="dashboard"
+              disabled={sendingWa || waSent || !inviteEmployeeId}
+              onPress={() => sendInviteWhatsapp()}
+            />
+            <SofButton
+              title={copied ? 'Copiado!' : 'Copiar link'}
+              variant="light"
+              theme="dashboard"
+              onPress={copyInvite}
+            />
+            <SofButton
+              title="Fechar"
+              variant="light"
+              theme="dashboard"
+              onPress={() => {
+                setInviteLink('');
+                setInviteExpiresAt('');
+                setInviteEmployeeId(null);
+                setCopied(false);
+                setWaSent(false);
+              }}
+            />
+          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       ) : null}
 
@@ -186,6 +291,14 @@ export default function EmployeesScreen() {
               theme="dashboard"
               placeholder="Nome completo"
               autoCapitalize="words"
+            />
+            <SofInput
+              label="Telefone"
+              value={phone}
+              onChangeText={setPhone}
+              theme="dashboard"
+              placeholder="11999998888"
+              keyboardType="phone-pad"
             />
             <SofInput
               label="E-mail de acesso"
@@ -216,7 +329,7 @@ export default function EmployeesScreen() {
                 );
               })}
             </View>
-            <Text style={styles.label}>Servi?os que realiza</Text>
+            <Text style={styles.label}>Serviços que realiza</Text>
             <View style={styles.chips}>
               {services.map((s) => {
                 const active = serviceIds.includes(s.id);
@@ -247,13 +360,14 @@ export default function EmployeesScreen() {
                   ]}
                 >
                   {resetPassword
-                    ? '? Gerar nova senha tempor?ria'
-                    : 'Gerar nova senha tempor?ria'}
+                    ? '✓ Gerar novo link de senha'
+                    : 'Gerar novo link de senha'}
                 </Text>
               </Pressable>
             ) : (
               <Text style={styles.hint}>
-                Uma senha tempor?ria ser? gerada automaticamente ao salvar.
+                Ao salvar, um link de uso único (válido por 2h) será gerado para
+                o profissional definir a senha.
               </Text>
             )}
           </View>
@@ -262,9 +376,9 @@ export default function EmployeesScreen() {
             <SofButton
               title={
                 loading
-                  ? 'Salvando?'
+                  ? 'Salvando…'
                   : isEditing
-                    ? 'Salvar altera??es'
+                    ? 'Salvar alterações'
                     : 'Adicionar'
               }
               variant="dark"
@@ -290,17 +404,33 @@ export default function EmployeesScreen() {
                 <Text style={styles.name}>{e.name}</Text>
                 <Text style={styles.meta}>{e.email || 'Sem e-mail de acesso'}</Text>
                 <Text style={styles.meta}>
-                  {(e.services || []).map((s) => s.name).join(', ') || '?'}
+                  {e.phone ? e.phone : 'Sem telefone'}
+                </Text>
+                <Text style={styles.meta}>
+                  {(e.services || []).map((s) => s.name).join(', ') || '—'}
                 </Text>
               </View>
               <View style={[styles.dot, { backgroundColor: e.color }]} />
             </View>
             <View style={styles.cardActions}>
-              <Pressable onPress={() => startEdit(e)}>
-                <Text style={styles.edit}>Editar</Text>
-              </Pressable>
-              <Pressable onPress={() => remove(e.id)}>
-                <Text style={styles.delete}>Remover</Text>
+              <View style={styles.cardActionsRow}>
+                <Pressable onPress={() => startEdit(e)}>
+                  <Text style={styles.edit}>Editar</Text>
+                </Pressable>
+                <Pressable onPress={() => remove(e.id)}>
+                  <Text style={styles.delete}>Remover</Text>
+                </Pressable>
+              </View>
+              <Pressable
+                onPress={() => sendInviteWhatsapp(e.id)}
+                disabled={sendingWa}
+                style={styles.waAction}
+              >
+                <Text style={styles.edit}>
+                  {sendingWa && inviteEmployeeId === e.id
+                    ? 'Enviando…'
+                    : 'Enviar senha no WhatsApp'}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -343,11 +473,12 @@ const styles = StyleSheet.create({
   hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
   code: { fontFamily: 'monospace', color: d.ink },
   tempPass: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
     color: d.ink,
     fontFamily: 'monospace',
+    lineHeight: 20,
   },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   colorSwatch: {
@@ -398,7 +529,16 @@ const styles = StyleSheet.create({
   name: { fontSize: 17, fontWeight: '700', color: d.ink },
   meta: { color: d.muted, fontSize: 13, marginTop: 4 },
   dot: { width: 14, height: 14, borderRadius: 7, marginTop: 4 },
-  cardActions: { flexDirection: 'row', gap: 16 },
+  cardActions: { gap: 10 },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  waAction: {
+    alignSelf: 'flex-start',
+    paddingTop: 2,
+  },
   edit: { color: d.accent, fontWeight: '600' },
   delete: { color: '#dc2626', fontWeight: '600' },
 });

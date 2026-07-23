@@ -8,6 +8,10 @@ import type {
   EmployeeSession,
   OpeningHours,
   Service,
+  SupportTicket,
+  SupportTicketComment,
+  SupportTicketStatus,
+  WhatsappHandoff,
 } from '@/src/api/types';
 
 export const authApi = {
@@ -43,6 +47,33 @@ export const employeeAuthApi = {
       body: { currentPassword, newPassword },
       auth: 'employee',
     }),
+  passwordSetupInfo: (token: string) =>
+    api<{
+      email: string;
+      name: string;
+      businessName: string;
+      expiresAt: string;
+    }>(`/employee-auth/password-setup?token=${encodeURIComponent(token)}`, {
+      auth: false,
+    }),
+  passwordSetup: (token: string, password: string) =>
+    api<{ employee: EmployeeSession; token: string }>(
+      '/employee-auth/password-setup',
+      {
+        method: 'POST',
+        body: { token, password },
+        auth: false,
+      },
+    ),
+  requestPasswordReset: (email: string) =>
+    api<{ ok: boolean; message: string }>(
+      '/employee-auth/request-password-reset',
+      {
+        method: 'POST',
+        body: { email },
+        auth: false,
+      },
+    ),
 };
 
 export const employeeApi = {
@@ -64,6 +95,14 @@ export const employeeApi = {
       method: 'POST',
       auth: 'employee',
     }),
+  completeAppointment: (id: string) =>
+    api<{ appointment: Appointment }>(
+      `/employee/appointments/${id}/complete`,
+      {
+        method: 'POST',
+        auth: 'employee',
+      },
+    ),
   clients: () =>
     api<{ clients: Client[] }>('/employee/clients', { auth: 'employee' }),
   createClient: (body: { name: string; phone: string }) =>
@@ -77,7 +116,13 @@ export const employeeApi = {
 };
 
 export const checkoutApi = {
-  create: (planName: string, name: string, email: string, password: string) =>
+  create: (
+    planName: string,
+    name: string,
+    email: string,
+    phone: string,
+    password: string,
+  ) =>
     api<{
       mode: 'redirect' | 'dev-approved';
       sessionId: string;
@@ -85,7 +130,7 @@ export const checkoutApi = {
       token?: string;
     }>('/checkout/create', {
       method: 'POST',
-      body: { planName, name, email, password },
+      body: { planName, name, email, phone, password },
       auth: false,
     }),
   status: (sessionId: string) =>
@@ -97,15 +142,27 @@ export const checkoutApi = {
     }>(`/checkout/status/${sessionId}`, { auth: false }),
 };
 
+export const plansApi = {
+  list: () =>
+    api<{
+      plans: { name: string; price: number; features: string[] }[];
+    }>('/plans', { auth: false }),
+};
+
 export const dashboardApi = {
   employees: () => api<{ employees: Employee[] }>('/employees'),
   createEmployee: (body: {
     name: string;
     email: string;
+    phone: string;
     serviceIds: string[];
     color?: string;
   }) =>
-    api<{ employee: Employee; temporaryPassword: string }>('/employees', {
+    api<{
+      employee: Employee;
+      resetLink: string;
+      expiresAt: string;
+    }>('/employees', {
       method: 'POST',
       body,
     }),
@@ -114,20 +171,29 @@ export const dashboardApi = {
     body: {
       name: string;
       email: string;
+      phone: string;
       serviceIds: string[];
       color?: string;
       resetPassword?: boolean;
     },
   ) =>
-    api<{ employee: Employee; temporaryPassword?: string }>(
-      `/employees/${id}`,
-      {
-        method: 'PUT',
-        body,
-      },
-    ),
+    api<{
+      employee: Employee;
+      resetLink?: string;
+      expiresAt?: string;
+    }>(`/employees/${id}`, {
+      method: 'PUT',
+      body,
+    }),
   deleteEmployee: (id: string) =>
     api<{ ok: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
+  sendEmployeePasswordLink: (id: string) =>
+    api<{
+      ok: boolean;
+      sent: boolean;
+      resetLink: string;
+      expiresAt: string;
+    }>(`/employees/${id}/send-password-link`, { method: 'POST' }),
   services: () => api<{ services: Service[] }>('/services'),
   createService: (body: { name: string; duration: number; price: number }) =>
     api<{ service: Service }>('/services', { method: 'POST', body }),
@@ -172,6 +238,10 @@ export const dashboardApi = {
       `/appointments/${id}${scope === 'series' ? '?scope=series' : ''}`,
       { method: 'DELETE' },
     ),
+  completeAppointment: (id: string) =>
+    api<{ appointment: Appointment }>(`/appointments/${id}/complete`, {
+      method: 'POST',
+    }),
   integrations: () =>
     api<{
       stripe: { configured: boolean };
@@ -188,7 +258,12 @@ export const dashboardApi = {
     whatsappPhoneNumberId?: string;
     openingHours?: OpeningHours;
     address?: string;
+    phone?: string;
     businessName?: string;
+    whatsappReminderMinutes?: number;
+    timezone?: string;
+    botPausedPermanent?: boolean;
+    botPausedUntil?: string | null;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
     api<{
@@ -215,6 +290,23 @@ export const dashboardApi = {
     api<{ ok: boolean; status: string }>('/account/whatsapp/disconnect', {
       method: 'POST',
     }),
+  whatsappHandoffs: (status?: 'open' | 'resolved') =>
+    api<{ handoffs: WhatsappHandoff[] }>(
+      `/whatsapp-handoffs${status ? `?status=${status}` : ''}`,
+    ),
+  whatsappHandoffSettings: () =>
+    api<{ threshold: number; allowed: number[] }>(
+      '/whatsapp-handoffs/settings',
+    ),
+  updateWhatsappHandoffSettings: (threshold: number) =>
+    api<{ threshold: number; allowed: number[] }>(
+      '/whatsapp-handoffs/settings',
+      { method: 'PUT', body: { threshold } },
+    ),
+  resolveWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/resolve`, {
+      method: 'POST',
+    }),
   simulateWhatsapp: (message: string, customerPhone: string) =>
     api<{
       replies: string[];
@@ -222,5 +314,50 @@ export const dashboardApi = {
     }>('/whatsapp/simulate', {
       method: 'POST',
       body: { message, customerPhone },
+    }),
+  tickets: (status?: SupportTicketStatus) =>
+    api<{ tickets: SupportTicket[] }>(
+      `/tickets${status ? `?status=${status}` : ''}`,
+    ),
+  ticket: (id: string) => api<{ ticket: SupportTicket }>(`/tickets/${id}`),
+  createTicket: (body: { title: string; description: string }) =>
+    api<{ ticket: SupportTicket }>('/tickets', { method: 'POST', body }),
+  commentTicket: (id: string, body: string) =>
+    api<{ comment: SupportTicketComment }>(`/tickets/${id}/comments`, {
+      method: 'POST',
+      body: { body },
+    }),
+  updateTicketStatus: (id: string, status: SupportTicketStatus) =>
+    api<{ ticket: SupportTicket }>(`/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+};
+
+export const employeeTicketsApi = {
+  list: (status?: SupportTicketStatus) =>
+    api<{ tickets: SupportTicket[] }>(
+      `/tickets${status ? `?status=${status}` : ''}`,
+      { auth: 'employee' },
+    ),
+  get: (id: string) =>
+    api<{ ticket: SupportTicket }>(`/tickets/${id}`, { auth: 'employee' }),
+  create: (body: { title: string; description: string }) =>
+    api<{ ticket: SupportTicket }>('/tickets', {
+      method: 'POST',
+      body,
+      auth: 'employee',
+    }),
+  comment: (id: string, body: string) =>
+    api<{ comment: SupportTicketComment }>(`/tickets/${id}/comments`, {
+      method: 'POST',
+      body: { body },
+      auth: 'employee',
+    }),
+  updateStatus: (id: string, status: SupportTicketStatus) =>
+    api<{ ticket: SupportTicket }>(`/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+      auth: 'employee',
     }),
 };

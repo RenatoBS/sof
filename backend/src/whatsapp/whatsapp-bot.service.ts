@@ -17,6 +17,8 @@ import {
   timeToMinutes,
 } from '../appointments/schedule-conflict';
 import { BookingNluService } from './booking-nlu.service';
+import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
+import { formatReminderLeadLabel } from '../reminders/reminder-window';
 
 type SessionData = {
   clientId?: string;
@@ -47,6 +49,10 @@ export type WhatsappBotResult = {
   replies: string[];
   interactive?: WhatsappInteractiveMenu[];
   appointment?: ReturnType<typeof serializeDates>;
+  /** Entrada inválida / não entendida — conta para escalonamento. */
+  unresolved?: boolean;
+  /** Cliente pediu atendimento humano. */
+  humanRequested?: boolean;
 };
 
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
@@ -59,6 +65,10 @@ const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;
 const SLOT_ID_RE = /^slot:(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/;
 const ADDRESS_RE =
   /\b(endere[cç]o|onde\s+fica|localiza[cç][aã]o|como\s+chegar|onde\s+voc[eê]s?\s+(fica|est[aã]o)|maps?)\b/i;
+// Só pedidos explícitos por atendimento humano — menções soltas a
+// "atendente"/"humano" seguem no fluxo normal do bot.
+const HUMAN_REQUEST_RE =
+  /\b(falar\s+com\s+(algu[eé]m|um\s+humano|(um[a]?\s+)?atendente|uma\s+pessoa(\s+real)?)|quero\s+(um[a]?\s+)?atendente|chama(r)?\s+(um[a]?\s+)?atendente|me\s+passa\s+(pro|para\s+[oa])\s+atendente|atendimento\s+humano|n[aã]o\s+quero\s+falar\s+com\s+(rob[oô]|bot))\b/i;
 
 function accountAddress(account: Account) {
   return String(account.address || '').trim();
@@ -78,6 +88,7 @@ export class WhatsappBotService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly nlu: BookingNluService,
+    private readonly employeeBot: WhatsappEmployeeBotService,
   ) {}
 
   /**
@@ -99,6 +110,15 @@ export class WhatsappBotService {
 
     const parsed = await this.nlu.extract({ text, services });
     if (!parsed) return null;
+
+    if (parsed.intent === 'human') {
+      return {
+        replies: [
+          'Combinado — vou avisar a equipe para te atender por aqui.',
+        ],
+        humanRequested: true,
+      };
+    }
 
     if (client && parsed.intent === 'cancel') {
       return this.startCancelFlow(account, client, services, phone);
@@ -182,7 +202,11 @@ export class WhatsappBotService {
   private menuReply(
     bodyText: string,
     choices: WhatsappMenuChoice[],
-    opts?: { listButton?: string; footerText?: string },
+    opts?: {
+      listButton?: string;
+      footerText?: string;
+      unresolved?: boolean;
+    },
   ): WhatsappBotResult {
     const numbered = choices
       .map((c, idx) => `${idx + 1}. ${c.title}`)
@@ -199,7 +223,12 @@ export class WhatsappBotService {
           footerText: opts?.footerText,
         },
       ],
+      ...(opts?.unresolved ? { unresolved: true } : {}),
     };
+  }
+
+  private withUnresolved(result: WhatsappBotResult): WhatsappBotResult {
+    return { ...result, unresolved: true };
   }
 
   private formatPrice(price: number) {
@@ -281,7 +310,7 @@ export class WhatsappBotService {
     const rows = await this.prisma.appointment.findMany({
       where: {
         accountId,
-        status: 'confirmed',
+        status: 'scheduled',
         kind: 'service',
         OR: [{ clientId }, { clientPhone: phone }],
         date: { gte: today },
@@ -304,6 +333,7 @@ export class WhatsappBotService {
     const choices: WhatsappMenuChoice[] = employees.map((e) => ({
       id: `emp:${e.id}`,
       title: e.name,
+      description: 'Profissional disponível',
     }));
     if (opts?.includeSofPick) {
       choices.push({
@@ -339,10 +369,22 @@ export class WhatsappBotService {
   }
 
   private confirmMenu(bodyText: string): WhatsappBotResult {
-    return this.menuReply(bodyText, [
-      { id: 'confirm:yes', title: 'Sim' },
-      { id: 'confirm:no', title: 'Não' },
-    ]);
+    return this.menuReply(
+      bodyText,
+      [
+        {
+          id: 'confirm:yes',
+          title: 'Sim',
+          description: 'Confirmar esta ação',
+        },
+        {
+          id: 'confirm:no',
+          title: 'Não',
+          description: 'Voltar sem confirmar',
+        },
+      ],
+      { listButton: 'Confirmar' },
+    );
   }
 
   private pad(n: number) {
@@ -618,6 +660,7 @@ export class WhatsappBotService {
       ...employees.map((e) => ({
         id: `emp:${e.id}`,
         title: e.name,
+        description: 'Profissional disponível',
       })),
       {
         id: 'path:time',
@@ -1176,6 +1219,17 @@ export class WhatsappBotService {
     const lower = trimmed.toLowerCase();
     const phone = normalizePhone(customerPhone) || customerPhone;
 
+    // Profissional com telefone cadastrado → fluxo próprio (não o de cliente).
+    const employee = await this.employeeBot.findEmployee(account.id, phone);
+    if (employee) {
+      return this.employeeBot.handleIncomingMessage({
+        account,
+        employee,
+        customerPhone: phone,
+        text: trimmed,
+      });
+    }
+
     if (lower === 'cancelar' || lower === '/reset' || lower === 'reset') {
       await this.resetSession(account.id, phone);
       return {
@@ -1189,6 +1243,15 @@ export class WhatsappBotService {
 
     if (ADDRESS_RE.test(trimmed) || lower === 'endereço' || lower === 'endereco') {
       return { replies: [formatAddressReply(account)] };
+    }
+
+    if (HUMAN_REQUEST_RE.test(trimmed)) {
+      return {
+        replies: [
+          'Combinado — vou avisar a equipe para te atender por aqui.',
+        ],
+        humanRequested: true,
+      };
     }
 
     const services = await this.prisma.service.findMany({
@@ -1344,15 +1407,19 @@ export class WhatsappBotService {
         );
         if (viaNlu) return viaNlu;
         if (client) {
-          return this.mainMenu(
-            account,
-            client,
-            services,
-            phone,
-            'Não entendi.',
+          return this.withUnresolved(
+            await this.mainMenu(
+              account,
+              client,
+              services,
+              phone,
+              'Não entendi.',
+            ),
           );
         }
-        return this.serviceMenu('Não entendi. Escolha um serviço:', services);
+        return this.withUnresolved(
+          this.serviceMenu('Não entendi. Escolha um serviço:', services),
+        );
       }
       const service = services[serviceIdx];
       return this.pathMenu(account, service, sessionData, phone);
@@ -1389,14 +1456,16 @@ export class WhatsappBotService {
         label: (a) => this.appointmentChoiceTitle(a),
       });
       if (idx === null) {
-        return this.menuReply(
-          'Não entendi. Qual horário você quer cancelar?',
-          future.map((a) => ({
-            id: `appt:${a.id}`,
-            title: this.appointmentChoiceTitle(a),
-            description: this.formatAppointmentLine(a),
-          })),
-          { listButton: 'Ver horários' },
+        return this.withUnresolved(
+          this.menuReply(
+            'Não entendi. Qual horário você quer cancelar?',
+            future.map((a) => ({
+              id: `appt:${a.id}`,
+              title: this.appointmentChoiceTitle(a),
+              description: this.formatAppointmentLine(a),
+            })),
+            { listButton: 'Ver horários' },
+          ),
         );
       }
 
@@ -1446,7 +1515,7 @@ export class WhatsappBotService {
           where: {
             id: apptId,
             accountId: account.id,
-            status: 'confirmed',
+            status: 'scheduled',
             OR: [{ clientId }, { clientPhone: phone }],
           },
           include: {
@@ -1465,7 +1534,7 @@ export class WhatsappBotService {
         where: {
           id: apptId,
           accountId: account.id,
-          status: 'confirmed',
+          status: 'scheduled',
           kind: 'service',
           OR: [{ clientId }, { clientPhone: phone }],
         },
@@ -1552,12 +1621,14 @@ export class WhatsappBotService {
         label: (e) => e.name,
       });
       if (idx === null) {
-        return this.pathMenu(
-          account,
-          service,
-          sessionData,
-          phone,
-          'Não entendi. Escolha um profissional ou Escolher horário:',
+        return this.withUnresolved(
+          await this.pathMenu(
+            account,
+            service,
+            sessionData,
+            phone,
+            'Não entendi. Escolha um profissional ou Escolher horário:',
+          ),
         );
       }
 
@@ -1640,12 +1711,14 @@ export class WhatsappBotService {
       }
 
       if (!chosen) {
-        return this.dayMenu(
-          account,
-          service,
-          sessionData,
-          phone,
-          'Não entendi. Escolha Hoje, Amanhã ou Outra data:',
+        return this.withUnresolved(
+          await this.dayMenu(
+            account,
+            service,
+            sessionData,
+            phone,
+            'Não entendi. Escolha Hoje, Amanhã ou Outra data:',
+          ),
         );
       }
 
@@ -1690,6 +1763,7 @@ export class WhatsappBotService {
           replies: [
             'Não consegui entender. Envie a data assim: 25/12\nOu digite /reset para recomeçar.',
           ],
+          unresolved: true,
         };
       }
 
@@ -1737,13 +1811,15 @@ export class WhatsappBotService {
       }
 
       if (!selection) {
-        return this.timeMenu(
-          account,
-          service,
-          sessionData,
-          phone,
-          date,
-          'Não entendi. Escolha um horário da lista ou toque em Outro horário:',
+        return this.withUnresolved(
+          await this.timeMenu(
+            account,
+            service,
+            sessionData,
+            phone,
+            date,
+            'Não entendi. Escolha um horário da lista ou toque em Outro horário:',
+          ),
         );
       }
 
@@ -1790,6 +1866,7 @@ export class WhatsappBotService {
           replies: [
             'Não consegui entender. Envie o horário assim: 15:00\nOu digite /reset para recomeçar.',
           ],
+          unresolved: true,
         };
       }
 
@@ -1874,10 +1951,12 @@ export class WhatsappBotService {
         label: (e) => e.name,
       });
       if (idx === null) {
-        return this.employeeMenu(
-          `Não entendi. Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
-          free,
-          { includeSofPick: true },
+        return this.withUnresolved(
+          this.employeeMenu(
+            `Não entendi. Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
+            free,
+            { includeSofPick: true },
+          ),
         );
       }
 
@@ -2001,7 +2080,7 @@ export class WhatsappBotService {
             date,
             time,
             price: service.price,
-            status: 'confirmed',
+            status: 'scheduled',
             source: 'whatsapp',
           },
         });
@@ -2010,11 +2089,18 @@ export class WhatsappBotService {
         this.realtime.broadcast(account.id, 'appointment:created', {
           appointment: shaped,
         });
+        const lead = Number(account.whatsappReminderMinutes) || 0;
+        const leadLabel = formatReminderLeadLabel(lead);
+        const reminderLine =
+          lead > 0
+            ? ` Você recebe um lembrete no WhatsApp ${leadLabel} antes do horário.`
+            : '';
+        const address = accountAddress(account);
         return {
           replies: [
-            accountAddress(account)
-              ? `Marcado! Você recebe um lembrete antes do horário.\nEndereço: ${accountAddress(account)}\nAté lá!`
-              : 'Marcado! Você recebe um lembrete antes do horário. Até lá!',
+            address
+              ? `Marcado!${reminderLine}\nEndereço: ${address}\nAté lá!`
+              : `Marcado!${reminderLine} Até lá!`,
           ],
           appointment: shaped,
         };

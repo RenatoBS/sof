@@ -24,7 +24,9 @@ function revenueFor(
   filter: 'day' | 'week' | 'month',
 ) {
   const confirmed = appointments.filter(
-    (a) => a.status === 'confirmed' && a.kind !== 'block',
+    (a) =>
+      (a.status === 'scheduled' || a.status === 'completed') &&
+      a.kind !== 'block',
   );
   const today = new Date();
   const todayStr = localDateStr(today);
@@ -65,7 +67,11 @@ export default function BillingScreen() {
   );
 
   const rows = appointments
-    .filter((a) => a.status === 'confirmed' && a.kind !== 'block')
+    .filter(
+      (a) =>
+        (a.status === 'scheduled' || a.status === 'completed') &&
+        a.kind !== 'block',
+    )
     .sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`));
 
   return (
@@ -89,7 +95,7 @@ export default function BillingScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Agendamentos Confirmados</Text>
+        <Text style={styles.cardTitle}>Agendamentos</Text>
         {rows.length === 0 ? (
           <Text style={styles.empty}>Nenhum agendamento confirmado</Text>
         ) : (

@@ -19,8 +19,10 @@ Para agentes de IA e visão completa do projeto, comece por:
 ## Estrutura
 
 ```
-backend/           NestJS + Prisma (API em /api/*)
-frontend/          Expo + expo-router (RN + Web)
+backend/           NestJS + Prisma (API produto /api/*)
+frontend/          Expo + expo-router (produto)
+admin-backend/     NestJS (painel admin Sof, mesmo Postgres)
+admin-frontend/    Expo Web (painel admin)
 docker-compose.yml PostgreSQL 16 (dev local)
 ```
 
@@ -86,6 +88,8 @@ Configure `EXPO_PUBLIC_API_URL=http://localhost:3001` no `.env`.
 npm run db:up
 npm run backend:dev
 npm run frontend:web
+npm run admin-backend:dev
+npm run admin-frontend:web
 ```
 
 ## Deploy Heroku (API + front web)

@@ -51,6 +51,7 @@ export default function RootLayout() {
             <Stack.Screen name="about" />
             <Stack.Screen name="login" />
             <Stack.Screen name="profissional/login" />
+            <Stack.Screen name="profissional/definir-senha" />
             <Stack.Screen name="checkout-return" />
             <Stack.Screen name="(dashboard)" />
             <Stack.Screen name="(profissional)" />

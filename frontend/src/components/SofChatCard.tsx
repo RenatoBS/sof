@@ -35,7 +35,7 @@ export function SofChatCard() {
         </View>
         <View style={[styles.msg, styles.them]}>
           <Text style={styles.msgText}>
-            Marcado. Você recebe um lembrete uma hora antes.
+            Marcado. Você recebe um lembrete no WhatsApp antes do horário.
           </Text>
         </View>
       </View>

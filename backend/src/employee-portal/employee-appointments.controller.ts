@@ -19,6 +19,12 @@ import {
   validateAppointmentPayload,
 } from '../appointments/appointment-payload';
 import {
+  APPT_AGENDA_VISIBLE,
+  APPT_STATUS,
+  appointmentDurationMinutes,
+  canCompleteAppointment,
+} from '../appointments/appointment-status';
+import {
   EmployeeAuthGuard,
   type EmployeeAuthedRequest,
 } from './employee-auth.guard';
@@ -37,7 +43,7 @@ export class EmployeeAppointmentsController {
       where: {
         accountId: req.account.id,
         employeeId: req.employee.id,
-        status: 'confirmed',
+        status: { in: [...APPT_AGENDA_VISIBLE] },
       },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
     });
@@ -84,7 +90,7 @@ export class EmployeeAppointmentsController {
         id: appointmentId,
         accountId: req.account.id,
         employeeId: req.employee.id,
-        status: 'confirmed',
+        status: APPT_STATUS.SCHEDULED,
       },
     });
     if (!existing) {
@@ -93,7 +99,50 @@ export class EmployeeAppointmentsController {
 
     const appointment = await this.prisma.appointment.update({
       where: { id: existing.id },
-      data: { status: 'cancelled' },
+      data: { status: APPT_STATUS.CANCELLED },
+    });
+    const shaped = serializeDates(appointment);
+    this.realtime.broadcast(req.account.id, 'appointment:updated', {
+      appointment: shaped,
+    });
+    return { appointment: shaped };
+  }
+
+  @Post('appointments/:appointmentId/complete')
+  async complete(
+    @Req() req: EmployeeAuthedRequest,
+    @Param('appointmentId') appointmentId: string,
+  ) {
+    const existing = await this.prisma.appointment.findFirst({
+      where: {
+        id: appointmentId,
+        accountId: req.account.id,
+        employeeId: req.employee.id,
+      },
+      include: { service: { select: { duration: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException({ error: 'Agendamento não encontrado.' });
+    }
+
+    const check = canCompleteAppointment({
+      status: existing.status,
+      date: existing.date,
+      time: existing.time,
+      durationMinutes: appointmentDurationMinutes(existing),
+      timezone: req.account.timezone,
+      actor: 'employee',
+    });
+    if (!check.ok) {
+      throw new BadRequestException({ error: check.error });
+    }
+
+    const appointment = await this.prisma.appointment.update({
+      where: { id: existing.id },
+      data: {
+        status: APPT_STATUS.COMPLETED,
+        completedAt: new Date(),
+      },
     });
     const shaped = serializeDates(appointment);
     this.realtime.broadcast(req.account.id, 'appointment:updated', {

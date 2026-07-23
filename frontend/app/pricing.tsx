@@ -5,12 +5,12 @@ import { Eyebrow, Wrap } from '@/src/components/ui';
 import {
   CheckoutModal,
   PricingCards,
-  PLANS,
+  type MarketingPlan,
 } from '@/src/features/marketing/CheckoutModal';
 import { m } from '@/src/theme/marketing';
 
 export default function PricingScreen() {
-  const [checkout, setCheckout] = useState<(typeof PLANS)[number] | null>(null);
+  const [checkout, setCheckout] = useState<MarketingPlan | null>(null);
 
   return (
     <ScrollView style={styles.page}>

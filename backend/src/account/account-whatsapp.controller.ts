@@ -47,9 +47,14 @@ function mapUazapiError(err: unknown): never {
   });
 }
 
+const WEBHOOK_RESYNC_MS = 60 * 60 * 1000;
+
 @Controller('api/account/whatsapp')
 @UseGuards(AuthGuard)
 export class AccountWhatsappController {
+  /** Última sincronização de webhook por instância (evita reconfigurar a cada poll). */
+  private readonly webhookSyncedAt = new Map<string, number>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -248,20 +253,29 @@ export class AccountWhatsappController {
 
     const linked = live.status === 'connected';
 
-    if (linked && !account.whatsappConnectedAt) {
-      const callbackUrl = this.webhookCallbackUrl();
-      try {
-        await this.api.configureUazapiWebhook(
-          callbackUrl,
-          account.whatsappInstanceToken,
-        );
-      } catch (err) {
-        console.warn(
-          '[whatsapp] Falha ao configurar webhook após conexão:',
-          err instanceof Error ? err.message : err,
-        );
+    if (linked) {
+      // Garante o webhook com a config atual (action: replace é idempotente),
+      // no máx. 1x/hora por instância. Cobre instâncias pareadas antes de
+      // mudanças na config — ex. permitir fromMe p/ detectar resposta humana.
+      const token = account.whatsappInstanceToken;
+      const last = this.webhookSyncedAt.get(token) || 0;
+      if (Date.now() - last > WEBHOOK_RESYNC_MS) {
+        try {
+          await this.api.configureUazapiWebhook(
+            this.webhookCallbackUrl(),
+            token,
+          );
+          this.webhookSyncedAt.set(token, Date.now());
+        } catch (err) {
+          console.warn(
+            '[whatsapp] Falha ao configurar webhook após conexão:',
+            err instanceof Error ? err.message : err,
+          );
+        }
       }
+    }
 
+    if (linked && !account.whatsappConnectedAt) {
       const instanceId =
         live.instanceId || account.whatsappPhoneNumberId || '';
       await this.prisma.account.update({

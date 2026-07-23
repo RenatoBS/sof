@@ -5,7 +5,13 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import type { Appointment, Client, Employee, Service } from '@/src/api/types';
+import type {
+  Appointment,
+  Client,
+  Employee,
+  Service,
+  WhatsappHandoff,
+} from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 
 type DashboardContextValue = {
@@ -13,12 +19,14 @@ type DashboardContextValue = {
   services: Service[];
   clients: Client[];
   appointments: Appointment[];
+  handoffs: WhatsappHandoff[];
   loading: boolean;
   loadAll: () => Promise<void>;
   setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
   setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
   setServices: React.Dispatch<React.SetStateAction<Service[]>>;
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
+  setHandoffs: React.Dispatch<React.SetStateAction<WhatsappHandoff[]>>;
   getEmployee: (id: string) => Employee | undefined;
   getService: (id: string) => Service | undefined;
   getClient: (id: string) => Client | undefined;
@@ -31,21 +39,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [services, setServices] = useState<Service[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [handoffs, setHandoffs] = useState<WhatsappHandoff[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, s, c, a] = await Promise.all([
+      const [e, s, c, a, h] = await Promise.all([
         dashboardApi.employees(),
         dashboardApi.services(),
         dashboardApi.clients(),
         dashboardApi.appointments(),
+        dashboardApi.whatsappHandoffs(),
       ]);
       setEmployees(e.employees);
       setServices(s.services);
       setClients(c.clients);
       setAppointments(a.appointments);
+      setHandoffs(h.handoffs);
     } finally {
       setLoading(false);
     }
@@ -72,12 +83,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       services,
       clients,
       appointments,
+      handoffs,
       loading,
       loadAll,
       setAppointments,
       setEmployees,
       setServices,
       setClients,
+      setHandoffs,
       getEmployee,
       getService,
       getClient,
@@ -87,6 +100,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       services,
       clients,
       appointments,
+      handoffs,
       loading,
       loadAll,
       getEmployee,

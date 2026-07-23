@@ -15,6 +15,9 @@ export function publicAccount(account: Account | null) {
     whatsappConnectedAt: account.whatsappConnectedAt
       ? account.whatsappConnectedAt.toISOString()
       : null,
+    botPausedUntil: account.botPausedUntil
+      ? account.botPausedUntil.toISOString()
+      : null,
   };
 }
 
@@ -27,6 +30,7 @@ export function publicEmployeeSession(
     accountId: employee.accountId,
     name: employee.name,
     email: employee.email || '',
+    phone: employee.phone || '',
     color: employee.color,
     mustChangePassword: employee.mustChangePassword,
     businessName: account.businessName,
