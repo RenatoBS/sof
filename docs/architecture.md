@@ -84,7 +84,7 @@ Plan          (catálogo Sof ↔ stripeProductId / stripePriceId / paymentLinkUr
 
 Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
 
-`Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `paymentLinkUrl`, `features` (JSON), `active`, `sortOrder`. Admin com Stripe cria Product + Price + Payment Link juntos. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` se a tabela estiver vazia.
+`Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `paymentLinkUrl`, `features` (JSON), `active`, `sortOrder`. Admin com Stripe cria Product + Price + Payment Link juntos; `DELETE` desativa o link e remove/arquiva o produto na Stripe antes de apagar o registro. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` se a tabela estiver vazia.
 
 `AdminUser`: email/senha dos operadores do `admin-backend`.
 

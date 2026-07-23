@@ -1,6 +1,25 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+
+function stripeErrorMessage(err: unknown): string {
+  if (err instanceof Stripe.errors.StripeError) {
+    return err.message || `Stripe: ${err.type}`;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return 'Falha ao comunicar com a Stripe.';
+}
+
+function isStripeMissing(err: unknown) {
+  return (
+    err instanceof Stripe.errors.StripeInvalidRequestError &&
+    err.code === 'resource_missing'
+  );
+}
 
 @Injectable()
 export class StripeCatalogService {
@@ -25,6 +44,10 @@ export class StripeCatalogService {
       });
     }
     return this.client;
+  }
+
+  private rethrowStripe(err: unknown): never {
+    throw new BadGatewayException({ error: stripeErrorMessage(err) });
   }
 
   async createPaymentLink(priceId: string) {
@@ -104,5 +127,88 @@ export class StripeCatalogService {
   async setProductActive(productId: string, active: boolean) {
     const stripe = this.requireClient();
     await stripe.products.update(productId, { active });
+  }
+
+  /**
+   * Remove catálogo na Stripe o máximo possível:
+   * - Payment Links não têm DELETE → desativa (`active: false`)
+   * - Prices só arquivam
+   * - Product: tenta `del`; se a Stripe recusar (ex.: tem prices), arquiva
+   * Qualquer erro da Stripe sobe para o front (não apaga o plano local).
+   */
+  async deleteCatalogResources(input: {
+    productId: string;
+    priceId?: string;
+    paymentLinkUrl?: string;
+  }) {
+    const stripe = this.requireClient();
+    const productId = input.productId.trim();
+    const priceIds = new Set<string>();
+    if (input.priceId?.startsWith('price_')) {
+      priceIds.add(input.priceId);
+    }
+
+    try {
+      if (productId.startsWith('prod_')) {
+        const prices = await stripe.prices.list({
+          product: productId,
+          limit: 100,
+        });
+        for (const price of prices.data) {
+          priceIds.add(price.id);
+        }
+      }
+
+      const paymentLinkUrl = String(input.paymentLinkUrl || '').trim();
+      for await (const link of stripe.paymentLinks.list({
+        limit: 100,
+        active: true,
+      })) {
+        let matches = paymentLinkUrl !== '' && link.url === paymentLinkUrl;
+        if (!matches && priceIds.size > 0) {
+          const items = await stripe.paymentLinks.listLineItems(link.id, {
+            limit: 20,
+          });
+          matches = items.data.some((li) => {
+            const id =
+              typeof li.price === 'string' ? li.price : li.price?.id || '';
+            return Boolean(id && priceIds.has(id));
+          });
+        }
+        if (matches) {
+          await stripe.paymentLinks.update(link.id, { active: false });
+        }
+      }
+
+      for (const priceId of priceIds) {
+        try {
+          await stripe.prices.update(priceId, { active: false });
+        } catch (err) {
+          if (!isStripeMissing(err)) throw err;
+        }
+      }
+
+      if (!productId.startsWith('prod_')) return;
+
+      try {
+        await stripe.products.del(productId);
+      } catch (err) {
+        if (isStripeMissing(err)) return;
+        // Produto com Price associado não pode ser deletado — arquiva.
+        try {
+          await stripe.products.update(productId, { active: false });
+        } catch (archiveErr) {
+          if (!isStripeMissing(archiveErr)) throw archiveErr;
+        }
+      }
+    } catch (err) {
+      if (
+        err instanceof BadGatewayException ||
+        err instanceof ServiceUnavailableException
+      ) {
+        throw err;
+      }
+      this.rethrowStripe(err);
+    }
   }
 }

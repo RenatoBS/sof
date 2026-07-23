@@ -38,7 +38,7 @@ Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — pro
 
 A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
 
-Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback legado em `common/plans.ts` / `CheckoutModal` se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl` (criados automaticamente pelo admin ao sincronizar Product/Price).
+Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback legado em `common/plans.ts` / `CheckoutModal` se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl` (criados automaticamente pelo admin ao sincronizar Product/Price). Apagar plano no admin desativa o Payment Link e remove/arquiva o Product na Stripe via API; erro da Stripe é devolvido ao front e o registro local permanece.
 
 ## Painel admin Sof (plataforma)
 
@@ -52,7 +52,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Editar conta / plano / status | `/edit-account` | `PUT /api/accounts/:id` |
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos | `/plans` | `GET /api/plans` |
-| Criar / editar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT /api/plans` |
+| Criar / editar / apagar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT/DELETE /api/plans` |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 

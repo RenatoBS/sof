@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Apagar plano no admin limpa Stripe via API
+
+- **Contexto:** Product/Payment Link criados por API só se removem por API; o admin não tinha exclusão e deixava órfãos na Stripe.  
+- **Decisão:** `DELETE /api/plans/:id` desativa Payment Links (`active: false` — Stripe não tem DELETE), arquiva Prices, tenta `products.del` e se a Stripe recusar (ex.: Price associado) arquiva o Product. Só então apaga o `Plan` local. Erro da Stripe → `502` com a mensagem no front; plano permanece.  
+- **Consequências:** Botão **Apagar plano** em `/edit-plan`; sem `STRIPE_SECRET_KEY` não apaga planos que tenham IDs/URL Stripe.  
+- **Alternativas descartadas:** Soft-delete só no Sof; apagar DB sem tocar Stripe; exigir `stripePaymentLinkId` no schema antes de limpar.
+
+---
+
 ## 2026-07-23 — Admin cria Payment Link junto com Product/Price
 
 - **Contexto:** Ao criar plano no painel admin com Stripe, só Product + Price eram sincronizados; `paymentLinkUrl` ficava vazio e o link tinha que ser colado à mão.  

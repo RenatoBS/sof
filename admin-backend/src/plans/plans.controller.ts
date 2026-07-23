@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -253,5 +254,34 @@ export class PlansController {
       data,
     });
     return { plan: publicPlan(updated) };
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    const plan = await this.prisma.plan.findUnique({ where: { id } });
+    if (!plan) throw new NotFoundException({ error: 'Plano não encontrado.' });
+
+    const hasStripeProduct = plan.stripeProductId.startsWith('prod_');
+    const hasStripePrice = plan.stripePriceId.startsWith('price_');
+    const hasPaymentLink = Boolean(plan.paymentLinkUrl?.trim());
+    const needsStripeCleanup =
+      hasStripeProduct || hasStripePrice || hasPaymentLink;
+
+    if (needsStripeCleanup) {
+      if (!this.stripe.isConfigured()) {
+        throw new BadRequestException({
+          error:
+            'Este plano tem recursos na Stripe. Configure STRIPE_SECRET_KEY para apagá-los via API.',
+        });
+      }
+      await this.stripe.deleteCatalogResources({
+        productId: plan.stripeProductId,
+        priceId: plan.stripePriceId,
+        paymentLinkUrl: plan.paymentLinkUrl,
+      });
+    }
+
+    await this.prisma.plan.delete({ where: { id } });
+    return { ok: true };
   }
 }

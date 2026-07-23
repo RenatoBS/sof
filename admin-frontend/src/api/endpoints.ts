@@ -129,6 +129,8 @@ export const plansApi = {
     }>,
   ) =>
     api<{ plan: PlanRow }>(`/plans/${id}`, { method: 'PUT', body }),
+  remove: (id: string) =>
+    api<{ ok: boolean }>(`/plans/${id}`, { method: 'DELETE' }),
 };
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
