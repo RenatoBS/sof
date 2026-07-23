@@ -132,12 +132,9 @@ export class WhatsappEmployeeBotService {
       await this.saveSession(account.id, phone, { step, data });
     }
 
-    // NLU no menu (áudio/frase livre). Depois do 1º cumprimento o step
-    // fica em emp:awaiting_menu_action — era exatamente aí que o áudio
-    // era transcrito mas a intenção era ignorada.
-    const onMenu =
-      step === 'emp:start' || step === 'emp:awaiting_menu_action';
-    if (onMenu && this.looksLikeFreeText(trimmed)) {
+    // NLU em frase/áudio livre — no menu e também como interrupção
+    // no meio do fluxo (ex.: estava escolhendo horário e mandou "cancela…").
+    if (this.shouldTryEmployeeNlu(step, trimmed)) {
       const viaNlu = await this.tryEmployeeNlu(
         account,
         employee,
@@ -383,6 +380,27 @@ export class WhatsappEmployeeBotService {
     return t.split(/\s+/).filter(Boolean).length >= 2 || t.length >= 8;
   }
 
+  private shouldTryEmployeeNlu(step: string, text: string) {
+    if (!this.looksLikeFreeText(text)) return false;
+    if (
+      step === 'emp:awaiting_confirmation' ||
+      step === 'emp:awaiting_cancel_confirm' ||
+      step === 'emp:awaiting_custom_time' ||
+      step === 'emp:awaiting_client_phone'
+    ) {
+      return false;
+    }
+    if (step === 'emp:start' || step === 'emp:awaiting_menu_action') {
+      return true;
+    }
+    // Interrompe fluxo guiado se parecer comando novo (típico de áudio).
+    return (
+      /\b(agenda|marcar|agendar|cancelar|desmarcar|evento|bloquear|mostra|ver\s+(a\s+)?minha|me\s+fala|me\s+mostra)\b/i.test(
+        text,
+      ) || text.trim().split(/\s+/).filter(Boolean).length >= 6
+    );
+  }
+
   private async tryEmployeeNlu(
     account: Account,
     employee: Employee & {
@@ -398,16 +416,43 @@ export class WhatsappEmployeeBotService {
     const services = employee.services.map((l) => l.service);
 
     // Frases completas (áudio) → LLM primeiro; heurística só como fallback.
-    // Antes a heurística engolia "marca um corte pra Ana…" e abria só o menu.
     let parsed: Awaited<ReturnType<typeof this.extractEmployeeIntent>> = null;
     if (apiKey && words.length >= 3) {
       parsed = await this.extractEmployeeIntent(text, services, account);
     }
+
+    const heuristic = this.heuristicEmployeeIntent(text, account);
     if (!parsed || parsed.intent === 'other') {
-      const heuristic = this.heuristicEmployeeIntent(text, account);
       if (!heuristic) return null;
       parsed = heuristic;
+    } else if (heuristic) {
+      // Completa lacunas do LLM com heurística (datas faladas, nome, hora).
+      parsed = {
+        ...parsed,
+        date: parsed.date || heuristic.date,
+        time: parsed.time || heuristic.time,
+        clientName: parsed.clientName || heuristic.clientName,
+        title: parsed.title || heuristic.title,
+      };
     }
+
+    // Datas faladas no texto têm prioridade (ex.: "28 do 7", "terça que vem").
+    const spokenDate = this.parseRelativeDatePt(text, account);
+    if (spokenDate) parsed.date = spokenDate;
+    const spokenTime = this.parseTimeFromFreeText(text);
+    if (spokenTime) parsed.time = spokenTime;
+    const spokenClient = this.extractClientNameHeuristic(text);
+    if (spokenClient && !parsed.clientName) parsed.clientName = spokenClient;
+
+    console.log(
+      `[whatsapp] NLU emp: ${JSON.stringify({
+        intent: parsed.intent,
+        date: parsed.date,
+        time: parsed.time,
+        clientName: parsed.clientName,
+        serviceId: parsed.serviceId,
+      })}`,
+    );
 
     if (parsed.intent === 'agenda') {
       const date =
@@ -415,7 +460,11 @@ export class WhatsappEmployeeBotService {
       return this.showAgenda(account, employee, phone, date);
     }
     if (parsed.intent === 'cancel') {
-      return this.startCancel(account, employee, phone);
+      return this.startCancel(account, employee, phone, {
+        clientName: parsed.clientName,
+        date: parsed.date,
+        time: parsed.time,
+      });
     }
     if (parsed.intent === 'event') {
       if (parsed.title) {
@@ -498,18 +547,24 @@ export class WhatsappEmployeeBotService {
     clientName?: string;
   } | null {
     const lower = text.toLowerCase();
-    if (/\b(cancelar|desmarcar|remover\s+hor[aá]rio)\b/.test(lower)) {
-      return { intent: 'cancel' };
+    const relativeDate = this.parseRelativeDatePt(text, account);
+    const time = this.parseTimeFromFreeText(text);
+    const clientName = this.extractClientNameHeuristic(text);
+
+    if (/\b(cancelar|desmarcar|cancela)\b/.test(lower)) {
+      return {
+        intent: 'cancel',
+        date: relativeDate || undefined,
+        time: time || undefined,
+        clientName: clientName || undefined,
+      };
     }
     if (/\b(evento|bloquear|bloqueio|almo[cç]o)\b/.test(lower)) {
       return { intent: 'event' };
     }
 
-    const relativeDate = this.parseRelativeDatePt(text, account);
-    const time = this.parseTimeFromFreeText(text);
-
     if (
-      /\b(agenda|hor[aá]rios?|o\s+que\s+tenho|meus?\s+hor[aá]rios?)\b/.test(
+      /\b(agenda|hor[aá]rios?|o\s+que\s+tenho|meus?\s+hor[aá]rios?|me\s+(fala|mostra))\b/.test(
         lower,
       )
     ) {
@@ -521,9 +576,6 @@ export class WhatsappEmployeeBotService {
     }
 
     if (/\b(agendar|marcar|novo\s+agendamento)\b/.test(lower)) {
-      // Sem LLM: só avança se der para montar algo útil; senão null
-      // e o fluxo cai no menu (melhor que engolir a frase).
-      const clientName = this.extractClientNameHeuristic(text);
       return {
         intent: 'book',
         date: relativeDate || undefined,
@@ -535,16 +587,31 @@ export class WhatsappEmployeeBotService {
   }
 
   private extractClientNameHeuristic(text: string): string | null {
-    const m =
-      /\b(?:para|pra|pro|cliente)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,3})(?:\s+(?:para|pra|pro|na|no|em|dia|hoje|amanh|seg|ter|qua|qui|sex|s[aá]b|dom|\d)|$)/i.exec(
-        text,
-      );
-    if (!m) return null;
-    const name = m[1].replace(/\s+/g, ' ').trim();
-    if (name.length < 2) return null;
-    const stop = /^(o|a|um|uma|hoje|amanh[aã]|dia|horario|horário)$/i;
-    if (stop.test(name)) return null;
-    return name;
+    const patterns = [
+      /\b(?:cliente)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,3})/i,
+      /\b(?:para|pra|pro|com|da|do)\s+(?:a|o)?\s*([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,3})/i,
+    ];
+    for (const re of patterns) {
+      const m = re.exec(text);
+      if (!m) continue;
+      let name = m[1].replace(/\s+/g, ' ').trim();
+      // Corta em marcadores de data/hora que às vezes grudam no match.
+      name = name
+        .split(
+          /\s+(?:para|pra|pro|amanh|hoje|às|as|no|na|dia|seg|ter|qua|qui|sex|s[aá]b|dom)\b/i,
+        )[0]
+        .trim();
+      if (name.length < 2) continue;
+      if (
+        /^(o|a|um|uma|hoje|amanh[aã]|dia|horario|horário|cliente|agenda|corte)$/i.test(
+          name,
+        )
+      ) {
+        continue;
+      }
+      return name;
+    }
+    return null;
   }
 
   private parseTimeFromFreeText(text: string): string | null {
@@ -552,7 +619,8 @@ export class WhatsappEmployeeBotService {
     if (/\bmeio[\s-]?dia\b/.test(lower)) return '12:00';
 
     const patterns = [
-      /\b(?:às|as)\s*(\d{1,2})(?::(\d{2}))?\s*(?:h|hrs?|horas?)?\b/,
+      /\b(?:às|as)\s*(\d{1,2})[:h\.]?(\d{2})?\s*(?:h|hrs?|horas?)?\b/,
+      /\b(\d{1,2})\s*h\s*(\d{2})\b/,
       /\b(\d{1,2}):(\d{2})\b/,
       /\b(\d{1,2})\s*h(?:oras?)?\b/,
     ];
@@ -569,7 +637,7 @@ export class WhatsappEmployeeBotService {
     return null;
   }
 
-  /** Resolve "terça que vem", "sexta-feira", "amanhã", dd/mm. */
+  /** Resolve "terça que vem", "sexta-feira", "28 do 7", "28 de julho", "amanhã". */
   private parseRelativeDatePt(text: string, account: Account): string | null {
     const lower = text
       .toLowerCase()
@@ -583,9 +651,13 @@ export class WhatsappEmployeeBotService {
       d.setDate(d.getDate() + 1);
       return this.localDateStr(d);
     }
+
+    const spoken = this.parseSpokenDayMonth(lower, base);
+    if (spoken) return spoken;
+
     const dm = /(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/.exec(lower);
     if (dm) {
-      return this.parseDateInput(`${dm[1]}/${dm[2]}`, account);
+      return this.buildFutureDate(base, Number(dm[1]), Number(dm[2]));
     }
 
     const days: Array<{ re: RegExp; dow: number }> = [
@@ -607,6 +679,58 @@ export class WhatsappEmployeeBotService {
       );
     }
     return null;
+  }
+
+  /** "28 do 7", "28 de julho", "dia 28 do setimo", "28 do sétimo". */
+  private parseSpokenDayMonth(lowerNorm: string, base: Date): string | null {
+    const byToken: Record<string, number> = {
+      janeiro: 1,
+      fevereiro: 2,
+      marco: 3,
+      abril: 4,
+      maio: 5,
+      junho: 6,
+      julho: 7,
+      setimo: 7,
+      agosto: 8,
+      oitavo: 8,
+      setembro: 9,
+      nono: 9,
+      outubro: 10,
+      decimo: 10,
+      novembro: 11,
+      dezembro: 12,
+    };
+
+    // "28 do 7" / "28 de 7" / "dia 28 do 7"
+    const num = /(?:\bdia\s+)?(\d{1,2})\s+(?:do|de)\s+(\d{1,2})\b/.exec(
+      lowerNorm,
+    );
+    if (num) {
+      return this.buildFutureDate(base, Number(num[1]), Number(num[2]));
+    }
+
+    // "28 de julho" / "28 do setimo" / "dia 28 de setembro"
+    const named =
+      /(?:\bdia\s+)?(\d{1,2})\s+(?:do|de)\s+([a-z]+)\b/.exec(lowerNorm);
+    if (named) {
+      const month = byToken[named[2]];
+      if (month) return this.buildFutureDate(base, Number(named[1]), month);
+    }
+    return null;
+  }
+
+  private buildFutureDate(base: Date, day: number, month: number) {
+    if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+    let year = base.getFullYear();
+    let d = new Date(year, month - 1, day);
+    if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+    const today = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    if (d < today) {
+      year += 1;
+      d = new Date(year, month - 1, day);
+    }
+    return this.localDateStr(d);
   }
 
   private nextWeekday(from: Date, targetDow: number, forceNextWeek: boolean) {
@@ -665,9 +789,9 @@ export class WhatsappEmployeeBotService {
       'Responda SOMENTE JSON:',
       '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário) ou "other"',
       '- serviceId: id do serviço mais próximo do que foi dito, ou null',
-      '- date: YYYY-MM-DD ou null — resolva "hoje", "amanhã", "sexta", "sexta-feira", "terça que vem", "próxima quinta"',
-      '- time: HH:MM 24h ou null — "13h"/"1 da tarde"=13:00, "meio-dia"=12:00',
-      '- clientName: nome do cliente se citado (ex.: "Ana Souza"), senão null',
+      '- date: YYYY-MM-DD ou null — resolva "hoje", "amanhã", "sexta", "terça que vem", "semana que vem", "28 do 7", "28 de julho", "28 do sétimo", "dia 28 de setembro"',
+      '- time: HH:MM 24h ou null — "13h"/"13 horas"=13:00, "9h30"=09:30, "meio-dia"=12:00',
+      '- clientName: nome do cliente se citado (ex.: "Ana Sousa", "Gabriela Dias"), senão null',
       '- title: título do evento se intent=event, senão null',
       '',
       'Preencha TODOS os campos que a frase trouxer. Não invente serviço fora da lista.',
@@ -943,8 +1067,9 @@ export class WhatsappEmployeeBotService {
     account: Account,
     employee: Employee,
     phone: string,
+    filter?: { clientName?: string; date?: string; time?: string },
   ) {
-    const list = await this.listFutureForEmployee(account.id, employee.id);
+    let list = await this.listFutureForEmployee(account.id, employee.id);
     if (list.length === 0) {
       return this.mainMenu(
         account,
@@ -953,6 +1078,52 @@ export class WhatsappEmployeeBotService {
         'Você não tem horários futuros para cancelar.',
       );
     }
+
+    if (filter?.date || filter?.time || filter?.clientName) {
+      const nameNeedle = (filter.clientName || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const filtered = list.filter((a) => {
+        if (filter.date && a.date !== filter.date) return false;
+        if (filter.time && a.time !== filter.time) return false;
+        if (nameNeedle) {
+          const client = String(a.clientName || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+          if (!client.includes(nameNeedle) && !nameNeedle.includes(client)) {
+            // match parcial por primeiro+último token
+            const tokens = nameNeedle.split(/\s+/).filter((t) => t.length >= 3);
+            if (!tokens.every((t) => client.includes(t))) return false;
+          }
+        }
+        return true;
+      });
+      if (filtered.length === 1) {
+        const appt = filtered[0];
+        await this.saveSession(account.id, phone, {
+          step: 'emp:awaiting_cancel_confirm',
+          data: {
+            role: 'employee',
+            employeeId: employee.id,
+            cancelAppointmentId: appt.id,
+          },
+        });
+        return this.confirmMenu(`Cancelar ${this.formatApptLine(appt)}?`);
+      }
+      if (filtered.length > 1) {
+        list = filtered;
+      } else if (filter.date || filter.time || filter.clientName) {
+        return this.mainMenu(
+          account,
+          employee,
+          phone,
+          'Não achei um horário com esses dados. Quer tentar de outro jeito?',
+        );
+      }
+    }
+
     await this.saveSession(account.id, phone, {
       step: 'emp:awaiting_cancel_pick',
       data: { role: 'employee', employeeId: employee.id },
@@ -1441,17 +1612,13 @@ export class WhatsappEmployeeBotService {
       base.setDate(base.getDate() + 1);
       return this.localDateStr(base);
     }
+    const spoken = this.parseRelativeDatePt(text, account);
+    if (spoken) return spoken;
     const m = DATE_ONLY_RE.exec(text.trim());
     if (!m) return null;
     const day = Number(m[1]);
     const month = Number(m[2]);
-    const year = base.getFullYear();
-    const d = new Date(year, month - 1, day);
-    if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
-    if (d < new Date(base.getFullYear(), base.getMonth(), base.getDate())) {
-      d.setFullYear(year + 1);
-    }
-    return this.localDateStr(d);
+    return this.buildFutureDate(this.nowInAccount(account), day, month);
   }
 
   private parseTimeInput(text: string) {
