@@ -150,10 +150,12 @@ model Appointment {
   date              String
   time              String
   price             Float    @default(0)
+  /// scheduled | completed | cancelled
   status            String   @default("scheduled")
   source            String   @default("manual")
   /// Liga ocorrências materializadas da mesma série recorrente
   recurrenceGroupId String?
+  /// Quando passou a completed (manual ou job)
   completedAt       DateTime?
   /// Claim de envio de lembrete (timeout libera para retry)
   reminderClaimedAt DateTime?
