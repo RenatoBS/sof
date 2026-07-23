@@ -394,34 +394,20 @@ export class WhatsappEmployeeBotService {
     const words = text.trim().split(/\s+/).filter(Boolean);
     if (words.length < 2) return null;
 
-    // Heurística rápida (áudio curto sem depender do LLM)
-    const heuristic = this.heuristicEmployeeIntent(text, account);
-    if (heuristic) {
-      if (heuristic.intent === 'agenda') {
-        return this.showAgenda(
-          account,
-          employee,
-          phone,
-          heuristic.date || this.localDateStr(this.nowInAccount(account)),
-        );
-      }
-      if (heuristic.intent === 'cancel') {
-        return this.startCancel(account, employee, phone);
-      }
-      if (heuristic.intent === 'event') {
-        return this.startEvent(account, employee, phone);
-      }
-      if (heuristic.intent === 'book') {
-        return this.startBooking(account, employee, phone);
-      }
-    }
-
     const apiKey = (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
-    if (!apiKey) return null;
-
     const services = employee.services.map((l) => l.service);
-    const parsed = await this.extractEmployeeIntent(text, services);
-    if (!parsed || parsed.intent === 'other') return null;
+
+    // Frases completas (áudio) → LLM primeiro; heurística só como fallback.
+    // Antes a heurística engolia "marca um corte pra Ana…" e abria só o menu.
+    let parsed: Awaited<ReturnType<typeof this.extractEmployeeIntent>> = null;
+    if (apiKey && words.length >= 3) {
+      parsed = await this.extractEmployeeIntent(text, services, account);
+    }
+    if (!parsed || parsed.intent === 'other') {
+      const heuristic = this.heuristicEmployeeIntent(text, account);
+      if (!heuristic) return null;
+      parsed = heuristic;
+    }
 
     if (parsed.intent === 'agenda') {
       const date =
@@ -458,7 +444,7 @@ export class WhatsappEmployeeBotService {
       const service =
         (parsed.serviceId &&
           services.find((s) => s.id === parsed.serviceId)) ||
-        null;
+        this.matchServiceByName(services, text);
       if (!service) {
         return this.startBooking(account, employee, phone);
       }
@@ -469,6 +455,7 @@ export class WhatsappEmployeeBotService {
         serviceId: service.id,
         date: parsed.date,
         time: parsed.time,
+        clientName: parsed.clientName,
       };
       if (parsed.date && parsed.time) {
         return this.afterTimeChosen(account, employee, phone, data);
@@ -481,82 +468,209 @@ export class WhatsappEmployeeBotService {
     return null;
   }
 
+  private matchServiceByName(
+    services: Array<{ id: string; name: string }>,
+    text: string,
+  ) {
+    const lower = text.toLowerCase();
+    const scored = services
+      .map((s) => {
+        const name = s.name.toLowerCase();
+        if (lower.includes(name)) return { s, score: name.length };
+        const tokens = name.split(/\s+/).filter((t) => t.length >= 3);
+        const hit = tokens.some((t) => lower.includes(t));
+        return hit ? { s, score: Math.max(...tokens.map((t) => t.length)) } : null;
+      })
+      .filter(Boolean) as Array<{ s: { id: string; name: string }; score: number }>;
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0]?.s || null;
+  }
+
   private heuristicEmployeeIntent(
     text: string,
     account: Account,
   ): {
-    intent: 'agenda' | 'book' | 'event' | 'cancel';
+    intent: 'agenda' | 'book' | 'event' | 'cancel' | 'other';
+    serviceId?: string;
     date?: string;
+    time?: string;
+    title?: string;
+    clientName?: string;
   } | null {
     const lower = text.toLowerCase();
-    if (
-      /\b(cancelar|desmarcar|remover\s+hor[aá]rio)\b/.test(lower)
-    ) {
+    if (/\b(cancelar|desmarcar|remover\s+hor[aá]rio)\b/.test(lower)) {
       return { intent: 'cancel' };
     }
-    if (
-      /\b(evento|bloquear|bloqueio|almo[cç]o|compromisso)\b/.test(lower)
-    ) {
+    if (/\b(evento|bloquear|bloqueio|almo[cç]o)\b/.test(lower)) {
       return { intent: 'event' };
     }
+
+    const relativeDate = this.parseRelativeDatePt(text, account);
+    const time = this.parseTimeFromFreeText(text);
+
     if (
-      /\b(agendar|marcar|novo\s+agendamento|marcar\s+cliente)\b/.test(lower)
-    ) {
-      return { intent: 'book' };
-    }
-    if (
-      /\b(agenda|hor[aá]rios?|compromissos?|o\s+que\s+tenho|meus?\s+hor[aá]rios?)\b/.test(
+      /\b(agenda|hor[aá]rios?|o\s+que\s+tenho|meus?\s+hor[aá]rios?)\b/.test(
         lower,
       )
     ) {
-      const base = this.nowInAccount(account);
-      if (/\bamanh[aã]\b/.test(lower)) {
-        base.setDate(base.getDate() + 1);
-        return { intent: 'agenda', date: this.localDateStr(base) };
-      }
-      const dm = /(\d{1,2})[\/\-](\d{1,2})/.exec(lower);
-      if (dm) {
-        const parsed = this.parseDateInput(`${dm[1]}/${dm[2]}`, account);
-        if (parsed) return { intent: 'agenda', date: parsed };
-      }
       return {
         intent: 'agenda',
-        date: this.localDateStr(this.nowInAccount(account)),
+        date:
+          relativeDate || this.localDateStr(this.nowInAccount(account)),
+      };
+    }
+
+    if (/\b(agendar|marcar|novo\s+agendamento)\b/.test(lower)) {
+      // Sem LLM: só avança se der para montar algo útil; senão null
+      // e o fluxo cai no menu (melhor que engolir a frase).
+      const clientName = this.extractClientNameHeuristic(text);
+      return {
+        intent: 'book',
+        date: relativeDate || undefined,
+        time: time || undefined,
+        clientName: clientName || undefined,
       };
     }
     return null;
   }
 
+  private extractClientNameHeuristic(text: string): string | null {
+    const m =
+      /\b(?:para|pra|pro|cliente)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,3})(?:\s+(?:para|pra|pro|na|no|em|dia|hoje|amanh|seg|ter|qua|qui|sex|s[aá]b|dom|\d)|$)/i.exec(
+        text,
+      );
+    if (!m) return null;
+    const name = m[1].replace(/\s+/g, ' ').trim();
+    if (name.length < 2) return null;
+    const stop = /^(o|a|um|uma|hoje|amanh[aã]|dia|horario|horário)$/i;
+    if (stop.test(name)) return null;
+    return name;
+  }
+
+  private parseTimeFromFreeText(text: string): string | null {
+    const lower = text.toLowerCase();
+    if (/\bmeio[\s-]?dia\b/.test(lower)) return '12:00';
+
+    const patterns = [
+      /\b(?:às|as)\s*(\d{1,2})(?::(\d{2}))?\s*(?:h|hrs?|horas?)?\b/,
+      /\b(\d{1,2}):(\d{2})\b/,
+      /\b(\d{1,2})\s*h(?:oras?)?\b/,
+    ];
+    for (const re of patterns) {
+      const m = re.exec(lower);
+      if (!m) continue;
+      let hh = Number(m[1]);
+      const mm = m[2] ? Number(m[2]) : 0;
+      if (/\bda\s+tarde\b/.test(lower) && hh > 0 && hh < 12) hh += 12;
+      if (/\bda\s+manh[aã]\b/.test(lower) && hh === 12) hh = 0;
+      if (hh > 23 || mm > 59) continue;
+      return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+    return null;
+  }
+
+  /** Resolve "terça que vem", "sexta-feira", "amanhã", dd/mm. */
+  private parseRelativeDatePt(text: string, account: Account): string | null {
+    const lower = text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const base = this.nowInAccount(account);
+
+    if (/\bhoje\b/.test(lower)) return this.localDateStr(base);
+    if (/\bamanha\b/.test(lower)) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + 1);
+      return this.localDateStr(d);
+    }
+    const dm = /(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/.exec(lower);
+    if (dm) {
+      return this.parseDateInput(`${dm[1]}/${dm[2]}`, account);
+    }
+
+    const days: Array<{ re: RegExp; dow: number }> = [
+      { re: /\bdomingo\b/, dow: 0 },
+      { re: /\bsegunda(?:[\s-]?feira)?\b/, dow: 1 },
+      { re: /\bterca(?:[\s-]?feira)?\b/, dow: 2 },
+      { re: /\bquarta(?:[\s-]?feira)?\b/, dow: 3 },
+      { re: /\bquinta(?:[\s-]?feira)?\b/, dow: 4 },
+      { re: /\bsexta(?:[\s-]?feira)?\b/, dow: 5 },
+      { re: /\bsabado\b/, dow: 6 },
+    ];
+    for (const day of days) {
+      if (!day.re.test(lower)) continue;
+      const forceNextWeek =
+        /\b(que\s+vem|proxima|proximo|seguinte)\b/.test(lower) ||
+        /\b(semana\s+que\s+vem)\b/.test(lower);
+      return this.localDateStr(
+        this.nextWeekday(base, day.dow, forceNextWeek),
+      );
+    }
+    return null;
+  }
+
+  private nextWeekday(from: Date, targetDow: number, forceNextWeek: boolean) {
+    const d = new Date(from);
+    d.setHours(12, 0, 0, 0);
+    const current = d.getDay();
+    let delta = (targetDow - current + 7) % 7;
+    if (forceNextWeek) {
+      // "terça que vem": se hoje ainda não é essa weekday, a próxima
+      // ocorrência já é "que vem"; se hoje É essa weekday, +7.
+      if (delta === 0) delta = 7;
+    } else if (delta === 0) {
+      // "sexta" sem qualificador no mesmo dia = hoje
+      delta = 0;
+    }
+    d.setDate(d.getDate() + delta);
+    return d;
+  }
+
   private async extractEmployeeIntent(
     text: string,
     services: Array<{ id: string; name: string }>,
+    account: Account,
   ): Promise<{
     intent: 'agenda' | 'book' | 'event' | 'cancel' | 'other';
     serviceId?: string;
     date?: string;
     time?: string;
     title?: string;
+    clientName?: string;
   } | null> {
     const apiKey = (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
     if (!apiKey) return null;
-    const now = new Date();
+    const now = this.nowInAccount(account);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const today = this.localDateStr(now);
+    const weekday = [
+      'domingo',
+      'segunda-feira',
+      'terça-feira',
+      'quarta-feira',
+      'quinta-feira',
+      'sexta-feira',
+      'sábado',
+    ][now.getDay()];
+    const nowTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const serviceList = services
       .map((s) => `- id: ${s.id} | nome: ${s.name}`)
       .join('\n');
     const system = [
       'Você extrai a intenção de um PROFISSIONAL de salão falando no WhatsApp (PT-BR).',
-      `Hoje é ${today}.`,
+      `Hoje é ${weekday}, ${today}, agora são ${nowTime}.`,
       'Serviços que esse profissional realiza:',
       serviceList || '(nenhum)',
       '',
       'Responda SOMENTE JSON:',
-      '- intent: "agenda" (ver horários do dia), "book" (marcar serviço para cliente), "event" (bloquear agenda / almoço / compromisso), "cancel" (cancelar horário) ou "other"',
-      '- serviceId: id do serviço ou null',
-      '- date: YYYY-MM-DD ou null',
-      '- time: HH:MM ou null',
+      '- intent: "agenda" (ver a própria agenda), "book" (marcar serviço para um cliente), "event" (bloquear agenda / almoço), "cancel" (cancelar horário) ou "other"',
+      '- serviceId: id do serviço mais próximo do que foi dito, ou null',
+      '- date: YYYY-MM-DD ou null — resolva "hoje", "amanhã", "sexta", "sexta-feira", "terça que vem", "próxima quinta"',
+      '- time: HH:MM 24h ou null — "13h"/"1 da tarde"=13:00, "meio-dia"=12:00',
+      '- clientName: nome do cliente se citado (ex.: "Ana Souza"), senão null',
       '- title: título do evento se intent=event, senão null',
+      '',
+      'Preencha TODOS os campos que a frase trouxer. Não invente serviço fora da lista.',
     ].join('\n');
 
     const controller = new AbortController();
@@ -579,7 +693,12 @@ export class WhatsappEmployeeBotService {
           ],
         }),
       });
-      if (!resp.ok) return null;
+      if (!resp.ok) {
+        console.error(
+          `[whatsapp] NLU emp OpenAI falhou (${resp.status})`,
+        );
+        return null;
+      }
       const json = (await resp.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
       };
@@ -589,23 +708,50 @@ export class WhatsappEmployeeBotService {
         date?: string | null;
         time?: string | null;
         title?: string | null;
+        clientName?: string | null;
       };
       const intent = String(raw.intent || 'other');
       if (!['agenda', 'book', 'event', 'cancel'].includes(intent)) {
         return { intent: 'other' };
       }
       const serviceIds = new Set(services.map((s) => s.id));
+      let date = String(raw.date || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        date = this.parseRelativeDatePt(text, account) || '';
+      }
+      let time = String(raw.time || '').trim();
+      const tm = /^(\d{1,2}):(\d{2})$/.exec(time);
+      if (tm) {
+        const hh = Number(tm[1]);
+        const min = Number(tm[2]);
+        time =
+          hh <= 23 && min <= 59
+            ? `${String(hh).padStart(2, '0')}:${tm[2]}`
+            : '';
+      } else {
+        time = this.parseTimeFromFreeText(text) || '';
+      }
+      const clientName = String(raw.clientName || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80);
+
       return {
         intent: intent as 'agenda' | 'book' | 'event' | 'cancel',
         serviceId:
           raw.serviceId && serviceIds.has(raw.serviceId)
             ? raw.serviceId
             : undefined,
-        date: raw.date || undefined,
-        time: raw.time || undefined,
+        date: date || undefined,
+        time: time || undefined,
         title: raw.title || undefined,
+        clientName: clientName.length >= 2 ? clientName : undefined,
       };
-    } catch {
+    } catch (err) {
+      console.error(
+        '[whatsapp] NLU emp erro:',
+        err instanceof Error ? err.message : err,
+      );
       return null;
     } finally {
       clearTimeout(timer);
@@ -1029,6 +1175,21 @@ export class WhatsappEmployeeBotService {
 
     if (data.kind === 'block') {
       return this.confirmBooking(account, employee, phone, data);
+    }
+    if (data.clientName && data.clientName.trim().length >= 2) {
+      // Frase completa já trouxe o nome — tenta achar telefone no cadastro
+      // e vai direto à confirmação (telefone opcional).
+      const existing = await this.prisma.client.findFirst({
+        where: {
+          accountId: account.id,
+          name: { equals: data.clientName.trim(), mode: 'insensitive' },
+        },
+      });
+      return this.confirmBooking(account, employee, phone, {
+        ...data,
+        clientName: existing?.name || data.clientName.trim(),
+        clientPhone: existing?.phone || data.clientPhone || '',
+      });
     }
     await this.saveSession(account.id, phone, {
       step: 'emp:awaiting_client_name',
