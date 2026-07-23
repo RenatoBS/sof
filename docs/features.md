@@ -179,12 +179,12 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 
 ### Fluxo do profissional
 - Se o remetente casa com o **telefone** de um `Employee` da conta (exato ou sufixo BR com/sem DDI `55`), o bot **não** usa o fluxo de cliente — `WhatsappEmployeeBotService` (steps `emp:*`).  
-- Menu: **Concluir agendamento** (só se o prof estiver na janela de um atendimento) | **Agenda de hoje** | **Agenda de outro dia** | **Novo na agenda** (pergunta: agendamento de cliente ou evento) | **Cancelar horário** | **Falar com humano** | **Redefinir senha**.  
+- Menu: **Concluir agendamento** (só se o prof estiver na janela de um atendimento) | **Agenda de hoje** | **Agenda de outro dia** | **Novo na agenda** (pergunta: agendamento de cliente ou evento) | **Cancelar horário** | **Falar com estabelecimento** | **Redefinir senha**.  
 - Agendamento: serviço vinculado ao prof → dia → horário livre → nome/telefone do cliente → confirma → `kind=service` `source=whatsapp`.  
 - Evento: título → duração (30/60/90/120) → dia → horário → confirma → `kind=block`.  
 - **Concluir:** lista só atendimentos **dentro da janela** [início, fim]; confirma → `status=completed` + `completedAt` (libera o restante do slot).  
 - Cancelar: lista próximos `scheduled` daquele profissional → confirma → `status=cancelled`.  
-- **Falar com humano:** abre alerta na aba Atendimentos (`party=employee`, motivo `human_requested`); N “não entendi” no menu também escalam (`unresolved`), com o mesmo threshold da conta.  
+- **Falar com estabelecimento:** abre alerta na aba Atendimentos (`party=employee`, motivo `human_requested`); N “não entendi” no menu também escalam (`unresolved`), com o mesmo threshold da conta.  
 - **Redefinir senha:** envia o mesmo CTA/link de uso único (2h) no WhatsApp do profissional (`source=self`).  
 - **Áudio + NLU:** mesma transcrição do webhook; NLU no menu e como interrupção no meio do fluxo. LLM + heurística (datas faladas: “28 do 7”, “terça que vem”; `clientName`; horário `9h30`; intents `book`/`event`/`complete`/`human`/`reset_password`). Frases diretas de marcar/evento pulam a pergunta de tipo. Log `NLU emp: …` no servidor.  
 - Simulador: `POST /api/whatsapp/simulate` com o telefone do profissional.

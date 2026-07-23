@@ -29,7 +29,7 @@ Formato sugerido:
 ## 2026-07-23 — Handoff humano também para profissionais
 
 - **Contexto:** Profissionais no bot WhatsApp precisavam pedir ajuda da conta; a aba Atendimentos só cobria clientes e o webhook ignorava telefone de `Employee`.  
-- **Decisão:** `WhatsappHandoff.party` (`client` | `employee`) + `employeeId`; `Employee.botUnresolvedCount`. Bot do prof: menu **Falar com humano**, regex/NLU `human`, e `unresolved` no fallback do menu. `afterBotResult` escala ambos. UI: badge Cliente (azul) vs Profissional (lilás). Resposta `fromMe` em prof resolve sem pausar o bot operacional.  
+- **Decisão:** `WhatsappHandoff.party` (`client` | `employee`) + `employeeId`; `Employee.botUnresolvedCount`. Bot do prof: menu **Falar com estabelecimento**, regex/NLU `human`, e `unresolved` no fallback do menu. `afterBotResult` escala ambos. UI: badge Cliente (azul) vs Profissional (lilás). Resposta `fromMe` em prof resolve sem pausar o bot operacional.  
 - **Consequências:** Mesmo threshold da conta; não cria `Client` fantasma para o telefone do prof.  
 - **Alternativas descartadas:** Canal separado só para prof; silenciar bot do prof após handoff como no cliente.
 

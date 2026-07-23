@@ -333,6 +333,7 @@ export class WhatsappBotService {
     const choices: WhatsappMenuChoice[] = employees.map((e) => ({
       id: `emp:${e.id}`,
       title: e.name,
+      description: 'Profissional disponível',
     }));
     if (opts?.includeSofPick) {
       choices.push({
@@ -368,10 +369,22 @@ export class WhatsappBotService {
   }
 
   private confirmMenu(bodyText: string): WhatsappBotResult {
-    return this.menuReply(bodyText, [
-      { id: 'confirm:yes', title: 'Sim' },
-      { id: 'confirm:no', title: 'Não' },
-    ]);
+    return this.menuReply(
+      bodyText,
+      [
+        {
+          id: 'confirm:yes',
+          title: 'Sim',
+          description: 'Confirmar esta ação',
+        },
+        {
+          id: 'confirm:no',
+          title: 'Não',
+          description: 'Voltar sem confirmar',
+        },
+      ],
+      { listButton: 'Confirmar' },
+    );
   }
 
   private pad(n: number) {
@@ -647,6 +660,7 @@ export class WhatsappBotService {
       ...employees.map((e) => ({
         id: `emp:${e.id}`,
         title: e.name,
+        description: 'Profissional disponível',
       })),
       {
         id: 'path:time',

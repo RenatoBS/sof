@@ -54,6 +54,36 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
 const TIMEOUT_MS = 10_000;
 
+const DAY_CHOICES: WhatsappMenuChoice[] = [
+  { id: 'day:today', title: 'Hoje', description: 'Usar a data de hoje' },
+  { id: 'day:tomorrow', title: 'Amanhã', description: 'Usar a data de amanhã' },
+  {
+    id: 'day:custom',
+    title: 'Outra data',
+    description: 'Informar o dia em dd/mm',
+  },
+];
+
+const DURATION_CHOICES: WhatsappMenuChoice[] = [
+  { id: 'dur:30', title: '30 min', description: 'Meia hora' },
+  { id: 'dur:60', title: '1 hora', description: '60 minutos' },
+  { id: 'dur:90', title: '1h30', description: '90 minutos' },
+  { id: 'dur:120', title: '2 horas', description: '120 minutos' },
+];
+
+const CREATE_KIND_CHOICES: WhatsappMenuChoice[] = [
+  {
+    id: 'emp:book',
+    title: 'Agendamento',
+    description: 'Serviço para um cliente',
+  },
+  {
+    id: 'emp:event',
+    title: 'Evento',
+    description: 'Almoço, médico, reunião…',
+  },
+];
+
 @Injectable()
 export class WhatsappEmployeeBotService {
   constructor(
@@ -215,18 +245,7 @@ export class WhatsappEmployeeBotService {
       }
       return this.menuReply(
         'O que você quer criar?',
-        [
-          {
-            id: 'emp:book',
-            title: 'Agendamento',
-            description: 'Serviço para um cliente',
-          },
-          {
-            id: 'emp:event',
-            title: 'Evento',
-            description: 'Almoço, médico, reunião…',
-          },
-        ],
+        CREATE_KIND_CHOICES,
         { listButton: 'Tipo' },
       );
     }
@@ -315,12 +334,9 @@ export class WhatsappEmployeeBotService {
         step: 'emp:awaiting_event_duration',
         data: { ...data, kind: 'block', title },
       });
-      return this.menuReply('Quanto tempo dura?', [
-        { id: 'dur:30', title: '30 min' },
-        { id: 'dur:60', title: '1 hora' },
-        { id: 'dur:90', title: '1h30' },
-        { id: 'dur:120', title: '2 horas' },
-      ]);
+      return this.menuReply('Quanto tempo dura?', DURATION_CHOICES, {
+        listButton: 'Duração',
+      });
     }
 
     if (step === 'emp:awaiting_event_duration') {
@@ -634,12 +650,8 @@ export class WhatsappEmployeeBotService {
         });
         return this.menuReply(
           `Evento “${parsed.title}”. Quanto tempo dura?`,
-          [
-            { id: 'dur:30', title: '30 min' },
-            { id: 'dur:60', title: '1 hora' },
-            { id: 'dur:90', title: '1h30' },
-            { id: 'dur:120', title: '2 horas' },
-          ],
+          DURATION_CHOICES,
+          { listButton: 'Duração' },
         );
       }
       return this.startEvent(account, employee, phone);
@@ -1115,19 +1127,40 @@ export class WhatsappEmployeeBotService {
       choices.push({
         id: 'emp:complete',
         title: 'Concluir agendamento',
+        description: 'Encerrar o atendimento atual',
       });
     }
     choices.push(
-      { id: 'emp:agenda_today', title: 'Agenda de hoje' },
-      { id: 'emp:agenda_other', title: 'Agenda de outro dia' },
+      {
+        id: 'emp:agenda_today',
+        title: 'Agenda de hoje',
+        description: 'Ver seus horários de hoje',
+      },
+      {
+        id: 'emp:agenda_other',
+        title: 'Agenda de outro dia',
+        description: 'Escolher outra data',
+      },
       {
         id: 'emp:create',
         title: 'Novo na agenda',
         description: 'Agendamento ou evento',
       },
-      { id: 'emp:cancel', title: 'Cancelar horário' },
-      { id: 'emp:human', title: 'Falar com humano' },
-      { id: 'emp:reset_password', title: 'Redefinir senha' },
+      {
+        id: 'emp:cancel',
+        title: 'Cancelar horário',
+        description: 'Desmarcar um horário futuro',
+      },
+      {
+        id: 'emp:human',
+        title: 'Falar com estabelecimento',
+        description: 'Pedir ajuda da conta do salão',
+      },
+      {
+        id: 'emp:reset_password',
+        title: 'Redefinir senha',
+        description: 'Receber link no WhatsApp',
+      },
     );
 
     return this.menuReply(header, choices, { listButton: 'Opções' });
@@ -1158,11 +1191,9 @@ export class WhatsappEmployeeBotService {
         step: 'emp:awaiting_agenda_date',
         data: { role: 'employee', employeeId: employee.id },
       });
-      return this.menuReply('Qual dia da agenda?', [
-        { id: 'day:today', title: 'Hoje' },
-        { id: 'day:tomorrow', title: 'Amanhã' },
-        { id: 'day:custom', title: 'Outra data' },
-      ]);
+      return this.menuReply('Qual dia da agenda?', DAY_CHOICES, {
+        listButton: 'Dias',
+      });
     }
     if (
       text === 'emp:create' ||
@@ -1340,18 +1371,7 @@ export class WhatsappEmployeeBotService {
     });
     return this.menuReply(
       'O que você quer criar?',
-      [
-        {
-          id: 'emp:book',
-          title: 'Agendamento',
-          description: 'Serviço para um cliente',
-        },
-        {
-          id: 'emp:event',
-          title: 'Evento',
-          description: 'Almoço, médico, reunião…',
-        },
-      ],
+      CREATE_KIND_CHOICES,
       { listButton: 'Tipo' },
     );
   }
@@ -1601,11 +1621,7 @@ export class WhatsappEmployeeBotService {
       step: 'emp:awaiting_day',
       data,
     });
-    return this.menuReply('Qual dia?', [
-      { id: 'day:today', title: 'Hoje' },
-      { id: 'day:tomorrow', title: 'Amanhã' },
-      { id: 'day:custom', title: 'Outra data' },
-    ]);
+    return this.menuReply('Qual dia?', DAY_CHOICES, { listButton: 'Dias' });
   }
 
   private async handleDayPick(
@@ -1671,11 +1687,8 @@ export class WhatsappEmployeeBotService {
       });
       return this.menuReply(
         `Sem horários livres em ${date.split('-').reverse().join('/')}. Escolha outro dia:`,
-        [
-          { id: 'day:today', title: 'Hoje' },
-          { id: 'day:tomorrow', title: 'Amanhã' },
-          { id: 'day:custom', title: 'Outra data' },
-        ],
+        DAY_CHOICES,
+        { listButton: 'Dias' },
       );
     }
     await this.saveSession(account.id, phone, {
@@ -1685,12 +1698,18 @@ export class WhatsappEmployeeBotService {
     const choices: WhatsappMenuChoice[] = slots.slice(0, 5).map((t) => ({
       id: `time:${t}`,
       title: t,
+      description: 'Horário livre neste dia',
     }));
-    choices.push({ id: 'time:custom', title: 'Outro horário' });
+    choices.push({
+      id: 'time:custom',
+      title: 'Outro horário',
+      description: 'Informar a hora em hh:mm',
+    });
     return this.menuReply(
       opts?.intro ||
         `Horários livres em ${date.split('-').reverse().join('/')}:`,
       choices,
+      { listButton: 'Horários' },
     );
   }
 
@@ -1748,11 +1767,8 @@ export class WhatsappEmployeeBotService {
       });
       return this.menuReply(
         'Fora do expediente ou dia fechado. Escolha outro dia:',
-        [
-          { id: 'day:today', title: 'Hoje' },
-          { id: 'day:tomorrow', title: 'Amanhã' },
-          { id: 'day:custom', title: 'Outra data' },
-        ],
+        DAY_CHOICES,
+        { listButton: 'Dias' },
       );
     }
 
@@ -2043,10 +2059,14 @@ export class WhatsappEmployeeBotService {
   }
 
   private confirmMenu(text: string): WhatsappBotResult {
-    return this.menuReply(text, [
-      { id: 'sim', title: 'Sim' },
-      { id: 'nao', title: 'Não' },
-    ]);
+    return this.menuReply(
+      text,
+      [
+        { id: 'sim', title: 'Sim', description: 'Confirmar esta ação' },
+        { id: 'nao', title: 'Não', description: 'Voltar sem confirmar' },
+      ],
+      { listButton: 'Confirmar' },
+    );
   }
 
   private parseChoice(text: string, max: number) {

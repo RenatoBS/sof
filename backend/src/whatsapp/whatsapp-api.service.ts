@@ -433,7 +433,9 @@ export class WhatsappApiService {
     },
     token: string,
   ) {
-    const useButtons = menu.choices.length <= 3;
+    const useButtons =
+      menu.choices.length <= 3 &&
+      !menu.choices.some((c) => Boolean(c.description?.trim()));
     const choices = menu.choices.map((c) => {
       const title = truncateWhatsappTitle(c.title, useButtons ? 20 : 24);
       if (useButtons) return `${title}|${c.id}`;
@@ -512,7 +514,10 @@ export class WhatsappApiService {
       'whatsapp.phoneNumberId',
     );
     const token = this.config.getOrThrow<string>('whatsapp.token');
-    const useButtons = menu.choices.length <= 3 && menu.choices.length >= 1;
+    const useButtons =
+      menu.choices.length <= 3 &&
+      menu.choices.length >= 1 &&
+      !menu.choices.some((c) => Boolean(c.description?.trim()));
 
     const interactive = useButtons
       ? {
