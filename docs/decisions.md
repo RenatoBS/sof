@@ -19,8 +19,8 @@ Formato sugerido:
 
 ## 2026-07-22 — Rotas planas no admin-frontend (sem `[id]` irmão de lista)
 
-- **Contexto:** No Expo Router web, rotas dinâmicas sob o mesmo shell (`accounts/index` + `accounts/[id]`, depois `/account/[id]`) faziam a URL virar `/…/undefined` e a UI ficava em branco após login. `FlatList`+`gap` no RN Web também crashava.  
-- **Decisão:** Rotas planas como o dashboard do produto: `/accounts`, `/accounts-new`, `/account-detail`, `/plans`, `/plans-new`, `/plan-detail` (id via params). Listas com `ScrollView`.  
+- **Contexto:** No Expo Router web, rotas dinâmicas sob o mesmo shell (`accounts/index` + `accounts/[id]`) faziam a URL virar `/…/undefined` e a UI ficava em branco após login. `FlatList`+`gap` no RN Web também crashava.  
+- **Decisão:** Rotas planas: `/accounts`, `/new-account`, `/edit-account`, `/plans`, `/new-plan`, `/edit-plan` (id via search params). Listas com `ScrollView`. Nav do shell sem `Link asChild`.  
 - **Consequências:** URLs de detalhe mudam; docs atualizados.  
 - **Alternativas descartadas:** Manter pastas `[id]` com workarounds de href.
 
