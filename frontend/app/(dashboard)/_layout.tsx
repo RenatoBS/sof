@@ -24,6 +24,7 @@ const TABS = [
   { href: '/(dashboard)/services', label: 'Serviços', match: 'services' },
   { href: '/(dashboard)/clients', label: 'Clientes', match: 'clients' },
   { href: '/(dashboard)/handoffs', label: 'Atendimentos', match: 'handoffs' },
+  { href: '/(dashboard)/support', label: 'Suporte', match: 'support' },
   { href: '/(dashboard)/billing', label: 'Faturamento', match: 'billing' },
   { href: '/(dashboard)/account', label: 'Conta', match: 'account' },
 ] as const;

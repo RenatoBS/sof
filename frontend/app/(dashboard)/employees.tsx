@@ -30,7 +30,10 @@ export default function EmployeesScreen() {
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [inviteExpiresAt, setInviteExpiresAt] = useState('');
+  const [inviteEmployeeId, setInviteEmployeeId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [sendingWa, setSendingWa] = useState(false);
+  const [waSent, setWaSent] = useState(false);
 
   const isEditing = !!editingId;
 
@@ -70,7 +73,9 @@ export default function EmployeesScreen() {
     setError('');
     setInviteLink('');
     setInviteExpiresAt('');
+    setInviteEmployeeId(null);
     setCopied(false);
+    setWaSent(false);
     setEditingId(null);
     setShowForm(true);
   };
@@ -86,14 +91,22 @@ export default function EmployeesScreen() {
     setError('');
     setInviteLink('');
     setInviteExpiresAt('');
+    setInviteEmployeeId(null);
     setCopied(false);
+    setWaSent(false);
     setShowForm(true);
   };
 
-  const showInvite = (link: string, expiresAt?: string) => {
+  const showInvite = (
+    link: string,
+    expiresAt?: string,
+    employeeId?: string,
+  ) => {
     setInviteLink(link);
     setInviteExpiresAt(expiresAt || '');
+    setInviteEmployeeId(employeeId || null);
     setCopied(false);
+    setWaSent(false);
     setShowForm(false);
     setEditingId(null);
   };
@@ -107,6 +120,28 @@ export default function EmployeesScreen() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setError('Não foi possível copiar. Selecione o link manualmente.');
+    }
+  };
+
+  const sendInviteWhatsapp = async (employeeId?: string | null) => {
+    const id = employeeId || inviteEmployeeId;
+    if (!id) {
+      setError('Salve o profissional antes de enviar o link no WhatsApp.');
+      return;
+    }
+    setInviteEmployeeId(id);
+    setSendingWa(true);
+    setError('');
+    try {
+      const res = await dashboardApi.sendEmployeePasswordLink(id);
+      setInviteLink(res.resetLink);
+      setInviteExpiresAt(res.expiresAt);
+      setWaSent(true);
+      setShowForm(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao enviar no WhatsApp.');
+    } finally {
+      setSendingWa(false);
     }
   };
 
@@ -144,14 +179,14 @@ export default function EmployeesScreen() {
           prev.map((e) => (e.id === employee.id ? employee : e)),
         );
         if (resetLink) {
-          showInvite(resetLink, expiresAt);
+          showInvite(resetLink, expiresAt, editingId);
           return;
         }
       } else {
         const { employee, resetLink, expiresAt } =
           await dashboardApi.createEmployee(body);
         setEmployees((prev) => [...prev, employee]);
-        showInvite(resetLink, expiresAt);
+        showInvite(resetLink, expiresAt, employee.id);
         return;
       }
       resetForm();
@@ -192,9 +227,10 @@ export default function EmployeesScreen() {
         <View style={styles.passwordCard}>
           <Text style={styles.cardTitle}>Link de acesso gerado</Text>
           <Text style={styles.hint}>
-            Copie e envie ao profissional (WhatsApp, e-mail, etc.). O link é de
-            uso único e expira em 2 horas. Nele a pessoa define a senha e já
-            entra na agenda — sem precisar da senha antiga.
+            Envie pelo WhatsApp do estabelecimento (mensagem com instruções +
+            botão &quot;Redefinir senha&quot;) ou copie o link. Uso único, expira
+            em 2 horas — ao abrir, o profissional define a senha e já entra na
+            agenda.
           </Text>
           {inviteExpiresAt ? (
             <Text style={styles.hint}>
@@ -207,8 +243,21 @@ export default function EmployeesScreen() {
           </Text>
           <View style={styles.actions}>
             <SofButton
-              title={copied ? 'Copiado!' : 'Copiar link'}
+              title={
+                sendingWa
+                  ? 'Enviando…'
+                  : waSent
+                    ? 'Enviado no WhatsApp'
+                    : 'Enviar no WhatsApp'
+              }
               variant="dark"
+              theme="dashboard"
+              disabled={sendingWa || waSent || !inviteEmployeeId}
+              onPress={() => sendInviteWhatsapp()}
+            />
+            <SofButton
+              title={copied ? 'Copiado!' : 'Copiar link'}
+              variant="light"
               theme="dashboard"
               onPress={copyInvite}
             />
@@ -219,10 +268,13 @@ export default function EmployeesScreen() {
               onPress={() => {
                 setInviteLink('');
                 setInviteExpiresAt('');
+                setInviteEmployeeId(null);
                 setCopied(false);
+                setWaSent(false);
               }}
             />
           </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       ) : null}
 
@@ -363,6 +415,16 @@ export default function EmployeesScreen() {
             <View style={styles.cardActions}>
               <Pressable onPress={() => startEdit(e)}>
                 <Text style={styles.edit}>Editar</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => sendInviteWhatsapp(e.id)}
+                disabled={sendingWa}
+              >
+                <Text style={styles.edit}>
+                  {sendingWa && inviteEmployeeId === e.id
+                    ? 'Enviando…'
+                    : 'Enviar link WhatsApp'}
+                </Text>
               </Pressable>
               <Pressable onPress={() => remove(e.id)}>
                 <Text style={styles.delete}>Remover</Text>

@@ -53,6 +53,8 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos | `/plans` | `GET /api/plans` |
 | Criar / editar plano (+ Stripe) | `/new-plan`, `/edit-plan` | `POST/PUT /api/plans` |
+| Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
+| Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 
 Seed: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@sof.com`).
 
@@ -83,6 +85,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Campos: nome, **telefone**, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
 - Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/profissional/definir-senha?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
+- **Enviar no WhatsApp:** `POST /api/employees/:id/send-password-link` gera (ou regenera) o link, invalida a senha atual e envia pelo WhatsApp da conta uma mensagem com instruções + botão/CTA **Redefinir senha** (Meta: `cta_url`; Uazapi: CTA se suportado, senão texto com o link). Exige telefone do profissional e WhatsApp conectado.  
 - `PUT /api/employees/:id` substitui nome, e-mail, telefone e a lista de serviços (`resetPassword` opcional → novo link).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
 
@@ -132,6 +135,13 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
 - **Lembrete WhatsApp:** card na Conta com antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário da conta (botão que expande a lista de fusos); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.  
 - Sair da conta.
+
+### Suporte
+
+- Aba **Suporte** no dashboard da conta: abrir ticket (`title` + `description`), listar, comentar e mudar status (`open` | `in_progress` | `resolved` | `closed`).
+- Portal do profissional: ver tickets da conta, comentar e mudar status (não abre ticket novo).
+- Admin Sof: lista (filtro abertos por padrão), detalhe, responder e status.
+- API produto: `GET/POST /api/tickets`, `GET /api/tickets/:id`, `POST …/comments`, `PATCH …/status` — `TenantAuthGuard` (conta **ou** profissional).
 
 ## WhatsApp (bot)
 
@@ -184,7 +194,7 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Employee auth | `POST /api/employee-auth/login`, `logout`, `GET me`, `POST change-password`, `GET/POST password-setup` |
 | Employee portal | `GET /api/employee/appointments`, `POST …/:id/cancel` |
 | Account | `PUT /api/account`, `GET /api/account/integrations`, `POST/GET /api/account/whatsapp/*` |
-| Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id` |
+| Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id`, `POST …/:id/send-password-link` |
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
 | Clients | `GET/POST /api/clients`, `PUT/DELETE …/:id` (pause do bot no PUT) |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
@@ -194,6 +204,7 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Payments | `POST /api/payments/webhook` |
 | WhatsApp | webhooks + `POST /api/whatsapp/simulate` + pareamento em `/api/account/whatsapp` |
 | Events | `GET /api/events/stream` |
+| Support tickets | `GET/POST /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
 
 ### Admin API (`admin-backend`, porta 3011)
 
@@ -203,5 +214,6 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
 | Accounts | `GET/POST /api/accounts`, `GET/PUT …/:id`, `POST …/:id/reset-password` |
 | Plans | `GET/POST /api/plans`, `GET/PUT …/:id` |
+| Tickets | `GET /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
 
 Detalhes de arquitetura: [`architecture.md`](architecture.md).

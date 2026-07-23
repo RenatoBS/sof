@@ -130,3 +130,49 @@ export const plansApi = {
   ) =>
     api<{ plan: PlanRow }>(`/plans/${id}`, { method: 'PUT', body }),
 };
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export type TicketComment = {
+  id: string;
+  body: string;
+  authorRole: string;
+  authorName: string;
+  createdAt: string;
+};
+
+export type TicketRow = {
+  id: string;
+  accountId: string;
+  title: string;
+  description: string;
+  status: string;
+  createdByRole: string;
+  createdByName: string;
+  account?: { id: string; businessName: string; email: string };
+  commentCount: number;
+  comments?: TicketComment[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const ticketsApi = {
+  list: (params?: { status?: string; q?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.q) qs.set('q', params.q);
+    const suffix = qs.toString() ? `?${qs}` : '';
+    return api<{ total: number; tickets: TicketRow[] }>(`/tickets${suffix}`);
+  },
+  get: (id: string) => api<{ ticket: TicketRow }>(`/tickets/${id}`),
+  comment: (id: string, body: string) =>
+    api<{ comment: TicketComment }>(`/tickets/${id}/comments`, {
+      method: 'POST',
+      body: { body },
+    }),
+  updateStatus: (id: string, status: TicketStatus) =>
+    api<{ ticket: TicketRow }>(`/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+};

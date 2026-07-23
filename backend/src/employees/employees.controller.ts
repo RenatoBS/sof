@@ -17,6 +17,7 @@ import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { EmployeePasswordTokenService } from '../employee-portal/employee-password-token.service';
+import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 
 const COLORS = [
   '#3b82f6',
@@ -92,6 +93,7 @@ export class EmployeesController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordTokens: EmployeePasswordTokenService,
+    private readonly whatsapp: WhatsappApiService,
   ) {}
 
   private async assertEmailAvailable(
@@ -305,6 +307,97 @@ export class EmployeesController {
 
     return {
       employee: shapeEmployee(employee),
+      resetLink,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  @Post(':employeeId/send-password-link')
+  async sendPasswordLink(
+    @Req() req: AuthedRequest,
+    @Param('employeeId') employeeId: string,
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, accountId: req.account.id },
+    });
+    if (!employee) {
+      throw new NotFoundException({ error: 'Profissional não encontrado.' });
+    }
+
+    const phone = normalizePhone(employee.phone);
+    if (!isValidPhone(phone)) {
+      throw new BadRequestException({
+        error:
+          'Cadastre um telefone válido (com DDD) no profissional para enviar o link no WhatsApp.',
+      });
+    }
+
+    if (!req.account.whatsappConnectedAt) {
+      throw new BadRequestException({
+        error:
+          'WhatsApp do estabelecimento não está conectado. Conecte em Conta antes de enviar.',
+      });
+    }
+
+    if (this.whatsapp.provider() === 'uazapi') {
+      const token = (req.account.whatsappInstanceToken || '').trim();
+      if (!token && !this.whatsapp.isConfigured()) {
+        throw new BadRequestException({
+          error: 'WhatsApp não está configurado para envio.',
+        });
+      }
+    } else if (!this.whatsapp.isConfigured()) {
+      throw new BadRequestException({
+        error: 'WhatsApp não está configurado para envio.',
+      });
+    }
+
+    await this.prisma.employee.update({
+      where: { id: employee.id },
+      data: { passwordHash: null, mustChangePassword: true },
+    });
+
+    const { resetLink, expiresAt } = await this.passwordTokens.issueResetLink(
+      employee.id,
+    );
+
+    const businessName = req.account.businessName || 'seu estabelecimento';
+    const body = [
+      `Olá, ${employee.name}!`,
+      '',
+      `${businessName} enviou um link para você definir (ou redefinir) a senha de acesso à agenda Sof.`,
+      '',
+      'Instruções:',
+      '1. Toque em "Redefinir senha"',
+      '2. Crie uma senha nova',
+      '3. Pronto — você já entra na sua agenda',
+      '',
+      'O link é de uso único e vale por 2 horas.',
+    ].join('\n');
+
+    try {
+      await this.whatsapp.sendCtaUrl(
+        phone,
+        {
+          body,
+          buttonText: 'Redefinir senha',
+          url: resetLink,
+          footerText: 'Sof · acesso do profissional',
+        },
+        req.account.whatsappInstanceToken || undefined,
+      );
+    } catch (err) {
+      throw new BadRequestException({
+        error:
+          err instanceof Error
+            ? `Não foi possível enviar no WhatsApp: ${err.message}`
+            : 'Não foi possível enviar no WhatsApp.',
+      });
+    }
+
+    return {
+      ok: true,
+      sent: true,
       resetLink,
       expiresAt: expiresAt.toISOString(),
     };

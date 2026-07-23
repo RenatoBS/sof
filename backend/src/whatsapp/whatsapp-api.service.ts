@@ -573,6 +573,154 @@ export class WhatsappApiService {
   }
 
   /**
+   * Mensagem com botão que abre URL (CTA).
+   * Meta: interactive cta_url.
+   * Uazapi: tenta CTA; se indisponível, texto com instruções + link.
+   */
+  async sendCtaUrl(
+    to: string,
+    opts: {
+      body: string;
+      buttonText: string;
+      url: string;
+      footerText?: string;
+    },
+    instanceToken?: string,
+  ) {
+    const digits = String(to).replace(/\D/g, '');
+    const buttonText = truncateWhatsappTitle(opts.buttonText, 20);
+    if (this.provider() === 'uazapi') {
+      const token =
+        (instanceToken || '').trim() ||
+        (this.config.get<string>('whatsapp.token') || '').trim();
+      if (!token || !this.config.get<string>('whatsapp.baseUrl')) {
+        throw new Error('Uazapi sem token para enviar CTA.');
+      }
+      try {
+        return await this.sendCtaUrlUazapi(digits, { ...opts, buttonText }, token);
+      } catch {
+        const fallback = [
+          opts.body.trim(),
+          '',
+          `${buttonText}:`,
+          opts.url,
+          opts.footerText ? `\n${opts.footerText}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n');
+        return this.sendTextUazapi(digits, fallback, token);
+      }
+    }
+    if (!this.isConfigured()) {
+      throw new Error('WhatsApp Meta não configurado.');
+    }
+    return this.sendCtaUrlMeta(digits, { ...opts, buttonText });
+  }
+
+  private async sendCtaUrlUazapi(
+    to: string,
+    opts: {
+      body: string;
+      buttonText: string;
+      url: string;
+      footerText?: string;
+    },
+    token: string,
+  ) {
+    const baseUrl = this.uazapiBaseUrl();
+    // Algumas builds Uazapi aceitam type=cta / cta_url no /send/menu.
+    const attempts: Array<Record<string, unknown>> = [
+      {
+        number: to,
+        type: 'cta_url',
+        text: opts.body,
+        footerText: opts.footerText,
+        imageButton: '',
+        choices: [`${opts.buttonText}|${opts.url}`],
+        url: opts.url,
+        displayText: opts.buttonText,
+      },
+      {
+        number: to,
+        type: 'button',
+        text: opts.body,
+        footerText: opts.footerText,
+        choices: [`${opts.buttonText}|url:${opts.url}`],
+      },
+    ];
+
+    let lastError: Error | null = null;
+    for (const body of attempts) {
+      const cleaned = Object.fromEntries(
+        Object.entries(body).filter(([, v]) => v !== undefined && v !== ''),
+      );
+      const resp = await fetch(`${baseUrl}/send/menu`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          token,
+        },
+        body: JSON.stringify(cleaned),
+      });
+      if (resp.ok) return resp.json();
+      const text = await resp.text().catch(() => '');
+      lastError = new Error(
+        `Whazap/Uazapi recusou o CTA (${resp.status}): ${text}`,
+      );
+    }
+    throw lastError || new Error('Whazap/Uazapi não aceitou CTA URL.');
+  }
+
+  private async sendCtaUrlMeta(
+    to: string,
+    opts: {
+      body: string;
+      buttonText: string;
+      url: string;
+      footerText?: string;
+    },
+  ) {
+    const phoneNumberId = this.config.getOrThrow<string>(
+      'whatsapp.phoneNumberId',
+    );
+    const token = this.config.getOrThrow<string>('whatsapp.token');
+
+    const resp = await fetch(`${GRAPH_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: { text: opts.body.slice(0, 1024) },
+          ...(opts.footerText
+            ? { footer: { text: opts.footerText.slice(0, 60) } }
+            : {}),
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: opts.buttonText,
+              url: opts.url,
+            },
+          },
+        },
+      }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(
+        `WhatsApp Cloud API recusou o CTA (${resp.status}): ${text}`,
+      );
+    }
+    return resp.json();
+  }
+
+  /**
    * Configura o webhook na instância Uazapi apontando para a API Sof.
    */
   async configureUazapiWebhook(callbackUrl: string, instanceToken?: string) {

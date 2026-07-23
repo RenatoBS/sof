@@ -52,6 +52,7 @@ Registrados em `backend/src/app.module.ts`:
 | `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
 | `RemindersModule` | job de lembretes WhatsApp (a cada 30 min) |
 | `EventsModule` | SSE de appointments + handoffs |
+| `SupportTicketsModule` | tickets de suporte (conta + profissional) |
 | `HealthController` | `GET /api/health` |
 
 ### Auth
@@ -73,9 +74,11 @@ Account
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
   ├── WhatsappSession[]
-  └── WhatsappHandoff[]  (alerta de escalonamento: reason, status, humanRepliedAt)
+  ├── WhatsappHandoff[]  (alerta de escalonamento: reason, status, humanRepliedAt)
+  └── SupportTicket[]
+        └── SupportTicketComment[]  (authorRole: account|employee|admin)
 
-AdminUser     (operadores do painel Sof — não é tenant)
+AdminUser     (operadores do painel Sof — não é tenant; comentários de suporte)
 Plan          (catálogo Sof ↔ stripeProductId / stripePriceId)
 ```
 
@@ -145,10 +148,12 @@ URLs:
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
 | `/(dashboard)/handoffs` | Atendimentos (alertas de escalonamento + config) |
+| `/(dashboard)/support` | Tickets de suporte Sof |
 | `/(dashboard)/billing` | Faturamento |
 | `/(dashboard)/account` | Conta / horários / integrações |
 | `/profissional/login` | Redirect → `/login` |
 | `/(profissional)/agenda` | Agenda do profissional |
+| `/(profissional)/support` | Tickets da conta (comentar / status) |
 | `/(profissional)/trocar-senha` | Troca de senha (obrigatória no 1º acesso) |
 
 Gate do dashboard: sem `account` → redirect `/login` (`(dashboard)/_layout.tsx`).  
@@ -212,9 +217,10 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 - Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
 - Contas: `GET/POST /api/accounts`, `GET/PUT /api/accounts/:id`, `POST /api/accounts/:id/reset-password`.
 - Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado).
+- Tickets: `GET /api/tickets`, `GET/POST/PATCH /api/tickets/:id…` (comentários e status).
 - Envs: ver `admin-backend/.env.example`.
 
 ### admin-frontend
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
-- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/plans`, `/new-plan`, `/edit-plan`.
+- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`.

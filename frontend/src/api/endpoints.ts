@@ -8,6 +8,9 @@ import type {
   EmployeeSession,
   OpeningHours,
   Service,
+  SupportTicket,
+  SupportTicketComment,
+  SupportTicketStatus,
   WhatsappHandoff,
 } from '@/src/api/types';
 
@@ -167,6 +170,13 @@ export const dashboardApi = {
     }),
   deleteEmployee: (id: string) =>
     api<{ ok: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
+  sendEmployeePasswordLink: (id: string) =>
+    api<{
+      ok: boolean;
+      sent: boolean;
+      resetLink: string;
+      expiresAt: string;
+    }>(`/employees/${id}/send-password-link`, { method: 'POST' }),
   services: () => api<{ services: Service[] }>('/services'),
   createService: (body: { name: string; duration: number; price: number }) =>
     api<{ service: Service }>('/services', { method: 'POST', body }),
@@ -281,5 +291,50 @@ export const dashboardApi = {
     }>('/whatsapp/simulate', {
       method: 'POST',
       body: { message, customerPhone },
+    }),
+  tickets: (status?: SupportTicketStatus) =>
+    api<{ tickets: SupportTicket[] }>(
+      `/tickets${status ? `?status=${status}` : ''}`,
+    ),
+  ticket: (id: string) => api<{ ticket: SupportTicket }>(`/tickets/${id}`),
+  createTicket: (body: { title: string; description: string }) =>
+    api<{ ticket: SupportTicket }>('/tickets', { method: 'POST', body }),
+  commentTicket: (id: string, body: string) =>
+    api<{ comment: SupportTicketComment }>(`/tickets/${id}/comments`, {
+      method: 'POST',
+      body: { body },
+    }),
+  updateTicketStatus: (id: string, status: SupportTicketStatus) =>
+    api<{ ticket: SupportTicket }>(`/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+};
+
+export const employeeTicketsApi = {
+  list: (status?: SupportTicketStatus) =>
+    api<{ tickets: SupportTicket[] }>(
+      `/tickets${status ? `?status=${status}` : ''}`,
+      { auth: 'employee' },
+    ),
+  get: (id: string) =>
+    api<{ ticket: SupportTicket }>(`/tickets/${id}`, { auth: 'employee' }),
+  create: (body: { title: string; description: string }) =>
+    api<{ ticket: SupportTicket }>('/tickets', {
+      method: 'POST',
+      body,
+      auth: 'employee',
+    }),
+  comment: (id: string, body: string) =>
+    api<{ comment: SupportTicketComment }>(`/tickets/${id}/comments`, {
+      method: 'POST',
+      body: { body },
+      auth: 'employee',
+    }),
+  updateStatus: (id: string, status: SupportTicketStatus) =>
+    api<{ ticket: SupportTicket }>(`/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+      auth: 'employee',
     }),
 };

@@ -18,6 +18,7 @@ import { WhatsappHandoffsModule } from './whatsapp-handoffs/whatsapp-handoffs.mo
 import { RemindersModule } from './reminders/reminders.module';
 import { EventsModule } from './events/events.module';
 import { EmployeePortalModule } from './employee-portal/employee-portal.module';
+import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -47,6 +48,7 @@ import { HealthController } from './health/health.controller';
     RemindersModule,
     EventsModule,
     EmployeePortalModule,
+    SupportTicketsModule,
   ],
   controllers: [HealthController],
   providers: [

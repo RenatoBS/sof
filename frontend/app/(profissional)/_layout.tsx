@@ -9,6 +9,7 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   const { employee, loading, logout } = useEmployeeAuth();
   const pathname = usePathname();
   const onChangePassword = pathname.includes('trocar-senha');
+  const onSupport = pathname.includes('support');
 
   if (loading) {
     return (
@@ -39,15 +40,33 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
               {employee.name} · {employee.email}
             </Text>
           </View>
-          <SofButton
-            title="Sair"
-            variant="light"
-            theme="dashboard"
-            onPress={async () => {
-              await logout();
-              router.replace('/login');
-            }}
-          />
+          <View style={styles.actions}>
+            {!onChangePassword && !onSupport ? (
+              <SofButton
+                title="Suporte"
+                variant="light"
+                theme="dashboard"
+                onPress={() => router.push('/(profissional)/support')}
+              />
+            ) : null}
+            {!onChangePassword && onSupport ? (
+              <SofButton
+                title="Agenda"
+                variant="light"
+                theme="dashboard"
+                onPress={() => router.push('/(profissional)/agenda')}
+              />
+            ) : null}
+            <SofButton
+              title="Sair"
+              variant="light"
+              theme="dashboard"
+              onPress={async () => {
+                await logout();
+                router.replace('/login');
+              }}
+            />
+          </View>
         </View>
       </View>
       <View style={styles.main}>{children}</View>
@@ -84,7 +103,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
   },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   biz: { fontSize: 22, fontWeight: '700', color: d.ink },
   email: { fontSize: 14, color: d.muted, marginTop: 4 },
   main: { flex: 1, padding: 32 },

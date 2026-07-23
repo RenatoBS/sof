@@ -17,6 +17,24 @@ Formato sugerido:
 
 ---
 
+## 2026-07-22 — Envio do link de senha do profissional via WhatsApp
+
+- **Contexto:** Conta gerava link para copiar; faltava disparar pelo bot com instruções e CTA.  
+- **Decisão:** `POST /api/employees/:id/send-password-link` emite token, zera senha e chama `WhatsappApiService.sendCtaUrl` (Meta `interactive/cta_url`; Uazapi tenta CTA em `/send/menu` e faz fallback para texto com o link). UI: botão no card do link e “Enviar link WhatsApp” no card do profissional.  
+- **Consequências:** Requer telefone do profissional + WhatsApp da conta conectado.  
+- **Alternativas descartadas:** Só texto sem CTA; e-mail (fora do escopo).
+
+---
+
+## 2026-07-22 — Tickets de suporte (conta + admin + profissional)
+
+- **Contexto:** Estabelecimento precisa falar com a Sof; admin precisa ver abertos e responder; profissional também participa.  
+- **Decisão:** Modelos `SupportTicket` + `SupportTicketComment` (status string `open|in_progress|resolved|closed`). Conta abre ticket; conta, profissional e admin comentam e mudam status. API produto com `TenantAuthGuard` (cookie/Bearer de conta **ou** profissional); admin em `admin-backend` `/api/tickets`. UI: aba Suporte no dashboard, portal profissional, Tickets no admin.  
+- **Consequências:** Migration `20260722220000_support_tickets`; comentário do admin em ticket `open` promove para `in_progress`.  
+- **Alternativas descartadas:** Só e-mail externo; chat em tempo real (SSE) nesta versão.
+
+---
+
 ## 2026-07-22 — Rotas planas no admin-frontend (sem `[id]` irmão de lista)
 
 - **Contexto:** No Expo Router web, rotas dinâmicas sob o mesmo shell (`accounts/index` + `accounts/[id]`) faziam a URL virar `/…/undefined` e a UI ficava em branco após login. `FlatList`+`gap` no RN Web também crashava.  

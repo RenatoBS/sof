@@ -38,6 +38,13 @@ export default function ShellLayout() {
             onPress={() => router.push('/accounts')}
           />
           <NavLink
+            label="Tickets"
+            active={
+              pathname === '/tickets' || pathname.startsWith('/edit-ticket')
+            }
+            onPress={() => router.push('/tickets')}
+          />
+          <NavLink
             label="Planos"
             active={
               pathname === '/plans' ||

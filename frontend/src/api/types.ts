@@ -128,3 +128,35 @@ export type AppointmentWriteBody = {
   serviceId?: string;
   recurrence?: AppointmentRecurrence;
 };
+
+export type SupportTicketStatus =
+  | 'open'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed';
+
+export type SupportTicketComment = {
+  id: string;
+  body: string;
+  authorRole: 'account' | 'employee' | 'admin' | string;
+  authorName: string;
+  authorEmployeeId?: string | null;
+  authorAdminId?: string | null;
+  createdAt: string;
+};
+
+export type SupportTicket = {
+  id: string;
+  accountId: string;
+  title: string;
+  description: string;
+  status: SupportTicketStatus | string;
+  createdByRole: string;
+  createdByEmployeeId?: string | null;
+  createdByName: string;
+  account?: { id: string; businessName: string; email: string };
+  commentCount: number;
+  comments?: SupportTicketComment[];
+  createdAt: string;
+  updatedAt: string;
+};
