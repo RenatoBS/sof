@@ -266,6 +266,9 @@ export class WhatsappController {
       }
 
       if (!text) {
+        console.warn(
+          `[whatsapp] Áudio sem transcrição (id=${messageId.slice(0, 40)})`,
+        );
         await this.api.sendText(
           customerPhone,
           AUDIO_FALLBACK_REPLY,
@@ -273,6 +276,10 @@ export class WhatsappController {
         );
         return;
       }
+
+      console.log(
+        `[whatsapp] Áudio transcrito (${customerPhone.slice(-4)}): ${text.slice(0, 120)}`,
+      );
 
       const result = await this.bot.handleIncomingMessage({
         account,

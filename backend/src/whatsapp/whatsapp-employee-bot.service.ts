@@ -105,7 +105,7 @@ export class WhatsappEmployeeBotService {
     const lower = trimmed.toLowerCase();
     const phone = normalizePhone(customerPhone) || customerPhone;
 
-    if (lower === 'cancelar' || lower === '/reset' || lower === 'reset') {
+    if (lower === '/reset' || lower === 'reset') {
       await this.resetSession(account.id, phone);
       return {
         replies: [
@@ -132,11 +132,20 @@ export class WhatsappEmployeeBotService {
       await this.saveSession(account.id, phone, { step, data });
     }
 
-    const viaNlu =
-      step === 'emp:start'
-        ? await this.tryEmployeeNlu(account, employee, phone, trimmed)
-        : null;
-    if (viaNlu) return viaNlu;
+    // NLU no menu (áudio/frase livre). Depois do 1º cumprimento o step
+    // fica em emp:awaiting_menu_action — era exatamente aí que o áudio
+    // era transcrito mas a intenção era ignorada.
+    const onMenu =
+      step === 'emp:start' || step === 'emp:awaiting_menu_action';
+    if (onMenu && this.looksLikeFreeText(trimmed)) {
+      const viaNlu = await this.tryEmployeeNlu(
+        account,
+        employee,
+        phone,
+        trimmed,
+      );
+      if (viaNlu) return viaNlu;
+    }
 
     if (step === 'emp:start') {
       return this.mainMenu(account, employee, phone);
@@ -161,6 +170,10 @@ export class WhatsappEmployeeBotService {
     }
 
     if (step === 'emp:awaiting_menu_action') {
+      // "cancelar" no menu = cancelar horário (não resetar sessão)
+      if (lower === 'cancelar') {
+        return this.startCancel(account, employee, phone);
+      }
       return this.handleMainAction(account, employee, phone, trimmed);
     }
 
@@ -359,6 +372,17 @@ export class WhatsappEmployeeBotService {
     return this.mainMenu(account, employee, phone);
   }
 
+  /** Texto livre (áudio/digitado), não id de botão/lista. */
+  private looksLikeFreeText(text: string) {
+    const t = text.trim();
+    if (!t) return false;
+    if (/^(emp:|day:|svc:|time:|dur:|appt:|sim|nao|não)$/i.test(t)) {
+      return false;
+    }
+    if (/^(hoje|amanh[aã]|outra\s+data)$/i.test(t)) return false;
+    return t.split(/\s+/).filter(Boolean).length >= 2 || t.length >= 8;
+  }
+
   private async tryEmployeeNlu(
     account: Account,
     employee: Employee & {
@@ -368,13 +392,36 @@ export class WhatsappEmployeeBotService {
     text: string,
   ): Promise<WhatsappBotResult | null> {
     const words = text.trim().split(/\s+/).filter(Boolean);
-    if (words.length < 3) return null;
+    if (words.length < 2) return null;
+
+    // Heurística rápida (áudio curto sem depender do LLM)
+    const heuristic = this.heuristicEmployeeIntent(text, account);
+    if (heuristic) {
+      if (heuristic.intent === 'agenda') {
+        return this.showAgenda(
+          account,
+          employee,
+          phone,
+          heuristic.date || this.localDateStr(this.nowInAccount(account)),
+        );
+      }
+      if (heuristic.intent === 'cancel') {
+        return this.startCancel(account, employee, phone);
+      }
+      if (heuristic.intent === 'event') {
+        return this.startEvent(account, employee, phone);
+      }
+      if (heuristic.intent === 'book') {
+        return this.startBooking(account, employee, phone);
+      }
+    }
+
     const apiKey = (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
     if (!apiKey) return null;
 
     const services = employee.services.map((l) => l.service);
     const parsed = await this.extractEmployeeIntent(text, services);
-    if (!parsed) return null;
+    if (!parsed || parsed.intent === 'other') return null;
 
     if (parsed.intent === 'agenda') {
       const date =
@@ -430,6 +477,52 @@ export class WhatsappEmployeeBotService {
         return this.timeMenu(account, employee, phone, data);
       }
       return this.dayMenu(account, employee, phone, data);
+    }
+    return null;
+  }
+
+  private heuristicEmployeeIntent(
+    text: string,
+    account: Account,
+  ): {
+    intent: 'agenda' | 'book' | 'event' | 'cancel';
+    date?: string;
+  } | null {
+    const lower = text.toLowerCase();
+    if (
+      /\b(cancelar|desmarcar|remover\s+hor[aá]rio)\b/.test(lower)
+    ) {
+      return { intent: 'cancel' };
+    }
+    if (
+      /\b(evento|bloquear|bloqueio|almo[cç]o|compromisso)\b/.test(lower)
+    ) {
+      return { intent: 'event' };
+    }
+    if (
+      /\b(agendar|marcar|novo\s+agendamento|marcar\s+cliente)\b/.test(lower)
+    ) {
+      return { intent: 'book' };
+    }
+    if (
+      /\b(agenda|hor[aá]rios?|compromissos?|o\s+que\s+tenho|meus?\s+hor[aá]rios?)\b/.test(
+        lower,
+      )
+    ) {
+      const base = this.nowInAccount(account);
+      if (/\bamanh[aã]\b/.test(lower)) {
+        base.setDate(base.getDate() + 1);
+        return { intent: 'agenda', date: this.localDateStr(base) };
+      }
+      const dm = /(\d{1,2})[\/\-](\d{1,2})/.exec(lower);
+      if (dm) {
+        const parsed = this.parseDateInput(`${dm[1]}/${dm[2]}`, account);
+        if (parsed) return { intent: 'agenda', date: parsed };
+      }
+      return {
+        intent: 'agenda',
+        date: this.localDateStr(this.nowInAccount(account)),
+      };
     }
     return null;
   }

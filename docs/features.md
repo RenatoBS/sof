@@ -178,7 +178,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Agendamento: serviço vinculado ao prof → dia → horário livre → nome/telefone do cliente → confirma → `kind=service` `source=whatsapp`.  
 - Evento: título → duração (30/60/90/120) → dia → horário → confirma → `kind=block`.  
 - Cancelar: lista próximos confirmados daquele profissional → confirma → `status=cancelled`.  
-- **Áudio + NLU:** mesma transcrição do webhook; no menu inicial, frases livres (≥ 3 palavras) com intents `agenda` / `book` / `event` / `cancel`.  
+- **Áudio + NLU:** mesma transcrição do webhook; no menu (`emp:start` / `emp:awaiting_menu_action`), frases livres usam heurística + LLM (`agenda` / `book` / `event` / `cancel`). “cancelar” no menu abre cancelamento (só `/reset` reinicia a sessão).  
 - Simulador: `POST /api/whatsapp/simulate` com o telefone do profissional.
 
 Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, sem QR no painel.
