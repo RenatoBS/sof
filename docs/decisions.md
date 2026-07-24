@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — `TZ=America/Sao_Paulo` no dyno da API Heroku
+
+- **Contexto:** Bot usava `new Date()` local do servidor; dyno em UTC fazia “amanhã” virar o dia seguinte após 21h BRT (ex.: pediu 24/07 e marcou 25/07).  
+- **Decisão:** Config var `TZ=America/Sao_Paulo` em `sof-agendamento-api` para o Node interpretar data/hora local no fuso BR.  
+- **Consequências:** Hoje/amanhã no bot alinhados ao Brasil sem redeploy de código. Contas com fuso diferente de SP ainda podem divergir até o bot usar `Account.timezone` de ponta a ponta.  
+- **Alternativas descartadas:** Só corrigir código agora (melhor a médio prazo; pode coexistir com `TZ`).
+
+---
+
 ## 2026-07-23 — Aviso WhatsApp ao profissional no novo agendamento
 
 - **Contexto:** Profissional só via SSE no painel; cliente/painel marcavam horário no nome dele sem WhatsApp.  
