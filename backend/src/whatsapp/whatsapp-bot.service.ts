@@ -164,6 +164,72 @@ export class WhatsappBotService {
     return n - 1;
   }
 
+  /** Normaliza texto para comparar nomes (sem acento/caixa/pontuação). */
+  private normalizeMatchText(value: string) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Nome e sobrenome no 1º contato: pelo menos 2 palavras com 2+ letras cada.
+   */
+  private parseClientFullName(text: string): string | null {
+    const name = String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (name.length < 5) return null;
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length < 2) return null;
+    if (parts.some((part) => part.replace(/[^\p{L}]/gu, '').length < 2)) {
+      return null;
+    }
+    return name;
+  }
+
+  private labelsMatch(needleRaw: string, labelRaw: string): boolean {
+    const needle = this.normalizeMatchText(needleRaw);
+    const label = this.normalizeMatchText(labelRaw);
+    if (!needle || !label) return false;
+    if (label === needle) return true;
+    if (label.startsWith(needle) || needle.startsWith(label)) return true;
+
+    // Títulos truncados pelo WhatsApp (botão 20 / lista 24).
+    for (const max of [20, 24]) {
+      if (labelRaw.trim().length > max) {
+        const cut = this.normalizeMatchText(labelRaw.trim().slice(0, max - 1));
+        if (
+          cut &&
+          (needle === cut || needle.startsWith(cut) || cut.startsWith(needle))
+        ) {
+          return true;
+        }
+      }
+    }
+
+    const words = label.split(' ').filter((w) => w.length >= 2);
+    if (
+      needle.length >= 2 &&
+      words.some((w) => w === needle || w.startsWith(needle))
+    ) {
+      return true;
+    }
+
+    const needleWords = needle.split(' ').filter(Boolean);
+    if (
+      needleWords.length > 1 &&
+      needleWords.every((w) => w.length >= 2 && label.includes(w))
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   private resolveChoice<T extends { id: string }>(
     text: string,
     items: T[],
@@ -187,18 +253,44 @@ export class WhatsappBotService {
     const byNumber = this.parseChoice(trimmed, items.length);
     if (byNumber !== null) return byNumber;
 
-    const lower = trimmed.toLowerCase();
-    const exact = items.findIndex(
-      (item) => opts.label(item).toLowerCase() === lower,
-    );
-    if (exact >= 0) return exact;
+    const matches = items
+      .map((item, index) => ({
+        index,
+        label: opts.label(item),
+        hit: this.labelsMatch(trimmed, opts.label(item)),
+      }))
+      .filter((row) => row.hit);
 
-    const starts = items.findIndex((item) =>
-      opts.label(item).toLowerCase().startsWith(lower),
-    );
-    if (starts >= 0) return starts;
+    if (matches.length === 1) return matches[0].index;
+    if (matches.length > 1) {
+      const needle = this.normalizeMatchText(trimmed);
+      const exact = matches.filter(
+        (row) => this.normalizeMatchText(row.label) === needle,
+      );
+      if (exact.length === 1) return exact[0].index;
+      return null;
+    }
 
     return null;
+  }
+
+  /** Título curto no menu: 1º nome se for único entre os listados. */
+  private employeeChoiceTitle(
+    name: string,
+    peers: { name: string }[],
+  ): string {
+    const full = String(name || '').trim() || 'Profissional';
+    const first = full.split(/\s+/)[0] || full;
+    const firstNorm = this.normalizeMatchText(first);
+    const clashes = peers.filter((peer) => {
+      const peerFirst = String(peer.name || '')
+        .trim()
+        .split(/\s+/)[0];
+      return this.normalizeMatchText(peerFirst) === firstNorm;
+    });
+    const title = clashes.length <= 1 ? first : full;
+    if (title.length <= 20) return title;
+    return `${title.slice(0, 19)}…`;
   }
 
   private menuReply(
@@ -334,8 +426,8 @@ export class WhatsappBotService {
   ): WhatsappBotResult {
     const choices: WhatsappMenuChoice[] = employees.map((e) => ({
       id: `emp:${e.id}`,
-      title: e.name,
-      description: 'Profissional disponível',
+      title: this.employeeChoiceTitle(e.name, employees),
+      description: e.name,
     }));
     if (opts?.includeSofPick) {
       choices.push({
@@ -661,8 +753,8 @@ export class WhatsappBotService {
     const choices: WhatsappMenuChoice[] = [
       ...employees.map((e) => ({
         id: `emp:${e.id}`,
-        title: e.name,
-        description: 'Profissional disponível',
+        title: this.employeeChoiceTitle(e.name, employees),
+        description: e.name,
       })),
       {
         id: 'path:time',
@@ -1303,16 +1395,18 @@ export class WhatsappBotService {
       });
       return {
         replies: [
-          `Oi! Aqui é a Sof, do ${account.businessName}. Para começar, qual é o seu nome?`,
+          `Oi! Aqui é a Sof, do ${account.businessName}. Para começar, qual é o seu nome e sobrenome?`,
         ],
       };
     }
 
     if (step === 'awaiting_name') {
-      const name = trimmed.replace(/\s+/g, ' ');
-      if (name.length < 2) {
+      const name = this.parseClientFullName(trimmed);
+      if (!name) {
         return {
-          replies: ['Me diga seu nome completo (ou como prefere ser chamado).'],
+          replies: [
+            'Me diga seu nome e sobrenome (ex.: Ana Silva).',
+          ],
         };
       }
       const client = await this.prisma.client.upsert({

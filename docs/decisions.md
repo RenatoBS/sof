@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-23 — Bot: nome+sobrenome no 1º contato e matching de profissionais
+
+- **Contexto:** 1º contato aceitava só um nome; texto digitado (ex. “João”, sem acento, título truncado) não batia com o profissional.  
+- **Decisão:** `awaiting_name` exige ≥2 palavras; `resolveChoice` normaliza acentos, casa primeiro nome/parcial e títulos truncados; botões de prof usam 1º nome quando único.  
+- **Consequências:** Clientes novos com nome completo; menos “não entendi” na escolha de profissional. Ambíguo (dois “João”) pede de novo.  
+- **Alternativas descartadas:** Sempre mostrar nome completo truncado com reticências; forçar só número do menu.
+
+---
+
 ## 2026-07-23 — `TZ=America/Sao_Paulo` no dyno da API Heroku
 
 - **Contexto:** Bot usava `new Date()` local do servidor; dyno em UTC fazia “amanhã” virar o dia seguinte após 21h BRT (ex.: pediu 24/07 e marcou 25/07).  
