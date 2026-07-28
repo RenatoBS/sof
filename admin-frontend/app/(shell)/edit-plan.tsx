@@ -1,8 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
-import { plansApi, type PlanRow } from '@/src/api/endpoints';
+import {
+  plansApi,
+  type EntitlementsMap,
+  type PlanRow,
+} from '@/src/api/endpoints';
+import { EntitlementsEditor } from '@/src/components/EntitlementsEditor';
 import { Button, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
@@ -12,6 +17,20 @@ function paramId(value: string | string[] | undefined) {
   return raw;
 }
 
+function confirmDelete(planName: string): Promise<boolean> {
+  const message =
+    `Apagar o plano “${planName}”? Isso desativa o Payment Link e remove/arquiva o produto na Stripe. Não dá para desfazer.`;
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return Promise.resolve(window.confirm(message));
+  }
+  return new Promise((resolve) => {
+    Alert.alert('Apagar plano', message, [
+      { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Apagar', style: 'destructive', onPress: () => resolve(true) },
+    ]);
+  });
+}
+
 export default function PlanDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = paramId(params.id);
@@ -19,6 +38,7 @@ export default function PlanDetailScreen() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [featuresText, setFeaturesText] = useState('');
+  const [entitlements, setEntitlements] = useState<EntitlementsMap>({});
   const [paymentLinkUrl, setPaymentLinkUrl] = useState('');
   const [active, setActive] = useState(true);
   const [error, setError] = useState('');
@@ -33,6 +53,7 @@ export default function PlanDetailScreen() {
     setName(found.name);
     setPrice(String(found.price));
     setFeaturesText(found.features.join('\n'));
+    setEntitlements(found.entitlements || {});
     setPaymentLinkUrl(found.paymentLinkUrl);
     setActive(found.active);
   }, [id]);
@@ -56,16 +77,36 @@ export default function PlanDetailScreen() {
           .split('\n')
           .map((l) => l.trim())
           .filter(Boolean),
+        entitlements,
         paymentLinkUrl,
         active,
         syncStripe: true,
       });
       setPlan(res.plan);
+      setPaymentLinkUrl(res.plan.paymentLinkUrl);
+      setEntitlements(res.plan.entitlements || {});
       setMessage(
-        'Salvo. Se o preço mudou, um novo Price foi criado na Stripe (o anterior foi arquivado).',
+        'Salvo. Se o preço mudou, um novo Price/Payment Link foi criado na Stripe.',
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Falha ao salvar.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onDelete() {
+    if (!id || !plan) return;
+    const ok = await confirmDelete(plan.name);
+    if (!ok) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await plansApi.remove(id);
+      router.replace('/plans');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Falha ao apagar.');
     } finally {
       setBusy(false);
     }
@@ -101,6 +142,7 @@ export default function PlanDetailScreen() {
         onChangeText={setFeaturesText}
         style={{ minHeight: 100, textAlignVertical: 'top' }}
       />
+      <EntitlementsEditor value={entitlements} onChange={setEntitlements} />
       <Field
         label="Payment Link URL"
         value={paymentLinkUrl}
@@ -122,7 +164,19 @@ export default function PlanDetailScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {message ? <Text style={styles.ok}>{message}</Text> : null}
-      <Button title={busy ? 'Salvando…' : 'Salvar'} onPress={save} disabled={busy} />
+      <View style={styles.actions}>
+        <Button
+          title={busy ? 'Salvando…' : 'Salvar'}
+          onPress={save}
+          disabled={busy}
+        />
+        <Button
+          title={busy ? 'Apagando…' : 'Apagar plano'}
+          variant="danger"
+          onPress={onDelete}
+          disabled={busy || !plan}
+        />
+      </View>
     </ScrollView>
   );
 }
@@ -146,6 +200,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: space.sm,
     marginBottom: space.md,
+  },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginTop: space.sm,
   },
   error: { color: colors.danger, marginBottom: space.sm },
   ok: { color: colors.accent, marginBottom: space.md },

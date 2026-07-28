@@ -17,7 +17,7 @@ Sof ajuda salões/barbearias a:
 | Feature | Tela | Notas |
 |---------|------|--------|
 | Landing | `/` | Hero, chat mock Sof, features com ícones SVG, passos |
-| Planos | `/pricing` | Essencial / Estúdio / Rede; CTA abre checkout |
+| Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
 | Nav / footer | global | Wordmark `sof`, CTAs |
@@ -38,7 +38,13 @@ Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — pro
 
 A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
 
-Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback legado em `common/plans.ts` / `CheckoutModal` se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links opcionais em `paymentLinkUrl`.
+Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback em `common/plans.ts` / `CheckoutModal` (Solo R$139 / Equipe R$199 / Rede R$259) se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl`. Apagar plano no admin desativa o Payment Link e remove/arquiva o Product na Stripe via API.
+
+### Gate por plano (entitlements)
+
+Cada plano tem `entitlements` configuráveis no admin (matriz boolean/limite). Login e `GET /api/auth/me` devolvem `account.entitlements`. Backend bloqueia com 403 (`PLAN_FEATURE_REQUIRED` / `PLAN_LIMIT_REACHED`). Front esconde Faturamento/Atendimentos, recorrência, lembretes, pausa do bot, etc., conforme o mapa. Limite de profissionais enforced em `POST /api/employees`.
+
+Keys stub (existem no catálogo, feature incompleta): `maxWhatsappNumbers` (ainda 1 número por conta), `clientReschedule` (remarcar no WhatsApp — backlog; cliente agenda/cancela). `supportPriority` é só badge na UI de tickets.
 
 ## Painel admin Sof (plataforma)
 
@@ -52,7 +58,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Editar conta / plano / status | `/edit-account` | `PUT /api/accounts/:id` |
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos | `/plans` | `GET /api/plans` |
-| Criar / editar plano (+ Stripe) | `/new-plan`, `/edit-plan` | `POST/PUT /api/plans` |
+| Criar / editar / apagar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT/DELETE /api/plans` |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 
@@ -161,8 +167,9 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 
 ### Fluxo do cliente
 - Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
+- **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** (mín. 2 palavras) antes do menu de serviços.  
 - **Menu inicial:** se o cliente já tem agendamento **futuro** (`scheduled`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
-- **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher).  
+- **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher). Matching por texto aceita nome parcial, sem acento e título truncado do WhatsApp; no menu o botão usa o 1º nome quando é único.  
 - **Dia e horário (duas perguntas):** 1) Hoje, Amanhã (só se houver vaga) ou Outra data (`dd/mm`); 2) até 5 horários livres daquele dia + **Outro horário** (`hh:mm`).  
 - **Menus interativos:** escolhas de serviço (com **preço**), caminho/profissional, dia, horário e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback).  
 - **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão; perguntas de **endereço** / “onde fica” / “como chegar” devolvem `Account.address` (se cadastrado).  
@@ -173,6 +180,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para **clientes** até a data ou até reativar (profissionais cadastrados continuam no fluxo operacional).  
 - **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e resolve o alerta (ver seção Atendimentos acima).  
 - **Lembrete automático:** se `whatsappReminderMinutes > 0` e a instância está conectada, um job a cada 30 min avisa o cliente no WhatsApp antes do horário (1× por agendamento; fuso = `Account.timezone`). A confirmação do bot só promete lembrete quando a antecedência está ativa.  
+- **Aviso ao profissional:** ao criar agendamento `kind=service` (bot do cliente ou painel da conta), a conta envia WhatsApp ao telefone do profissional (`EmployeeBookingNotifyService`) com cliente, serviço e horário. Não envia se o próprio profissional criou (portal/bot operacional), se WhatsApp da conta estiver desconectado, ou se o telefone do prof for inválido. Falha de envio só no log — não bloqueia o agendamento.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
 - **Conflito de agenda:** só mostra profissionais livres no horário; na confirmação há checagem de novo (corrida entre clientes) e, se necessário, volta à escolha de horário.  
 - Create/update na API de appointments aplicam expediente + conflito (painel e bot).
@@ -193,18 +201,21 @@ Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, s
 
 Sem credenciais: simulador no painel cobre o mesmo caminho de domínio para demos.
 
-## Conta demo (seed)
+## Contas demo (seed)
 
-Quando `SEED_DEMO_ENABLED=true`, o seed cria (ou recria padrão de demo):
+Quando `SEED_DEMO_ENABLED=true`, o seed cria **uma conta por plano** (mesma senha `SEED_DEMO_PASSWORD`):
 
-- Email: `SEED_DEMO_EMAIL` (default `demo@sof.com`)  
-- Senha: `SEED_DEMO_PASSWORD`  
-- Negócio exemplo “Santa Madalena”, plano Estúdio, 3 profissionais / 4 serviços  
-- **10 clientes**, **10 agendamentos de serviço por cliente** (alguns em série semanal com `recurrenceGroupId`)  
-- Bloqueios fixos por profissional: **Almoço** diário (série) + compromisso semanal (Médico / Reunião / Estoque)  
-- Login profissional demo: `marcelo@demo.sof` (mesma senha do demo; troca no 1º acesso em `/login`)  
+| Plano | Email | Negócio | Profissionais |
+|-------|-------|---------|---------------|
+| Solo | `demo-solo@sof.com` | Barbearia Solo | 2 (`marcelo@solo.demo.sof`, …) |
+| Equipe | `SEED_DEMO_EMAIL` / `demo@sof.com` | Santa Madalena | 3 (`marcelo@demo.sof`, …) |
+| Rede | `demo-rede@sof.com` | Rede Madalena | 3 (`marcelo@rede.demo.sof`, …) |
 
-Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Conta demo já existente: use `npm run backend:reset-seed` (local) para apagar e semear de novo.
+Cada conta: 4 serviços, 10 clientes, ~10 agendamentos/cliente, bloqueios (almoço + compromisso semanal). Login profissional em `/login` (troca de senha no 1º acesso).
+
+O dashboard carrega handoffs à parte: plano sem `handoffs` (ex. Solo) recebe 403 nessa rota e **não** deve impedir o load de agenda/clientes/serviços.
+
+Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Para apagar e semear de novo: `npm run backend:reset-seed`.
 
 ## API — mapa rápido
 
@@ -234,7 +245,8 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Health | `GET /api/health` |
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
 | Accounts | `GET/POST /api/accounts`, `GET/PUT …/:id`, `POST …/:id/reset-password` |
-| Plans | `GET/POST /api/plans`, `GET/PUT …/:id` |
+| Plans | `GET/POST /api/plans`, `GET/PUT/DELETE …/:id` (inclui `entitlements`) |
+| Feature catalog | `GET /api/feature-catalog` |
 | Tickets | `GET /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
 
 Detalhes de arquitetura: [`architecture.md`](architecture.md).

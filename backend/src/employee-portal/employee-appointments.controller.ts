@@ -13,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { serializeDates } from '../common/public-shapes';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { RealtimeService } from '../events/realtime.service';
+import { EmployeeBookingNotifyService } from '../whatsapp/employee-booking-notify.service';
 import {
   appointmentCreateRows,
   type AppointmentPayload,
@@ -35,6 +36,7 @@ export class EmployeeAppointmentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly employeeBookingNotify: EmployeeBookingNotifyService,
   ) {}
 
   @Get('appointments')
@@ -77,6 +79,12 @@ export class EmployeeAppointmentsController {
         appointment,
       });
     }
+    // Profissional criou o próprio horário — não precisa de aviso WhatsApp.
+    await this.employeeBookingNotify.notifyNewServiceBookings({
+      accountId: req.account.id,
+      appointmentIds: created.map((a) => a.id),
+      skipEmployeeId: req.employee.id,
+    });
     return { appointment: shaped[0], appointments: shaped };
   }
 

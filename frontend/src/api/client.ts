@@ -53,10 +53,10 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
 
   if (!resp.ok) {
+    const record =
+      data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
     const nested =
-      data && typeof data === 'object' && 'message' in data
-        ? (data as { message?: unknown }).message
-        : undefined;
+      record && 'message' in record ? record.message : undefined;
     const nestedError =
       nested && typeof nested === 'object' && nested !== null && 'error' in nested
         ? String((nested as { error: unknown }).error)
@@ -65,7 +65,8 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
           : undefined;
     throw new ApiError(
       nestedError ||
-        (typeof data?.error === 'string' ? data.error : undefined) ||
+        (typeof record?.error === 'string' ? record.error : undefined) ||
+        (typeof record?.message === 'string' ? record.message : undefined) ||
         `Erro inesperado (${resp.status}).`,
       resp.status,
     );

@@ -19,6 +19,8 @@ model Account {
   passwordHash          String
   plan                  String
   planPrice             Float
+  /// FK opcional ao catálogo `Plan` (entitlements); `plan`/`planPrice` seguem como snapshot
+  planId                String?
   whatsappPhoneNumberId String   @default("")
   /// Token da instância Uazapi/Whazap (nunca expor na API pública)
   whatsappInstanceToken String   @default("")
@@ -39,6 +41,7 @@ model Account {
   status                String   @default("active")
   createdAt             DateTime @default(now())
 
+  planRef          Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
   employees        Employee[]
   services         Service[]
   clients          Client[]
@@ -47,6 +50,8 @@ model Account {
   whatsappSessions WhatsappSession[]
   whatsappHandoffs WhatsappHandoff[]
   supportTickets   SupportTicket[]
+
+  @@index([planId])
 }
 
 model Employee {
@@ -308,10 +313,14 @@ model Plan {
   paymentLinkUrl  String   @default("")
   /// Features de marketing (JSON string[])
   features        Json     @default("[]")
+  /// Entitlements de gate: mapa featureKey → boolean | number | null (null = ilimitado)
+  entitlements    Json     @default("{}")
   active          Boolean  @default(true)
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  accounts Account[]
 
   @@index([active, sortOrder])
 }

@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
@@ -27,7 +28,10 @@ type ClientWriteBody = {
 @Controller('api/clients')
 @UseGuards(AuthGuard)
 export class ClientsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   private async parsePayload(
     accountId: string,
@@ -105,6 +109,9 @@ export class ClientsController {
   async create(@Req() req: AuthedRequest, @Body() body: ClientWriteBody) {
     const data = await this.parsePayload(req.account.id, body);
     const pause = this.parseBotPause(body);
+    if (pause.botPausedPermanent || pause.botPausedUntil != null) {
+      await this.entitlements.assertFeature(req.account.id, 'botPause');
+    }
     const client = await this.prisma.client.create({
       data: {
         accountId: req.account.id,
@@ -137,6 +144,16 @@ export class ClientsController {
             botPausedPermanent: existing.botPausedPermanent,
             botPausedUntil: existing.botPausedUntil,
           };
+    if (
+      body.botPausedPermanent !== undefined ||
+      body.botPausedUntil !== undefined
+    ) {
+      const enabling =
+        pause.botPausedPermanent || pause.botPausedUntil != null;
+      if (enabling) {
+        await this.entitlements.assertFeature(req.account.id, 'botPause');
+      }
+    }
 
     const client = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.client.update({

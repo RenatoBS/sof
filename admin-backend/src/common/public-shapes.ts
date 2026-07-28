@@ -1,3 +1,9 @@
+import {
+  defaultsForPlanSlug,
+  mergeEntitlements,
+  type EntitlementsMap,
+} from './feature-catalog';
+
 export function slugifyPlanName(name: string) {
   return name
     .normalize('NFD')
@@ -29,6 +35,7 @@ export function publicAccount(account: {
   phone: string;
   plan: string;
   planPrice: number;
+  planId?: string | null;
   status: string;
   createdAt: Date;
   whatsappConnectedAt: Date | null;
@@ -42,6 +49,7 @@ export function publicAccount(account: {
     phone: account.phone || '',
     plan: account.plan,
     planPrice: account.planPrice,
+    planId: account.planId ?? null,
     status: account.status,
     createdAt: account.createdAt,
     whatsappConnected: Boolean(account.whatsappConnectedAt),
@@ -60,11 +68,16 @@ export function publicPlan(plan: {
   stripePriceId: string;
   paymentLinkUrl: string;
   features: unknown;
+  entitlements?: unknown;
   active: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }) {
+  const entitlements: EntitlementsMap = mergeEntitlements(
+    plan.entitlements,
+    defaultsForPlanSlug(plan.slug),
+  );
   return {
     id: plan.id,
     name: plan.name,
@@ -78,6 +91,7 @@ export function publicPlan(plan: {
     features: Array.isArray(plan.features)
       ? plan.features.filter((f): f is string => typeof f === 'string')
       : [],
+    entitlements,
     active: plan.active,
     sortOrder: plan.sortOrder,
     createdAt: plan.createdAt,

@@ -22,6 +22,7 @@ import { ClientPicker } from '@/src/features/clients/ClientPicker';
 import { ServicePicker } from '@/src/features/services/ServicePicker';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 
 export type AppointmentDraft = {
   employeeId: string;
@@ -101,6 +102,8 @@ export function AppointmentModal({
   completeAppointment,
   createClient,
 }: AppointmentModalProps) {
+  const { has } = useEntitlements();
+  const canRecurrence = has('recurrence');
   const dashboard = useOptionalDashboard();
   const clients = clientsProp ?? dashboard?.clients ?? [];
   const services = servicesProp ?? dashboard?.services ?? [];
@@ -462,7 +465,7 @@ export function AppointmentModal({
               </>
             ) : null}
 
-            {isCreate ? (
+            {isCreate && canRecurrence ? (
               <>
                 <Text style={styles.label}>Recorrência</Text>
                 <View style={styles.rowChips}>

@@ -15,6 +15,7 @@ import type {
   SupportTicketStatus,
 } from '@/src/api/types';
 import { SofButton, SofInput } from '@/src/components/ui';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { d } from '@/src/theme/dashboard';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -45,6 +46,7 @@ function formatWhen(iso: string) {
 type Mode = 'account' | 'employee';
 
 export function SupportTicketsPanel({ mode }: { mode: Mode }) {
+  const { has } = useEntitlements();
   const api =
     mode === 'employee'
       ? {
@@ -229,10 +231,15 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.head}>
         <View>
-          <Text style={styles.title}>Suporte</Text>
+          <Text style={styles.title}>
+            Suporte
+            {mode === 'account' && has('supportPriority') ? ' · Prioritário' : ''}
+          </Text>
           <Text style={styles.meta}>
             {mode === 'account'
-              ? 'Abra um ticket e converse com a equipe Sof.'
+              ? has('supportPriority')
+                ? 'Seu plano inclui suporte prioritário. Abra um ticket e converse com a equipe Sof.'
+                : 'Abra um ticket e converse com a equipe Sof.'
               : 'Acompanhe e responda os tickets do estabelecimento.'}
           </Text>
         </View>

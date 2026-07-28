@@ -15,10 +15,22 @@ export type AccountRow = {
   phone: string;
   plan: string;
   planPrice: number;
+  planId?: string | null;
   status: string;
   createdAt: string;
   whatsappConnected: boolean;
   timezone: string;
+};
+
+export type EntitlementsMap = Record<string, boolean | number | null>;
+
+export type FeatureCatalogItem = {
+  key: string;
+  label: string;
+  type: 'boolean' | 'limit';
+  description: string;
+  status: 'active' | 'stub';
+  defaultValue: boolean | number | null;
 };
 
 export type PlanRow = {
@@ -32,6 +44,7 @@ export type PlanRow = {
   stripePriceId: string;
   paymentLinkUrl: string;
   features: string[];
+  entitlements: EntitlementsMap;
   active: boolean;
   sortOrder: number;
   createdAt: string;
@@ -107,6 +120,7 @@ export const plansApi = {
     price: number;
     interval?: string;
     features?: string[];
+    entitlements?: EntitlementsMap;
     sortOrder?: number;
     active?: boolean;
     paymentLinkUrl?: string;
@@ -122,6 +136,7 @@ export const plansApi = {
       price: number;
       interval: string;
       features: string[];
+      entitlements: EntitlementsMap;
       sortOrder: number;
       active: boolean;
       paymentLinkUrl: string;
@@ -129,6 +144,13 @@ export const plansApi = {
     }>,
   ) =>
     api<{ plan: PlanRow }>(`/plans/${id}`, { method: 'PUT', body }),
+  remove: (id: string) =>
+    api<{ ok: boolean }>(`/plans/${id}`, { method: 'DELETE' }),
+};
+
+export const featureCatalogApi = {
+  list: () =>
+    api<{ features: FeatureCatalogItem[] }>('/feature-catalog'),
 };
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';

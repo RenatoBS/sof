@@ -4,6 +4,7 @@ import type { Client } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { d } from '@/src/theme/dashboard';
 
 type PauseMode = 'off' | 'permanent' | '1h' | '8h' | '24h' | '7d';
@@ -69,6 +70,8 @@ function pausePayload(mode: PauseMode): {
 }
 
 export default function ClientsScreen() {
+  const { has } = useEntitlements();
+
   const { clients, setClients } = useDashboard();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -198,7 +201,7 @@ export default function ClientsScreen() {
               placeholder="11999990000"
               keyboardType="phone-pad"
             />
-            {isEditing ? (
+            {isEditing && has('botPause') ? (
               <>
                 <Text style={styles.label}>Bot WhatsApp</Text>
                 <Text style={styles.hint}>

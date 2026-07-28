@@ -157,6 +157,9 @@ export class AccountsController {
     }
 
     const passwordHash = await hashPassword(password);
+    const planRow = await this.prisma.plan.findFirst({
+      where: { name: plan, active: true },
+    });
     const account = await this.prisma.account.create({
       data: {
         businessName,
@@ -166,6 +169,7 @@ export class AccountsController {
         passwordHash,
         plan,
         planPrice,
+        planId: planRow?.id ?? null,
         status,
         openingHours: DEFAULT_OPENING_HOURS,
       },
@@ -187,6 +191,7 @@ export class AccountsController {
       email?: string;
       phone?: string;
       plan?: string;
+      planId?: string | null;
       planPrice?: number;
       status?: string;
     },
@@ -233,6 +238,30 @@ export class AccountsController {
       const plan = String(body.plan).trim();
       if (!plan) throw new BadRequestException({ error: 'Plano inválido.' });
       data.plan = plan;
+      const planRow = await this.prisma.plan.findFirst({
+        where: { name: plan, active: true },
+      });
+      data.planRef = planRow
+        ? { connect: { id: planRow.id } }
+        : { disconnect: true };
+    }
+    if (body.planId !== undefined) {
+      const planId = body.planId ? String(body.planId).trim() : '';
+      if (planId) {
+        const planRow = await this.prisma.plan.findUnique({
+          where: { id: planId },
+        });
+        if (!planRow) {
+          throw new BadRequestException({ error: 'Plano não encontrado.' });
+        }
+        data.planRef = { connect: { id: planRow.id } };
+        data.plan = planRow.name;
+        if (body.planPrice === undefined) {
+          data.planPrice = planRow.price;
+        }
+      } else {
+        data.planRef = { disconnect: true };
+      }
     }
     if (body.planPrice !== undefined) {
       const planPrice = Number(body.planPrice);

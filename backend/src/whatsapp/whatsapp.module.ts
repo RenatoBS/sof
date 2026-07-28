@@ -4,15 +4,18 @@ import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { BookingNluService } from './booking-nlu.service';
+import { EmployeeBookingNotifyService } from './employee-booking-notify.service';
 import { AuthModule } from '../auth/auth.module';
 import { WhatsappHandoffsModule } from '../whatsapp-handoffs/whatsapp-handoffs.module';
 import { EmployeePortalModule } from '../employee-portal/employee-portal.module';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 @Module({
   imports: [
     AuthModule,
     WhatsappHandoffsModule,
     forwardRef(() => EmployeePortalModule),
+    EntitlementsModule,
   ],
   controllers: [WhatsappController],
   providers: [
@@ -20,7 +23,8 @@ import { EmployeePortalModule } from '../employee-portal/employee-portal.module'
     WhatsappBotService,
     WhatsappEmployeeBotService,
     BookingNluService,
+    EmployeeBookingNotifyService,
   ],
-  exports: [WhatsappApiService],
+  exports: [WhatsappApiService, EmployeeBookingNotifyService],
 })
 export class WhatsappModule {}

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -12,6 +13,10 @@ import {
 import { Prisma } from '@prisma/client';
 import { AdminAuthGuard } from '../auth/admin-auth.guard';
 import { publicPlan, slugifyPlanName } from '../common/public-shapes';
+import {
+  defaultsForPlanSlug,
+  sanitizeEntitlementsInput,
+} from '../common/feature-catalog';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeCatalogService } from './stripe-catalog.service';
 
@@ -49,10 +54,11 @@ export class PlansController {
       price?: number;
       interval?: string;
       features?: string[];
+      entitlements?: Record<string, unknown>;
       sortOrder?: number;
       active?: boolean;
       paymentLinkUrl?: string;
-      /** Se true e Stripe configurado, cria Product+Price na Stripe */
+      /** Se true e Stripe configurado, cria Product+Price+Payment Link na Stripe */
       syncStripe?: boolean;
       stripeProductId?: string;
       stripePriceId?: string;
@@ -91,6 +97,7 @@ export class PlansController {
 
     let stripeProductId = String(body?.stripeProductId || '').trim();
     let stripePriceId = String(body?.stripePriceId || '').trim();
+    let resolvedPaymentLinkUrl = paymentLinkUrl;
     const syncStripe = body?.syncStripe !== false;
 
     if (syncStripe && this.stripe.isConfigured()) {
@@ -101,6 +108,9 @@ export class PlansController {
       });
       stripeProductId = created.stripeProductId;
       stripePriceId = created.stripePriceId;
+      if (!resolvedPaymentLinkUrl) {
+        resolvedPaymentLinkUrl = created.paymentLinkUrl;
+      }
     } else if (!stripeProductId || !stripePriceId) {
       if (!this.stripe.isConfigured()) {
         throw new BadRequestException({
@@ -110,6 +120,10 @@ export class PlansController {
       }
     }
 
+    const entitlements = sanitizeEntitlementsInput(
+      body?.entitlements ?? defaultsForPlanSlug(slug),
+    );
+
     const plan = await this.prisma.plan.create({
       data: {
         name,
@@ -118,8 +132,9 @@ export class PlansController {
         interval,
         stripeProductId,
         stripePriceId,
-        paymentLinkUrl,
+        paymentLinkUrl: resolvedPaymentLinkUrl,
         features,
+        entitlements: entitlements as Prisma.InputJsonValue,
         active,
         sortOrder,
       },
@@ -137,6 +152,7 @@ export class PlansController {
       price?: number;
       interval?: string;
       features?: string[];
+      entitlements?: Record<string, unknown>;
       sortOrder?: number;
       active?: boolean;
       paymentLinkUrl?: string;
@@ -183,6 +199,11 @@ export class PlansController {
         ? body.features.filter((f): f is string => typeof f === 'string')
         : [];
     }
+    if (body.entitlements !== undefined) {
+      data.entitlements = sanitizeEntitlementsInput(
+        body.entitlements,
+      ) as Prisma.InputJsonValue;
+    }
     if (body.sortOrder !== undefined) {
       data.sortOrder = Number(body.sortOrder) || 0;
     }
@@ -225,6 +246,12 @@ export class PlansController {
             : undefined,
         });
         data.stripePriceId = replaced.stripePriceId;
+        // Novo Price exige novo Payment Link; só sobrescreve se o admin não
+        // enviou paymentLinkUrl neste mesmo request.
+        if (body.paymentLinkUrl === undefined) {
+          const link = await this.stripe.createPaymentLink(replaced.stripePriceId);
+          data.paymentLinkUrl = link.paymentLinkUrl;
+        }
       }
     }
 
@@ -243,5 +270,34 @@ export class PlansController {
       data,
     });
     return { plan: publicPlan(updated) };
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    const plan = await this.prisma.plan.findUnique({ where: { id } });
+    if (!plan) throw new NotFoundException({ error: 'Plano não encontrado.' });
+
+    const hasStripeProduct = plan.stripeProductId.startsWith('prod_');
+    const hasStripePrice = plan.stripePriceId.startsWith('price_');
+    const hasPaymentLink = Boolean(plan.paymentLinkUrl?.trim());
+    const needsStripeCleanup =
+      hasStripeProduct || hasStripePrice || hasPaymentLink;
+
+    if (needsStripeCleanup) {
+      if (!this.stripe.isConfigured()) {
+        throw new BadRequestException({
+          error:
+            'Este plano tem recursos na Stripe. Configure STRIPE_SECRET_KEY para apagá-los via API.',
+        });
+      }
+      await this.stripe.deleteCatalogResources({
+        productId: plan.stripeProductId,
+        priceId: plan.stripePriceId,
+        paymentLinkUrl: plan.paymentLinkUrl,
+      });
+    }
+
+    await this.prisma.plan.delete({ where: { id } });
+    return { ok: true };
   }
 }

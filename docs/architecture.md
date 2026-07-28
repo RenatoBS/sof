@@ -46,6 +46,7 @@ Registrados em `backend/src/app.module.ts`:
 | `ServicesModule` | serviços (cardápio) |
 | `AppointmentsModule` | agendamentos |
 | `PlansModule` | catálogo público `GET /api/plans` + `PlansService` para checkout |
+| `EntitlementsModule` | gate por plano: catálogo de keys + `EntitlementsService` |
 | `CheckoutModule` | assinatura / Checkout Session Stripe |
 | `PaymentsModule` | webhook Stripe |
 | `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
@@ -66,7 +67,7 @@ Registrados em `backend/src/app.module.ts`:
 Arquivo: `backend/prisma/schema.prisma`
 
 ```text
-Account
+Account  (plan / planPrice snapshot + planId → Plan)
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
@@ -79,12 +80,14 @@ Account
         └── SupportTicketComment[]  (authorRole: account|employee|admin)
 
 AdminUser     (operadores do painel Sof — não é tenant; comentários de suporte)
-Plan          (catálogo Sof ↔ stripeProductId / stripePriceId)
+Plan          (catálogo Sof ↔ stripeProductId / stripePriceId / paymentLinkUrl / entitlements)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
+Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `planId` (FK opcional a `Plan`), `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
 
-`Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `features` (JSON), `active`, `sortOrder`. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` se a tabela estiver vazia.
+`Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `paymentLinkUrl`, `features` (JSON marketing `string[]`), `entitlements` (JSON mapa featureKey → boolean | number | null), `active`, `sortOrder`. Admin com Stripe cria Product + Price + Payment Link juntos; `DELETE` desativa o link e remove/arquiva o produto na Stripe antes de apagar o registro. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` (Solo/Equipe/Rede) se a tabela estiver vazia.
+
+`Account.planId` referencia o catálogo para resolução de entitlements; `plan`/`planPrice` permanecem como snapshot de display. Resolução: `Plan.entitlements` mergeado com defaults do slug; sem `planId`, aliases de nome (Essencial→Solo, Estúdio→Equipe) ou defaults Solo. Enforcement no backend (`assertFeature` / `assertLimit`); front consome `account.entitlements` em login/`GET /api/auth/me`. Catálogo de keys: `backend/src/entitlements/feature-catalog.ts` (espelho no admin-backend).
 
 `AdminUser`: email/senha dos operadores do `admin-backend`.
 
@@ -96,11 +99,15 @@ Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; 
 
 `WhatsappHandoff`: alerta de atendimento humano por conversa — `party` (`client` | `employee`), `clientId` / `employeeId` opcionais, `reason` (`unresolved` | `human_requested`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). Contadores: `Client.botUnresolvedCount` e `Employee.botUnresolvedCount`. `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta (cliente e prof). Fluxo: webhook detecta `fromMe` sem `wasSentByApi` → `onHumanReply`: em cliente pausa bot 1 h e resolve; em profissional só resolve (sem pausar o bot operacional). Webhook Uazapi **sem** excluir `fromMe` (só `wasSentByApi` + grupos); `GET /api/account/whatsapp/status` ressincroniza a config no máx. 1x/hora por instância.
 
-`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`scheduled` | `completed` | `cancelled`), `completedAt`, `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts` — só `scheduled` ocupa slot). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Conclusão: manual (conta sem restrição de janela; profissional só em [início, fim]) ou job `AppointmentCompletionsScheduler` (~5 min) quando `now >= endAt`; SSE `appointment:updated`. Cancelamento usa soft-cancel (`cancelled`). Lembrete WhatsApp: `reminderClaimedAt` / `reminderSentAt` (no máximo 1 envio bem-sucedido; job em `reminders/`; só `scheduled`).
+`Appointment`: `kind` (`service` | `block`), data/hora, `status` (`scheduled` | `completed` | `cancelled`), `completedAt`, `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts` — só `scheduled` ocupa slot). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Conclusão: manual (conta sem restrição de janela; profissional só em [início, fim]) ou job `AppointmentCompletionsScheduler` (~5 min) quando `now >= endAt`; SSE `appointment:updated`. Cancelamento usa soft-cancel (`cancelled`). Lembrete WhatsApp: `reminderClaimedAt` / `reminderSentAt` (no máximo 1 envio bem-sucedido; job em `reminders/`; só `scheduled`). Aviso imediato ao profissional: `EmployeeBookingNotifyService` (WhatsApp da conta → `Employee.phone`) após create de `kind=service`.
 
 ### Lembretes WhatsApp
 
 `RemindersModule` (`@nestjs/schedule`): tick no bootstrap + a cada 30 minutos. Interpreta `Appointment.date`/`time` no `Account.timezone`, calcula due = início − `whatsappReminderMinutes`, envia via `WhatsappApiService.sendText` com o token da conta. Claim atômico no Postgres evita double-send entre dynos/ticks; falha de envio libera o claim para retry.
+
+### Aviso de agendamento ao profissional
+
+`EmployeeBookingNotifyService` (em `WhatsappModule`): após create de agendamento `kind=service` (API da conta, bot do cliente; portal/bot do profissional pula com `skipEmployeeId`), envia texto via instância da conta para o telefone do `Employee`. Best-effort (erro só no log). Recorrência: uma mensagem listando os horários.
 
 Datasource usa:
 
@@ -216,7 +223,7 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 - Porta local **3011**; prefixo `/api/*`; health `GET /api/health`.
 - Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
 - Contas: `GET/POST /api/accounts`, `GET/PUT /api/accounts/:id`, `POST /api/accounts/:id/reset-password`.
-- Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado).
+- Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado). Body aceita `entitlements`. `GET /api/feature-catalog` lista keys gateáveis.
 - Tickets: `GET /api/tickets`, `GET/POST/PATCH /api/tickets/:id…` (comentários e status).
 - Envs: ver `admin-backend/.env.example`.
 

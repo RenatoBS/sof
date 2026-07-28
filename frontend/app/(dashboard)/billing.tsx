@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
+import { Redirect } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   formatCurrency,
   useDashboard,
 } from '@/src/context/DashboardContext';
 import { d } from '@/src/theme/dashboard';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -55,6 +57,7 @@ function revenueFor(
 }
 
 export default function BillingScreen() {
+  const { has } = useEntitlements();
   const { appointments, getEmployee, getService } = useDashboard();
 
   const stats = useMemo(
@@ -65,6 +68,8 @@ export default function BillingScreen() {
     }),
     [appointments],
   );
+
+  if (!has('billing')) return <Redirect href="/(dashboard)/agenda" />;
 
   const rows = appointments
     .filter(

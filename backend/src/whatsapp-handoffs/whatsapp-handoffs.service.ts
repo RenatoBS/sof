@@ -7,6 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../events/realtime.service';
 import { serializeDates } from '../common/public-shapes';
 import { normalizePhone } from '../common/phone';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import { hasFeature } from '../entitlements/feature-catalog';
 
 export const HANDOFF_THRESHOLDS = [1, 2, 3, 5] as const;
 export type HandoffThreshold = (typeof HANDOFF_THRESHOLDS)[number];
@@ -21,6 +23,7 @@ export class WhatsappHandoffsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   shape(handoff: object) {
@@ -181,6 +184,9 @@ export class WhatsappHandoffsService {
     party?: HandoffParty;
     employeeId?: string;
   }) {
+    const ents = await this.entitlements.forAccount(opts.accountId);
+    if (!hasFeature(ents, 'handoffs')) return null;
+
     const phone =
       normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
     if (!phone) return null;

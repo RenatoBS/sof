@@ -13,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 
 function toDataUrlQr(qrcode?: string) {
@@ -59,6 +60,7 @@ export class AccountWhatsappController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly api: WhatsappApiService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private ensureUazapiPairing() {
@@ -158,6 +160,17 @@ export class AccountWhatsappController {
     @Body() body: { phone?: string },
   ) {
     this.ensureUazapiPairing();
+
+    const ents = await this.entitlements.forAccount(req.account.id);
+    const waLimit = this.entitlements.effectiveWhatsappLimit(ents);
+    const alreadyLinked = Boolean(
+      req.account.whatsappConnectedAt ||
+        req.account.whatsappInstanceToken ||
+        req.account.whatsappPhoneNumberId,
+    );
+    if (!alreadyLinked && waLimit < 1) {
+      await this.entitlements.assertLimit(req.account.id, 'maxWhatsappNumbers', 0);
+    }
 
     const phone =
       typeof body?.phone === 'string' ? body.phone.replace(/\D/g, '') : '';

@@ -50,7 +50,7 @@ Scripts úteis: `prisma:migrate`, `prisma:deploy`, `prisma:seed`, `prisma:reset-
 
 ### Reset + seed (local)
 
-Apaga o conteúdo de todas as tabelas e recria a conta demo com `SEED_DEMO_EMAIL` / `SEED_DEMO_PASSWORD` do `backend/.env`:
+Apaga contas/dados demo e recria **uma conta por plano** (Solo / Equipe / Rede), com a mesma senha `SEED_DEMO_PASSWORD`:
 
 ```bash
 # na raiz
@@ -93,14 +93,20 @@ cd admin-frontend && cp .env.example .env && npm install && npm run web
 ```
 
 Na raiz: `npm run admin-backend:dev` / `npm run admin-frontend:web`.  
-Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan`.  
+Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan` (Solo / Equipe / Rede com entitlements) e **uma conta demo por plano**.  
 Login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@sof.com` / `admin123`).
 
-## Conta de teste
+## Contas de teste (após seed / reset-seed)
 
-- Email: `demo@sof.com` (ou `SEED_DEMO_EMAIL`)  
-- Senha: valor de `SEED_DEMO_PASSWORD` no `backend/.env`  
-- Profissional demo (após seed): `marcelo@demo.sof` / mesma senha — em `/login` (troca no 1º acesso)  
+Senha padrão de todas: `SEED_DEMO_PASSWORD` (default `demo123`).
+
+| Plano | Conta | Profissional (exemplo) |
+|-------|-------|------------------------|
+| Solo | `demo-solo@sof.com` | `marcelo@solo.demo.sof` |
+| Equipe | `demo@sof.com` (ou `SEED_DEMO_EMAIL`) | `marcelo@demo.sof` |
+| Rede | `demo-rede@sof.com` | `marcelo@rede.demo.sof` |
+
+- Login profissional em `/login` (troca de senha no 1º acesso)  
 - Admin Sof: `admin@sof.com` (ou `SEED_ADMIN_EMAIL`) — painel em `:8091`
 
 Não commitar `.env`.

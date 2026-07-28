@@ -17,6 +17,61 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Gate por plano (entitlements configuráveis no admin)
+
+- **Contexto:** Planos Solo/Equipe/Rede definidos no pricing; features existiam no produto mas sem enforcement; admin só editava bullets de marketing.  
+- **Decisão:** Catálogo tipado de keys no código (`feature-catalog.ts`); valores por plano em `Plan.entitlements` (JSON); `Account.planId` FK; `EntitlementsService.assertFeature` / `assertLimit` (403 `PLAN_FEATURE_REQUIRED` / `PLAN_LIMIT_REACHED`); admin edita matriz; `/auth/me` e login expõem `entitlements`; front esconde tabs/settings. Seed/fallback: Solo R$139 / Equipe R$199 / Rede R$259.  
+- **Stubs documentados:** `maxWhatsappNumbers` (produto ainda 1 número; connect efetivo `min(limit,1)`); `clientReschedule` (débito técnico — fluxo de remarcar no bot ainda não existe); `supportPriority` só UI (badge).  
+- **Consequências:** Admin muda limites/features sem deploy de lógica; novas keys exigem hook no código. Contas sem `planId` resolvem por nome/alias (Essencial→Solo, Estúdio→Equipe) ou defaults Solo.  
+- **Alternativas descartadas:** Feature flags globais sem plano; entitlements só no front; multi-WhatsApp e remarcação nesta entrega.
+
+---
+
+## 2026-07-23 — Bot: nome+sobrenome no 1º contato e matching de profissionais
+
+- **Contexto:** 1º contato aceitava só um nome; texto digitado (ex. “João”, sem acento, título truncado) não batia com o profissional.  
+- **Decisão:** `awaiting_name` exige ≥2 palavras; `resolveChoice` normaliza acentos, casa primeiro nome/parcial e títulos truncados; botões de prof usam 1º nome quando único.  
+- **Consequências:** Clientes novos com nome completo; menos “não entendi” na escolha de profissional. Ambíguo (dois “João”) pede de novo.  
+- **Alternativas descartadas:** Sempre mostrar nome completo truncado com reticências; forçar só número do menu.
+
+---
+
+## 2026-07-23 — `TZ=America/Sao_Paulo` no dyno da API Heroku
+
+- **Contexto:** Bot usava `new Date()` local do servidor; dyno em UTC fazia “amanhã” virar o dia seguinte após 21h BRT (ex.: pediu 24/07 e marcou 25/07).  
+- **Decisão:** Config var `TZ=America/Sao_Paulo` em `sof-agendamento-api` para o Node interpretar data/hora local no fuso BR.  
+- **Consequências:** Hoje/amanhã no bot alinhados ao Brasil sem redeploy de código. Contas com fuso diferente de SP ainda podem divergir até o bot usar `Account.timezone` de ponta a ponta.  
+- **Alternativas descartadas:** Só corrigir código agora (melhor a médio prazo; pode coexistir com `TZ`).
+
+---
+
+## 2026-07-23 — Aviso WhatsApp ao profissional no novo agendamento
+
+- **Contexto:** Profissional só via SSE no painel; cliente/painel marcavam horário no nome dele sem WhatsApp.  
+- **Decisão:** `EmployeeBookingNotifyService` envia mensagem da instância da conta para `Employee.phone` após create `kind=service` (bot cliente + API conta). Skip se o próprio prof criou (portal/bot). Best-effort (não falha o create).  
+- **Consequências:** Exige WhatsApp conectado na conta + telefone válido no profissional; recorrência vira uma mensagem com lista de horários.  
+- **Alternativas descartadas:** Template HSM Meta; toggle por conta; notificar também em `kind=block`.
+
+---
+
+## 2026-07-23 — Apagar plano no admin limpa Stripe via API
+
+- **Contexto:** Product/Payment Link criados por API só se removem por API; o admin não tinha exclusão e deixava órfãos na Stripe.  
+- **Decisão:** `DELETE /api/plans/:id` desativa Payment Links (`active: false` — Stripe não tem DELETE), arquiva Prices, tenta `products.del` e se a Stripe recusar (ex.: Price associado) arquiva o Product. Só então apaga o `Plan` local. Erro da Stripe → `502` com a mensagem no front; plano permanece.  
+- **Consequências:** Botão **Apagar plano** em `/edit-plan`; sem `STRIPE_SECRET_KEY` não apaga planos que tenham IDs/URL Stripe.  
+- **Alternativas descartadas:** Soft-delete só no Sof; apagar DB sem tocar Stripe; exigir `stripePaymentLinkId` no schema antes de limpar.
+
+---
+
+## 2026-07-23 — Admin cria Payment Link junto com Product/Price
+
+- **Contexto:** Ao criar plano no painel admin com Stripe, só Product + Price eram sincronizados; `paymentLinkUrl` ficava vazio e o link tinha que ser colado à mão.  
+- **Decisão:** `StripeCatalogService.createProductAndPrice` também cria `paymentLinks.create` e grava a URL no plano. Ao trocar preço/intervalo (novo Price), gera um Payment Link novo e atualiza `paymentLinkUrl` (salvo override manual no mesmo request).  
+- **Consequências:** Novo plano já nasce com link `buy.stripe.com`; edição de preço renova o link. Links antigos na Stripe não são desativados (não há `paymentLinkId` no schema).  
+- **Alternativas descartadas:** Só Checkout Session no app sem Payment Links; botão separado “gerar link” no admin.
+
+---
+
 ## 2026-07-23 — Menu do bot do profissional: concluir condicional + criar unificado
 
 - **Contexto:** “Concluir” no menu poluía quando o prof não estava em atendimento; agendamento e evento eram duas entradas redundantes.  
