@@ -125,6 +125,13 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
 
   if (!account) return <Redirect href="/login" />;
 
+  const onChoosePlan =
+    pathname.includes('choose-plan') || pathname.endsWith('/choose-plan');
+
+  if (account.needsPlanSelection && !onChoosePlan) {
+    return <Redirect href="/(dashboard)/choose-plan" />;
+  }
+
   return (
     <View style={styles.root}>
       <View style={styles.topbar}>
@@ -154,6 +161,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         </View>
       </View>
 
+      {!account.needsPlanSelection ? (
       <View style={styles.tabbar}>
         <ScrollView
           horizontal
@@ -191,6 +199,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
           })}
         </ScrollView>
       </View>
+      ) : null}
 
       <ScrollView
         style={styles.main}

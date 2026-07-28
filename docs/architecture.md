@@ -47,7 +47,9 @@ Registrados em `backend/src/app.module.ts`:
 | `AppointmentsModule` | agendamentos |
 | `PlansModule` | catálogo público `GET /api/plans` + `PlansService` para checkout |
 | `EntitlementsModule` | gate por plano: catálogo de keys + `EntitlementsService` |
-| `CheckoutModule` | assinatura / Checkout Session Stripe |
+| `PromoCouponsModule` | resgate de cupons, pausa por expiração, scheduler |
+| `BillingModule` | renovação / mudança de plano (Stripe ou cupom) para conta logada |
+| `CheckoutModule` | assinatura / Checkout Session Stripe (+ cupom no create) |
 | `PaymentsModule` | webhook Stripe |
 | `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
 | `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
@@ -83,9 +85,11 @@ AdminUser     (operadores do painel Sof — não é tenant; comentários de supo
 Plan          (catálogo Sof ↔ stripeProductId / stripePriceId / paymentLinkUrl / entitlements)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `planId` (FK opcional a `Plan`), `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended`).
+Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `planId` (FK opcional a `Plan`), `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended` | `paused`), `billingSource` (`paid` | `promo`), `promoExpiresAt`.
 
 `Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `paymentLinkUrl`, `features` (JSON marketing `string[]`), `entitlements` (JSON mapa featureKey → boolean | number | null), `active`, `sortOrder`. Admin com Stripe cria Product + Price + Payment Link juntos; `DELETE` desativa o link e remove/arquiva o produto na Stripe antes de apagar o registro. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` (Solo/Equipe/Rede) se a tabela estiver vazia.
+
+`PromoCoupon`: código único, `planId`, `freeDays` (7|30|60), `maxUses` / `usedCount`, `active`. `PromoCouponRedemption` registra uso por conta (`@@unique([couponId, accountId])`) e `expiresAt`.
 
 `Account.planId` referencia o catálogo para resolução de entitlements; `plan`/`planPrice` permanecem como snapshot de display. Resolução: `Plan.entitlements` mergeado com defaults do slug; sem `planId`, aliases de nome (Essencial→Solo, Estúdio→Equipe) ou defaults Solo. Enforcement no backend (`assertFeature` / `assertLimit`); front consome `account.entitlements` em login/`GET /api/auth/me`. Catálogo de keys: `backend/src/entitlements/feature-catalog.ts` (espelho no admin-backend).
 
@@ -147,7 +151,8 @@ URLs:
 | Rota | Papel |
 |------|--------|
 | `/` | Landing |
-| `/pricing` | Planos + checkout modal |
+| `/pricing` | Planos + checkout modal (cupom opcional) |
+| `/(dashboard)/choose-plan` | Escolher/alterar plano ou aplicar cupom (obrigatório se `paused`) |
 | `/about` | Quem somos |
 | `/login` | Entrar (conta ou profissional) |
 | `/checkout-return` | Retorno Stripe → auto-login agenda |
@@ -163,7 +168,7 @@ URLs:
 | `/(profissional)/support` | Tickets da conta (comentar / status) |
 | `/(profissional)/trocar-senha` | Troca de senha (obrigatória no 1º acesso) |
 
-Gate do dashboard: sem `account` → redirect `/login` (`(dashboard)/_layout.tsx`).  
+Gate do dashboard: sem `account` → redirect `/login`; com `needsPlanSelection` (`status=paused`) → `/(dashboard)/choose-plan` (abas ocultas).  
 Gate do portal profissional: sem sessão employee → `/login`; com `mustChangePassword` → `trocar-senha`.
 
 ### Estado
@@ -224,10 +229,11 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 - Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
 - Contas: `GET/POST /api/accounts`, `GET/PUT /api/accounts/:id`, `POST /api/accounts/:id/reset-password`.
 - Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado). Body aceita `entitlements`. `GET /api/feature-catalog` lista keys gateáveis.
+- Cupons: `GET/POST /api/coupons`, `GET/PUT/DELETE /api/coupons/:id` — plano + 7/30/60 dias + máx. usos.
 - Tickets: `GET /api/tickets`, `GET/POST/PATCH /api/tickets/:id…` (comentários e status).
 - Envs: ver `admin-backend/.env.example`.
 
 ### admin-frontend
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
-- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`.
+- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.

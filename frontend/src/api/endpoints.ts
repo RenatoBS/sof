@@ -122,15 +122,26 @@ export const checkoutApi = {
     email: string,
     phone: string,
     password: string,
+    couponCode?: string,
   ) =>
     api<{
-      mode: 'redirect' | 'dev-approved';
+      mode: 'redirect' | 'dev-approved' | 'promo-approved';
       sessionId: string;
       initPoint?: string;
       token?: string;
+      promoExpiresAt?: string | null;
+      freeDays?: number;
+      planName?: string;
     }>('/checkout/create', {
       method: 'POST',
-      body: { planName, name, email, phone, password },
+      body: {
+        planName,
+        name,
+        email,
+        phone,
+        password,
+        ...(couponCode ? { couponCode } : {}),
+      },
       auth: false,
     }),
   status: (sessionId: string) =>
@@ -140,6 +151,28 @@ export const checkoutApi = {
       token?: string;
       delivered?: boolean;
     }>(`/checkout/status/${sessionId}`, { auth: false }),
+};
+
+export const billingApi = {
+  redeemCoupon: (couponCode: string) =>
+    api<{
+      account: Account;
+      promoExpiresAt: string | null;
+    }>('/billing/redeem-coupon', {
+      method: 'POST',
+      body: { couponCode },
+    }),
+  checkout: (planName: string) =>
+    api<{
+      mode: 'redirect' | 'dev-approved';
+      sessionId: string;
+      initPoint?: string;
+      token?: string;
+      account?: Account;
+    }>('/billing/checkout', {
+      method: 'POST',
+      body: { planName },
+    }),
 };
 
 export const plansApi = {

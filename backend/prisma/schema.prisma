@@ -43,7 +43,12 @@ model Account {
   /// Pausa o bot para todos os clientes (conta inteira)
   botPausedPermanent    Boolean  @default(false)
   botPausedUntil        DateTime?
+  /// active | suspended | paused (paused = trial/cupom expirado; dono deve escolher plano)
   status                String   @default("active")
+  /// paid | promo — origem atual da assinatura
+  billingSource         String   @default("paid")
+  /// Fim do período grátis do cupom (null se pago / sem promo)
+  promoExpiresAt        DateTime?
   createdAt             DateTime @default(now())
 
   planRef          Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
@@ -55,8 +60,10 @@ model Account {
   whatsappSessions WhatsappSession[]
   whatsappHandoffs WhatsappHandoff[]
   supportTickets   SupportTicket[]
+  promoRedemptions PromoCouponRedemption[]
 
   @@index([planId])
+  @@index([status, promoExpiresAt])
 }
 
 model Employee {
@@ -326,6 +333,44 @@ model Plan {
   updatedAt       DateTime @updatedAt
 
   accounts Account[]
+  coupons  PromoCoupon[]
 
   @@index([active, sortOrder])
+}
+
+/// Cupom promocional: N dias grátis de um plano (pula Stripe no checkout)
+model PromoCoupon {
+  id        String   @id @default(cuid())
+  /// Código normalizado em maiúsculas
+  code      String   @unique
+  planId    String
+  /// 7 | 30 | 60
+  freeDays  Int
+  maxUses   Int
+  usedCount Int      @default(0)
+  active    Boolean  @default(true)
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan         Plan                    @relation(fields: [planId], references: [id], onDelete: Restrict)
+  redemptions  PromoCouponRedemption[]
+
+  @@index([active, code])
+  @@index([planId])
+}
+
+model PromoCouponRedemption {
+  id         String   @id @default(cuid())
+  couponId   String
+  accountId  String
+  expiresAt  DateTime
+  redeemedAt DateTime @default(now())
+
+  coupon  PromoCoupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  account Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, accountId])
+  @@index([accountId])
+  @@index([expiresAt])
 }

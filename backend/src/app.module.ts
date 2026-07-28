@@ -20,6 +20,8 @@ import { EventsModule } from './events/events.module';
 import { EmployeePortalModule } from './employee-portal/employee-portal.module';
 import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 import { EntitlementsModule } from './entitlements/entitlements.module';
+import { PromoCouponsModule } from './promo-coupons/promo-coupons.module';
+import { BillingModule } from './billing/billing.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -36,6 +38,7 @@ import { HealthController } from './health/health.controller';
     ]),
     PrismaModule,
     EntitlementsModule,
+    PromoCouponsModule,
     AuthModule,
     AccountModule,
     EmployeesModule,
@@ -44,6 +47,7 @@ import { HealthController } from './health/health.controller';
     AppointmentsModule,
     PlansModule,
     CheckoutModule,
+    BillingModule,
     PaymentsModule,
     WhatsappModule,
     WhatsappHandoffsModule,

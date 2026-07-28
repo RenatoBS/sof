@@ -141,6 +141,7 @@ Sof/
 | Auth admin | `admin-backend/src/common/token.ts`, `auth/` |
 | Catálogo planos | `Plan` no Prisma; `backend/src/plans/`; painel admin |
 | Entitlements / gate | `backend/src/entitlements/`; `Plan.entitlements` + `Account.planId`; admin matriz |
+| Cupons promocionais | `PromoCoupon` / `PromoCouponRedemption`; admin `/coupons`; checkout `couponCode`; `backend/src/promo-coupons/`, `billing/` |
 | Client HTTP front | `frontend/src/api/client.ts`, `endpoints.ts` |
 | Auth front | `frontend/src/auth/AuthProvider.tsx` |
 | Rotas UI | `frontend/app/` |

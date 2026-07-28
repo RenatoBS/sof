@@ -38,6 +38,20 @@ Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — pro
 
 A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
 
+### Cupons promocionais
+
+| Feature | Onde | API |
+|---------|------|-----|
+| Criar cupom (plano + 7/30/60 dias + máx. usos) | Admin `/coupons`, `/new-coupon` | `POST /api/coupons` |
+| Usar no signup (pula Stripe) | CheckoutModal campo cupom | `POST /api/checkout/create` + `couponCode` → `mode: promo-approved` |
+| Renovar / mudar plano (pago) | `/(dashboard)/choose-plan` | `POST /api/billing/checkout` |
+| Aplicar outro cupom (conta logada) | choose-plan | `POST /api/billing/redeem-coupon` |
+| Expiração | job 15 min + lazy no login/`me` | `Account.status = paused` |
+| Tela obrigatória pós-expiração | redirect no shell do dashboard | `account.needsPlanSelection` |
+| Alterar plano (conta ativa) | Conta → “Alterar plano” | mesma tela `choose-plan` |
+
+Cupom amarra um **plano** e N dias grátis; `maxUses` é o teto global; cada conta só pode resgatar o mesmo código uma vez. Conta promo: `billingSource=promo`, `promoExpiresAt`. Ao vencer → `paused` e UI de escolha de plano (Stripe ou novo cupom). Pagamento Stripe em conta existente limpa promo e seta `billingSource=paid`.
+
 Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback em `common/plans.ts` / `CheckoutModal` (Solo R$139 / Equipe R$199 / Rede R$259) se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl`. Apagar plano no admin desativa o Payment Link e remove/arquiva o Product na Stripe via API.
 
 ### Gate por plano (entitlements)
@@ -59,6 +73,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos | `/plans` | `GET /api/plans` |
 | Criar / editar / apagar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT/DELETE /api/plans` |
+| Cupons promocionais (7/30/60 dias) | `/coupons`, `/new-coupon`, `/edit-coupon` | `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id` |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 

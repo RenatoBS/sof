@@ -22,6 +22,7 @@ import {
 } from '../common/token';
 import { publicAccount } from '../common/public-shapes';
 import { EntitlementsService } from '../entitlements/entitlements.service';
+import { PromoCouponsService } from '../promo-coupons/promo-coupons.service';
 import { AuthGuard } from './auth.guard';
 import type { AuthedRequest } from './auth.guard';
 
@@ -35,6 +36,7 @@ export class AuthController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
+    private readonly promos: PromoCouponsService,
   ) {}
 
   @Post('login')
@@ -55,7 +57,7 @@ export class AuthController {
       });
     }
 
-    const account = await this.prisma.account.findUnique({ where: { email } });
+    let account = await this.prisma.account.findUnique({ where: { email } });
     if (!account) {
       throw new UnauthorizedException({ error: 'E-mail não encontrado.' });
     }
@@ -64,6 +66,8 @@ export class AuthController {
     if (!ok) {
       throw new UnauthorizedException({ error: 'Senha incorreta.' });
     }
+
+    account = await this.promos.pauseIfPromoExpired(account);
 
     const jwtToken = signAccountToken(
       account.id,
@@ -91,9 +95,10 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard)
   async me(@Req() req: AuthedRequest) {
-    const entitlements = await this.entitlements.forAccount(req.account.id);
+    const account = await this.promos.pauseIfPromoExpired(req.account);
+    const entitlements = await this.entitlements.forAccount(account.id);
     return {
-      account: { ...publicAccount(req.account), entitlements },
+      account: { ...publicAccount(account), entitlements },
     };
   }
 }

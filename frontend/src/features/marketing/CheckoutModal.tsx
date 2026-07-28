@@ -166,9 +166,11 @@ export function CheckoutModal({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [couponCode, setCouponCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const hasCoupon = Boolean(couponCode.trim());
   const canSubmit =
     Boolean(name.trim()) &&
     Boolean(email.trim()) &&
@@ -180,6 +182,7 @@ export function CheckoutModal({
     setEmail('');
     setPhone('');
     setPassword('');
+    setCouponCode('');
     setError('');
     setLoading(false);
   };
@@ -215,13 +218,17 @@ export function CheckoutModal({
         email.trim(),
         phoneDigits,
         password,
+        couponCode.trim() || undefined,
       );
       if (data.mode === 'redirect' && data.initPoint) {
         if (Platform.OS === 'web') window.location.href = data.initPoint;
         else await Linking.openURL(data.initPoint);
         return;
       }
-      if (data.token) {
+      if (
+        (data.mode === 'promo-approved' || data.mode === 'dev-approved') &&
+        data.token
+      ) {
         await enterAgenda(data.token);
         return;
       }
@@ -255,13 +262,19 @@ export function CheckoutModal({
               <Text>R$ {price.toFixed(2).replace('.', ',')}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={{ color: m.muted }}>Cobrança mensal</Text>
-              <Text style={{ color: m.muted }}>renovação automática</Text>
+              <Text style={{ color: m.muted }}>
+                {hasCoupon ? 'Com cupom promocional' : 'Cobrança mensal'}
+              </Text>
+              <Text style={{ color: m.muted }}>
+                {hasCoupon ? 'sem cobrança agora' : 'renovação automática'}
+              </Text>
             </View>
             <View style={[styles.summaryRow, styles.summaryTotal]}>
               <Text style={styles.total}>Total hoje</Text>
               <Text style={styles.total}>
-                R$ {price.toFixed(2).replace('.', ',')}
+                {hasCoupon
+                  ? 'R$ 0,00'
+                  : `R$ ${price.toFixed(2).replace('.', ',')}`}
               </Text>
             </View>
           </View>
@@ -296,16 +309,30 @@ export function CheckoutModal({
             textContentType="newPassword"
             autoComplete="new-password"
           />
+          <SofInput
+            label="Cupom promocional (opcional)"
+            value={couponCode}
+            onChangeText={(t) => setCouponCode(t.toUpperCase())}
+            placeholder="Código do cupom"
+            autoCapitalize="characters"
+          />
           <SofButton
-            title={loading ? 'Processando…' : 'Continuar para o pagamento'}
+            title={
+              loading
+                ? 'Processando…'
+                : hasCoupon
+                  ? 'Ativar com cupom'
+                  : 'Continuar para o pagamento'
+            }
             variant="accent"
             block
             disabled={loading || !canSubmit}
             onPress={submit}
           />
           <Text style={styles.payNote}>
-            Você será direcionado ao ambiente seguro do Stripe para concluir o
-            pagamento. Depois, entra direto na agenda.
+            {hasCoupon
+              ? 'Com cupom válido, a conta é criada na hora sem passar pelo Stripe. O plano do cupom prevalece.'
+              : 'Você será direcionado ao ambiente seguro do Stripe para concluir o pagamento. Depois, entra direto na agenda.'}
           </Text>
           </View>
         </ScrollView>

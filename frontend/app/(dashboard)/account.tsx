@@ -391,7 +391,21 @@ export default function AccountScreen() {
             <Text style={styles.metaLabel}>Assinante desde</Text>
             <Text style={styles.metaValue}>{since}</Text>
           </View>
+          {account.billingSource === 'promo' && account.promoExpiresAt ? (
+            <View style={styles.meta}>
+              <Text style={styles.metaLabel}>Promo até</Text>
+              <Text style={styles.metaValue}>
+                {new Date(account.promoExpiresAt).toLocaleDateString('pt-BR')}
+              </Text>
+            </View>
+          ) : null}
         </View>
+        <SofButton
+          title="Alterar plano"
+          variant="dark"
+          theme="dashboard"
+          onPress={() => router.push('/(dashboard)/choose-plan')}
+        />
       </View>
 
       <View style={styles.card}>

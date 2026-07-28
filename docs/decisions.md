@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Cupons promocionais (dias grátis sem Stripe)
+
+- **Contexto:** Precisávamos dar 7/30/60 dias grátis de um plano selecionado, com limite de usos, sem passar pelo Checkout Stripe; ao vencer, a conta pausa e o dono escolhe plano de novo.  
+- **Decisão:** Modelos `PromoCoupon` + `PromoCouponRedemption`; admin CRUD; checkout aceita `couponCode` → `promo-approved` (pula Stripe); conta com `billingSource=promo` + `promoExpiresAt`; expiração lazy + job 15 min → `status=paused` + `needsPlanSelection` no front; `POST /api/billing/checkout|redeem-coupon` para renovar/mudar plano; botão “Alterar plano” na Conta.  
+- **Consequências:** Promo não cria subscription Stripe; após o período o tenant deve pagar ou usar outro cupom. `paused` é distinto de `suspended` (admin). Mesmo cupom só 1× por conta.  
+- **Alternativas descartadas:** Stripe Coupons/Trials (exigiria subscription desde o dia 1); trial genérico sem vínculo a plano.
+
+---
+
 ## 2026-07-28 — Gate por plano (entitlements configuráveis no admin)
 
 - **Contexto:** Planos Solo/Equipe/Rede definidos no pricing; features existiam no produto mas sem enforcement; admin só editava bullets de marketing.  

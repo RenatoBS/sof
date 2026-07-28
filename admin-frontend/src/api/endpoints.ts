@@ -155,6 +155,41 @@ export const featureCatalogApi = {
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
+export type CouponRow = {
+  id: string;
+  code: string;
+  planId: string;
+  planName: string | null;
+  planPrice: number | null;
+  freeDays: number;
+  maxUses: number;
+  usedCount: number;
+  remainingUses: number;
+  active: boolean;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const couponsApi = {
+  list: () => api<{ coupons: CouponRow[] }>('/coupons'),
+  get: (id: string) => api<{ coupon: CouponRow }>(`/coupons/${id}`),
+  create: (body: {
+    code: string;
+    planId: string;
+    freeDays: number;
+    maxUses: number;
+    note?: string;
+    active?: boolean;
+  }) => api<{ coupon: CouponRow }>('/coupons', { method: 'POST', body }),
+  update: (
+    id: string,
+    body: Partial<{ maxUses: number; note: string; active: boolean }>,
+  ) => api<{ coupon: CouponRow }>(`/coupons/${id}`, { method: 'PUT', body }),
+  remove: (id: string) =>
+    api<{ ok: boolean }>(`/coupons/${id}`, { method: 'DELETE' }),
+};
+
 export type TicketComment = {
   id: string;
   body: string;
