@@ -201,18 +201,19 @@ Meta Cloud API: `WHATSAPP_PROVIDER=meta` + `WHATSAPP_TOKEN` + Phone Number ID, s
 
 Sem credenciais: simulador no painel cobre o mesmo caminho de domínio para demos.
 
-## Conta demo (seed)
+## Contas demo (seed)
 
-Quando `SEED_DEMO_ENABLED=true`, o seed cria (ou recria padrão de demo):
+Quando `SEED_DEMO_ENABLED=true`, o seed cria **uma conta por plano** (mesma senha `SEED_DEMO_PASSWORD`):
 
-- Email: `SEED_DEMO_EMAIL` (default `demo@sof.com`)  
-- Senha: `SEED_DEMO_PASSWORD`  
-- Negócio exemplo “Santa Madalena”, plano Estúdio, 3 profissionais / 4 serviços  
-- **10 clientes**, **10 agendamentos de serviço por cliente** (alguns em série semanal com `recurrenceGroupId`)  
-- Bloqueios fixos por profissional: **Almoço** diário (série) + compromisso semanal (Médico / Reunião / Estoque)  
-- Login profissional demo: `marcelo@demo.sof` (mesma senha do demo; troca no 1º acesso em `/login`)  
+| Plano | Email | Negócio | Profissionais |
+|-------|-------|---------|---------------|
+| Solo | `demo-solo@sof.com` | Barbearia Solo | 2 (`marcelo@solo.demo.sof`, …) |
+| Equipe | `SEED_DEMO_EMAIL` / `demo@sof.com` | Santa Madalena | 3 (`marcelo@demo.sof`, …) |
+| Rede | `demo-rede@sof.com` | Rede Madalena | 3 (`marcelo@rede.demo.sof`, …) |
 
-Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Conta demo já existente: use `npm run backend:reset-seed` (local) para apagar e semear de novo.
+Cada conta: 4 serviços, 10 clientes, ~10 agendamentos/cliente, bloqueios (almoço + compromisso semanal). Login profissional em `/login` (troca de senha no 1º acesso).
+
+Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Para apagar e semear de novo: `npm run backend:reset-seed`.
 
 ## API — mapa rápido
 

@@ -132,110 +132,176 @@ const SLOT_TIMES = [
   '17:00',
 ];
 
-async function main() {
-  await seedPlansAndAdmin();
+type DemoPlanSeed = {
+  slug: 'solo' | 'equipe' | 'rede';
+  email: string;
+  businessName: string;
+  ownerName: string;
+  phone: string;
+  address: string;
+  /** Sufixo único nos e-mails dos profissionais (email é unique global). */
+  employeeDomain: string;
+  /** Prefixo de telefone dos profissionais (11 dígitos finais distintos). */
+  employeePhoneBase: string;
+  /** Prefixo de telefone dos clientes. */
+  clientPhoneBase: string;
+  /** Quantidade de profissionais (respeitar limite do plano). */
+  employeeCount: number;
+};
 
-  if (!bool(process.env.SEED_DEMO_ENABLED, true)) return;
+const DEMO_ACCOUNTS: DemoPlanSeed[] = [
+  {
+    slug: 'solo',
+    email: 'demo-solo@sof.com',
+    businessName: 'Barbearia Solo',
+    ownerName: 'Demo Solo',
+    phone: '11999990001',
+    address: 'Rua Solo, 10 — São Paulo — SP',
+    employeeDomain: 'solo.demo.sof',
+    employeePhoneBase: '1198811',
+    clientPhoneBase: '1199100',
+    employeeCount: 2,
+  },
+  {
+    slug: 'equipe',
+    email: 'demo@sof.com',
+    businessName: 'Santa Madalena',
+    ownerName: 'Conta Demo',
+    phone: '11999990000',
+    address: 'Rua Santa Madalena, 120 — Vila Madalena, São Paulo — SP',
+    employeeDomain: 'demo.sof',
+    employeePhoneBase: '1198888',
+    clientPhoneBase: '1199000',
+    employeeCount: 3,
+  },
+  {
+    slug: 'rede',
+    email: 'demo-rede@sof.com',
+    businessName: 'Rede Madalena',
+    ownerName: 'Demo Rede',
+    phone: '11999990002',
+    address: 'Av. Rede, 500 — São Paulo — SP',
+    employeeDomain: 'rede.demo.sof',
+    employeePhoneBase: '1198822',
+    clientPhoneBase: '1199200',
+    employeeCount: 3,
+  },
+];
 
-  const email = (process.env.SEED_DEMO_EMAIL || 'demo@sof.com').toLowerCase();
-  const demoPassword = process.env.SEED_DEMO_PASSWORD || 'demo123';
+const EMPLOYEE_TEMPLATES = [
+  {
+    key: 'marcelo',
+    name: 'Marcelo Silva',
+    color: '#3b82f6',
+    serviceKeys: ['corte', 'corteBarba'] as const,
+  },
+  {
+    key: 'bruno',
+    name: 'Bruno Costa',
+    color: '#10b981',
+    serviceKeys: ['barba', 'corteBarba'] as const,
+  },
+  {
+    key: 'kaique',
+    name: 'Kaique Santos',
+    color: '#f59e0b',
+    serviceKeys: ['coloracao'] as const,
+  },
+];
 
-  const existing = await prisma.account.findUnique({ where: { email } });
-  if (existing) return;
+async function seedDemoAccount(
+  demo: DemoPlanSeed,
+  passwordHash: string,
+  employeePasswordHash: string,
+  demoPassword: string,
+) {
+  const existing = await prisma.account.findUnique({
+    where: { email: demo.email },
+  });
+  if (existing) {
+    console.log(`[seed] Conta já existe, pulando: ${demo.email}`);
+    return;
+  }
 
-  const passwordHash = await bcrypt.hash(demoPassword, 12);
-  const equipePlan = await prisma.plan.findUnique({ where: { slug: 'equipe' } });
+  const plan = await prisma.plan.findUnique({ where: { slug: demo.slug } });
+  if (!plan) {
+    console.warn(`[seed] Plano ${demo.slug} não encontrado — pulando ${demo.email}`);
+    return;
+  }
+
   const account = await prisma.account.create({
     data: {
-      businessName: 'Santa Madalena',
-      ownerName: 'Conta Demo',
-      email,
-      phone: '11999990000',
+      businessName: demo.businessName,
+      ownerName: demo.ownerName,
+      email: demo.email,
+      phone: demo.phone,
       passwordHash,
-      plan: 'Equipe',
-      planPrice: 199,
-      planId: equipePlan?.id ?? null,
+      plan: plan.name,
+      planPrice: plan.price,
+      planId: plan.id,
       whatsappPhoneNumberId: '',
       openingHours: DEFAULT_OPENING_HOURS,
-      address: 'Rua Santa Madalena, 120 — Vila Madalena, São Paulo — SP',
+      address: demo.address,
       status: 'active',
     },
   });
 
-  const [corte, barba, corteBarba, coloracao] = await Promise.all(
-    [
-      { name: 'Corte', duration: 45, price: 60 },
-      { name: 'Barba', duration: 30, price: 40 },
-      { name: 'Corte + Barba', duration: 70, price: 90 },
-      { name: 'Coloração', duration: 90, price: 150 },
-    ].map((s) =>
-      prisma.service.create({
-        data: { accountId: account.id, ...s },
-      }),
-    ),
-  );
-
-  const employeePassword = demoPassword;
-  const employeePasswordHash = await bcrypt.hash(employeePassword, 12);
-
-  const marcelo = await prisma.employee.create({
-    data: {
-      accountId: account.id,
-      name: 'Marcelo Silva',
-      email: 'marcelo@demo.sof',
-      phone: '11988881111',
-      passwordHash: employeePasswordHash,
-      mustChangePassword: true,
-      color: '#3b82f6',
-      services: {
-        create: [{ serviceId: corte.id }, { serviceId: corteBarba.id }],
+  const serviceDefs = [
+    { key: 'corte' as const, name: 'Corte', duration: 45, price: 60 },
+    { key: 'barba' as const, name: 'Barba', duration: 30, price: 40 },
+    { key: 'corteBarba' as const, name: 'Corte + Barba', duration: 70, price: 90 },
+    { key: 'coloracao' as const, name: 'Coloração', duration: 90, price: 150 },
+  ];
+  const services: Record<
+    string,
+    { id: string; duration: number; price: number; name: string }
+  > = {};
+  for (const s of serviceDefs) {
+    const row = await prisma.service.create({
+      data: {
+        accountId: account.id,
+        name: s.name,
+        duration: s.duration,
+        price: s.price,
       },
-    },
-  });
-  const bruno = await prisma.employee.create({
-    data: {
-      accountId: account.id,
-      name: 'Bruno Costa',
-      email: 'bruno@demo.sof',
-      phone: '11988882222',
-      passwordHash: employeePasswordHash,
-      mustChangePassword: true,
-      color: '#10b981',
-      services: {
-        create: [{ serviceId: barba.id }, { serviceId: corteBarba.id }],
-      },
-    },
-  });
-  const kaique = await prisma.employee.create({
-    data: {
-      accountId: account.id,
-      name: 'Kaique Santos',
-      email: 'kaique@demo.sof',
-      phone: '11988883333',
-      passwordHash: employeePasswordHash,
-      mustChangePassword: true,
-      color: '#f59e0b',
-      services: {
-        create: [{ serviceId: coloracao.id }],
-      },
-    },
-  });
+    });
+    services[s.key] = row;
+  }
 
-  const employees = [marcelo, bruno, kaique];
+  const templates = EMPLOYEE_TEMPLATES.slice(0, demo.employeeCount);
+  const employees = [];
+  for (let i = 0; i < templates.length; i++) {
+    const t = templates[i];
+    const emp = await prisma.employee.create({
+      data: {
+        accountId: account.id,
+        name: t.name,
+        email: `${t.key}@${demo.employeeDomain}`,
+        phone: `${demo.employeePhoneBase}${String(1111 + i * 1111).slice(-4)}`,
+        passwordHash: employeePasswordHash,
+        mustChangePassword: true,
+        color: t.color,
+        services: {
+          create: t.serviceKeys.map((k) => ({ serviceId: services[k].id })),
+        },
+      },
+    });
+    employees.push(emp);
+  }
+
   const serviceByEmployee: Record<
     string,
     { id: string; duration: number; price: number; name: string }[]
-  > = {
-    [marcelo.id]: [corte, corteBarba],
-    [bruno.id]: [barba, corteBarba],
-    [kaique.id]: [coloracao],
-  };
+  > = {};
+  for (let i = 0; i < employees.length; i++) {
+    const keys = templates[i].serviceKeys;
+    serviceByEmployee[employees[i].id] = keys.map((k) => services[k]);
+  }
 
   const today = new Date();
   today.setHours(12, 0, 0, 0);
   const openDays = nextOpenDays(today, 20);
 
-  // —— Bloqueios fixos dos profissionais (almoço + outros) ——
   const blockRows: {
     accountId: string;
     employeeId: string;
@@ -252,7 +318,6 @@ async function main() {
 
   for (const emp of employees) {
     const lunchGroup = randomUUID();
-    // Almoço 12:00 (60 min) nos próximos 10 dias úteis — série recorrente
     for (let i = 0; i < 10; i++) {
       const day = openDays[i];
       if (day.getDay() === 0) continue;
@@ -271,15 +336,14 @@ async function main() {
       });
     }
 
-    // Compromisso fixo semanal (ex.: médico / reunião) — 4 ocorrências
     const weeklyTitle =
-      emp.id === marcelo.id
+      emp.name.startsWith('Marcelo')
         ? 'Médico'
-        : emp.id === bruno.id
+        : emp.name.startsWith('Bruno')
           ? 'Reunião'
           : 'Estoque';
     const weeklyGroup = randomUUID();
-    const weeklyTime = emp.id === kaique.id ? '18:00' : '13:30';
+    const weeklyTime = emp.name.startsWith('Kaique') ? '18:00' : '13:30';
     const weeklyDays = openDays.filter((_, i) => i % 5 === 0).slice(0, 4);
     for (const day of weeklyDays) {
       blockRows.push({
@@ -300,20 +364,18 @@ async function main() {
 
   await prisma.appointment.createMany({ data: blockRows });
 
-  // —— 10 clientes ——
   const clients = [];
   for (let i = 0; i < CLIENT_NAMES.length; i++) {
     const client = await prisma.client.create({
       data: {
         accountId: account.id,
         name: CLIENT_NAMES[i],
-        phone: `1199000${String(1000 + i).slice(-4)}`,
+        phone: `${demo.clientPhoneBase}${String(1000 + i).slice(-4)}`,
       },
     });
     clients.push(client);
   }
 
-  // —— 10 agendamentos por cliente (alguns com recorrência semanal) ——
   const appointmentRows: {
     accountId: string;
     employeeId: string;
@@ -332,7 +394,6 @@ async function main() {
     recurrenceGroupId: string | null;
   }[] = [];
 
-  // Evita overlap grosseiro: chave employeeId|date|time
   const usedSlots = new Set<string>();
   for (const b of blockRows) {
     usedSlots.add(`${b.employeeId}|${b.date}|${b.time}`);
@@ -356,17 +417,15 @@ async function main() {
   for (let ci = 0; ci < clients.length; ci++) {
     const client = clients[ci];
     const employee = employees[ci % employees.length];
-    const services = serviceByEmployee[employee.id];
-    const primaryService = services[0];
+    const empServices = serviceByEmployee[employee.id];
+    const primaryService = empServices[0];
 
-    // Clientes 0–2: série semanal recorrente (4 ocorrências) + 6 avulsos
-    // Demais: 10 avulsos
     const withRecurrence = ci < 3;
     let created = 0;
 
     if (withRecurrence) {
       const groupId = randomUUID();
-      const baseTime = SLOT_TIMES[ci % 4]; // 09:00, 09:30, 10:00
+      const baseTime = SLOT_TIMES[ci % 4];
       const weeklyDays = openDays.filter((_, i) => i % 5 === 0).slice(0, 4);
       for (const day of weeklyDays) {
         const date = localDateStr(day);
@@ -402,7 +461,7 @@ async function main() {
       const day = openDays[dayIdx % openDays.length];
       dayIdx += 1;
       const date = localDateStr(day);
-      const service = services[created % services.length];
+      const service = empServices[created % empServices.length];
       const preferred = [
         SLOT_TIMES[(ci * 3 + created) % SLOT_TIMES.length],
         ...SLOT_TIMES,
@@ -433,15 +492,39 @@ async function main() {
 
   await prisma.appointment.createMany({ data: appointmentRows });
 
+  const firstEmpEmail = `${templates[0].key}@${demo.employeeDomain}`;
   console.log(
-    `[seed] Conta de teste criada (não é exibida na interface): ${email} / ${demoPassword}`,
+    `[seed] Conta ${plan.name}: ${demo.email} / ${demoPassword} (${clients.length} clientes, ${appointmentRows.length} agendamentos)`,
   );
   console.log(
-    `[seed] Login profissional (ex.): marcelo@demo.sof / ${employeePassword} (troca de senha no 1º acesso)`,
+    `[seed]   Profissional: ${firstEmpEmail} / ${demoPassword} (troca no 1º acesso)`,
   );
-  console.log(
-    `[seed] ${clients.length} clientes, ${appointmentRows.length} agendamentos de serviço, ${blockRows.length} bloqueios (almoço/recorrentes).`,
-  );
+}
+
+async function main() {
+  await seedPlansAndAdmin();
+
+  if (!bool(process.env.SEED_DEMO_ENABLED, true)) return;
+
+  // Permite sobrescrever só o e-mail da conta Equipe (compatível com SEED_DEMO_EMAIL).
+  const equipeOverride = (process.env.SEED_DEMO_EMAIL || '').trim().toLowerCase();
+  if (equipeOverride) {
+    const equipe = DEMO_ACCOUNTS.find((a) => a.slug === 'equipe');
+    if (equipe) equipe.email = equipeOverride;
+  }
+
+  const demoPassword = process.env.SEED_DEMO_PASSWORD || 'demo123';
+  const passwordHash = await bcrypt.hash(demoPassword, 12);
+  const employeePasswordHash = await bcrypt.hash(demoPassword, 12);
+
+  for (const demo of DEMO_ACCOUNTS) {
+    await seedDemoAccount(
+      demo,
+      passwordHash,
+      employeePasswordHash,
+      demoPassword,
+    );
+  }
 }
 
 main()

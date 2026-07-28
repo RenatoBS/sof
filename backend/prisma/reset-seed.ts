@@ -40,6 +40,10 @@ const prisma = new PrismaClient();
 async function clearTables() {
   // Ordem: filhos → pais (FKs). Service tem Restrict em Appointment.
   await prisma.$transaction([
+    prisma.supportTicketComment.deleteMany(),
+    prisma.supportTicket.deleteMany(),
+    prisma.whatsappHandoff.deleteMany(),
+    prisma.employeePasswordToken.deleteMany(),
     prisma.appointment.deleteMany(),
     prisma.whatsappSession.deleteMany(),
     prisma.checkoutSession.deleteMany(),
@@ -54,12 +58,11 @@ async function clearTables() {
 async function main() {
   assertDatabaseUrl();
 
-  const email = process.env.SEED_DEMO_EMAIL || 'demo@sof.com';
   console.log('[reset-seed] Limpando tabelas…');
   await clearTables();
   console.log('[reset-seed] Tabelas vazias. Rodando seed…');
   console.log(
-    `[reset-seed] SEED_DEMO_ENABLED=${process.env.SEED_DEMO_ENABLED ?? 'true'} email=${email}`,
+    `[reset-seed] SEED_DEMO_ENABLED=${process.env.SEED_DEMO_ENABLED ?? 'true'}`,
   );
 
   execSync('npx prisma db seed', {
