@@ -10,16 +10,18 @@ import { colors, space } from '@/src/theme/admin';
 
 export function Field({
   label,
+  error,
   ...props
-}: TextInputProps & { label: string }) {
+}: TextInputProps & { label: string; error?: string }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         placeholderTextColor={colors.muted}
-        style={styles.input}
+        style={[styles.input, error ? styles.inputError : null]}
         {...props}
       />
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -76,6 +78,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.ink,
     backgroundColor: colors.paper,
+  },
+  inputError: { borderColor: colors.danger },
+  fieldError: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.danger,
   },
   btn: {
     backgroundColor: colors.accent,

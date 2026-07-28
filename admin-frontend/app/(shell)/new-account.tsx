@@ -6,6 +6,53 @@ import { accountsApi, plansApi, type PlanRow } from '@/src/api/endpoints';
 import { Button, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
+const PASSWORD_MIN = 8;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldErrors = {
+  businessName?: string;
+  ownerName?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  plan?: string;
+  planPrice?: string;
+};
+
+function validateNewAccount(input: {
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  password: string;
+  plan: string;
+  planPrice: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
+  const businessName = input.businessName.trim();
+  const ownerName = input.ownerName.trim();
+  const email = input.email.trim();
+  const phoneDigits = input.phone.replace(/\D/g, '');
+  const price = Number(input.planPrice);
+
+  if (!businessName) errors.businessName = 'Informe o nome do negócio.';
+  if (!ownerName) errors.ownerName = 'Informe o nome do responsável.';
+  if (!email) errors.email = 'Informe o e-mail.';
+  else if (!EMAIL_RE.test(email)) errors.email = 'Informe um e-mail válido.';
+  if (!phoneDigits) errors.phone = 'Informe o telefone com DDD.';
+  else if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+    errors.phone = 'Telefone inválido. Use DDD + número (10 a 15 dígitos).';
+  }
+  if (input.password && input.password.length < PASSWORD_MIN) {
+    errors.password = `A senha deve ter pelo menos ${PASSWORD_MIN} caracteres.`;
+  }
+  if (!input.plan.trim()) errors.plan = 'Selecione um plano.';
+  if (!Number.isFinite(price) || price < 0) {
+    errors.planPrice = 'Informe um preço válido.';
+  }
+  return errors;
+}
+
 export default function NewAccountScreen() {
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [businessName, setBusinessName] = useState('');
@@ -15,30 +62,57 @@ export default function NewAccountScreen() {
   const [password, setPassword] = useState('');
   const [plan, setPlan] = useState('');
   const [planPrice, setPlanPrice] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState('');
   const [tempPw, setTempPw] = useState('');
   const [createdId, setCreatedId] = useState('');
   const [busy, setBusy] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   useEffect(() => {
-    plansApi.list().then((r) => {
-      setPlans(r.plans.filter((p) => p.active));
-      if (r.plans[0]) {
-        setPlan(r.plans[0].name);
-        setPlanPrice(String(r.plans[0].price));
-      }
-    }).catch(() => undefined);
+    plansApi
+      .list()
+      .then((r) => {
+        setPlans(r.plans.filter((p) => p.active));
+        if (r.plans[0]) {
+          setPlan(r.plans[0].name);
+          setPlanPrice(String(r.plans[0].price));
+        }
+      })
+      .catch(() => undefined);
   }, []);
+
+  const clearField = (key: keyof FieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   async function onSubmit() {
     setError('');
     setTempPw('');
+    setTouched(true);
+    const errors = validateNewAccount({
+      businessName,
+      ownerName,
+      email,
+      phone,
+      password,
+      plan,
+      planPrice,
+    });
+    setFieldErrors(errors);
+    if (Object.values(errors).some(Boolean)) return;
+
     setBusy(true);
     try {
       const res = await accountsApi.create({
-        businessName,
-        ownerName,
-        email,
+        businessName: businessName.trim(),
+        ownerName: ownerName.trim(),
+        email: email.trim(),
         phone: phone.replace(/\D/g, ''),
         password: password || undefined,
         plan,
@@ -62,26 +136,54 @@ export default function NewAccountScreen() {
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
       <Text style={styles.title}>Nova conta</Text>
-      <Field label="Negócio" value={businessName} onChangeText={setBusinessName} />
-      <Field label="Responsável" value={ownerName} onChangeText={setOwnerName} />
+      <Field
+        label="Negócio"
+        value={businessName}
+        onChangeText={(t) => {
+          setBusinessName(t);
+          clearField('businessName');
+        }}
+        error={touched ? fieldErrors.businessName : undefined}
+      />
+      <Field
+        label="Responsável"
+        value={ownerName}
+        onChangeText={(t) => {
+          setOwnerName(t);
+          clearField('ownerName');
+        }}
+        error={touched ? fieldErrors.ownerName : undefined}
+      />
       <Field
         label="E-mail"
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(t) => {
+          setEmail(t);
+          clearField('email');
+        }}
+        error={touched ? fieldErrors.email : undefined}
       />
       <Field
         label="Telefone"
         keyboardType="phone-pad"
         value={phone}
-        onChangeText={setPhone}
+        onChangeText={(t) => {
+          setPhone(t);
+          clearField('phone');
+        }}
+        error={touched ? fieldErrors.phone : undefined}
       />
       <Field
         label="Senha (opcional — gera temporária se vazio)"
         secureTextEntry
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(t) => {
+          setPassword(t);
+          clearField('password');
+        }}
+        error={touched ? fieldErrors.password : undefined}
       />
       <Text style={styles.label}>Plano</Text>
       <View style={styles.chips}>
@@ -93,15 +195,24 @@ export default function NewAccountScreen() {
             onPress={() => {
               setPlan(p.name);
               setPlanPrice(String(p.price));
+              clearField('plan');
+              clearField('planPrice');
             }}
           />
         ))}
       </View>
+      {touched && fieldErrors.plan ? (
+        <Text style={styles.error}>{fieldErrors.plan}</Text>
+      ) : null}
       <Field
         label="Preço (R$)"
         keyboardType="decimal-pad"
         value={planPrice}
-        onChangeText={setPlanPrice}
+        onChangeText={(t) => {
+          setPlanPrice(t);
+          clearField('planPrice');
+        }}
+        error={touched ? fieldErrors.planPrice : undefined}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {tempPw ? (
@@ -121,7 +232,11 @@ export default function NewAccountScreen() {
       ) : (
         <View style={styles.actions}>
           <Button title="Cancelar" variant="ghost" onPress={() => router.back()} />
-          <Button title={busy ? 'Salvando…' : 'Criar'} onPress={onSubmit} disabled={busy} />
+          <Button
+            title={busy ? 'Salvando…' : 'Criar'}
+            onPress={onSubmit}
+            disabled={busy}
+          />
         </View>
       )}
     </ScrollView>
@@ -142,7 +257,12 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: space.sm,
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.md },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginBottom: space.md,
+  },
   error: { color: colors.danger, marginBottom: space.md },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   notice: {

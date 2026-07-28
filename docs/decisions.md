@@ -17,6 +17,24 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Validação de cadastro de conta no front
+
+- **Contexto:** CheckoutModal só desabilitava o botão sem feedback; e-mail não era checado; admin Nova conta e Conta (telefone/horários) iam direto à API.  
+- **Decisão:** Helpers em `frontend/src/lib/validation.ts` espelhando backend; `SofInput`/`Field` com prop `error`; validação por campo no submit (checkout, admin nova conta, telefone/horários na Conta). Botão permanece clicável para exibir erros.  
+- **Consequências:** Usuário vê o que corrigir antes do round-trip; backend continua como fonte de verdade.  
+- **Alternativas descartadas:** Manter só `disabled` silencioso; biblioteca de forms pesada.
+
+---
+
+## 2026-07-28 — Conta: UI por seções + hero do estabelecimento
+
+- **Contexto:** A tela Conta era uma pilha longa de cards sem hierarquia (telefone/endereço separados, status WhatsApp só em texto, logout como card).  
+- **Decisão:** Hero com iniciais/nome/plano/status WA; labels de seção; telefone+endereço no mesmo card; preview de expediente com pills Dom–Sáb; status servidor/dispositivo em cards; logout em zona de sessão no rodapé. Tokens e componentes do dashboard (`d`, `SofButton`/`SofInput`) mantidos.  
+- **Consequências:** Mesmo contrato de API e comportamento; navegação visual mais clara sem mudar fluxos.  
+- **Alternativas descartadas:** Tabs internas (mais estado); redesign fora do design system do painel.
+
+---
+
 ## 2026-07-28 — Sync Stripe de planos seed + Payment Link alinhado ao preço
 
 - **Contexto:** Planos Solo/Equipe/Rede no DB tinham `stripeProductId=seed_*` e Payment Links/Prices antigos (R$99/197/249) enquanto o catálogo mostrava R$139/199/259; Solo sem link; seed sobrescrevia IDs Stripe; save no admin sempre mandava `paymentLinkUrl` e bloqueava regeneração.  

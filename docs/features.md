@@ -29,14 +29,14 @@ Copy e tokens devem permanecer alinhados à marca Sof.
 | Feature | Onde | API |
 |---------|------|-----|
 | Escolher plano | modal no pricing / home flow | — |
-| Criar sessão | CheckoutModal (nome, e-mail, **senha**) | `POST /api/checkout/create` |
+| Criar sessão | CheckoutModal (nome, e-mail, telefone, senha) com validação por campo no front | `POST /api/checkout/create` |
 | Retorno Stripe | `/checkout-return?ref=` | `GET /api/checkout/status/:sessionId` → JWT + agenda |
 | Webhook pagamento | backend | `POST /api/payments/webhook` |
 | Pós-pagamento | auto-login | token na 1ª consulta de status; redireciona `/(dashboard)/agenda` |
 
 Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — provisiona na hora e já entra na agenda.
 
-A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
+A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, 10–15 dígitos). No front, nome/e-mail/telefone/senha são validados por campo (borda + mensagem) antes do POST — alinhado às regras do backend.
 
 ### Cupons promocionais
 
@@ -158,13 +158,15 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Conta
 
-- Assinatura (plano, email, desde).  
-- **Endereço** do estabelecimento (opcional); `PUT /api/account` com `address`; o bot informa na conversa.  
-- **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
-- **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
-- **Pausa do bot (conta):** na seção Bot do WhatsApp — **Bot ativo**, timer (1 h / 8 h / 24 h / 3 dias / 7 dias) ou **Permanente**. Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.  
-- **Lembrete WhatsApp:** card na Conta com antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário da conta (botão que expande a lista de fusos); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.  
-- Sair da conta.
+UI agrupada por seções (Assinatura / Estabelecimento / WhatsApp / Lembretes), com hero do estabelecimento (iniciais, plano, status WhatsApp).
+
+- **Assinatura:** banner do plano + preço, e-mail, desde; CTA alterar plano.
+- **Contato e endereço** (mesmo card): telefone do responsável (validação front: 10–15 dígitos) + endereço do estabelecimento (opcional); `PUT /api/account` com `phone` / `address`; o bot informa o endereço na conversa.
+- **Horário de funcionamento:** preview com pills Dom–Sáb (aberto/fechado) + resumo; edição expandível (7 dias; front valida `HH:mm` e abertura antes do fechamento); `PUT /api/account` com `openingHours`.
+- **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
+- **Pausa do bot (conta):** badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
+- **Lembrete WhatsApp:** antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
+- **Sessão:** zona de saída (logout) no rodapé da tela.
 
 ### Suporte
 

@@ -13,6 +13,11 @@ import type { DaySchedule, OpeningHours } from '@/src/api/types';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  isValidPhoneDigits,
+  isValidTimeHm,
+  normalizePhoneDigits,
+} from '@/src/lib/validation';
 import { d } from '@/src/theme/dashboard';
 
 const DAY_LABELS = [
@@ -314,8 +319,8 @@ export default function AccountScreen() {
 
   const connectPair = async () => {
     setWaError('');
-    const digits = waPhone.replace(/\D/g, '');
-    if (digits.length < 10) {
+    const digits = normalizePhoneDigits(waPhone);
+    if (!isValidPhoneDigits(digits)) {
       setWaError('Informe o telefone com DDI (ex: 5511999998888).');
       return;
     }
@@ -360,32 +365,90 @@ export default function AccountScreen() {
     }
   };
 
+  const initials = (account.businessName || 'S')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('');
+
+  const waDeviceLabel = waLinked
+    ? 'Conectado'
+    : waStatus === 'connecting'
+      ? 'Conectando…'
+      : 'Desconectado';
+
+  const botPausedNow =
+    Boolean(account.botPausedPermanent) ||
+    Boolean(formatBotPauseUntil(account.botPausedUntil));
+
   return (
     <View style={styles.page}>
-      <View>
-        <Text style={styles.h2}>Sua conta</Text>
-        <Text style={styles.sub}>Plano, horários, credenciais e integrações</Text>
+      <View style={styles.hero}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials || 'S'}</Text>
+        </View>
+        <View style={styles.heroText}>
+          <Text style={styles.h2}>{account.businessName || 'Sua conta'}</Text>
+          <Text style={styles.sub}>
+            {[account.ownerName, account.email].filter(Boolean).join(' · ')}
+          </Text>
+          <View style={styles.heroBadges}>
+            <View style={styles.planPill}>
+              <Text style={styles.planPillText}>{account.plan}</Text>
+            </View>
+            {account.billingSource === 'promo' ? (
+              <View style={styles.promoPill}>
+                <Text style={styles.promoPillText}>Promo</Text>
+              </View>
+            ) : null}
+            <View
+              style={[
+                styles.statusPill,
+                waLinked ? styles.statusPillOn : styles.statusPillOff,
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  waLinked ? styles.statusDotOn : styles.statusDotOff,
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusPillText,
+                  waLinked ? styles.statusPillTextOn : styles.statusPillTextOff,
+                ]}
+              >
+                WhatsApp {waDeviceLabel.toLowerCase()}
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
 
+      <Text style={styles.sectionLabel}>Assinatura</Text>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Assinatura</Text>
-        <View style={styles.metaGrid}>
-          <View style={styles.meta}>
-            <Text style={styles.metaLabel}>Plano</Text>
-            <Text style={styles.metaValue}>
-              {account.plan}
-              {account.planPrice != null ? ` — R$ ${account.planPrice}` : ''}
+        <View style={styles.planBanner}>
+          <View style={styles.planBannerText}>
+            <Text style={styles.planBannerName}>{account.plan}</Text>
+            <Text style={styles.planBannerPrice}>
+              {account.planPrice != null
+                ? `R$ ${account.planPrice}/mês`
+                : 'Plano ativo'}
             </Text>
           </View>
+          <SofButton
+            title="Alterar plano"
+            variant="light"
+            theme="dashboard"
+            onPress={() => router.push('/(dashboard)/choose-plan')}
+          />
+        </View>
+        <View style={styles.metaGrid}>
           <View style={styles.meta}>
             <Text style={styles.metaLabel}>E-mail</Text>
             <Text style={styles.metaValue}>{account.email}</Text>
-          </View>
-          <View style={styles.meta}>
-            <Text style={styles.metaLabel}>Telefone</Text>
-            <Text style={styles.metaValue}>
-              {account.phone ? account.phone : '—'}
-            </Text>
           </View>
           <View style={styles.meta}>
             <Text style={styles.metaLabel}>Assinante desde</Text>
@@ -400,106 +463,124 @@ export default function AccountScreen() {
             </View>
           ) : null}
         </View>
-        <SofButton
-          title="Alterar plano"
-          variant="dark"
-          theme="dashboard"
-          onPress={() => router.push('/(dashboard)/choose-plan')}
-        />
       </View>
 
+      <Text style={styles.sectionLabel}>Estabelecimento</Text>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Telefone de contato</Text>
-        <Text style={[styles.help, { marginBottom: 12 }]}>
-          Telefone do responsável pela conta (com DDD).
+        <Text style={styles.cardTitle}>Contato e endereço</Text>
+        <Text style={styles.help}>
+          Telefone do responsável e endereço que o bot pode informar aos
+          clientes (ex.: “onde fica?”).
         </Text>
-        <SofInput
-          label="Telefone"
-          value={phone}
-          onChangeText={setPhone}
-          theme="dashboard"
-          placeholder="11999998888"
-          keyboardType="phone-pad"
-        />
-        {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
-        {phoneSaved ? <Text style={styles.saved}>{phoneSaved}</Text> : null}
-        <SofButton
-          title={savingPhone ? 'Salvando…' : 'Salvar telefone'}
-          variant="dark"
-          theme="dashboard"
-          disabled={savingPhone}
-          onPress={async () => {
-            setPhoneError('');
-            setSavingPhone(true);
-            try {
-              const digits = phone.replace(/\D/g, '');
-              const { account: updated } = await dashboardApi.updateAccount({
-                phone: digits,
-              });
-              await setSession(updated);
-              setPhone(updated.phone || digits);
-              setPhoneSaved('Telefone salvo!');
-              setTimeout(() => setPhoneSaved(''), 2000);
-            } catch (err) {
-              setPhoneError(
-                err instanceof Error
-                  ? err.message
-                  : 'Não foi possível salvar.',
-              );
-            } finally {
-              setSavingPhone(false);
-            }
-          }}
-        />
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Endereço</Text>
-        <Text style={[styles.help, { marginBottom: 12 }]}>
-          Opcional. O bot do WhatsApp pode informar o endereço quando o cliente
-          perguntar (ex.: “onde fica?”).
-        </Text>
-        <SofInput
-          label="Endereço do estabelecimento"
-          value={address}
-          onChangeText={setAddress}
-          theme="dashboard"
-          placeholder="Rua Exemplo, 123 — Bairro, Cidade"
-          autoCapitalize="words"
-        />
-        {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
-        {addressSaved ? <Text style={styles.saved}>{addressSaved}</Text> : null}
-        <SofButton
-          title={savingAddress ? 'Salvando…' : 'Salvar endereço'}
-          variant="dark"
-          theme="dashboard"
-          disabled={savingAddress}
-          onPress={async () => {
-            setAddressError('');
-            setSavingAddress(true);
-            try {
-              const { account: updated } = await dashboardApi.updateAccount({
-                address: address.trim(),
-              });
-              await setSession(updated);
-              setAddressSaved('Endereço salvo!');
-              setTimeout(() => setAddressSaved(''), 2000);
-            } catch (err) {
-              setAddressError(
-                err instanceof Error
-                  ? err.message
-                  : 'Não foi possível salvar.',
-              );
-            } finally {
-              setSavingAddress(false);
-            }
-          }}
-        />
+        <View style={styles.fieldBlock}>
+          <SofInput
+            label="Telefone (com DDD)"
+            value={phone}
+            onChangeText={(t) => {
+              setPhone(t);
+              setPhoneError('');
+            }}
+            theme="dashboard"
+            placeholder="11999998888"
+            keyboardType="phone-pad"
+            error={phoneError || undefined}
+          />
+          {phoneSaved ? <Text style={styles.saved}>{phoneSaved}</Text> : null}
+          <View style={styles.inlineActions}>
+            <SofButton
+              title={savingPhone ? 'Salvando…' : 'Salvar telefone'}
+              variant="dark"
+              theme="dashboard"
+              disabled={savingPhone}
+              onPress={async () => {
+                setPhoneError('');
+                const digits = normalizePhoneDigits(phone);
+                if (!isValidPhoneDigits(digits)) {
+                  setPhoneError(
+                    'Telefone inválido. Use DDD + número (10 a 15 dígitos).',
+                  );
+                  return;
+                }
+                setSavingPhone(true);
+                try {
+                  const { account: updated } = await dashboardApi.updateAccount({
+                    phone: digits,
+                  });
+                  await setSession(updated);
+                  setPhone(updated.phone || digits);
+                  setPhoneSaved('Telefone salvo!');
+                  setTimeout(() => setPhoneSaved(''), 2000);
+                } catch (err) {
+                  setPhoneError(
+                    err instanceof Error
+                      ? err.message
+                      : 'Não foi possível salvar.',
+                  );
+                } finally {
+                  setSavingPhone(false);
+                }
+              }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.fieldBlock}>
+          <SofInput
+            label="Endereço do estabelecimento"
+            value={address}
+            onChangeText={setAddress}
+            theme="dashboard"
+            placeholder="Rua Exemplo, 123 — Bairro, Cidade"
+            autoCapitalize="words"
+          />
+          {addressError ? (
+            <Text style={styles.error}>{addressError}</Text>
+          ) : null}
+          {addressSaved ? (
+            <Text style={styles.saved}>{addressSaved}</Text>
+          ) : null}
+          <View style={styles.inlineActions}>
+            <SofButton
+              title={savingAddress ? 'Salvando…' : 'Salvar endereço'}
+              variant="dark"
+              theme="dashboard"
+              disabled={savingAddress}
+              onPress={async () => {
+                setAddressError('');
+                setSavingAddress(true);
+                try {
+                  const { account: updated } = await dashboardApi.updateAccount({
+                    address: address.trim(),
+                  });
+                  await setSession(updated);
+                  setAddressSaved('Endereço salvo!');
+                  setTimeout(() => setAddressSaved(''), 2000);
+                } catch (err) {
+                  setAddressError(
+                    err instanceof Error
+                      ? err.message
+                      : 'Não foi possível salvar.',
+                  );
+                } finally {
+                  setSavingAddress(false);
+                }
+              }}
+            />
+          </View>
+        </View>
       </View>
 
       <View style={styles.card}>
         <View style={styles.hoursHeader}>
-          <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+          <View style={styles.cardTitleBlock}>
+            <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+            {!hoursExpanded ? (
+              <Text style={styles.cardHint}>Quando clientes podem agendar</Text>
+            ) : null}
+          </View>
           <Pressable
             onPress={() => setHoursExpanded((prev) => !prev)}
             style={styles.expandBtn}
@@ -513,10 +594,34 @@ export default function AccountScreen() {
         </View>
 
         {!hoursExpanded ? (
-          <Text style={styles.hoursSummary}>{formatHoursSummary(hours)}</Text>
+          <View style={styles.hoursPreview}>
+            <View style={styles.dayPills}>
+              {hours.map((day, index) => (
+                <View
+                  key={DAY_SHORT[index]}
+                  style={[
+                    styles.dayPill,
+                    day.open ? styles.dayPillOpen : styles.dayPillClosed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayPillText,
+                      day.open
+                        ? styles.dayPillTextOpen
+                        : styles.dayPillTextClosed,
+                    ]}
+                  >
+                    {DAY_SHORT[index]}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <Text style={styles.hoursSummary}>{formatHoursSummary(hours)}</Text>
+          </View>
         ) : (
           <>
-            <Text style={[styles.help, { marginBottom: 8 }]}>
+            <Text style={styles.help}>
               Define os dias e horários em que clientes podem agendar (WhatsApp e
               painel). O serviço precisa caber inteiro dentro do expediente.
             </Text>
@@ -569,6 +674,22 @@ export default function AccountScreen() {
               disabled={savingHours}
               onPress={async () => {
                 setHoursError('');
+                for (let i = 0; i < hours.length; i += 1) {
+                  const day = hours[i];
+                  if (!day.open) continue;
+                  if (!isValidTimeHm(day.start) || !isValidTimeHm(day.end)) {
+                    setHoursError(
+                      `${DAY_LABELS[i]}: use horários no formato HH:mm (ex.: 09:00).`,
+                    );
+                    return;
+                  }
+                  if (day.start >= day.end) {
+                    setHoursError(
+                      `${DAY_LABELS[i]}: o horário de abertura deve ser antes do fechamento.`,
+                    );
+                    return;
+                  }
+                }
                 setSavingHours(true);
                 try {
                   const { account: updated } = await dashboardApi.updateAccount({
@@ -593,42 +714,72 @@ export default function AccountScreen() {
         )}
       </View>
 
+      <Text style={styles.sectionLabel}>WhatsApp</Text>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Bot do WhatsApp</Text>
-        <Text style={[styles.help, { marginBottom: 12 }]}>
-          Servidor:{' '}
-          <Text
-            style={[styles.badge, integrations.wa ? styles.on : styles.off]}
+        <Text style={styles.cardTitle}>Bot e conexão</Text>
+
+        <View style={styles.statusRow}>
+          <View
+            style={[
+              styles.statusCard,
+              integrations.wa ? styles.statusCardOn : styles.statusCardMuted,
+            ]}
           >
-            {integrations.wa ? 'pronto' : 'desligado'}
-          </Text>
-          {' · '}
-          Dispositivo:{' '}
-          <Text style={[styles.badge, waLinked ? styles.on : styles.off]}>
-            {waLinked
-              ? 'conectado'
-              : waStatus === 'connecting'
-                ? 'conectando…'
-                : 'desconectado'}
-          </Text>
-        </Text>
+            <View
+              style={[
+                styles.statusDotLg,
+                integrations.wa ? styles.statusDotOn : styles.statusDotOff,
+              ]}
+            />
+            <View style={styles.statusCardText}>
+              <Text style={styles.statusCardLabel}>Servidor</Text>
+              <Text style={styles.statusCardValue}>
+                {integrations.wa ? 'Pronto' : 'Desligado'}
+              </Text>
+            </View>
+          </View>
+          <View
+            style={[
+              styles.statusCard,
+              waLinked ? styles.statusCardOn : styles.statusCardMuted,
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDotLg,
+                waLinked ? styles.statusDotOn : styles.statusDotOff,
+              ]}
+            />
+            <View style={styles.statusCardText}>
+              <Text style={styles.statusCardLabel}>Dispositivo</Text>
+              <Text style={styles.statusCardValue}>{waDeviceLabel}</Text>
+            </View>
+          </View>
+        </View>
 
         {!integrations.pairingAvailable ? (
-          <Text style={styles.help}>
-            Para parear pelo painel, configure{' '}
-            <Text style={styles.code}>WHATSAPP_PROVIDER=uazapi</Text>,{' '}
-            <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
-            <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
-            <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma instância).
-            Enquanto isso, use o simulador na Agenda.
-          </Text>
+          <View style={styles.infoBox}>
+            <Text style={styles.help}>
+              Para parear pelo painel, configure{' '}
+              <Text style={styles.code}>WHATSAPP_PROVIDER=uazapi</Text>,{' '}
+              <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
+              <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
+              <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma instância).
+              Enquanto isso, use o simulador na Agenda.
+            </Text>
+          </View>
         ) : waLinked ? (
-          <>
+          <View style={styles.connectedBox}>
+            <Text style={styles.connectedTitle}>WhatsApp pareado</Text>
             {waInstanceId ? (
               <Text style={styles.help}>
                 Instância: <Text style={styles.code}>{waInstanceId}</Text>
               </Text>
-            ) : null}
+            ) : (
+              <Text style={styles.help}>
+                O bot está pronto para atender seus clientes.
+              </Text>
+            )}
             <SofButton
               title={waBusy ? 'Desconectando…' : 'Desconectar WhatsApp'}
               variant="danger"
@@ -636,12 +787,12 @@ export default function AccountScreen() {
               disabled={waBusy}
               onPress={disconnectWa}
             />
-          </>
+          </View>
         ) : (
           <>
-            <Text style={[styles.help, { marginBottom: 8 }]}>
-              Escaneie o QR no WhatsApp (Aparelhos conectados) ou use um código de
-              pareamento — igual ao cadastro de instância no Uazapi.
+            <Text style={styles.help}>
+              Escaneie o QR no WhatsApp (Aparelhos conectados) ou use um código
+              de pareamento — igual ao cadastro de instância no Uazapi.
             </Text>
 
             {waMode === 'idle' || waMode === 'qrcode' ? (
@@ -657,7 +808,7 @@ export default function AccountScreen() {
                 />
                 <SofButton
                   title="Usar código"
-                  variant="ghost"
+                  variant="light"
                   theme="dashboard"
                   disabled={waBusy}
                   onPress={() => {
@@ -691,7 +842,7 @@ export default function AccountScreen() {
                   />
                   <SofButton
                     title="Voltar ao QR"
-                    variant="ghost"
+                    variant="light"
                     theme="dashboard"
                     disabled={waBusy}
                     onPress={() => {
@@ -716,7 +867,7 @@ export default function AccountScreen() {
                   style={styles.qrImage}
                   accessibilityLabel="QR Code WhatsApp"
                 />
-                <Text style={styles.help}>
+                <Text style={styles.helpCenter}>
                   Abra o WhatsApp → Aparelhos conectados → Conectar um aparelho
                 </Text>
               </View>
@@ -726,7 +877,7 @@ export default function AccountScreen() {
               <View style={styles.pairCodeWrap}>
                 <Text style={styles.pairCodeLabel}>Código de pareamento</Text>
                 <Text style={styles.pairCode}>{waPaircode}</Text>
-                <Text style={styles.help}>
+                <Text style={styles.helpCenter}>
                   No WhatsApp, escolha conectar com o número de telefone e digite
                   este código.
                 </Text>
@@ -738,183 +889,229 @@ export default function AccountScreen() {
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
 
         {has('botPause') ? (
-        <View style={styles.pauseBlock}>
-          <Text style={styles.label}>Pausa do bot</Text>
-          <Text style={[styles.help, { marginBottom: 8 }]}>
-            Silencia o bot para todos os clientes (conta inteira). Útil em
-            folga, feriado ou quando você atende manualmente no WhatsApp.
-          </Text>
-          <View style={styles.chips}>
-            {BOT_PAUSE_PRESETS.map((p) => {
-              const active = botPauseMode === p.id;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => setBotPauseMode(p.id)}
-                  style={[styles.chip, active && styles.chipActive]}
-                  disabled={savingBotPause}
+          <View style={styles.pauseBlock}>
+            <View style={styles.pauseHead}>
+              <Text style={styles.label}>Pausa do bot</Text>
+              <View
+                style={[
+                  styles.miniBadge,
+                  botPausedNow ? styles.miniBadgeWarn : styles.miniBadgeOk,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.miniBadgeText,
+                    botPausedNow
+                      ? styles.miniBadgeTextWarn
+                      : styles.miniBadgeTextOk,
+                  ]}
                 >
-                  <Text
-                    style={[styles.chipText, active && styles.chipTextActive]}
-                  >
-                    {p.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {account?.botPausedPermanent ? (
-            <Text style={styles.pauseStatus}>Bot desligado (permanente).</Text>
-          ) : formatBotPauseUntil(account?.botPausedUntil) ? (
-            <Text style={styles.pauseStatus}>
-              Pausado até {formatBotPauseUntil(account?.botPausedUntil)}.
+                  {account?.botPausedPermanent
+                    ? 'Desligado'
+                    : formatBotPauseUntil(account?.botPausedUntil)
+                      ? 'Pausado'
+                      : 'Ativo'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.help}>
+              Silencia o bot para todos os clientes (conta inteira). Útil em
+              folga, feriado ou quando você atende manualmente no WhatsApp.
             </Text>
-          ) : (
-            <Text style={styles.pauseStatus}>Bot ativo para novos clientes.</Text>
-          )}
-          {botPauseError ? (
-            <Text style={styles.error}>{botPauseError}</Text>
-          ) : null}
-          {botPauseSaved ? (
-            <Text style={styles.saved}>{botPauseSaved}</Text>
-          ) : null}
-          <SofButton
-            title={savingBotPause ? 'Salvando…' : 'Salvar pausa do bot'}
-            variant="dark"
-            theme="dashboard"
-            disabled={savingBotPause}
-            onPress={async () => {
-              setBotPauseError('');
-              setSavingBotPause(true);
-              try {
-                const { account: updated } = await dashboardApi.updateAccount(
-                  botPausePayload(botPauseMode),
+            <View style={styles.chips}>
+              {BOT_PAUSE_PRESETS.map((p) => {
+                const active = botPauseMode === p.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setBotPauseMode(p.id)}
+                    style={[styles.chip, active && styles.chipActive]}
+                    disabled={savingBotPause}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        active && styles.chipTextActive,
+                      ]}
+                    >
+                      {p.label}
+                    </Text>
+                  </Pressable>
                 );
-                await setSession(updated);
-                setBotPauseMode(botPauseModeFromAccount(updated));
-                setBotPauseSaved('Pausa do bot atualizada!');
-                setTimeout(() => setBotPauseSaved(''), 2000);
-              } catch (err) {
-                setBotPauseError(
-                  err instanceof Error
-                    ? err.message
-                    : 'Não foi possível salvar.',
-                );
-              } finally {
-                setSavingBotPause(false);
-              }
-            }}
-          />
-        </View>
+              })}
+            </View>
+            {account?.botPausedPermanent ? (
+              <Text style={styles.pauseStatus}>
+                Bot desligado (permanente).
+              </Text>
+            ) : formatBotPauseUntil(account?.botPausedUntil) ? (
+              <Text style={styles.pauseStatus}>
+                Pausado até {formatBotPauseUntil(account?.botPausedUntil)}.
+              </Text>
+            ) : (
+              <Text style={styles.pauseStatus}>
+                Bot ativo para novos clientes.
+              </Text>
+            )}
+            {botPauseError ? (
+              <Text style={styles.error}>{botPauseError}</Text>
+            ) : null}
+            {botPauseSaved ? (
+              <Text style={styles.saved}>{botPauseSaved}</Text>
+            ) : null}
+            <SofButton
+              title={savingBotPause ? 'Salvando…' : 'Salvar pausa do bot'}
+              variant="dark"
+              theme="dashboard"
+              disabled={savingBotPause}
+              onPress={async () => {
+                setBotPauseError('');
+                setSavingBotPause(true);
+                try {
+                  const { account: updated } = await dashboardApi.updateAccount(
+                    botPausePayload(botPauseMode),
+                  );
+                  await setSession(updated);
+                  setBotPauseMode(botPauseModeFromAccount(updated));
+                  setBotPauseSaved('Pausa do bot atualizada!');
+                  setTimeout(() => setBotPauseSaved(''), 2000);
+                } catch (err) {
+                  setBotPauseError(
+                    err instanceof Error
+                      ? err.message
+                      : 'Não foi possível salvar.',
+                  );
+                } finally {
+                  setSavingBotPause(false);
+                }
+              }}
+            />
+          </View>
         ) : null}
       </View>
 
       {has('reminders') ? (
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
-        <Text style={[styles.help, { marginBottom: 8 }]}>
-          A Sof envia um lembrete automático pela instância conectada, no máximo
-          1× por agendamento. O job roda a cada 30 minutos — o aviso pode sair
-          até meia hora depois do horário estimado.
-        </Text>
-        <Text style={styles.label}>Antecedência</Text>
-        <View style={styles.chips}>
-          {REMINDER_PRESETS.map((preset) => {
-            const active = reminderMinutes === preset.minutes;
-            return (
-              <Pressable
-                key={preset.minutes}
-                onPress={() => setReminderMinutes(preset.minutes)}
-                style={[styles.chip, active && styles.chipActive]}
-                disabled={savingReminder}
-              >
-                <Text
-                  style={[styles.chipText, active && styles.chipTextActive]}
-                >
-                  {preset.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={[styles.label, { marginTop: 8 }]}>Fuso horário</Text>
-        <Pressable
-          onPress={() => setTimezoneOpen((prev) => !prev)}
-          style={styles.tzButton}
-          disabled={savingReminder}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: timezoneOpen }}
-        >
-          <Text style={styles.tzButtonText}>
-            {TIMEZONE_OPTIONS.find((opt) => opt.value === timezone)?.label ||
-              timezone}
-          </Text>
-          <Text style={styles.tzChevron}>{timezoneOpen ? '▲' : '▼'}</Text>
-        </Pressable>
-        {timezoneOpen ? (
-          <View style={styles.tzList}>
-            {TIMEZONE_OPTIONS.map((opt) => {
-              const active = timezone === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => {
-                    setTimezone(opt.value);
-                    setTimezoneOpen(false);
-                  }}
-                  style={[styles.tzOption, active && styles.tzOptionActive]}
-                  disabled={savingReminder}
-                >
-                  <Text
-                    style={[
-                      styles.tzOptionText,
-                      active && styles.tzOptionTextActive,
-                    ]}
+        <>
+          <Text style={styles.sectionLabel}>Lembretes</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
+            <Text style={styles.help}>
+              A Sof envia um lembrete automático pela instância conectada, no
+              máximo 1× por agendamento. O job roda a cada 30 minutos — o aviso
+              pode sair até meia hora depois do horário estimado.
+            </Text>
+            <Text style={styles.label}>Antecedência</Text>
+            <View style={styles.chips}>
+              {REMINDER_PRESETS.map((preset) => {
+                const active = reminderMinutes === preset.minutes;
+                return (
+                  <Pressable
+                    key={preset.minutes}
+                    onPress={() => setReminderMinutes(preset.minutes)}
+                    style={[styles.chip, active && styles.chipActive]}
+                    disabled={savingReminder}
                   >
-                    {opt.label}
-                  </Text>
-                  {active ? <Text style={styles.tzCheck}>✓</Text> : null}
-                </Pressable>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        active && styles.chipTextActive,
+                      ]}
+                    >
+                      {preset.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={[styles.label, { marginTop: 4 }]}>Fuso horário</Text>
+            <Pressable
+              onPress={() => setTimezoneOpen((prev) => !prev)}
+              style={styles.tzButton}
+              disabled={savingReminder}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: timezoneOpen }}
+            >
+              <Text style={styles.tzButtonText}>
+                {TIMEZONE_OPTIONS.find((opt) => opt.value === timezone)
+                  ?.label || timezone}
+              </Text>
+              <Text style={styles.tzChevron}>{timezoneOpen ? '▲' : '▼'}</Text>
+            </Pressable>
+            {timezoneOpen ? (
+              <View style={styles.tzList}>
+                {TIMEZONE_OPTIONS.map((opt) => {
+                  const active = timezone === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => {
+                        setTimezone(opt.value);
+                        setTimezoneOpen(false);
+                      }}
+                      style={[styles.tzOption, active && styles.tzOptionActive]}
+                      disabled={savingReminder}
+                    >
+                      <Text
+                        style={[
+                          styles.tzOptionText,
+                          active && styles.tzOptionTextActive,
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                      {active ? <Text style={styles.tzCheck}>✓</Text> : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+            {reminderError ? (
+              <Text style={styles.error}>{reminderError}</Text>
+            ) : null}
+            {reminderSaved ? (
+              <Text style={styles.saved}>{reminderSaved}</Text>
+            ) : null}
+            <SofButton
+              title={savingReminder ? 'Salvando…' : 'Salvar lembrete'}
+              variant="dark"
+              theme="dashboard"
+              disabled={savingReminder}
+              onPress={async () => {
+                setReminderError('');
+                setSavingReminder(true);
+                try {
+                  const { account: updated } = await dashboardApi.updateAccount({
+                    whatsappReminderMinutes: reminderMinutes,
+                    timezone,
+                  });
+                  await setSession(updated);
+                  setReminderSaved('Configuração de lembrete salva!');
+                  setTimeout(() => setReminderSaved(''), 2000);
+                } catch (err) {
+                  setReminderError(
+                    err instanceof Error
+                      ? err.message
+                      : 'Não foi possível salvar.',
+                  );
+                } finally {
+                  setSavingReminder(false);
+                }
+              }}
+            />
           </View>
-        ) : null}
-        {reminderError ? <Text style={styles.error}>{reminderError}</Text> : null}
-        {reminderSaved ? <Text style={styles.saved}>{reminderSaved}</Text> : null}
-        <SofButton
-          title={savingReminder ? 'Salvando…' : 'Salvar lembrete'}
-          variant="dark"
-          theme="dashboard"
-          disabled={savingReminder}
-          onPress={async () => {
-            setReminderError('');
-            setSavingReminder(true);
-            try {
-              const { account: updated } = await dashboardApi.updateAccount({
-                whatsappReminderMinutes: reminderMinutes,
-                timezone,
-              });
-              await setSession(updated);
-              setReminderSaved('Configuração de lembrete salva!');
-              setTimeout(() => setReminderSaved(''), 2000);
-            } catch (err) {
-              setReminderError(
-                err instanceof Error
-                  ? err.message
-                  : 'Não foi possível salvar.',
-              );
-            } finally {
-              setSavingReminder(false);
-            }
-          }}
-        />
-      </View>
+        </>
       ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Sair da conta</Text>
+      <View style={styles.dangerZone}>
+        <View style={styles.dangerText}>
+          <Text style={styles.dangerTitle}>Sessão</Text>
+          <Text style={styles.help}>
+            Encerra o acesso neste dispositivo. Você pode entrar de novo a
+            qualquer momento.
+          </Text>
+        </View>
         <SofButton
-          title="Sair"
+          title="Sair da conta"
           variant="danger"
           theme="dashboard"
           onPress={async () => {
@@ -928,31 +1125,109 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24, maxWidth: 720 },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
+  page: { gap: 16, maxWidth: 720 },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 8,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: d.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  heroText: { flex: 1, gap: 4, minWidth: 0 },
+  h2: { fontSize: 28, fontWeight: '700', color: d.ink },
+  sub: { color: d.muted, fontSize: 14, lineHeight: 20 },
+  heroBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  planPill: {
+    backgroundColor: '#eff6ff',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  planPillText: { color: d.accent, fontSize: 12, fontWeight: '700' },
+  promoPill: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  promoPillText: { color: '#b45309', fontSize: 12, fontWeight: '700' },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  statusPillOn: { backgroundColor: '#ecfdf5' },
+  statusPillOff: { backgroundColor: '#f1f5f9' },
+  statusPillText: { fontSize: 12, fontWeight: '600' },
+  statusPillTextOn: { color: d.waGreenText },
+  statusPillTextOff: { color: d.muted },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusDotOn: { backgroundColor: d.waGreenText },
+  statusDotOff: { backgroundColor: '#94a3b8' },
+  statusDotLg: { width: 10, height: 10, borderRadius: 5 },
+  sectionLabel: {
+    color: d.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 8,
+  },
   card: {
     backgroundColor: d.surface,
     borderRadius: d.radius,
     borderWidth: 1,
     borderColor: d.line,
     padding: 24,
+    gap: 14,
+  },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: d.ink },
+  cardTitleBlock: { flex: 1, gap: 2, minWidth: 0 },
+  cardHint: { color: d.muted, fontSize: 13 },
+  planBanner: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: d.radiusSm,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 16,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: d.ink,
-    marginBottom: 4,
-  },
+  planBannerText: { gap: 2, flex: 1, minWidth: 140 },
+  planBannerName: { fontSize: 18, fontWeight: '700', color: d.ink },
+  planBannerPrice: { fontSize: 14, color: d.muted, fontWeight: '500' },
   hoursHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
   },
   expandBtn: {
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     borderWidth: 1,
     borderColor: d.line,
     backgroundColor: '#f8fafc',
@@ -960,6 +1235,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   expandBtnText: { fontWeight: '600', fontSize: 13, color: d.ink },
+  hoursPreview: { gap: 12 },
+  dayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  dayPill: {
+    minWidth: 40,
+    alignItems: 'center',
+    borderRadius: d.radiusSm,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  dayPillOpen: { backgroundColor: '#ecfdf5' },
+  dayPillClosed: { backgroundColor: '#f1f5f9' },
+  dayPillText: { fontSize: 12, fontWeight: '700' },
+  dayPillTextOpen: { color: d.waGreenText },
+  dayPillTextClosed: { color: '#94a3b8' },
   hoursSummary: {
     color: d.ink,
     fontSize: 14,
@@ -969,32 +1258,101 @@ const styles = StyleSheet.create({
   metaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 24,
+    gap: 20,
   },
-  meta: { minWidth: 160, flexGrow: 1, flexBasis: 160 },
-  metaLabel: { color: d.muted, fontSize: 13, marginBottom: 4 },
-  metaValue: { fontWeight: '700', fontSize: 15, color: d.ink },
-  help: { color: d.muted, fontSize: 14, lineHeight: 22 },
+  meta: { minWidth: 140, flexGrow: 1, flexBasis: 140 },
+  metaLabel: { color: d.muted, fontSize: 12, marginBottom: 4, fontWeight: '600' },
+  metaValue: { fontWeight: '600', fontSize: 14, color: d.ink },
+  help: { color: d.muted, fontSize: 14, lineHeight: 21 },
+  helpCenter: {
+    color: d.muted,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
   label: { fontWeight: '600', color: d.ink, fontSize: 14 },
+  fieldBlock: { gap: 10 },
+  divider: {
+    height: 1,
+    backgroundColor: d.line,
+    marginVertical: 4,
+  },
+  inlineActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: '#fff',
   },
   chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
   chipText: { color: d.ink, fontSize: 13 },
-  chipTextActive: { fontWeight: '700' },
+  chipTextActive: { fontWeight: '700', color: d.accent },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexGrow: 1,
+    flexBasis: 140,
+    minWidth: 140,
+    borderRadius: d.radiusSm,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  statusCardOn: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+  },
+  statusCardMuted: {
+    backgroundColor: '#f8fafc',
+    borderColor: d.line,
+  },
+  statusCardText: { gap: 2 },
+  statusCardLabel: { color: d.muted, fontSize: 11, fontWeight: '600' },
+  statusCardValue: { color: d.ink, fontSize: 14, fontWeight: '700' },
+  infoBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: d.radiusSm,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 14,
+  },
+  connectedBox: {
+    gap: 10,
+    backgroundColor: '#ecfdf5',
+    borderRadius: d.radiusSm,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    padding: 16,
+  },
+  connectedTitle: { fontSize: 15, fontWeight: '700', color: d.waGreenText },
   pauseBlock: {
-    marginTop: 8,
+    marginTop: 4,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: d.line,
     gap: 10,
   },
+  pauseHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  miniBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  miniBadgeOk: { backgroundColor: '#ecfdf5' },
+  miniBadgeWarn: { backgroundColor: '#fef3c7' },
+  miniBadgeText: { fontSize: 12, fontWeight: '700' },
+  miniBadgeTextOk: { color: d.waGreenText },
+  miniBadgeTextWarn: { color: '#b45309' },
   pauseStatus: { color: d.ink, fontSize: 13, fontWeight: '600' },
   tzButton: {
     flexDirection: 'row',
@@ -1003,17 +1361,17 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     backgroundColor: '#fff',
   },
-  tzButtonText: { color: d.ink, fontSize: 14, fontWeight: '600' },
+  tzButtonText: { color: d.ink, fontSize: 14, fontWeight: '600', flex: 1 },
   tzChevron: { color: d.muted, fontSize: 11 },
   tzList: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     backgroundColor: '#fff',
     overflow: 'hidden',
   },
@@ -1028,20 +1386,17 @@ const styles = StyleSheet.create({
     borderBottomColor: d.line,
   },
   tzOptionActive: { backgroundColor: '#eff6ff' },
-  tzOptionText: { color: d.ink, fontSize: 14 },
+  tzOptionText: { color: d.ink, fontSize: 14, flex: 1 },
   tzOptionTextActive: { fontWeight: '700' },
   tzCheck: { color: d.accent, fontWeight: '700' },
-  badge: { fontWeight: '700' },
-  on: { color: '#0d9c53' },
-  off: { color: '#94a3b8' },
   code: {
     fontFamily: 'monospace',
     fontSize: 13,
     color: d.ink,
     backgroundColor: '#f1f5f9',
   },
-  saved: { color: '#0d9c53', fontWeight: '600' },
-  error: { color: '#dc2626', fontWeight: '600' },
+  saved: { color: d.waGreenText, fontWeight: '600' },
+  error: { color: d.danger, fontWeight: '600' },
   dayRow: {
     borderTopWidth: 1,
     borderTopColor: d.line,
@@ -1056,7 +1411,7 @@ const styles = StyleSheet.create({
   },
   dayLabel: { fontWeight: '700', color: d.ink, fontSize: 15 },
   toggle: {
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1066,13 +1421,13 @@ const styles = StyleSheet.create({
   toggleText: { fontWeight: '600', fontSize: 13, color: d.ink },
   timeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   timeField: { flexGrow: 1, flexBasis: 120, minWidth: 120 },
-  waActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  waActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   pairBlock: { gap: 12 },
-  qrWrap: { alignItems: 'center', gap: 12, marginTop: 8 },
+  qrWrap: { alignItems: 'center', gap: 12, marginTop: 4 },
   qrImage: {
     width: 220,
     height: 220,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: d.line,
@@ -1080,9 +1435,9 @@ const styles = StyleSheet.create({
   pairCodeWrap: {
     alignItems: 'center',
     gap: 8,
-    marginTop: 8,
-    padding: 16,
-    borderRadius: 8,
+    marginTop: 4,
+    padding: 20,
+    borderRadius: d.radiusSm,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: d.line,
@@ -1095,4 +1450,19 @@ const styles = StyleSheet.create({
     color: d.ink,
     fontFamily: 'monospace',
   },
+  dangerZone: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.dangerSoft,
+    backgroundColor: '#fffafa',
+    padding: 20,
+  },
+  dangerText: { flex: 1, gap: 4, minWidth: 180 },
+  dangerTitle: { fontSize: 15, fontWeight: '700', color: d.ink },
 });
