@@ -53,6 +53,15 @@ export default function ShellLayout() {
             }
             onPress={() => router.push('/plans')}
           />
+          <NavLink
+            label="Cupons"
+            active={
+              pathname === '/coupons' ||
+              pathname.startsWith('/edit-coupon') ||
+              pathname === '/new-coupon'
+            }
+            onPress={() => router.push('/coupons')}
+          />
         </View>
         <View style={styles.right}>
           <Text style={styles.email}>{admin.email}</Text>

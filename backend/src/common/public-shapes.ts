@@ -8,6 +8,7 @@ export function publicAccount(account: Account | null) {
     whatsappInstanceToken: _whatsappInstanceToken,
     ...safe
   } = account;
+  const needsPlanSelection = account.status === 'paused';
   return {
     ...safe,
     openingHours: normalizeOpeningHours(account.openingHours),
@@ -18,6 +19,10 @@ export function publicAccount(account: Account | null) {
     botPausedUntil: account.botPausedUntil
       ? account.botPausedUntil.toISOString()
       : null,
+    promoExpiresAt: account.promoExpiresAt
+      ? account.promoExpiresAt.toISOString()
+      : null,
+    needsPlanSelection,
   };
 }
 

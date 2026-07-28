@@ -22,6 +22,7 @@ import {
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { COOKIE_NAME, cookieOptions, signAccountToken } from '../common/token';
 import { PlansService } from '../plans/plans.service';
+import { PromoCouponsService } from '../promo-coupons/promo-coupons.service';
 import { ProvisionService } from './provision.service';
 import { StripeService } from './stripe.service';
 
@@ -37,6 +38,7 @@ export class CheckoutController {
     private readonly provision: ProvisionService,
     private readonly stripe: StripeService,
     private readonly plans: PlansService,
+    private readonly promos: PromoCouponsService,
   ) {}
 
   @Post('create')
@@ -50,16 +52,27 @@ export class CheckoutController {
       email?: string;
       phone?: string;
       password?: string;
+      couponCode?: string;
     },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const planName = String(body?.planName || '').trim();
     const name = String(body?.name || '').trim();
     const email = String(body?.email || '')
       .trim()
       .toLowerCase();
     const phone = normalizePhone(body?.phone);
     const password = body?.password;
+    const couponCode = this.promos.normalizeCode(body?.couponCode);
+
+    let planName = String(body?.planName || '').trim();
+    let coupon = null as Awaited<
+      ReturnType<PromoCouponsService['findUsableByCode']>
+    > | null;
+
+    if (couponCode) {
+      coupon = await this.promos.findUsableByCode(couponCode);
+      planName = coupon.plan.name;
+    }
 
     const plan = await this.plans.getByName(planName);
     if (!plan) throw new BadRequestException({ error: 'Plano inválido.' });
@@ -101,6 +114,30 @@ export class CheckoutController {
         status: 'pending',
       },
     });
+
+    // Cupom: provisiona sem Stripe
+    if (coupon) {
+      const { account } = await this.provision.provisionAccount(session, {
+        couponCode: coupon.code,
+      });
+      const jwtToken = signAccountToken(
+        account.id,
+        this.config.getOrThrow<string>('jwtSecret'),
+      );
+      res.cookie(
+        COOKIE_NAME,
+        jwtToken,
+        cookieOptions(this.config.get<boolean>('isProd') === true),
+      );
+      return {
+        mode: 'promo-approved',
+        sessionId: session.id,
+        token: jwtToken,
+        promoExpiresAt: account.promoExpiresAt?.toISOString() ?? null,
+        freeDays: coupon.freeDays,
+        planName: coupon.plan.name,
+      };
+    }
 
     if (this.stripe.isConfigured()) {
       try {

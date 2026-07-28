@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { EntitlementsModule } from '../entitlements/entitlements.module';
+import { PromoCouponsModule } from '../promo-coupons/promo-coupons.module';
 
 @Module({
-  imports: [EntitlementsModule],
+  imports: [EntitlementsModule, PromoCouponsModule],
   controllers: [AuthController],
   providers: [AuthGuard],
   exports: [AuthGuard],

@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { PlansModule } from './plans/plans.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { CouponsModule } from './coupons/coupons.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -26,6 +27,7 @@ import { HealthController } from './health/health.controller';
     AuthModule,
     AccountsModule,
     PlansModule,
+    CouponsModule,
     TicketsModule,
   ],
   controllers: [HealthController],

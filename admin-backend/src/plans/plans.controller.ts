@@ -101,7 +101,7 @@ export class PlansController {
     const syncStripe = body?.syncStripe !== false;
 
     if (syncStripe && this.stripe.isConfigured()) {
-      const created = await this.stripe.createProductAndPrice({
+      const created = await this.stripe.syncPlanCatalog({
         name,
         priceBrl: price,
         interval,
@@ -164,10 +164,6 @@ export class PlansController {
 
     const syncStripe = body?.syncStripe !== false;
     const data: Prisma.PlanUpdateInput = {};
-    const canSyncStripe =
-      syncStripe &&
-      this.stripe.isConfigured() &&
-      plan.stripeProductId.startsWith('prod_');
 
     let nextName = plan.name;
     if (body.name !== undefined) {
@@ -189,9 +185,6 @@ export class PlansController {
       }
       data.name = nextName;
       data.slug = slug;
-      if (canSyncStripe) {
-        await this.stripe.updateProductName(plan.stripeProductId, nextName);
-      }
     }
 
     if (body.features !== undefined) {
@@ -206,9 +199,6 @@ export class PlansController {
     }
     if (body.sortOrder !== undefined) {
       data.sortOrder = Number(body.sortOrder) || 0;
-    }
-    if (body.paymentLinkUrl !== undefined) {
-      data.paymentLinkUrl = String(body.paymentLinkUrl).trim();
     }
 
     const nextInterval =
@@ -227,47 +217,100 @@ export class PlansController {
       body.price !== undefined && Number(body.price) !== plan.price;
     const intervalChanged =
       body.interval !== undefined && nextInterval !== plan.interval;
+    const nameChanged = body.name !== undefined && nextName !== plan.name;
 
-    if (priceChanged || intervalChanged) {
-      const nextPrice = priceChanged ? Number(body.price) : plan.price;
+    if (priceChanged) {
+      const nextPrice = Number(body.price);
       if (!Number.isFinite(nextPrice) || nextPrice < 0) {
         throw new BadRequestException({ error: 'Preço inválido.' });
       }
       data.price = nextPrice;
+    }
 
-      if (canSyncStripe) {
-        const replaced = await this.stripe.createReplacementPrice({
-          productId: plan.stripeProductId,
-          planName: nextName,
-          priceBrl: nextPrice,
-          interval: nextInterval,
-          previousPriceId: plan.stripePriceId.startsWith('price_')
-            ? plan.stripePriceId
-            : undefined,
-        });
-        data.stripePriceId = replaced.stripePriceId;
-        // Novo Price exige novo Payment Link; só sobrescreve se o admin não
-        // enviou paymentLinkUrl neste mesmo request.
-        if (body.paymentLinkUrl === undefined) {
-          const link = await this.stripe.createPaymentLink(replaced.stripePriceId);
-          data.paymentLinkUrl = link.paymentLinkUrl;
-        }
+    const nextPrice = priceChanged ? Number(body.price) : plan.price;
+
+    // Override manual só se o admin mandou uma URL *diferente* da atual.
+    const incomingLink =
+      body.paymentLinkUrl !== undefined
+        ? String(body.paymentLinkUrl).trim()
+        : undefined;
+    const manualLinkOverride =
+      incomingLink !== undefined && incomingLink !== plan.paymentLinkUrl;
+
+    const needsStripeSync =
+      syncStripe &&
+      this.stripe.isConfigured() &&
+      (priceChanged ||
+        intervalChanged ||
+        nameChanged ||
+        !plan.stripeProductId.startsWith('prod_') ||
+        !plan.stripePriceId.startsWith('price_') ||
+        !plan.paymentLinkUrl.trim());
+
+    if (needsStripeSync) {
+      const synced = await this.stripe.syncPlanCatalog({
+        name: nextName,
+        priceBrl: nextPrice,
+        interval: nextInterval,
+        existingProductId: plan.stripeProductId,
+        existingPriceId: plan.stripePriceId,
+        existingPaymentLinkUrl: plan.paymentLinkUrl,
+      });
+      data.stripeProductId = synced.stripeProductId;
+      data.stripePriceId = synced.stripePriceId;
+      if (!manualLinkOverride) {
+        data.paymentLinkUrl = synced.paymentLinkUrl;
       }
+    } else if (manualLinkOverride) {
+      data.paymentLinkUrl = incomingLink;
     }
 
     if (body.active !== undefined) {
       data.active = Boolean(body.active);
-      if (canSyncStripe) {
-        await this.stripe.setProductActive(
-          plan.stripeProductId,
-          Boolean(body.active),
-        );
+      const productId =
+        typeof data.stripeProductId === 'string'
+          ? data.stripeProductId
+          : plan.stripeProductId;
+      if (syncStripe && this.stripe.isConfigured() && productId.startsWith('prod_')) {
+        await this.stripe.setProductActive(productId, Boolean(body.active));
       }
     }
 
     const updated = await this.prisma.plan.update({
       where: { id },
       data,
+    });
+    return { plan: publicPlan(updated) };
+  }
+
+  /** Força Product + Price + Payment Link alinhados ao preço do Sof. */
+  @Post(':id/sync-stripe')
+  async syncStripe(@Param('id') id: string) {
+    const plan = await this.prisma.plan.findUnique({ where: { id } });
+    if (!plan) throw new NotFoundException({ error: 'Plano não encontrado.' });
+    if (!this.stripe.isConfigured()) {
+      throw new BadRequestException({
+        error: 'Configure STRIPE_SECRET_KEY no admin-backend.',
+      });
+    }
+
+    const interval = plan.interval === 'year' ? 'year' : 'month';
+    const synced = await this.stripe.syncPlanCatalog({
+      name: plan.name,
+      priceBrl: plan.price,
+      interval,
+      existingProductId: plan.stripeProductId,
+      existingPriceId: plan.stripePriceId,
+      existingPaymentLinkUrl: plan.paymentLinkUrl,
+    });
+
+    const updated = await this.prisma.plan.update({
+      where: { id },
+      data: {
+        stripeProductId: synced.stripeProductId,
+        stripePriceId: synced.stripePriceId,
+        paymentLinkUrl: synced.paymentLinkUrl,
+      },
     });
     return { plan: publicPlan(updated) };
   }

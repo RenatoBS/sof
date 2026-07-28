@@ -53,7 +53,9 @@ function revenueFor(
       );
     });
   }
-  return filtered.reduce((sum, a) => sum + (a.price || 0), 0);
+  const total = filtered.reduce((sum, a) => sum + (a.price || 0), 0);
+  const count = filtered.length;
+  return { total, count, average: count > 0 ? total / count : 0 };
 }
 
 export default function BillingScreen() {
@@ -88,13 +90,24 @@ export default function BillingScreen() {
 
       <View style={styles.statGrid}>
         {[
-          { label: 'Hoje', value: stats.day },
-          { label: 'Esta Semana', value: stats.week },
-          { label: 'Este Mês', value: stats.month },
+          { label: 'Hoje', value: stats.day.total },
+          { label: 'Esta Semana', value: stats.week.total },
+          { label: 'Este Mês', value: stats.month.total },
+          {
+            label: 'Ticket Médio (mês)',
+            value: stats.month.average,
+            hint:
+              stats.month.count > 0
+                ? `${stats.month.count} agendamento${stats.month.count === 1 ? '' : 's'}`
+                : 'Sem agendamentos no mês',
+          },
         ].map((s) => (
           <View key={s.label} style={styles.stat}>
             <Text style={styles.statLabel}>{s.label}</Text>
             <Text style={styles.statValue}>{formatCurrency(s.value)}</Text>
+            {'hint' in s && s.hint ? (
+              <Text style={styles.statHint}>{s.hint}</Text>
+            ) : null}
           </View>
         ))}
       </View>
@@ -145,6 +158,7 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 14, color: d.muted, fontWeight: '600', marginBottom: 12 },
   statValue: { fontSize: 32, fontWeight: '700', color: d.ink },
+  statHint: { fontSize: 12, color: d.muted, marginTop: 8 },
   card: {
     backgroundColor: d.surface,
     borderRadius: d.radius,

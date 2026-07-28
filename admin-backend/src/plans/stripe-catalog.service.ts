@@ -63,6 +63,156 @@ export class StripeCatalogService {
     return { paymentLinkId: link.id, paymentLinkUrl: link.url };
   }
 
+  /**
+   * Garante Product + Price + Payment Link alinhados ao preço do Sof.
+   * Serve tanto para planos seed (`seed_*`) quanto para re-sync após mudança de preço.
+   */
+  async syncPlanCatalog(input: {
+    name: string;
+    priceBrl: number;
+    interval: 'month' | 'year';
+    existingProductId?: string;
+    existingPriceId?: string;
+    existingPaymentLinkUrl?: string;
+  }) {
+    const stripe = this.requireClient();
+    const unitAmount = Math.round(input.priceBrl * 100);
+    let productId = String(input.existingProductId || '').trim();
+
+    if (productId.startsWith('prod_')) {
+      try {
+        await stripe.products.update(productId, {
+          name: `Sof — ${input.name}`,
+          metadata: { sof_plan: input.name },
+          active: true,
+        });
+      } catch (err) {
+        if (!isStripeMissing(err)) this.rethrowStripe(err);
+        productId = '';
+      }
+    } else {
+      productId = '';
+    }
+
+    if (!productId) {
+      const product = await stripe.products.create({
+        name: `Sof — ${input.name}`,
+        metadata: { sof_plan: input.name },
+      });
+      productId = product.id;
+    }
+
+    let priceId = String(input.existingPriceId || '').trim();
+    let priceMatches = false;
+    if (priceId.startsWith('price_')) {
+      try {
+        const price = await stripe.prices.retrieve(priceId);
+        priceMatches =
+          price.active === true &&
+          price.unit_amount === unitAmount &&
+          price.currency === 'brl' &&
+          price.type === 'recurring' &&
+          price.recurring?.interval === input.interval &&
+          (typeof price.product === 'string'
+            ? price.product
+            : price.product?.id) === productId;
+      } catch (err) {
+        if (!isStripeMissing(err)) this.rethrowStripe(err);
+        priceId = '';
+      }
+    } else {
+      priceId = '';
+    }
+
+    if (!priceMatches) {
+      const previousPriceId = priceId.startsWith('price_') ? priceId : undefined;
+      const created = await this.createReplacementPrice({
+        productId,
+        planName: input.name,
+        priceBrl: input.priceBrl,
+        interval: input.interval,
+        previousPriceId,
+      });
+      priceId = created.stripePriceId;
+    }
+
+    // Desativa Payment Links antigos deste price / URL salva (best-effort)
+    const oldUrl = String(input.existingPaymentLinkUrl || '').trim();
+    try {
+      for await (const link of stripe.paymentLinks.list({
+        limit: 100,
+        active: true,
+      })) {
+        let matches = oldUrl !== '' && link.url === oldUrl;
+        if (!matches) {
+          const items = await stripe.paymentLinks.listLineItems(link.id, {
+            limit: 20,
+          });
+          matches = items.data.some((li) => {
+            const id =
+              typeof li.price === 'string' ? li.price : li.price?.id || '';
+            return id === priceId;
+          });
+        }
+        // Só desativa se for o URL antigo (outro price) — se já aponta ao price
+        // atual, reutilizamos abaixo.
+        if (matches && oldUrl && link.url === oldUrl) {
+          const items = await stripe.paymentLinks.listLineItems(link.id, {
+            limit: 5,
+          });
+          const samePrice = items.data.some((li) => {
+            const id =
+              typeof li.price === 'string' ? li.price : li.price?.id || '';
+            return id === priceId;
+          });
+          if (!samePrice) {
+            await stripe.paymentLinks.update(link.id, { active: false });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(
+        '[stripe] Falha ao desativar Payment Links antigos:',
+        (err as Error).message,
+      );
+    }
+
+    // Reusa link ativo já apontando ao price; senão cria novo
+    let paymentLinkUrl = '';
+    try {
+      for await (const link of stripe.paymentLinks.list({
+        limit: 100,
+        active: true,
+      })) {
+        const items = await stripe.paymentLinks.listLineItems(link.id, {
+          limit: 5,
+        });
+        const samePrice = items.data.some((li) => {
+          const id =
+            typeof li.price === 'string' ? li.price : li.price?.id || '';
+          return id === priceId;
+        });
+        if (samePrice && link.url) {
+          paymentLinkUrl = link.url;
+          break;
+        }
+      }
+    } catch {
+      /* cria abaixo */
+    }
+
+    if (!paymentLinkUrl) {
+      const link = await this.createPaymentLink(priceId);
+      paymentLinkUrl = link.paymentLinkUrl;
+    }
+
+    return {
+      stripeProductId: productId,
+      stripePriceId: priceId,
+      paymentLinkUrl,
+    };
+  }
+
   async createProductAndPrice(input: {
     name: string;
     priceBrl: number;

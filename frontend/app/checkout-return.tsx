@@ -49,8 +49,9 @@ export default function CheckoutReturnScreen() {
           return;
         }
 
-        // Já entregue (refresh / segunda visita) — pede login.
-        router.replace('/login');
+        // Já entregue — se ainda há sessão, só atualiza e entra na agenda.
+        await refreshMe();
+        router.replace('/(dashboard)/agenda');
       } catch {
         clearInterval(timer);
         setPhase('failed');

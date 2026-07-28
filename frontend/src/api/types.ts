@@ -30,6 +30,11 @@ export type Account = {
   botPausedPermanent?: boolean;
   botPausedUntil?: string | null;
   status: string;
+  /** paid | promo */
+  billingSource?: string;
+  promoExpiresAt?: string | null;
+  /** true quando status === paused (cupom/trial vencido) */
+  needsPlanSelection?: boolean;
   createdAt: string;
   whatsappConnectedAt?: string | null;
 };

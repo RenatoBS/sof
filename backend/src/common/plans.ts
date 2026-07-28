@@ -19,8 +19,8 @@ export const FALLBACK_PLANS: Record<string, PlanDefinition> = {
   Solo: {
     name: 'Solo',
     price: 139,
-    stripePriceId: 'price_1TteV5CYoGJoCsEuADctlxcK',
-    paymentLinkUrl: 'https://buy.stripe.com/test_14A3cu12302NbP77n37kc00',
+    stripePriceId: 'price_1TyIuNCYoGJoCsEuE84eG1As',
+    paymentLinkUrl: 'https://buy.stripe.com/test_7sYdR84ef16Rf1jgXD7kc04',
     features: [
       'Bot no WhatsApp que agenda sozinho, com menus guiados',
       'Agenda semanal completa (desktop e celular)',
@@ -40,8 +40,8 @@ export const FALLBACK_PLANS: Record<string, PlanDefinition> = {
   Equipe: {
     name: 'Equipe',
     price: 199,
-    stripePriceId: 'price_1TteV6CYoGJoCsEujB5IupLf',
-    paymentLinkUrl: 'https://buy.stripe.com/test_6oUaEWbGH02N3iB6iZ7kc01',
+    stripePriceId: 'price_1TyIuQCYoGJoCsEueUsaU6Nv',
+    paymentLinkUrl: 'https://buy.stripe.com/test_28E9AS1236rb9GZbDj7kc05',
     features: [
       'Tudo do plano Solo, e mais:',
       'Lembrete automático antes do horário',
@@ -61,8 +61,8 @@ export const FALLBACK_PLANS: Record<string, PlanDefinition> = {
   Rede: {
     name: 'Rede',
     price: 259,
-    stripePriceId: 'price_1TteV6CYoGJoCsEu8Pj2HeUo',
-    paymentLinkUrl: 'https://buy.stripe.com/test_eVq8wO6mn4j31atfTz7kc02',
+    stripePriceId: 'price_1TyIuUCYoGJoCsEuD60KobFy',
+    paymentLinkUrl: 'https://buy.stripe.com/test_28EcN48uv3eZ8CV8r77kc06',
     features: [
       'Tudo do plano Equipe, e mais:',
       'Agendamento por áudio',

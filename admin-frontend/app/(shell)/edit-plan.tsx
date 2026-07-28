@@ -95,6 +95,23 @@ export default function PlanDetailScreen() {
     }
   }
 
+  async function onSyncStripe() {
+    if (!id) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await plansApi.syncStripe(id);
+      setPlan(res.plan);
+      setPaymentLinkUrl(res.plan.paymentLinkUrl);
+      setMessage('Stripe sincronizado: Product, Price e Payment Link atualizados.');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Falha ao sincronizar Stripe.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onDelete() {
     if (!id || !plan) return;
     const ok = await confirmDelete(plan.name);
@@ -169,6 +186,12 @@ export default function PlanDetailScreen() {
           title={busy ? 'Salvando…' : 'Salvar'}
           onPress={save}
           disabled={busy}
+        />
+        <Button
+          title={busy ? '…' : 'Sincronizar Stripe'}
+          variant="ghost"
+          onPress={onSyncStripe}
+          disabled={busy || !plan}
         />
         <Button
           title={busy ? 'Apagando…' : 'Apagar plano'}

@@ -25,25 +25,30 @@ async function seedPlansAndAdmin() {
   for (let i = 0; i < planEntries.length; i++) {
     const p = planEntries[i];
     const slug = slugifyPlanName(p.name);
-    await prisma.plan.upsert({
+    const existing = await prisma.plan.findUnique({ where: { slug } });
+    if (!existing) {
+      await prisma.plan.create({
+        data: {
+          name: p.name,
+          slug,
+          price: p.price,
+          stripeProductId: `seed_${slug}`,
+          stripePriceId: p.stripePriceId,
+          paymentLinkUrl: p.paymentLinkUrl,
+          features: p.features || [],
+          entitlements: p.entitlements || {},
+          active: true,
+          sortOrder: i,
+        },
+      });
+      continue;
+    }
+    // Não sobrescrever Product/Price/Payment Link já sincronizados na Stripe
+    await prisma.plan.update({
       where: { slug },
-      create: {
-        name: p.name,
-        slug,
-        price: p.price,
-        stripeProductId: `seed_${slug}`,
-        stripePriceId: p.stripePriceId,
-        paymentLinkUrl: p.paymentLinkUrl,
-        features: p.features || [],
-        entitlements: p.entitlements || {},
-        active: true,
-        sortOrder: i,
-      },
-      update: {
+      data: {
         name: p.name,
         price: p.price,
-        stripePriceId: p.stripePriceId,
-        paymentLinkUrl: p.paymentLinkUrl,
         features: p.features || [],
         entitlements: p.entitlements || {},
         active: true,
