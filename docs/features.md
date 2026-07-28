@@ -152,7 +152,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Faturamento
 
-- Cards: Hoje / Esta Semana / Este Mês (`scheduled` + `completed`).  
+- Cards: Hoje / Esta Semana / Este Mês / **Ticket Médio (mês)** (`scheduled` + `completed`; ticket = receita do mês ÷ nº de agendamentos).  
 - Lista “Agendamentos” (serviço; ignora `block`).  
 - Copy: “Acompanhe a receita de seus serviços”.
 
