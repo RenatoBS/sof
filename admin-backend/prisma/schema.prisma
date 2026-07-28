@@ -333,6 +333,7 @@ model Plan {
   @@index([active, sortOrder])
 }
 
+/// Cupom promocional: N dias grátis de um plano (pula Stripe no checkout)
 model PromoCoupon {
   id        String   @id @default(cuid())
   /// Código normalizado em maiúsculas
