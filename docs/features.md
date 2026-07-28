@@ -213,6 +213,8 @@ Quando `SEED_DEMO_ENABLED=true`, o seed cria **uma conta por plano** (mesma senh
 
 Cada conta: 4 serviços, 10 clientes, ~10 agendamentos/cliente, bloqueios (almoço + compromisso semanal). Login profissional em `/login` (troca de senha no 1º acesso).
 
+O dashboard carrega handoffs à parte: plano sem `handoffs` (ex. Solo) recebe 403 nessa rota e **não** deve impedir o load de agenda/clientes/serviços.
+
 Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Para apagar e semear de novo: `npm run backend:reset-seed`.
 
 ## API — mapa rápido

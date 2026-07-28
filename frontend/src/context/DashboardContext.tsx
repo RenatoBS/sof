@@ -45,18 +45,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, s, c, a, h] = await Promise.all([
+      const [e, s, c, a] = await Promise.all([
         dashboardApi.employees(),
         dashboardApi.services(),
         dashboardApi.clients(),
         dashboardApi.appointments(),
-        dashboardApi.whatsappHandoffs(),
       ]);
       setEmployees(e.employees);
       setServices(s.services);
       setClients(c.clients);
       setAppointments(a.appointments);
-      setHandoffs(h.handoffs);
+
+      // Handoffs é gated por plano — 403 no Solo não pode zerar o dashboard.
+      try {
+        const h = await dashboardApi.whatsappHandoffs();
+        setHandoffs(h.handoffs);
+      } catch {
+        setHandoffs([]);
+      }
     } finally {
       setLoading(false);
     }
