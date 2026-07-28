@@ -7,6 +7,8 @@ export type DaySchedule = {
 
 export type OpeningHours = DaySchedule[];
 
+export type EntitlementsMap = Record<string, boolean | number | null>;
+
 export type Account = {
   id: string;
   businessName: string;
@@ -15,6 +17,8 @@ export type Account = {
   phone: string;
   plan: string;
   planPrice: number;
+  planId?: string | null;
+  entitlements?: EntitlementsMap;
   whatsappPhoneNumberId: string;
   openingHours: OpeningHours;
   address: string;

@@ -17,7 +17,7 @@ Sof ajuda salões/barbearias a:
 | Feature | Tela | Notas |
 |---------|------|--------|
 | Landing | `/` | Hero, chat mock Sof, features com ícones SVG, passos |
-| Planos | `/pricing` | Essencial / Estúdio / Rede; CTA abre checkout |
+| Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
 | Nav / footer | global | Wordmark `sof`, CTAs |
@@ -38,7 +38,13 @@ Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — pro
 
 A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
 
-Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback legado em `common/plans.ts` / `CheckoutModal` se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl` (criados automaticamente pelo admin ao sincronizar Product/Price). Apagar plano no admin desativa o Payment Link e remove/arquiva o Product na Stripe via API; erro da Stripe é devolvido ao front e o registro local permanece.
+Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback em `common/plans.ts` / `CheckoutModal` (Solo R$139 / Equipe R$199 / Rede R$259) se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl`. Apagar plano no admin desativa o Payment Link e remove/arquiva o Product na Stripe via API.
+
+### Gate por plano (entitlements)
+
+Cada plano tem `entitlements` configuráveis no admin (matriz boolean/limite). Login e `GET /api/auth/me` devolvem `account.entitlements`. Backend bloqueia com 403 (`PLAN_FEATURE_REQUIRED` / `PLAN_LIMIT_REACHED`). Front esconde Faturamento/Atendimentos, recorrência, lembretes, pausa do bot, etc., conforme o mapa. Limite de profissionais enforced em `POST /api/employees`.
+
+Keys stub (existem no catálogo, feature incompleta): `maxWhatsappNumbers` (ainda 1 número por conta), `clientReschedule` (remarcar no WhatsApp — backlog; cliente agenda/cancela). `supportPriority` é só badge na UI de tickets.
 
 ## Painel admin Sof (plataforma)
 
@@ -236,7 +242,8 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Health | `GET /api/health` |
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
 | Accounts | `GET/POST /api/accounts`, `GET/PUT …/:id`, `POST …/:id/reset-password` |
-| Plans | `GET/POST /api/plans`, `GET/PUT …/:id` |
+| Plans | `GET/POST /api/plans`, `GET/PUT/DELETE …/:id` (inclui `entitlements`) |
+| Feature catalog | `GET /api/feature-catalog` |
 | Tickets | `GET /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
 
 Detalhes de arquitetura: [`architecture.md`](architecture.md).

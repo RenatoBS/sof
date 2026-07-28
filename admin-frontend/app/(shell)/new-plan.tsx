@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
-import { plansApi } from '@/src/api/endpoints';
+import { plansApi, type EntitlementsMap } from '@/src/api/endpoints';
+import { EntitlementsEditor } from '@/src/components/EntitlementsEditor';
 import { Button, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
@@ -10,6 +11,7 @@ export default function NewPlanScreen() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [featuresText, setFeaturesText] = useState('');
+  const [entitlements, setEntitlements] = useState<EntitlementsMap>({});
   const [stripeProductId, setStripeProductId] = useState('');
   const [stripePriceId, setStripePriceId] = useState('');
   const [error, setError] = useState('');
@@ -27,6 +29,8 @@ export default function NewPlanScreen() {
         name,
         price: Number(price),
         features,
+        entitlements:
+          Object.keys(entitlements).length > 0 ? entitlements : undefined,
         syncStripe: true,
         stripeProductId: stripeProductId || undefined,
         stripePriceId: stripePriceId || undefined,
@@ -60,6 +64,7 @@ export default function NewPlanScreen() {
         onChangeText={setFeaturesText}
         style={{ minHeight: 100, textAlignVertical: 'top' }}
       />
+      <EntitlementsEditor value={entitlements} onChange={setEntitlements} />
       <Field
         label="stripeProductId (só sem Stripe auto)"
         value={stripeProductId}

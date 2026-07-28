@@ -17,6 +17,16 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Gate por plano (entitlements configuráveis no admin)
+
+- **Contexto:** Planos Solo/Equipe/Rede definidos no pricing; features existiam no produto mas sem enforcement; admin só editava bullets de marketing.  
+- **Decisão:** Catálogo tipado de keys no código (`feature-catalog.ts`); valores por plano em `Plan.entitlements` (JSON); `Account.planId` FK; `EntitlementsService.assertFeature` / `assertLimit` (403 `PLAN_FEATURE_REQUIRED` / `PLAN_LIMIT_REACHED`); admin edita matriz; `/auth/me` e login expõem `entitlements`; front esconde tabs/settings. Seed/fallback: Solo R$139 / Equipe R$199 / Rede R$259.  
+- **Stubs documentados:** `maxWhatsappNumbers` (produto ainda 1 número; connect efetivo `min(limit,1)`); `clientReschedule` (débito técnico — fluxo de remarcar no bot ainda não existe); `supportPriority` só UI (badge).  
+- **Consequências:** Admin muda limites/features sem deploy de lógica; novas keys exigem hook no código. Contas sem `planId` resolvem por nome/alias (Essencial→Solo, Estúdio→Equipe) ou defaults Solo.  
+- **Alternativas descartadas:** Feature flags globais sem plano; entitlements só no front; multi-WhatsApp e remarcação nesta entrega.
+
+---
+
 ## 2026-07-23 — Bot: nome+sobrenome no 1º contato e matching de profissionais
 
 - **Contexto:** 1º contato aceitava só um nome; texto digitado (ex. “João”, sem acento, título truncado) não batia com o profissional.  

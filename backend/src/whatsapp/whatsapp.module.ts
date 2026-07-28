@@ -8,12 +8,14 @@ import { EmployeeBookingNotifyService } from './employee-booking-notify.service'
 import { AuthModule } from '../auth/auth.module';
 import { WhatsappHandoffsModule } from '../whatsapp-handoffs/whatsapp-handoffs.module';
 import { EmployeePortalModule } from '../employee-portal/employee-portal.module';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 @Module({
   imports: [
     AuthModule,
     WhatsappHandoffsModule,
     forwardRef(() => EmployeePortalModule),
+    EntitlementsModule,
   ],
   controllers: [WhatsappController],
   providers: [

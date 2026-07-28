@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import { hasFeature } from '../entitlements/feature-catalog';
 import { normalizePhone } from '../common/phone';
 import {
   DEFAULT_ACCOUNT_TIMEZONE,
@@ -40,6 +42,7 @@ export class RemindersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappApiService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async processDueReminders(now = new Date()): Promise<{
@@ -57,7 +60,16 @@ export class RemindersService {
       const candidates = await this.loadCandidates(now);
       stats.scanned = candidates.length;
 
+      const allowedAccounts = new Map<string, boolean>();
       for (const row of candidates) {
+        if (!allowedAccounts.has(row.accountId)) {
+          const ents = await this.entitlements.forAccount(row.accountId);
+          allowedAccounts.set(row.accountId, hasFeature(ents, 'reminders'));
+        }
+        if (!allowedAccounts.get(row.accountId)) {
+          stats.skipped += 1;
+          continue;
+        }
         const result = await this.processOne(row, now);
         if (result === 'sent') stats.sent += 1;
         else if (result === 'failed') stats.failed += 1;

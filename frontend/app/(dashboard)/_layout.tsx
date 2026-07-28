@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useAuth } from '@/src/auth/AuthProvider';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { dashboardApi } from '@/src/api/endpoints';
 import { DashboardProvider, useDashboard } from '@/src/context/DashboardContext';
 import { useToast } from '@/src/context/ToastContext';
@@ -18,14 +19,24 @@ import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 import type { Appointment, WhatsappHandoff } from '@/src/api/types';
 
-const TABS = [
+const ALL_TABS = [
   { href: '/(dashboard)/agenda', label: 'Agenda', match: 'agenda' },
   { href: '/(dashboard)/employees', label: 'Profissionais', match: 'employees' },
   { href: '/(dashboard)/services', label: 'Serviços', match: 'services' },
   { href: '/(dashboard)/clients', label: 'Clientes', match: 'clients' },
-  { href: '/(dashboard)/handoffs', label: 'Atendimentos', match: 'handoffs' },
+  {
+    href: '/(dashboard)/handoffs',
+    label: 'Atendimentos',
+    match: 'handoffs',
+    feature: 'handoffs',
+  },
   { href: '/(dashboard)/support', label: 'Suporte', match: 'support' },
-  { href: '/(dashboard)/billing', label: 'Faturamento', match: 'billing' },
+  {
+    href: '/(dashboard)/billing',
+    label: 'Faturamento',
+    match: 'billing',
+    feature: 'billing',
+  },
   { href: '/(dashboard)/account', label: 'Conta', match: 'account' },
 ] as const;
 
@@ -33,12 +44,19 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 720;
   const { account, loading, logout } = useAuth();
+  const { has } = useEntitlements();
   const { loadAll, setAppointments, setClients, handoffs, setHandoffs } =
     useDashboard();
   const { showToast } = useToast();
   const pathname = usePathname();
 
-  const openHandoffs = handoffs.filter((h) => h.status === 'open').length;
+  const TABS = ALL_TABS.filter(
+    (tab) => !('feature' in tab) || !tab.feature || has(tab.feature),
+  );
+
+  const openHandoffs = has('handoffs')
+    ? handoffs.filter((h) => h.status === 'open').length
+    : 0;
 
   const upsertHandoff = (handoff: WhatsappHandoff) => {
     setHandoffs((prev) => {

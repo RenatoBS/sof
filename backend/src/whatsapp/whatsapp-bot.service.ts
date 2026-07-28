@@ -19,6 +19,11 @@ import {
 import { BookingNluService } from './booking-nlu.service';
 import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { EmployeeBookingNotifyService } from './employee-booking-notify.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import {
+  EntitlementsMap,
+  hasFeature,
+} from '../entitlements/feature-catalog';
 import { formatReminderLeadLabel } from '../reminders/reminder-window';
 
 type SessionData = {
@@ -91,7 +96,12 @@ export class WhatsappBotService {
     private readonly nlu: BookingNluService,
     private readonly employeeBot: WhatsappEmployeeBotService,
     private readonly employeeBookingNotify: EmployeeBookingNotifyService,
+    private readonly entitlements: EntitlementsService,
   ) {}
+
+  private async entsFor(accountId: string): Promise<EntitlementsMap> {
+    return this.entitlements.forAccount(accountId);
+  }
 
   /**
    * Interpretação de frase livre (áudio transcrito ou texto corrido) via LLM.
@@ -105,6 +115,8 @@ export class WhatsappBotService {
     text: string,
     client: { id: string; name: string } | null,
   ): Promise<WhatsappBotResult | null> {
+    const ents = await this.entsFor(account.id);
+    if (!hasFeature(ents, 'freeTextNlu')) return null;
     if (!this.nlu.isEnabled()) return null;
     // Só frases livres — menus/números/comandos seguem o fluxo normal.
     const words = String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -737,6 +749,25 @@ export class WhatsappBotService {
       );
     }
 
+    const entsPath = await this.entsFor(account.id);
+    const includeSof = hasFeature(entsPath, 'sofPickProfessional');
+
+    if (!hasFeature(entsPath, 'bookingPathChoice')) {
+      await this.saveSession(account.id, customerPhone, {
+        step: 'awaiting_employee',
+        data: {
+          clientId: sessionBase.clientId,
+          clientName: sessionBase.clientName,
+          serviceId: service.id,
+        },
+      });
+      return this.employeeMenu(
+        intro || `Combinado: ${service.name}. Quem você prefere?`,
+        employees,
+        { includeSofPick: includeSof },
+      );
+    }
+
     await this.saveSession(account.id, customerPhone, {
       step: 'awaiting_path',
       data: {
@@ -762,6 +793,13 @@ export class WhatsappBotService {
         description: 'Ver horários livres primeiro',
       },
     ];
+    if (includeSof) {
+      choices.splice(employees.length, 0, {
+        id: 'emp:auto',
+        title: 'Deixa a Sof escolher',
+        description: 'Quem estiver livre',
+      });
+    }
 
     return this.menuReply(body, choices, {
       listButton: 'Ver opções',
@@ -1081,11 +1119,14 @@ export class WhatsappBotService {
           `${free[0].name} está livre nesse horário. Fechar ${service.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
         );
       }
-      return this.employeeMenu(
-        'Esse profissional não está livre nesse horário. Quem você prefere?',
-        free,
-        { includeSofPick: true },
-      );
+      {
+        const entsEmp = await this.entsFor(account.id);
+        return this.employeeMenu(
+          'Esse profissional não está livre nesse horário. Quem você prefere?',
+          free,
+          { includeSofPick: hasFeature(entsEmp, 'sofPickProfessional') },
+        );
+      }
     }
 
     // Caminho horário primeiro
@@ -1103,11 +1144,14 @@ export class WhatsappBotService {
       step: 'awaiting_employee',
       data: baseData,
     });
-    return this.employeeMenu(
-      `Quem você prefere em ${this.formatSlotLabel(when.date, when.time)}?`,
-      free,
-      { includeSofPick: true },
-    );
+    {
+      const entsEmp = await this.entsFor(account.id);
+      return this.employeeMenu(
+        `Quem você prefere em ${this.formatSlotLabel(when.date, when.time)}?`,
+        free,
+        { includeSofPick: hasFeature(entsEmp, 'sofPickProfessional') },
+      );
+    }
   }
 
   private async saveSession(
@@ -1340,6 +1384,14 @@ export class WhatsappBotService {
     }
 
     if (HUMAN_REQUEST_RE.test(trimmed)) {
+      const entsHuman = await this.entsFor(account.id);
+      if (!hasFeature(entsHuman, 'clientRequestHuman')) {
+        return {
+          replies: [
+            'No momento não consigo transferir para um atendente por aqui. Use o menu para agendar ou cancelar.',
+          ],
+        };
+      }
       return {
         replies: [
           'Combinado — vou avisar a equipe para te atender por aqui.',
@@ -2031,7 +2083,10 @@ export class WhatsappBotService {
         );
       }
 
-      if (this.isSofPickChoice(trimmed, free.length)) {
+      if (
+        this.isSofPickChoice(trimmed, free.length) &&
+        hasFeature(await this.entsFor(account.id), 'sofPickProfessional')
+      ) {
         const employee = free[0];
         await this.saveSession(account.id, phone, {
           step: 'awaiting_confirmation',
@@ -2047,13 +2102,16 @@ export class WhatsappBotService {
         label: (e) => e.name,
       });
       if (idx === null) {
-        return this.withUnresolved(
-          this.employeeMenu(
-            `Não entendi. Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
-            free,
-            { includeSofPick: true },
-          ),
-        );
+        {
+          const entsEmp = await this.entsFor(account.id);
+          return this.withUnresolved(
+            this.employeeMenu(
+              `Não entendi. Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
+              free,
+              { includeSofPick: hasFeature(entsEmp, 'sofPickProfessional') },
+            ),
+          );
+        }
       }
 
       const employee = free[idx];

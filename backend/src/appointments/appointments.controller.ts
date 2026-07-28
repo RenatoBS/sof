@@ -18,6 +18,7 @@ import type { AuthedRequest } from '../auth/auth.guard';
 import { serializeDates } from '../common/public-shapes';
 import { RealtimeService } from '../events/realtime.service';
 import { EmployeeBookingNotifyService } from '../whatsapp/employee-booking-notify.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import {
   appointmentCreateRows,
   type AppointmentPayload,
@@ -36,6 +37,7 @@ export class AppointmentsController {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly employeeBookingNotify: EmployeeBookingNotifyService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   @Get()
@@ -100,6 +102,9 @@ export class AppointmentsController {
       throw new BadRequestException({ error: parsed.error });
     }
     const data = parsed as AppointmentPayload;
+    if (data.recurrenceDates.length > 1) {
+      await this.entitlements.assertFeature(req.account.id, 'recurrence');
+    }
     const rows = appointmentCreateRows(req.account.id, data);
 
     const created = await this.prisma.$transaction(

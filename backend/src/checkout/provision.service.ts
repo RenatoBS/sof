@@ -30,6 +30,10 @@ export class ProvisionService {
       });
     }
 
+    const planRow = await this.prisma.plan.findFirst({
+      where: { name: session.planName, active: true },
+    });
+
     const account = await this.prisma.account.create({
       data: {
         businessName: session.name,
@@ -39,6 +43,7 @@ export class ProvisionService {
         passwordHash: session.passwordHash,
         plan: session.planName,
         planPrice: session.price,
+        planId: planRow?.id ?? null,
         whatsappPhoneNumberId: '',
         openingHours: DEFAULT_OPENING_HOURS as Prisma.InputJsonValue,
         status: 'active',

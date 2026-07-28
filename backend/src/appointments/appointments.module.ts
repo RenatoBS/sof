@@ -5,9 +5,10 @@ import { AppointmentCompletionsScheduler } from './appointment-completions.sched
 import { AuthModule } from '../auth/auth.module';
 import { EventsModule } from '../events/events.module';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 @Module({
-  imports: [AuthModule, EventsModule, WhatsappModule],
+  imports: [AuthModule, EventsModule, WhatsappModule, EntitlementsModule],
   controllers: [AppointmentsController],
   providers: [AppointmentCompletionsService, AppointmentCompletionsScheduler],
   exports: [AppointmentCompletionsService],

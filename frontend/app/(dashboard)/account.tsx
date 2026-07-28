@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { dashboardApi } from '@/src/api/endpoints';
 import type { DaySchedule, OpeningHours } from '@/src/api/types';
 import { useAuth } from '@/src/auth/AuthProvider';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
@@ -163,6 +164,8 @@ function formatHoursSummary(hours: OpeningHours): string {
 }
 
 export default function AccountScreen() {
+  const { has } = useEntitlements();
+
   const { account, logout, setSession } = useAuth();
   const [hours, setHours] = useState<OpeningHours>(DEFAULT_HOURS);
   const [hoursExpanded, setHoursExpanded] = useState(false);
@@ -720,6 +723,7 @@ export default function AccountScreen() {
 
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
 
+        {has('botPause') ? (
         <View style={styles.pauseBlock}>
           <Text style={styles.label}>Pausa do bot</Text>
           <Text style={[styles.help, { marginBottom: 8 }]}>
@@ -788,8 +792,10 @@ export default function AccountScreen() {
             }}
           />
         </View>
+        ) : null}
       </View>
 
+      {has('reminders') ? (
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
         <Text style={[styles.help, { marginBottom: 8 }]}>
@@ -889,6 +895,7 @@ export default function AccountScreen() {
           }}
         />
       </View>
+      ) : null}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Sair da conta</Text>

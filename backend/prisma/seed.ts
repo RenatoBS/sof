@@ -15,6 +15,12 @@ function bool(value: string | undefined, fallback: boolean) {
 }
 
 async function seedPlansAndAdmin() {
+  // Desativa catálogo legado (Essencial / Estúdio) se ainda existir
+  await prisma.plan.updateMany({
+    where: { slug: { in: ['essencial', 'estudio'] } },
+    data: { active: false },
+  });
+
   const planEntries = Object.values(FALLBACK_PLANS);
   for (let i = 0; i < planEntries.length; i++) {
     const p = planEntries[i];
@@ -29,6 +35,7 @@ async function seedPlansAndAdmin() {
         stripePriceId: p.stripePriceId,
         paymentLinkUrl: p.paymentLinkUrl,
         features: p.features || [],
+        entitlements: p.entitlements || {},
         active: true,
         sortOrder: i,
       },
@@ -38,6 +45,7 @@ async function seedPlansAndAdmin() {
         stripePriceId: p.stripePriceId,
         paymentLinkUrl: p.paymentLinkUrl,
         features: p.features || [],
+        entitlements: p.entitlements || {},
         active: true,
         sortOrder: i,
       },
@@ -136,6 +144,7 @@ async function main() {
   if (existing) return;
 
   const passwordHash = await bcrypt.hash(demoPassword, 12);
+  const equipePlan = await prisma.plan.findUnique({ where: { slug: 'equipe' } });
   const account = await prisma.account.create({
     data: {
       businessName: 'Santa Madalena',
@@ -143,8 +152,9 @@ async function main() {
       email,
       phone: '11999990000',
       passwordHash,
-      plan: 'Estúdio',
-      planPrice: 197,
+      plan: 'Equipe',
+      planPrice: 199,
+      planId: equipePlan?.id ?? null,
       whatsappPhoneNumberId: '',
       openingHours: DEFAULT_OPENING_HOURS,
       address: 'Rua Santa Madalena, 120 — Vila Madalena, São Paulo — SP',

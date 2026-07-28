@@ -16,6 +16,7 @@ import { publicAccount } from '../common/public-shapes';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 import { parseOpeningHoursInput } from './opening-hours';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import {
   ACCOUNT_TIMEZONES,
   DEFAULT_ACCOUNT_TIMEZONE,
@@ -63,6 +64,7 @@ export class AccountController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly whatsappApi: WhatsappApiService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   @Put()
@@ -126,6 +128,9 @@ export class AccountController {
           error: `Antecedência inválida. Use: ${REMINDER_LEAD_MINUTES.join(', ')} minutos.`,
         });
       }
+      if (lead > 0) {
+        await this.entitlements.assertFeature(req.account.id, 'reminders');
+      }
       data.whatsappReminderMinutes = lead;
     }
     if (body?.timezone !== undefined) {
@@ -147,6 +152,11 @@ export class AccountController {
         throw new BadRequestException({ error: pause.error });
       }
       if (!('error' in pause)) {
+        const enabling =
+          pause.botPausedPermanent || pause.botPausedUntil != null;
+        if (enabling) {
+          await this.entitlements.assertFeature(req.account.id, 'botPause');
+        }
         data.botPausedPermanent = pause.botPausedPermanent;
         data.botPausedUntil = pause.botPausedUntil;
       }
@@ -156,7 +166,8 @@ export class AccountController {
       where: { id: req.account.id },
       data,
     });
-    return { account: publicAccount(account) };
+    const entitlements = await this.entitlements.forAccount(account.id);
+    return { account: { ...publicAccount(account), entitlements } };
   }
 
   @Get('integrations')

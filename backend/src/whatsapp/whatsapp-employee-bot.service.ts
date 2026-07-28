@@ -17,6 +17,8 @@ import {
 } from '../account/opening-hours';
 import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
 import { EmployeeBookingNotifyService } from './employee-booking-notify.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import { hasFeature } from '../entitlements/feature-catalog';
 import {
   APPT_STATUS,
   appointmentDurationMinutes,
@@ -93,6 +95,7 @@ export class WhatsappEmployeeBotService {
     private readonly config: ConfigService,
     private readonly passwordReset: EmployeePasswordResetService,
     private readonly employeeBookingNotify: EmployeeBookingNotifyService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async findEmployee(accountId: string, phone: string) {
@@ -180,13 +183,16 @@ export class WhatsappEmployeeBotService {
     // NLU em frase/áudio livre — no menu e também como interrupção
     // no meio do fluxo (ex.: estava escolhendo horário e mandou "cancela…").
     if (this.shouldTryEmployeeNlu(step, trimmed)) {
-      const viaNlu = await this.tryEmployeeNlu(
-        account,
-        employee,
-        phone,
-        trimmed,
-      );
-      if (viaNlu) return viaNlu;
+      const ents = await this.entitlements.forAccount(account.id);
+      if (hasFeature(ents, 'employeeFreeTextAudio')) {
+        const viaNlu = await this.tryEmployeeNlu(
+          account,
+          employee,
+          phone,
+          trimmed,
+        );
+        if (viaNlu) return viaNlu;
+      }
     }
 
     if (step === 'emp:start') {
@@ -235,6 +241,14 @@ export class WhatsappEmployeeBotService {
         trimmed === 'emp:book' ||
         /\b(agendamento|cliente|servi[cç]o|marcar)\b/.test(lower)
       ) {
+        const entsBook = await this.entitlements.forAccount(account.id);
+        if (!hasFeature(entsBook, 'employeeWhatsappBookBlock')) {
+          return {
+            replies: [
+              'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+            ],
+          };
+        }
         return this.startBooking(account, employee, phone);
       }
       if (
@@ -243,6 +257,14 @@ export class WhatsappEmployeeBotService {
           lower,
         )
       ) {
+        const entsEvent = await this.entitlements.forAccount(account.id);
+        if (!hasFeature(entsEvent, 'employeeWhatsappBookBlock')) {
+          return {
+            replies: [
+              'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+            ],
+          };
+        }
         return this.startEvent(account, employee, phone);
       }
       return this.menuReply(
@@ -1203,12 +1225,36 @@ export class WhatsappEmployeeBotService {
         lower,
       )
     ) {
+      const ents = await this.entitlements.forAccount(account.id);
+      if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
+        return {
+          replies: [
+            'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+          ],
+        };
+      }
       return this.startCreate(account, employee, phone);
     }
     if (text === 'emp:book' || /novo\s+agendamento|marcar\s+(cliente|hor[aá]rio)/i.test(lower)) {
+      const ents = await this.entitlements.forAccount(account.id);
+      if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
+        return {
+          replies: [
+            'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+          ],
+        };
+      }
       return this.startBooking(account, employee, phone);
     }
     if (text === 'emp:event' || /novo\s+evento|bloquear|almo[cç]o/i.test(lower)) {
+      const ents = await this.entitlements.forAccount(account.id);
+      if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
+        return {
+          replies: [
+            'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+          ],
+        };
+      }
       return this.startEvent(account, employee, phone);
     }
     if (

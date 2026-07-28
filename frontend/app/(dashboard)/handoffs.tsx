@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Redirect } from 'expo-router';
 import {
   Linking,
   Platform,
@@ -12,6 +13,7 @@ import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
 import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
+import { useEntitlements } from '@/src/entitlements/useEntitlements';
 
 const REASON_LABEL: Record<WhatsappHandoff['reason'], string> = {
   human_requested: 'Pediu atendente',
@@ -39,6 +41,7 @@ function formatWhen(iso: string) {
 }
 
 export default function HandoffsScreen() {
+  const { has } = useEntitlements();
   const { handoffs, setHandoffs } = useDashboard();
   const [threshold, setThreshold] = useState<number | null>(null);
   const [allowed, setAllowed] = useState<number[]>([1, 2, 3, 5]);
@@ -47,6 +50,7 @@ export default function HandoffsScreen() {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!has('handoffs')) return;
     dashboardApi
       .whatsappHandoffSettings()
       .then((res) => {
@@ -54,7 +58,9 @@ export default function HandoffsScreen() {
         setAllowed(res.allowed);
       })
       .catch(() => undefined);
-  }, []);
+  }, [has]);
+
+  if (!has('handoffs')) return <Redirect href="/(dashboard)/agenda" />;
 
   const open = handoffs
     .filter((h) => h.status === 'open')

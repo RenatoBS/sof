@@ -83,7 +83,8 @@ Browser / Expo Go                         Admin (web)
 - **Front produto:** Expo SDK ~57 + expo-router; marketing + dashboard.
 - **API admin:** NestJS separado (`admin-backend/`, porta local 3011); gerencia contas e catálogo de planos Stripe.
 - **Front admin:** Expo web (`admin-frontend/`, porta 8091).
-- **Pagamentos:** Stripe Checkout (ou modo demo sem `STRIPE_SECRET_KEY`); catálogo em tabela `Plan`.
+- **Pagamentos:** Stripe Checkout (ou modo demo sem `STRIPE_SECRET_KEY`); catálogo em tabela `Plan` com entitlements de gate.
+- **Gate por plano:** keys no código; valores no admin; enforcement no backend; front via `account.entitlements`.
 - **WhatsApp:** Uazapi (default) com pareamento QR/código na Conta; Meta Cloud API opcional; simulador se desligado.
 - **Deploy atual:** quatro apps Heroku (`APP_BASE=backend|frontend|admin-backend|admin-frontend`) + Postgres Supabase.
 
@@ -139,6 +140,7 @@ Sof/
 | Auth token/cookie | `backend/src/common/token.ts`, `auth-request.ts` |
 | Auth admin | `admin-backend/src/common/token.ts`, `auth/` |
 | Catálogo planos | `Plan` no Prisma; `backend/src/plans/`; painel admin |
+| Entitlements / gate | `backend/src/entitlements/`; `Plan.entitlements` + `Account.planId`; admin matriz |
 | Client HTTP front | `frontend/src/api/client.ts`, `endpoints.ts` |
 | Auth front | `frontend/src/auth/AuthProvider.tsx` |
 | Rotas UI | `frontend/app/` |

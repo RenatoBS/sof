@@ -2,7 +2,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
-import { plansApi, type PlanRow } from '@/src/api/endpoints';
+import {
+  plansApi,
+  type EntitlementsMap,
+  type PlanRow,
+} from '@/src/api/endpoints';
+import { EntitlementsEditor } from '@/src/components/EntitlementsEditor';
 import { Button, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
@@ -33,6 +38,7 @@ export default function PlanDetailScreen() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [featuresText, setFeaturesText] = useState('');
+  const [entitlements, setEntitlements] = useState<EntitlementsMap>({});
   const [paymentLinkUrl, setPaymentLinkUrl] = useState('');
   const [active, setActive] = useState(true);
   const [error, setError] = useState('');
@@ -47,6 +53,7 @@ export default function PlanDetailScreen() {
     setName(found.name);
     setPrice(String(found.price));
     setFeaturesText(found.features.join('\n'));
+    setEntitlements(found.entitlements || {});
     setPaymentLinkUrl(found.paymentLinkUrl);
     setActive(found.active);
   }, [id]);
@@ -70,12 +77,14 @@ export default function PlanDetailScreen() {
           .split('\n')
           .map((l) => l.trim())
           .filter(Boolean),
+        entitlements,
         paymentLinkUrl,
         active,
         syncStripe: true,
       });
       setPlan(res.plan);
       setPaymentLinkUrl(res.plan.paymentLinkUrl);
+      setEntitlements(res.plan.entitlements || {});
       setMessage(
         'Salvo. Se o preço mudou, um novo Price/Payment Link foi criado na Stripe.',
       );
@@ -133,6 +142,7 @@ export default function PlanDetailScreen() {
         onChangeText={setFeaturesText}
         style={{ minHeight: 100, textAlignVertical: 'top' }}
       />
+      <EntitlementsEditor value={entitlements} onChange={setEntitlements} />
       <Field
         label="Payment Link URL"
         value={paymentLinkUrl}

@@ -13,6 +13,10 @@ import {
 import { Prisma } from '@prisma/client';
 import { AdminAuthGuard } from '../auth/admin-auth.guard';
 import { publicPlan, slugifyPlanName } from '../common/public-shapes';
+import {
+  defaultsForPlanSlug,
+  sanitizeEntitlementsInput,
+} from '../common/feature-catalog';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeCatalogService } from './stripe-catalog.service';
 
@@ -50,6 +54,7 @@ export class PlansController {
       price?: number;
       interval?: string;
       features?: string[];
+      entitlements?: Record<string, unknown>;
       sortOrder?: number;
       active?: boolean;
       paymentLinkUrl?: string;
@@ -115,6 +120,10 @@ export class PlansController {
       }
     }
 
+    const entitlements = sanitizeEntitlementsInput(
+      body?.entitlements ?? defaultsForPlanSlug(slug),
+    );
+
     const plan = await this.prisma.plan.create({
       data: {
         name,
@@ -125,6 +134,7 @@ export class PlansController {
         stripePriceId,
         paymentLinkUrl: resolvedPaymentLinkUrl,
         features,
+        entitlements: entitlements as Prisma.InputJsonValue,
         active,
         sortOrder,
       },
@@ -142,6 +152,7 @@ export class PlansController {
       price?: number;
       interval?: string;
       features?: string[];
+      entitlements?: Record<string, unknown>;
       sortOrder?: number;
       active?: boolean;
       paymentLinkUrl?: string;
@@ -187,6 +198,11 @@ export class PlansController {
       data.features = Array.isArray(body.features)
         ? body.features.filter((f): f is string => typeof f === 'string')
         : [];
+    }
+    if (body.entitlements !== undefined) {
+      data.entitlements = sanitizeEntitlementsInput(
+        body.entitlements,
+      ) as Prisma.InputJsonValue;
     }
     if (body.sortOrder !== undefined) {
       data.sortOrder = Number(body.sortOrder) || 0;

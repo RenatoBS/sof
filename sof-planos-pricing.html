@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sof — planos</title>
+  <style>
+    :root {
+      --bg: #f6f4f0; --surface: #fff; --ink: #1a1a18; --muted: #5c5a54;
+      --line: #e4e0d8; --accent: #0f6b5c; --accent-deep: #0b5346;
+      --ok: #1f6b45; --ok-bg: #e7f5ee; --neutral-bg: #eeebe4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg); color: var(--ink); line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 1100px; margin: 0 auto; padding: 48px 24px 72px; }
+
+    .brand {
+      font-size: .75rem; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--accent); font-weight: 700; margin-bottom: 8px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", Palatino, Georgia, serif;
+      font-size: 2rem; margin: 0 0 8px; letter-spacing: -.02em; font-weight: 700;
+    }
+    .lede { color: var(--muted); margin: 0 auto 40px; max-width: 60ch; font-size: .95rem; }
+
+    .grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 20px; align-items: start;
+    }
+
+    .card {
+      position: relative; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 28px 24px; display: flex; flex-direction: column;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px -14px rgba(26,26,24,.28); }
+
+    /* featured */
+    .card.featured {
+      border-color: var(--accent); border-width: 1.5px;
+      box-shadow: 0 14px 34px -18px rgba(15,107,92,.45);
+    }
+    .card.featured:hover { box-shadow: 0 20px 44px -18px rgba(15,107,92,.5); }
+    .tag {
+      position: absolute; top: -12px; left: 24px;
+      background: var(--accent); color: #fff;
+      font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      padding: 5px 12px; border-radius: 999px;
+    }
+
+    .plan-name {
+      font-family: "Iowan Old Style", Palatino, Georgia, serif;
+      font-size: 1.5rem; font-weight: 700; margin: 4px 0 2px;
+    }
+    .plan-desc { color: var(--muted); font-size: .86rem; min-height: 40px; margin-bottom: 18px; }
+
+    .price { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+    .price .cur { font-size: 1rem; color: var(--muted); font-weight: 600; }
+    .price .val {
+      font-family: "Iowan Old Style", Palatino, Georgia, serif;
+      font-size: 2.6rem; font-weight: 700; letter-spacing: -.02em; line-height: 1;
+    }
+    .price .per { font-size: .85rem; color: var(--muted); }
+    .price-note { font-size: .76rem; color: var(--muted); margin-bottom: 22px; }
+
+    .cta {
+      display: block; text-align: center; text-decoration: none;
+      font-weight: 700; font-size: .9rem;
+      padding: 12px 16px; border-radius: 10px; margin-bottom: 24px;
+      border: 1.5px solid var(--accent); color: var(--accent); background: transparent;
+      transition: background .15s ease, color .15s ease;
+    }
+    .cta:hover { background: var(--accent); color: #fff; }
+    .card.featured .cta { background: var(--accent); color: #fff; }
+    .card.featured .cta:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+
+    .feat-head {
+      font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); margin-bottom: 12px;
+    }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li {
+      display: flex; gap: 10px; align-items: flex-start;
+      font-size: .875rem; padding: 7px 0; border-top: 1px solid var(--line);
+    }
+    li:first-child { border-top: none; }
+    li svg { flex: none; margin-top: 3px; }
+
+    /* "tudo do plano anterior" highlight */
+    li.inherit {
+      background: var(--ok-bg); color: var(--accent-deep); font-weight: 600;
+      margin: 0 -12px 6px; padding: 9px 12px; border-radius: 8px; border-top: none;
+    }
+    li.inherit svg { margin-top: 2px; }
+
+    .foot {
+      text-align: center; color: var(--muted); font-size: .8rem;
+      margin-top: 36px; max-width: 60ch; margin-left: auto; margin-right: auto;
+    }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; }
+      .card.featured { order: -1; }
+      .plan-desc { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div style="text-align:center;">
+      <div class="brand">Sof · planos</div>
+      <h1>Escolha o tamanho da sua operação</h1>
+      <p class="lede">Todos os planos incluem o bot que agenda sozinho no WhatsApp. O que muda é o quanto você controla a equipe, o faturamento e a escala.</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- SOLO -->
+      <div class="card">
+        <div class="plan-name">Solo</div>
+        <div class="plan-desc">Sua barbearia agendando sozinha no WhatsApp.</div>
+        <div class="price"><span class="cur">R$</span><span class="val">139</span><span class="per">/mês</span></div>
+        <div class="price-note">até 3 profissionais · 1 número de WhatsApp</div>
+        <a class="cta" href="#">Começar com o Solo</a>
+
+        <div class="feat-head">O que está incluído</div>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Bot no WhatsApp que agenda sozinho, com menus guiados</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Agenda semanal completa (desktop e celular)</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Cadastro de serviços, profissionais e clientes</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Agendamento manual pelo painel</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Bloqueio de agenda (almoço, folga, evento)</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Atualização em tempo real, sem recarregar</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Portal do profissional (agenda própria, concluir e cancelar)</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Menu operacional do profissional no WhatsApp</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Cliente agenda, remarca e cancela sozinho pelo WhatsApp</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Convite e reset de senha da equipe pelo WhatsApp</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Suporte por ticket</li>
+        </ul>
+      </div>
+
+      <!-- EQUIPE (featured) -->
+      <div class="card featured">
+        <span class="tag">Mais popular</span>
+        <div class="plan-name">Equipe</div>
+        <div class="plan-desc">Menos falta e a equipe operando pelo celular.</div>
+        <div class="price"><span class="cur">R$</span><span class="val">199</span><span class="per">/mês</span></div>
+        <div class="price-note">até 8 profissionais · 1 número de WhatsApp</div>
+        <a class="cta" href="#">Assinar o Equipe</a>
+
+        <div class="feat-head">O que está incluído</div>
+        <ul>
+          <li class="inherit"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0b5346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Tudo do plano Solo, e mais:</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Lembrete automático antes do horário (reduz o no-show)</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Faturamento do dia, da semana e do mês</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Agendamento recorrente (até 52 repetições)</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Atendimento humano: o bot passa o cliente pra equipe com alerta ao vivo</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Pausar o bot por cliente ou da conta inteira</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Profissional marca cliente e cria bloqueios pelo WhatsApp</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Cliente escolhe profissional ou horário primeiro</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>"Deixa a Sof escolher" o profissional</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Frase livre: o cliente escreve "corte amanhã ao meio-dia" e o bot entende</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Cliente pede atendente humano quando quiser</li>
+        </ul>
+      </div>
+
+      <!-- REDE -->
+      <div class="card">
+        <div class="plan-name">Rede</div>
+        <div class="plan-desc">O efeito "parece mágica" e escala sem limite.</div>
+        <div class="price"><span class="cur">R$</span><span class="val">259</span><span class="per">/mês</span></div>
+        <div class="price-note">profissionais ilimitados · vários números</div>
+        <a class="cta" href="#">Falar sobre o Rede</a>
+
+        <div class="feat-head">O que está incluído</div>
+        <ul>
+          <li class="inherit"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0b5346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Tudo do plano Equipe, e mais:</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Agendamento por áudio: o cliente manda voz e o bot agenda</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Áudio e frase livre também no fluxo do profissional</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Vários números de WhatsApp</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Profissionais ilimitados</li>
+          <li><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8l3.5 3.5L13 4" stroke="#0f6b5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Suporte prioritário</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <p class="foot">Todos os planos no WhatsApp oficial. Sem taxa de setup — você conecta o número e a Sof começa a atender no mesmo dia.</p>
+  </div>
+</body>
+</html>

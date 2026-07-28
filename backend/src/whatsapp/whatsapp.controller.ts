@@ -23,6 +23,8 @@ import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import { hasFeature } from '../entitlements/feature-catalog';
 import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
 
 const AUDIO_FALLBACK_REPLY =
@@ -100,6 +102,7 @@ export class WhatsappController {
     private readonly bot: WhatsappBotService,
     private readonly employeeBot: WhatsappEmployeeBotService,
     private readonly handoffs: WhatsappHandoffsService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   @Get('webhook')
@@ -230,6 +233,22 @@ export class WhatsappController {
       }
 
       if (await this.shouldSilenceIncoming(account, customerPhone)) {
+        return;
+      }
+
+      const ents = await this.entitlements.forAccount(account.id);
+      const isEmployee = Boolean(
+        await this.employeeBot.findEmployee(account.id, customerPhone),
+      );
+      const audioAllowed = isEmployee
+        ? hasFeature(ents, 'employeeFreeTextAudio')
+        : hasFeature(ents, 'audioBooking');
+      if (!audioAllowed) {
+        await this.api.sendText(
+          customerPhone,
+          'No seu plano, o bot não processa áudio. Envie por texto, por favor.',
+          account.whatsappInstanceToken ?? undefined,
+        );
         return;
       }
 

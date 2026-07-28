@@ -21,6 +21,7 @@ import {
   signAccountToken,
 } from '../common/token';
 import { publicAccount } from '../common/public-shapes';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { AuthGuard } from './auth.guard';
 import type { AuthedRequest } from './auth.guard';
 
@@ -33,6 +34,7 @@ export class AuthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   @Post('login')
@@ -72,7 +74,11 @@ export class AuthController {
       jwtToken,
       cookieOptions(this.config.get<boolean>('isProd') === true),
     );
-    return { account: publicAccount(account), token: jwtToken };
+    const entitlements = await this.entitlements.forAccount(account.id);
+    return {
+      account: { ...publicAccount(account), entitlements },
+      token: jwtToken,
+    };
   }
 
   @Post('logout')
@@ -84,7 +90,10 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AuthGuard)
-  me(@Req() req: AuthedRequest) {
-    return { account: publicAccount(req.account) };
+  async me(@Req() req: AuthedRequest) {
+    const entitlements = await this.entitlements.forAccount(req.account.id);
+    return {
+      account: { ...publicAccount(req.account), entitlements },
+    };
   }
 }

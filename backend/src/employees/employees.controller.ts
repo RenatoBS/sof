@@ -18,6 +18,7 @@ import { serializeDates } from '../common/public-shapes';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { EmployeePasswordTokenService } from '../employee-portal/employee-password-token.service';
 import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 
 const COLORS = [
   '#3b82f6',
@@ -94,6 +95,7 @@ export class EmployeesController {
     private readonly prisma: PrismaService,
     private readonly passwordTokens: EmployeePasswordTokenService,
     private readonly passwordReset: EmployeePasswordResetService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   private async assertEmailAvailable(
@@ -209,6 +211,7 @@ export class EmployeesController {
     const count = await this.prisma.employee.count({
       where: { accountId: req.account.id },
     });
+    await this.entitlements.assertLimit(req.account.id, 'maxEmployees', count);
     const color = parseColor(body?.color, COLORS[count % COLORS.length]);
     const employee = await this.prisma.employee.create({
       data: {

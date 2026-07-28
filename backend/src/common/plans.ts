@@ -1,3 +1,5 @@
+import { PLAN_ENTITLEMENT_DEFAULTS } from '../entitlements/feature-catalog';
+
 export type PlanDefinition = {
   name: string;
   price: number;
@@ -6,51 +8,70 @@ export type PlanDefinition = {
   /** Payment Link público (opcional). */
   paymentLinkUrl: string;
   features?: string[];
+  entitlements?: Record<string, boolean | number | null>;
 };
 
 /**
- * Fallback legado se a tabela `Plan` estiver vazia (pré-migração / seed).
+ * Fallback se a tabela `Plan` estiver vazia (pré-migração / seed).
  * Em operação normal o catálogo vem do Postgres (painel admin).
  */
 export const FALLBACK_PLANS: Record<string, PlanDefinition> = {
-  Essencial: {
-    name: 'Essencial',
-    price: 99,
+  Solo: {
+    name: 'Solo',
+    price: 139,
     stripePriceId: 'price_1TteV5CYoGJoCsEuADctlxcK',
     paymentLinkUrl: 'https://buy.stripe.com/test_14A3cu12302NbP77n37kc00',
     features: [
-      'Até 3 profissionais',
-      '1 número de WhatsApp',
-      'Agendamentos ilimitados',
-      'Painel de agenda',
-      'Suporte por e-mail',
+      'Bot no WhatsApp que agenda sozinho, com menus guiados',
+      'Agenda semanal completa (desktop e celular)',
+      'Cadastro de serviços, profissionais e clientes',
+      'Agendamento manual pelo painel',
+      'Bloqueio de agenda (almoço, folga, evento)',
+      'Atualização em tempo real, sem recarregar',
+      'Portal do profissional (agenda própria, concluir e cancelar)',
+      'Menu operacional do profissional no WhatsApp',
+      'Cliente agenda e cancela sozinho pelo WhatsApp',
+      'Convite e reset de senha da equipe pelo WhatsApp',
+      'Suporte por ticket',
+      'Até 3 profissionais · 1 número de WhatsApp',
     ],
+    entitlements: PLAN_ENTITLEMENT_DEFAULTS.solo,
   },
-  Estúdio: {
-    name: 'Estúdio',
-    price: 197,
+  Equipe: {
+    name: 'Equipe',
+    price: 199,
     stripePriceId: 'price_1TteV6CYoGJoCsEujB5IupLf',
     paymentLinkUrl: 'https://buy.stripe.com/test_6oUaEWbGH02N3iB6iZ7kc01',
     features: [
-      'Até 7 profissionais',
-      '2 números de WhatsApp',
-      'Lembrete por WhatsApp',
-      'Relatório de faturamento',
-      'Suporte prioritário',
+      'Tudo do plano Solo, e mais:',
+      'Lembrete automático antes do horário',
+      'Faturamento do dia, da semana e do mês',
+      'Agendamento recorrente (até 52 repetições)',
+      'Atendimento humano com alerta ao vivo',
+      'Pausar o bot por cliente ou da conta inteira',
+      'Profissional marca cliente e cria bloqueios pelo WhatsApp',
+      'Cliente escolhe profissional ou horário primeiro',
+      '"Deixa a Sof escolher" o profissional',
+      'Frase livre: o bot entende linguagem natural',
+      'Cliente pede atendente humano quando quiser',
+      'Até 8 profissionais · 1 número de WhatsApp',
     ],
+    entitlements: PLAN_ENTITLEMENT_DEFAULTS.equipe,
   },
   Rede: {
     name: 'Rede',
-    price: 249,
+    price: 259,
     stripePriceId: 'price_1TteV6CYoGJoCsEu8Pj2HeUo',
     paymentLinkUrl: 'https://buy.stripe.com/test_eVq8wO6mn4j31atfTz7kc02',
     features: [
-      'A partir de 8 profissionais',
-      'Vários números de WhatsApp',
-      'Relatório por unidade',
-      'Integrações sob medida',
-      'Suporte dedicado',
+      'Tudo do plano Equipe, e mais:',
+      'Agendamento por áudio',
+      'Áudio e frase livre também no fluxo do profissional',
+      '1 número de WhatsApp (multi-número em breve)',
+      'Profissionais ilimitados',
+      'Suporte prioritário',
     ],
+    entitlements: PLAN_ENTITLEMENT_DEFAULTS.rede,
   },
 };
 

@@ -93,7 +93,7 @@ cd admin-frontend && cp .env.example .env && npm install && npm run web
 ```
 
 Na raiz: `npm run admin-backend:dev` / `npm run admin-frontend:web`.  
-Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan`.  
+Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan` (Solo / Equipe / Rede com entitlements). Conta demo usa plano Equipe.  
 Login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@sof.com` / `admin123`).
 
 ## Conta de teste
