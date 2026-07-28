@@ -73,6 +73,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos | `/plans` | `GET /api/plans` |
 | Criar / editar / apagar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT/DELETE /api/plans` |
+| Sincronizar plano com Stripe (Price + Payment Link = preço Sof) | botão em `/edit-plan` | `POST /api/plans/:id/sync-stripe` |
 | Cupons promocionais (7/30/60 dias) | `/coupons`, `/new-coupon`, `/edit-coupon` | `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id` |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |

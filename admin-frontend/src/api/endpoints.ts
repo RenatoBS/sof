@@ -144,6 +144,8 @@ export const plansApi = {
     }>,
   ) =>
     api<{ plan: PlanRow }>(`/plans/${id}`, { method: 'PUT', body }),
+  syncStripe: (id: string) =>
+    api<{ plan: PlanRow }>(`/plans/${id}/sync-stripe`, { method: 'POST' }),
   remove: (id: string) =>
     api<{ ok: boolean }>(`/plans/${id}`, { method: 'DELETE' }),
 };

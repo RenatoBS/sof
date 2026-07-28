@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Sync Stripe de planos seed + Payment Link alinhado ao preço
+
+- **Contexto:** Planos Solo/Equipe/Rede no DB tinham `stripeProductId=seed_*` e Payment Links/Prices antigos (R$99/197/249) enquanto o catálogo mostrava R$139/199/259; Solo sem link; seed sobrescrevia IDs Stripe; save no admin sempre mandava `paymentLinkUrl` e bloqueava regeneração.  
+- **Decisão:** `syncPlanCatalog` cria/reusa Product+Price+Payment Link pelo preço do Sof; `POST /api/plans/:id/sync-stripe` + botão no admin; update sincroniza também planos `seed_*` / link vazio; seed **não** sobrescreve campos Stripe no update.  
+- **Consequências:** Checkout e Payment Links passam a cobrar o valor do plano; admin pode re-sincronizar a qualquer momento.  
+- **Alternativas descartadas:** Corrigir só à mão no Dashboard Stripe; manter Prices legados.
+
+---
+
 ## 2026-07-28 — Cupons promocionais (dias grátis sem Stripe)
 
 - **Contexto:** Precisávamos dar 7/30/60 dias grátis de um plano selecionado, com limite de usos, sem passar pelo Checkout Stripe; ao vencer, a conta pausa e o dono escolhe plano de novo.  

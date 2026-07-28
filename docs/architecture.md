@@ -228,7 +228,7 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 - Porta local **3011**; prefixo `/api/*`; health `GET /api/health`.
 - Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
 - Contas: `GET/POST /api/accounts`, `GET/PUT /api/accounts/:id`, `POST /api/accounts/:id/reset-password`.
-- Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado). Body aceita `entitlements`. `GET /api/feature-catalog` lista keys gateáveis.
+- Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado). Body aceita `entitlements`. `GET /api/feature-catalog` lista keys gateáveis. `POST /api/plans/:id/sync-stripe` força Product+Price+Payment Link alinhados ao preço do Sof (também corrige planos `seed_*`).
 - Cupons: `GET/POST /api/coupons`, `GET/PUT/DELETE /api/coupons/:id` — plano + 7/30/60 dias + máx. usos.
 - Tickets: `GET /api/tickets`, `GET/POST/PATCH /api/tickets/:id…` (comentários e status).
 - Envs: ver `admin-backend/.env.example`.
