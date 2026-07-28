@@ -6,6 +6,27 @@ export function normalizePhoneDigits(raw: string): string {
   return String(raw || '').replace(/\D/g, '');
 }
 
+/** Máscara BR para input: (11) 99999-9999 / (11) 9999-9999. */
+export function maskBrPhone(raw: string): string {
+  let digits = normalizePhoneDigits(raw);
+  if (
+    (digits.length === 12 || digits.length === 13) &&
+    digits.startsWith('55')
+  ) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 11);
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  }
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

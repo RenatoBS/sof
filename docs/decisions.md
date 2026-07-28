@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Conta: máscara de telefone, save único, gate WA
+
+- **Contexto:** Telefone na Conta sem máscara; pausa do bot e lembretes apareciam sem WhatsApp conectado; telefone e endereço tinham botões separados.  
+- **Decisão:** Máscara BR `(DD) NNNNN-NNNN` no input; um botão Salvar envia `phone`+`address`; seções pausa/lembretes só com `waLinked` (+ entitlements).  
+- **Consequências:** UI coerente com o estado real da integração; menos cliques no cadastro do estabelecimento.  
+- **Alternativas descartadas:** Manter saves separados; esconder só via entitlement.
+
+---
+
 ## 2026-07-28 — Validação de cadastro de conta no front
 
 - **Contexto:** CheckoutModal só desabilitava o botão sem feedback; e-mail não era checado; admin Nova conta e Conta (telefone/horários) iam direto à API.  

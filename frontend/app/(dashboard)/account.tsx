@@ -16,6 +16,7 @@ import { SofButton, SofInput } from '@/src/components/ui';
 import {
   isValidPhoneDigits,
   isValidTimeHm,
+  maskBrPhone,
   normalizePhoneDigits,
 } from '@/src/lib/validation';
 import { d } from '@/src/theme/dashboard';
@@ -183,14 +184,10 @@ export default function AccountScreen() {
   const [savingHours, setSavingHours] = useState(false);
 
   const [address, setAddress] = useState('');
-  const [addressSaved, setAddressSaved] = useState('');
-  const [addressError, setAddressError] = useState('');
-  const [savingAddress, setSavingAddress] = useState(false);
-
   const [phone, setPhone] = useState('');
-  const [phoneSaved, setPhoneSaved] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [savingPhone, setSavingPhone] = useState(false);
+  const [contactError, setContactError] = useState('');
+  const [contactSaved, setContactSaved] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
 
   const [reminderMinutes, setReminderMinutes] = useState(120);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
@@ -253,7 +250,7 @@ export default function AccountScreen() {
     if (account) {
       setHours(normalizeHours(account.openingHours));
       setAddress(account.address || '');
-      setPhone(account.phone || '');
+      setPhone(maskBrPhone(account.phone || ''));
       const lead = Number(account.whatsappReminderMinutes);
       setReminderMinutes(
         Number.isFinite(lead) &&
@@ -473,103 +470,67 @@ export default function AccountScreen() {
           clientes (ex.: “onde fica?”).
         </Text>
 
-        <View style={styles.fieldBlock}>
-          <SofInput
-            label="Telefone (com DDD)"
-            value={phone}
-            onChangeText={(t) => {
-              setPhone(t);
-              setPhoneError('');
+        <SofInput
+          label="Telefone (com DDD)"
+          value={phone}
+          onChangeText={(t) => {
+            setPhone(maskBrPhone(t));
+            setContactError('');
+          }}
+          theme="dashboard"
+          placeholder="(11) 99999-8888"
+          keyboardType="phone-pad"
+          error={contactError || undefined}
+        />
+        <SofInput
+          label="Endereço do estabelecimento"
+          value={address}
+          onChangeText={(t) => {
+            setAddress(t);
+            setContactError('');
+          }}
+          theme="dashboard"
+          placeholder="Rua Exemplo, 123 — Bairro, Cidade"
+          autoCapitalize="words"
+        />
+        {contactSaved ? <Text style={styles.saved}>{contactSaved}</Text> : null}
+        <View style={styles.inlineActions}>
+          <SofButton
+            title={savingContact ? 'Salvando…' : 'Salvar'}
+            variant="dark"
+            theme="dashboard"
+            disabled={savingContact}
+            onPress={async () => {
+              setContactError('');
+              const digits = normalizePhoneDigits(phone);
+              if (!isValidPhoneDigits(digits)) {
+                setContactError(
+                  'Telefone inválido. Use DDD + número (10 a 15 dígitos).',
+                );
+                return;
+              }
+              setSavingContact(true);
+              try {
+                const { account: updated } = await dashboardApi.updateAccount({
+                  phone: digits,
+                  address: address.trim(),
+                });
+                await setSession(updated);
+                setPhone(maskBrPhone(updated.phone || digits));
+                setAddress(updated.address || address.trim());
+                setContactSaved('Dados salvos!');
+                setTimeout(() => setContactSaved(''), 2000);
+              } catch (err) {
+                setContactError(
+                  err instanceof Error
+                    ? err.message
+                    : 'Não foi possível salvar.',
+                );
+              } finally {
+                setSavingContact(false);
+              }
             }}
-            theme="dashboard"
-            placeholder="11999998888"
-            keyboardType="phone-pad"
-            error={phoneError || undefined}
           />
-          {phoneSaved ? <Text style={styles.saved}>{phoneSaved}</Text> : null}
-          <View style={styles.inlineActions}>
-            <SofButton
-              title={savingPhone ? 'Salvando…' : 'Salvar telefone'}
-              variant="dark"
-              theme="dashboard"
-              disabled={savingPhone}
-              onPress={async () => {
-                setPhoneError('');
-                const digits = normalizePhoneDigits(phone);
-                if (!isValidPhoneDigits(digits)) {
-                  setPhoneError(
-                    'Telefone inválido. Use DDD + número (10 a 15 dígitos).',
-                  );
-                  return;
-                }
-                setSavingPhone(true);
-                try {
-                  const { account: updated } = await dashboardApi.updateAccount({
-                    phone: digits,
-                  });
-                  await setSession(updated);
-                  setPhone(updated.phone || digits);
-                  setPhoneSaved('Telefone salvo!');
-                  setTimeout(() => setPhoneSaved(''), 2000);
-                } catch (err) {
-                  setPhoneError(
-                    err instanceof Error
-                      ? err.message
-                      : 'Não foi possível salvar.',
-                  );
-                } finally {
-                  setSavingPhone(false);
-                }
-              }}
-            />
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.fieldBlock}>
-          <SofInput
-            label="Endereço do estabelecimento"
-            value={address}
-            onChangeText={setAddress}
-            theme="dashboard"
-            placeholder="Rua Exemplo, 123 — Bairro, Cidade"
-            autoCapitalize="words"
-          />
-          {addressError ? (
-            <Text style={styles.error}>{addressError}</Text>
-          ) : null}
-          {addressSaved ? (
-            <Text style={styles.saved}>{addressSaved}</Text>
-          ) : null}
-          <View style={styles.inlineActions}>
-            <SofButton
-              title={savingAddress ? 'Salvando…' : 'Salvar endereço'}
-              variant="dark"
-              theme="dashboard"
-              disabled={savingAddress}
-              onPress={async () => {
-                setAddressError('');
-                setSavingAddress(true);
-                try {
-                  const { account: updated } = await dashboardApi.updateAccount({
-                    address: address.trim(),
-                  });
-                  await setSession(updated);
-                  setAddressSaved('Endereço salvo!');
-                  setTimeout(() => setAddressSaved(''), 2000);
-                } catch (err) {
-                  setAddressError(
-                    err instanceof Error
-                      ? err.message
-                      : 'Não foi possível salvar.',
-                  );
-                } finally {
-                  setSavingAddress(false);
-                }
-              }}
-            />
-          </View>
         </View>
       </View>
 
@@ -888,7 +849,7 @@ export default function AccountScreen() {
 
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
 
-        {has('botPause') ? (
+        {has('botPause') && waLinked ? (
           <View style={styles.pauseBlock}>
             <View style={styles.pauseHead}>
               <Text style={styles.label}>Pausa do bot</Text>
@@ -990,7 +951,7 @@ export default function AccountScreen() {
         ) : null}
       </View>
 
-      {has('reminders') ? (
+      {has('reminders') && waLinked ? (
         <>
           <Text style={styles.sectionLabel}>Lembretes</Text>
           <View style={styles.card}>
@@ -1271,12 +1232,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   label: { fontWeight: '600', color: d.ink, fontSize: 14 },
-  fieldBlock: { gap: 10 },
-  divider: {
-    height: 1,
-    backgroundColor: d.line,
-    marginVertical: 4,
-  },
   inlineActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {

@@ -161,11 +161,11 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 UI agrupada por seções (Assinatura / Estabelecimento / WhatsApp / Lembretes), com hero do estabelecimento (iniciais, plano, status WhatsApp).
 
 - **Assinatura:** banner do plano + preço, e-mail, desde; CTA alterar plano.
-- **Contato e endereço** (mesmo card): telefone do responsável (validação front: 10–15 dígitos) + endereço do estabelecimento (opcional); `PUT /api/account` com `phone` / `address`; o bot informa o endereço na conversa.
+- **Contato e endereço** (mesmo card, um botão Salvar): telefone do responsável com máscara `(11) 99999-8888` (validação front: 10–15 dígitos) + endereço do estabelecimento (opcional); `PUT /api/account` com `phone` + `address`; o bot informa o endereço na conversa.
 - **Horário de funcionamento:** preview com pills Dom–Sáb (aberto/fechado) + resumo; edição expandível (7 dias; front valida `HH:mm` e abertura antes do fechamento); `PUT /api/account` com `openingHours`.
 - **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
-- **Pausa do bot (conta):** badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
-- **Lembrete WhatsApp:** antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
+- **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
+- **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
 - **Sessão:** zona de saída (logout) no rodapé da tela.
 
 ### Suporte
