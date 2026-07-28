@@ -86,11 +86,13 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Agenda
 
-- **Desktop (≥720px):** grade semanal por profissional × dia.  
-- **Celular (<720px):** seletor de dia (chips Dom–Sáb) + lista vertical por profissional do dia escolhido (evita scroll horizontal da grade).  
+- **Desktop (≥720px):** grade semanal por profissional × dia (**Separada**) ou uma linha com todos os horários (**Unificada**).  
+- **Celular (<720px):** seletor de dia (chips Dom–Sáb) + lista por profissional (**Separada**) ou lista única do dia com nome do profissional (**Unificada**).  
+- Toggle **Separada / Unificada** na toolbar (preferência em `localStorage`).  
+- Cards de horário **não mostram preço** (só horário, cliente/serviço; na unificada, também o profissional).  
 - Navegação: semana anterior / hoje / próxima.  
 - Clique numa célula (ou “+ Agendar”) abre o modal; clique num horário edita.  
-- **Recolher / expandir** (desktop) no final de cada linha do profissional; recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
+- **Recolher / expandir** (desktop, modo Separada) no final de cada linha do profissional; recolhido mostra só o 1º horário do dia e `+N` se houver mais.  
 - Modal com dois tipos:
   - **Serviço** — cliente + serviço + profissional (como antes).
   - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).

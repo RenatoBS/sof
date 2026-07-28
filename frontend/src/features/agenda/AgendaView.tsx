@@ -10,12 +10,15 @@ import {
 } from 'react-native';
 import type { Appointment } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
-import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
+import { useDashboard } from '@/src/context/DashboardContext';
 import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const COMPACT_BREAKPOINT = 720;
+const VIEW_MODE_KEY = 'sof_agenda_view';
+
+type AgendaViewMode = 'separated' | 'merged';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -34,6 +37,25 @@ function getWeekDates(offset: number) {
   );
 }
 
+function readStoredViewMode(): AgendaViewMode {
+  try {
+    if (typeof localStorage === 'undefined') return 'separated';
+    const raw = localStorage.getItem(VIEW_MODE_KEY);
+    return raw === 'merged' ? 'merged' : 'separated';
+  } catch {
+    return 'separated';
+  }
+}
+
+function storeViewMode(mode: AgendaViewMode) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function AgendaView({
   onSelectAppointment,
   onCreateAppointment,
@@ -46,6 +68,7 @@ export function AgendaView({
   const colW = Math.max(110, Math.min(140, (width - 220) / 7));
   const { employees, appointments, getService, loadAll } = useDashboard();
   const [weekOffset, setWeekOffset] = useState(0);
+  const [viewMode, setViewMode] = useState<AgendaViewMode>(readStoredViewMode);
   /** IDs de profissionais com a linha recolhida (só 1º horário por dia). */
   const [collapsedEmpIds, setCollapsedEmpIds] = useState<Set<string>>(
     () => new Set(),
@@ -63,6 +86,13 @@ export function AgendaView({
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const todayStr = localDateStr(new Date());
+  const merged = viewMode === 'merged';
+  const defaultEmployeeId = employees[0]?.id || '';
+
+  const empById = useMemo(() => {
+    const map = new Map(employees.map((e) => [e.id, e]));
+    return map;
+  }, [employees]);
 
   useEffect(() => {
     const inWeek = weekDates.some((day) => localDateStr(day) === selectedDate);
@@ -72,6 +102,11 @@ export function AgendaView({
     );
     setSelectedDate(localDateStr(todayInWeek || weekDates[0]));
   }, [weekDates, selectedDate, todayStr]);
+
+  const setMode = (mode: AgendaViewMode) => {
+    setViewMode(mode);
+    storeViewMode(mode);
+  };
 
   const toggleCollapsed = (employeeId: string) => {
     setCollapsedEmpIds((prev) => {
@@ -116,13 +151,23 @@ export function AgendaView({
       )
       .sort((a, b) => a.time.localeCompare(b.time));
 
+  const mergedDayAppts = (dateStr: string) =>
+    appointments
+      .filter(
+        (a) =>
+          (a.status === 'scheduled' || a.status === 'completed') &&
+          a.date === dateStr,
+      )
+      .sort((a, b) => a.time.localeCompare(b.time));
+
   const renderApptCard = (
     appt: Appointment,
-    opts?: { collapsed?: boolean },
+    opts?: { collapsed?: boolean; showEmployee?: boolean },
   ) => {
     const isBlock = appt.kind === 'block';
     const isCompleted = appt.status === 'completed';
     const collapsed = !!opts?.collapsed;
+    const emp = empById.get(appt.employeeId);
     return (
       <Pressable
         key={appt.id}
@@ -136,22 +181,23 @@ export function AgendaView({
           isBlock && styles.apptBlock,
           isCompleted && styles.apptCompleted,
           collapsed && styles.apptCollapsed,
+          emp?.color ? { borderLeftColor: emp.color } : null,
         ]}
       >
         <Text style={styles.apptTime}>{appt.time}</Text>
+        {opts?.showEmployee && emp ? (
+          <Text style={styles.apptEmp} numberOfLines={1}>
+            {emp.name}
+          </Text>
+        ) : null}
         <Text style={styles.apptClient} numberOfLines={1}>
           {isBlock ? appt.title || 'Evento' : appt.clientName}
         </Text>
         {!collapsed ? (
           !isBlock ? (
-            <>
-              <Text style={styles.apptSvc}>
-                {getService(appt.serviceId || '')?.name}
-              </Text>
-              <Text style={styles.apptPrice}>
-                {formatCurrency(appt.price)}
-              </Text>
-            </>
+            <Text style={styles.apptSvc}>
+              {getService(appt.serviceId || '')?.name}
+            </Text>
           ) : (
             <Text style={styles.apptSvc}>
               {appt.durationMinutes
@@ -187,6 +233,38 @@ export function AgendaView({
           </Text>
         </View>
         <View style={styles.toolbar}>
+          <View style={styles.viewToggle}>
+            <Pressable
+              onPress={() => setMode('separated')}
+              style={[styles.viewChip, !merged && styles.viewChipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: !merged }}
+            >
+              <Text
+                style={[
+                  styles.viewChipText,
+                  !merged && styles.viewChipTextActive,
+                ]}
+              >
+                Separada
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setMode('merged')}
+              style={[styles.viewChip, merged && styles.viewChipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: merged }}
+            >
+              <Text
+                style={[
+                  styles.viewChipText,
+                  merged && styles.viewChipTextActive,
+                ]}
+              >
+                Unificada
+              </Text>
+            </Pressable>
+          </View>
           <SofButton
             title={isCompact ? 'Ant.' : 'Semana Anterior'}
             variant="light"
@@ -211,7 +289,8 @@ export function AgendaView({
       {employees.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
-            Nenhum profissional cadastrado ainda. Adicione um na aba Profissionais.
+            Nenhum profissional cadastrado ainda. Adicione um na aba
+            Profissionais.
           </Text>
         </View>
       ) : isCompact ? (
@@ -275,62 +354,107 @@ export function AgendaView({
             })}
           </ScrollView>
 
-          <View style={styles.compactList}>
-            {employees.map((emp) => {
-              const dayAppts = dayApptsFor(emp.id, selectedDate);
-              return (
-                <View
-                  key={emp.id}
-                  style={[
-                    styles.empCard,
-                    { borderLeftColor: emp.color || d.accent },
-                  ]}
+          {merged ? (
+            <View style={styles.empCard}>
+              <View style={styles.empCardHead}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.empName}>Todos os profissionais</Text>
+                  <Text style={styles.specialty}>
+                    Horários unificados do dia
+                  </Text>
+                </View>
+                <SofButton
+                  title="+ Agendar"
+                  variant="light"
+                  theme="dashboard"
+                  onPress={() =>
+                    onCreateAppointment({
+                      employeeId: defaultEmployeeId,
+                      date: selectedDate,
+                    })
+                  }
+                />
+              </View>
+              {mergedDayAppts(selectedDate).length === 0 ? (
+                <Pressable
+                  onPress={() =>
+                    onCreateAppointment({
+                      employeeId: defaultEmployeeId,
+                      date: selectedDate,
+                    })
+                  }
+                  style={styles.compactEmpty}
                 >
-                  <View style={styles.empCardHead}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.empName} numberOfLines={1}>
-                        {emp.name}
-                      </Text>
-                      <Text style={styles.specialty} numberOfLines={1}>
-                        {(emp.services || []).map((s) => s.name).join(', ') ||
-                          '—'}
-                      </Text>
-                    </View>
-                    <SofButton
-                      title="+ Agendar"
-                      variant="light"
-                      theme="dashboard"
-                      onPress={() =>
-                        onCreateAppointment({
-                          employeeId: emp.id,
-                          date: selectedDate,
-                        })
-                      }
-                    />
-                  </View>
-                  {dayAppts.length === 0 ? (
-                    <Pressable
-                      onPress={() =>
-                        onCreateAppointment({
-                          employeeId: emp.id,
-                          date: selectedDate,
-                        })
-                      }
-                      style={styles.compactEmpty}
-                    >
-                      <Text style={styles.cellHint}>
-                        Livre — toque para agendar
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <View style={styles.compactAppts}>
-                      {dayAppts.map((appt) => renderApptCard(appt))}
-                    </View>
+                  <Text style={styles.cellHint}>
+                    Livre — toque para agendar
+                  </Text>
+                </Pressable>
+              ) : (
+                <View style={styles.compactAppts}>
+                  {mergedDayAppts(selectedDate).map((appt) =>
+                    renderApptCard(appt, { showEmployee: true }),
                   )}
                 </View>
-              );
-            })}
-          </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.compactList}>
+              {employees.map((emp) => {
+                const dayAppts = dayApptsFor(emp.id, selectedDate);
+                return (
+                  <View
+                    key={emp.id}
+                    style={[
+                      styles.empCard,
+                      { borderLeftColor: emp.color || d.accent },
+                    ]}
+                  >
+                    <View style={styles.empCardHead}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.empName} numberOfLines={1}>
+                          {emp.name}
+                        </Text>
+                        <Text style={styles.specialty} numberOfLines={1}>
+                          {(emp.services || []).map((s) => s.name).join(', ') ||
+                            '—'}
+                        </Text>
+                      </View>
+                      <SofButton
+                        title="+ Agendar"
+                        variant="light"
+                        theme="dashboard"
+                        onPress={() =>
+                          onCreateAppointment({
+                            employeeId: emp.id,
+                            date: selectedDate,
+                          })
+                        }
+                      />
+                    </View>
+                    {dayAppts.length === 0 ? (
+                      <Pressable
+                        onPress={() =>
+                          onCreateAppointment({
+                            employeeId: emp.id,
+                            date: selectedDate,
+                          })
+                        }
+                        style={styles.compactEmpty}
+                      >
+                        <Text style={styles.cellHint}>
+                          Livre — toque para agendar
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.compactAppts}>
+                        {dayAppts.map((appt) => renderApptCard(appt))}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       ) : (
         <ScrollView
@@ -341,7 +465,9 @@ export function AgendaView({
           <View>
             <View style={styles.headerRow}>
               <View style={[styles.corner, { width: 150 }]}>
-                <Text style={styles.headerText}>Profissional</Text>
+                <Text style={styles.headerText}>
+                  {merged ? 'Agenda' : 'Profissional'}
+                </Text>
               </View>
               {weekDates.map((day) => {
                 const ds = localDateStr(day);
@@ -355,114 +481,159 @@ export function AgendaView({
                       isToday && styles.dayHeaderToday,
                     ]}
                   >
-                    <Text
-                      style={[styles.dow, isToday && { color: '#fff' }]}
-                    >
+                    <Text style={[styles.dow, isToday && { color: '#fff' }]}>
                       {DOW[day.getDay()]}
                     </Text>
-                    <Text
-                      style={[styles.dom, isToday && { color: '#fff' }]}
-                    >
+                    <Text style={[styles.dom, isToday && { color: '#fff' }]}>
                       {day.getDate()}
                     </Text>
                   </View>
                 );
               })}
-              <View style={[styles.dayHeader, styles.actionHeader]}>
-                <Text style={styles.dow}> </Text>
-              </View>
+              {!merged ? (
+                <View style={[styles.dayHeader, styles.actionHeader]}>
+                  <Text style={styles.dow}> </Text>
+                </View>
+              ) : null}
             </View>
 
-            {employees.map((emp) => {
-              const collapsed = collapsedEmpIds.has(emp.id);
-              return (
-                <View key={emp.id} style={styles.row}>
-                  <View
-                    style={[
-                      styles.empCell,
-                      { width: 150, borderLeftColor: emp.color || d.accent },
-                      collapsed && styles.empCellCollapsed,
-                    ]}
-                  >
-                    <Text style={styles.empName} numberOfLines={1}>
-                      {emp.name}
-                    </Text>
-                    {!collapsed ? (
-                      <Text style={styles.specialty} numberOfLines={2}>
-                        {(emp.services || []).map((s) => s.name).join(', ') ||
-                          '—'}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {weekDates.map((day) => {
-                    const ds = localDateStr(day);
-                    const dayAppts = dayApptsFor(emp.id, ds);
-                    const visibleAppts = collapsed
-                      ? dayAppts.slice(0, 1)
-                      : dayAppts;
-                    const hiddenCount = collapsed
-                      ? Math.max(0, dayAppts.length - 1)
-                      : 0;
-                    return (
-                      <Pressable
-                        key={ds}
-                        onPress={() =>
-                          onCreateAppointment({
-                            employeeId: emp.id,
-                            date: ds,
-                          })
-                        }
-                        style={[
-                          styles.cell,
-                          {
-                            width: colW,
-                            borderLeftColor: emp.color || d.accent,
-                          },
-                          collapsed && styles.cellCollapsed,
-                        ]}
-                      >
-                        {dayAppts.length === 0 ? (
-                          <Text style={styles.cellHint}>+ Agendar</Text>
-                        ) : null}
-                        {visibleAppts.map((appt) =>
-                          renderApptCard(appt, { collapsed }),
-                        )}
-                        {hiddenCount > 0 ? (
-                          <Pressable
-                            onPress={(e) => {
-                              e?.stopPropagation?.();
-                              toggleCollapsed(emp.id);
-                            }}
-                          >
-                            <Text style={styles.moreHint}>+{hiddenCount}</Text>
-                          </Pressable>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                  <Pressable
-                    onPress={() => toggleCollapsed(emp.id)}
-                    style={[
-                      styles.actionCell,
-                      collapsed && styles.actionCellCollapsed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      collapsed
-                        ? `Expandir agenda de ${emp.name}`
-                        : `Recolher agenda de ${emp.name}`
-                    }
-                  >
-                    <Text style={styles.actionCellIcon}>
-                      {collapsed ? '▾' : '▴'}
-                    </Text>
-                    <Text style={styles.actionCellLabel}>
-                      {collapsed ? 'Expandir' : 'Recolher'}
-                    </Text>
-                  </Pressable>
+            {merged ? (
+              <View style={styles.row}>
+                <View
+                  style={[
+                    styles.empCell,
+                    { width: 150, borderLeftColor: d.accent },
+                  ]}
+                >
+                  <Text style={styles.empName}>Todos</Text>
+                  <Text style={styles.specialty}>
+                    {employees.length} profissionais
+                  </Text>
                 </View>
-              );
-            })}
+                {weekDates.map((day) => {
+                  const ds = localDateStr(day);
+                  const dayAppts = mergedDayAppts(ds);
+                  return (
+                    <Pressable
+                      key={ds}
+                      onPress={() =>
+                        onCreateAppointment({
+                          employeeId: defaultEmployeeId,
+                          date: ds,
+                        })
+                      }
+                      style={[
+                        styles.cell,
+                        {
+                          width: colW,
+                          borderLeftColor: d.accent,
+                        },
+                      ]}
+                    >
+                      {dayAppts.length === 0 ? (
+                        <Text style={styles.cellHint}>+ Agendar</Text>
+                      ) : null}
+                      {dayAppts.map((appt) =>
+                        renderApptCard(appt, { showEmployee: true }),
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              employees.map((emp) => {
+                const collapsed = collapsedEmpIds.has(emp.id);
+                return (
+                  <View key={emp.id} style={styles.row}>
+                    <View
+                      style={[
+                        styles.empCell,
+                        { width: 150, borderLeftColor: emp.color || d.accent },
+                        collapsed && styles.empCellCollapsed,
+                      ]}
+                    >
+                      <Text style={styles.empName} numberOfLines={1}>
+                        {emp.name}
+                      </Text>
+                      {!collapsed ? (
+                        <Text style={styles.specialty} numberOfLines={2}>
+                          {(emp.services || []).map((s) => s.name).join(', ') ||
+                            '—'}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {weekDates.map((day) => {
+                      const ds = localDateStr(day);
+                      const dayAppts = dayApptsFor(emp.id, ds);
+                      const visibleAppts = collapsed
+                        ? dayAppts.slice(0, 1)
+                        : dayAppts;
+                      const hiddenCount = collapsed
+                        ? Math.max(0, dayAppts.length - 1)
+                        : 0;
+                      return (
+                        <Pressable
+                          key={ds}
+                          onPress={() =>
+                            onCreateAppointment({
+                              employeeId: emp.id,
+                              date: ds,
+                            })
+                          }
+                          style={[
+                            styles.cell,
+                            {
+                              width: colW,
+                              borderLeftColor: emp.color || d.accent,
+                            },
+                            collapsed && styles.cellCollapsed,
+                          ]}
+                        >
+                          {dayAppts.length === 0 ? (
+                            <Text style={styles.cellHint}>+ Agendar</Text>
+                          ) : null}
+                          {visibleAppts.map((appt) =>
+                            renderApptCard(appt, { collapsed }),
+                          )}
+                          {hiddenCount > 0 ? (
+                            <Pressable
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                toggleCollapsed(emp.id);
+                              }}
+                            >
+                              <Text style={styles.moreHint}>
+                                +{hiddenCount}
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                    <Pressable
+                      onPress={() => toggleCollapsed(emp.id)}
+                      style={[
+                        styles.actionCell,
+                        collapsed && styles.actionCellCollapsed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        collapsed
+                          ? `Expandir agenda de ${emp.name}`
+                          : `Recolher agenda de ${emp.name}`
+                      }
+                    >
+                      <Text style={styles.actionCellIcon}>
+                        {collapsed ? '▾' : '▴'}
+                      </Text>
+                      <Text style={styles.actionCellLabel}>
+                        {collapsed ? 'Expandir' : 'Recolher'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })
+            )}
           </View>
         </ScrollView>
       )}
@@ -470,13 +641,16 @@ export function AgendaView({
       <View style={[styles.card, isCompact && styles.cardCompact]}>
         <Text style={styles.cardTitle}>Bot do WhatsApp — simulador</Text>
         <Text style={styles.cardDesc}>
-          Em produção, os agendamentos chegam de verdade pelo WhatsApp do cliente e
-          caem aqui na hora.{' '}
+          Em produção, os agendamentos chegam de verdade pelo WhatsApp do
+          cliente e caem aqui na hora.{' '}
           <Text style={[styles.waStatus, waOn ? styles.waOn : styles.waOff]}>
             {waOn ? 'conectado' : 'modo demo'}
           </Text>
         </Text>
-        <ScrollView style={styles.waLog} contentContainerStyle={styles.waLogInner}>
+        <ScrollView
+          style={styles.waLog}
+          contentContainerStyle={styles.waLogInner}
+        >
           {waLog.map((b, i) => (
             <View
               key={i}
@@ -533,7 +707,37 @@ const styles = StyleSheet.create({
   h2Compact: { fontSize: 22 },
   sub: { color: d.muted, fontSize: 14, marginTop: 8 },
   subCompact: { fontSize: 13, marginTop: 4 },
-  toolbar: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  toolbar: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: d.radiusSm,
+    padding: 3,
+    gap: 2,
+  },
+  viewChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  viewChipActive: {
+    backgroundColor: d.surface,
+    borderWidth: 1,
+    borderColor: d.line,
+  },
+  viewChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: d.muted,
+  },
+  viewChipTextActive: {
+    color: d.ink,
+  },
   empty: {
     backgroundColor: d.surface,
     padding: 48,
@@ -713,9 +917,14 @@ const styles = StyleSheet.create({
     borderLeftColor: '#16a34a',
   },
   apptTime: { fontWeight: '600', fontSize: 12 },
+  apptEmp: {
+    color: d.accent,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   apptClient: { color: '#475569', marginTop: 4, fontSize: 12 },
   apptSvc: { color: '#94a3b8', fontSize: 11, marginTop: 4 },
-  apptPrice: { fontWeight: '600', marginTop: 4, fontSize: 12 },
   waBadge: {
     fontSize: 10,
     color: d.waGreenText,
@@ -781,7 +990,12 @@ const styles = StyleSheet.create({
     borderColor: d.line,
     alignSelf: 'flex-start',
   },
-  waForm: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', alignItems: 'center' },
+  waForm: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   waFormCompact: { flexDirection: 'column', alignItems: 'stretch' },
   waInput: {
     borderWidth: 1,
