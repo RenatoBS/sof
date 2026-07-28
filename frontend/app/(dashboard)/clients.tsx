@@ -5,6 +5,13 @@ import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
+import {
+  hasFieldErrors,
+  maskBrPhone,
+  normalizePhoneDigits,
+  validateClientFields,
+  type ClientFieldErrors,
+} from '@/src/lib/validation';
 import { d } from '@/src/theme/dashboard';
 
 type PauseMode = 'off' | 'permanent' | '1h' | '8h' | '24h' | '7d';
@@ -78,16 +85,29 @@ export default function ClientsScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [pauseMode, setPauseMode] = useState<PauseMode>('off');
+  const [fieldErrors, setFieldErrors] = useState<ClientFieldErrors>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   const isEditing = !!editingId;
+
+  const clearField = (key: keyof ClientFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const resetForm = () => {
     setName('');
     setPhone('');
     setPauseMode('off');
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setEditingId(null);
     setShowForm(false);
     setLoading(false);
@@ -97,7 +117,9 @@ export default function ClientsScreen() {
     setName('');
     setPhone('');
     setPauseMode('off');
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setEditingId(null);
     setShowForm(true);
   };
@@ -105,27 +127,26 @@ export default function ClientsScreen() {
   const startEdit = (client: Client) => {
     setEditingId(client.id);
     setName(client.name);
-    setPhone(client.phone);
+    setPhone(maskBrPhone(client.phone));
     setPauseMode(pauseModeFromClient(client));
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setShowForm(true);
   };
 
   const save = async () => {
     setError('');
-    if (!name.trim()) {
-      setError('Informe o nome do cliente.');
-      return;
-    }
-    if (!phone.replace(/\D/g, '')) {
-      setError('Informe o telefone do cliente.');
-      return;
-    }
+    setTouched(true);
+    const errors = validateClientFields({ name, phone });
+    setFieldErrors(errors);
+    if (hasFieldErrors(errors)) return;
+
     setLoading(true);
     try {
       const body = {
         name: name.trim(),
-        phone: phone.replace(/\D/g, ''),
+        phone: normalizePhoneDigits(phone),
       };
       if (editingId) {
         const { client } = await dashboardApi.updateClient(editingId, {
@@ -188,18 +209,26 @@ export default function ClientsScreen() {
             <SofInput
               label="Nome"
               value={name}
-              onChangeText={setName}
+              onChangeText={(t) => {
+                setName(t);
+                clearField('name');
+              }}
               theme="dashboard"
               placeholder="Nome do cliente"
               autoCapitalize="words"
+              error={touched ? fieldErrors.name : undefined}
             />
             <SofInput
               label="Telefone"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(t) => {
+                setPhone(maskBrPhone(t));
+                clearField('phone');
+              }}
               theme="dashboard"
-              placeholder="11999990000"
+              placeholder="(11) 99999-0000"
               keyboardType="phone-pad"
+              error={touched ? fieldErrors.phone : undefined}
             />
             {isEditing && has('botPause') ? (
               <>
@@ -283,7 +312,9 @@ export default function ClientsScreen() {
                 </View>
                 <Text style={styles.meta}>{formatPhone(c.phone)}</Text>
                 {isClientBotPaused(c) && !c.botPausedPermanent ? (
-                  <Text style={styles.metaMuted}>Bot silencioso neste período</Text>
+                  <Text style={styles.metaMuted}>
+                    Bot silencioso neste período
+                  </Text>
                 ) : null}
                 <View style={styles.cardActions}>
                   <Pressable onPress={() => startEdit(c)}>

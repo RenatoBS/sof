@@ -464,10 +464,10 @@ export default function AccountScreen() {
 
       <Text style={styles.sectionLabel}>Estabelecimento</Text>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Contato e endereço</Text>
+        <Text style={styles.cardTitle}>Contato, endereço e horário</Text>
         <Text style={styles.help}>
-          Telefone do responsável e endereço que o bot pode informar aos
-          clientes (ex.: “onde fica?”).
+          Dados do estabelecimento: telefone do responsável, endereço (o bot
+          pode informar aos clientes) e expediente de agendamento.
         </Text>
 
         <SofInput
@@ -496,7 +496,7 @@ export default function AccountScreen() {
         {contactSaved ? <Text style={styles.saved}>{contactSaved}</Text> : null}
         <View style={styles.inlineActions}>
           <SofButton
-            title={savingContact ? 'Salvando…' : 'Salvar'}
+            title={savingContact ? 'Salvando…' : 'Salvar contato'}
             variant="dark"
             theme="dashboard"
             disabled={savingContact}
@@ -532,12 +532,12 @@ export default function AccountScreen() {
             }}
           />
         </View>
-      </View>
 
-      <View style={styles.card}>
+        <View style={styles.sectionDivider} />
+
         <View style={styles.hoursHeader}>
           <View style={styles.cardTitleBlock}>
-            <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+            <Text style={styles.subCardTitle}>Horário de funcionamento</Text>
             {!hoursExpanded ? (
               <Text style={styles.cardHint}>Quando clientes podem agendar</Text>
             ) : null}
@@ -1164,8 +1164,14 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   cardTitle: { fontSize: 17, fontWeight: '700', color: d.ink },
+  subCardTitle: { fontSize: 15, fontWeight: '700', color: d.ink },
   cardTitleBlock: { flex: 1, gap: 2, minWidth: 0 },
   cardHint: { color: d.muted, fontSize: 13 },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: d.line,
+    marginVertical: 4,
+  },
   planBanner: {
     flexDirection: 'row',
     flexWrap: 'wrap',

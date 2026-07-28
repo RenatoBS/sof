@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Máscara e validação em Clientes e Profissionais
+
+- **Contexto:** Forms de cliente/profissional (e cadastro rápido na agenda) sem máscara de telefone e com validação fraca ou só mensagem genérica.  
+- **Decisão:** Reusar `maskBrPhone` + `validateClientFields` / `validateEmployeeFields` em `clients.tsx`, `employees.tsx` e `ClientPicker`; erros por campo no `SofInput`.  
+- **Consequências:** Mesmo padrão do checkout/Conta; telefone exibido formatado nos cards de profissional.  
+- **Alternativas descartadas:** Validar só no backend; máscara só na listagem.
+
+---
+
 ## 2026-07-28 — Conta: máscara de telefone, save único, gate WA
 
 - **Contexto:** Telefone na Conta sem máscara; pausa do bot e lembretes apareciam sem WhatsApp conectado; telefone e endereço tinham botões separados.  

@@ -90,3 +90,60 @@ export function validateCheckoutFields(input: {
 export function hasFieldErrors(errors: Record<string, string | undefined>) {
   return Object.values(errors).some(Boolean);
 }
+
+export type ClientFieldErrors = {
+  name?: string;
+  phone?: string;
+};
+
+export function validateClientFields(input: {
+  name: string;
+  phone: string;
+}): ClientFieldErrors {
+  const errors: ClientFieldErrors = {};
+  const name = input.name.trim();
+  const phoneDigits = normalizePhoneDigits(input.phone);
+
+  if (!name) errors.name = 'Informe o nome do cliente.';
+  if (!phoneDigits) {
+    errors.phone = 'Informe o telefone com DDD.';
+  } else if (!isValidPhoneDigits(phoneDigits)) {
+    errors.phone = 'Telefone inválido. Use DDD + número (10 a 15 dígitos).';
+  }
+  return errors;
+}
+
+export type EmployeeFieldErrors = {
+  name?: string;
+  phone?: string;
+  email?: string;
+  services?: string;
+};
+
+export function validateEmployeeFields(input: {
+  name: string;
+  phone: string;
+  email: string;
+  serviceIds: string[];
+}): EmployeeFieldErrors {
+  const errors: EmployeeFieldErrors = {};
+  const name = input.name.trim();
+  const email = input.email.trim();
+  const phoneDigits = normalizePhoneDigits(input.phone);
+
+  if (!name) errors.name = 'Informe o nome do profissional.';
+  if (!phoneDigits) {
+    errors.phone = 'Informe o telefone com DDD.';
+  } else if (!isValidPhoneDigits(phoneDigits)) {
+    errors.phone = 'Telefone inválido. Use DDD + número (10 a 15 dígitos).';
+  }
+  if (!email) {
+    errors.email = 'Informe o e-mail de acesso.';
+  } else if (!isValidEmail(email)) {
+    errors.email = 'Informe um e-mail válido.';
+  }
+  if (!input.serviceIds.length) {
+    errors.services = 'Selecione ao menos um serviço.';
+  }
+  return errors;
+}
