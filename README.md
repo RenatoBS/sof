@@ -112,7 +112,8 @@ npm run heroku:remotes
 # deploy da branch atual → main do Heroku
 npm run deploy:api   # só API
 npm run deploy:web   # só front
-npm run deploy       # API + front
+npm run deploy       # API depois front (sequencial)
+npm run deploy:together  # API + front em paralelo
 
 # seed opcional
 heroku run -a sof-agendamento-api npx prisma db seed

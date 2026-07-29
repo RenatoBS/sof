@@ -3,8 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
-import { useDashboard } from '@/src/context/DashboardContext';
+import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  hasFieldErrors,
+  maskBrPhone,
+  normalizePhoneDigits,
+  validateEmployeeFields,
+  type EmployeeFieldErrors,
+} from '@/src/lib/validation';
 import { d } from '@/src/theme/dashboard';
 
 const EMPLOYEE_COLORS = [
@@ -26,8 +33,10 @@ export default function EmployeesScreen() {
   const [color, setColor] = useState<string>(EMPLOYEE_COLORS[0]);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [resetPassword, setResetPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<EmployeeFieldErrors>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [inviteExpiresAt, setInviteExpiresAt] = useState('');
   const [inviteEmployeeId, setInviteEmployeeId] = useState<string | null>(null);
@@ -37,6 +46,15 @@ export default function EmployeesScreen() {
 
   const isEditing = !!editingId;
 
+  const clearField = (key: keyof EmployeeFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const nextDefaultColor = () =>
     EMPLOYEE_COLORS[employees.length % EMPLOYEE_COLORS.length];
 
@@ -44,6 +62,7 @@ export default function EmployeesScreen() {
     setServiceIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+    clearField('services');
   };
 
   const resetForm = () => {
@@ -53,7 +72,9 @@ export default function EmployeesScreen() {
     setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setEditingId(null);
     setShowForm(false);
     setLoading(false);
@@ -70,7 +91,9 @@ export default function EmployeesScreen() {
     setColor(nextDefaultColor());
     setServiceIds([]);
     setResetPassword(false);
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setInviteLink('');
     setInviteExpiresAt('');
     setInviteEmployeeId(null);
@@ -84,11 +107,13 @@ export default function EmployeesScreen() {
     setEditingId(employee.id);
     setName(employee.name);
     setEmail(employee.email || '');
-    setPhone(employee.phone || '');
+    setPhone(maskBrPhone(employee.phone || ''));
     setColor((employee.color || EMPLOYEE_COLORS[0]).toLowerCase());
     setServiceIds((employee.services || []).map((s) => s.id));
     setResetPassword(false);
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setInviteLink('');
     setInviteExpiresAt('');
     setInviteEmployeeId(null);
@@ -147,25 +172,22 @@ export default function EmployeesScreen() {
 
   const save = async () => {
     setError('');
-    if (serviceIds.length === 0) {
-      setError('Selecione ao menos um serviço.');
-      return;
-    }
-    if (!email.trim()) {
-      setError('Informe o e-mail de acesso do profissional.');
-      return;
-    }
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      setError('Informe um telefone válido com DDD.');
-      return;
-    }
+    setTouched(true);
+    const errors = validateEmployeeFields({
+      name,
+      phone,
+      email,
+      serviceIds,
+    });
+    setFieldErrors(errors);
+    if (hasFieldErrors(errors)) return;
+
     setLoading(true);
     try {
       const body = {
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        phone: phoneDigits,
+        phone: normalizePhoneDigits(phone),
         serviceIds,
         color,
       };
@@ -287,27 +309,39 @@ export default function EmployeesScreen() {
             <SofInput
               label="Nome"
               value={name}
-              onChangeText={setName}
+              onChangeText={(t) => {
+                setName(t);
+                clearField('name');
+              }}
               theme="dashboard"
               placeholder="Nome completo"
               autoCapitalize="words"
+              error={touched ? fieldErrors.name : undefined}
             />
             <SofInput
               label="Telefone"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(t) => {
+                setPhone(maskBrPhone(t));
+                clearField('phone');
+              }}
               theme="dashboard"
-              placeholder="11999998888"
+              placeholder="(11) 99999-8888"
               keyboardType="phone-pad"
+              error={touched ? fieldErrors.phone : undefined}
             />
             <SofInput
               label="E-mail de acesso"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => {
+                setEmail(t);
+                clearField('email');
+              }}
               theme="dashboard"
               placeholder="profissional@salao.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              error={touched ? fieldErrors.email : undefined}
             />
             <Text style={styles.label}>Cor na agenda</Text>
             <View style={styles.colorRow}>
@@ -348,6 +382,9 @@ export default function EmployeesScreen() {
                 );
               })}
             </View>
+            {touched && fieldErrors.services ? (
+              <Text style={styles.error}>{fieldErrors.services}</Text>
+            ) : null}
             {isEditing ? (
               <Pressable
                 onPress={() => setResetPassword((v) => !v)}
@@ -404,7 +441,7 @@ export default function EmployeesScreen() {
                 <Text style={styles.name}>{e.name}</Text>
                 <Text style={styles.meta}>{e.email || 'Sem e-mail de acesso'}</Text>
                 <Text style={styles.meta}>
-                  {e.phone ? e.phone : 'Sem telefone'}
+                  {e.phone ? formatPhone(e.phone) : 'Sem telefone'}
                 </Text>
                 <Text style={styles.meta}>
                   {(e.services || []).map((s) => s.name).join(', ') || '—'}

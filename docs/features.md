@@ -29,14 +29,14 @@ Copy e tokens devem permanecer alinhados à marca Sof.
 | Feature | Onde | API |
 |---------|------|-----|
 | Escolher plano | modal no pricing / home flow | — |
-| Criar sessão | CheckoutModal (nome, e-mail, **senha**) | `POST /api/checkout/create` |
+| Criar sessão | CheckoutModal (nome, e-mail, telefone, senha) com validação por campo no front | `POST /api/checkout/create` |
 | Retorno Stripe | `/checkout-return?ref=` | `GET /api/checkout/status/:sessionId` → JWT + agenda |
 | Webhook pagamento | backend | `POST /api/payments/webhook` |
 | Pós-pagamento | auto-login | token na 1ª consulta de status; redireciona `/(dashboard)/agenda` |
 
 Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — provisiona na hora e já entra na agenda.
 
-A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, só dígitos), gravado em `Account.phone`.
+A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, 10–15 dígitos). No front, nome/e-mail/telefone/senha são validados por campo (borda + mensagem) antes do POST — alinhado às regras do backend.
 
 ### Cupons promocionais
 
@@ -105,8 +105,9 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Profissionais
 
-- Listagem em cards (cor de identificação).  
+- Listagem em cards (cor de identificação; telefone com máscara na UI).  
 - CRUD: adicionar / **editar** / remover.  
+- Form front: máscara de telefone `(11) 99999-8888` + validação por campo (nome, telefone 10–15 dígitos, e-mail, ≥1 serviço) antes do POST/PUT.  
 - Campos: nome, **telefone**, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
 - Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/profissional/definir-senha?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
@@ -133,8 +134,9 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Clientes
 
-- Listagem em cards (nome + telefone).  
+- Listagem em cards (nome + telefone formatado).  
 - CRUD: adicionar / editar / remover.  
+- Form front (aba Clientes e cadastro rápido no `ClientPicker` da agenda): máscara `(11) 99999-0000` + validação por campo (nome, telefone 10–15 dígitos).  
 - Na **edição**: pausar o bot WhatsApp para aquele cliente — **Bot ativo**, timer (1 h / 8 h / 24 h / 7 dias) ou **Permanente**.  
 - Badge na lista: **Bot off** (permanente) ou **Bot pausado até …** (temporário).  
 - Enquanto pausado, o webhook **não responde** (silêncio). Só vale para `Client` cadastrado (mesmo telefone da conversa).
@@ -158,13 +160,14 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Conta
 
-- Assinatura (plano, email, desde).  
-- **Endereço** do estabelecimento (opcional); `PUT /api/account` com `address`; o bot informa na conversa.  
-- **Horário de funcionamento** (7 dias: aberto/fechado + abre/fecha); `PUT /api/account` com `openingHours`.  
-- **Bot WhatsApp (Uazapi):** pareamento na Conta — QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.  
-- **Pausa do bot (conta):** na seção Bot do WhatsApp — **Bot ativo**, timer (1 h / 8 h / 24 h / 3 dias / 7 dias) ou **Permanente**. Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.  
-- **Lembrete WhatsApp:** card na Conta com antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário da conta (botão que expande a lista de fusos); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.  
-- Sair da conta.
+UI agrupada por seções (Assinatura / Estabelecimento / WhatsApp / Lembretes), com hero do estabelecimento (iniciais, plano, status WhatsApp).
+
+- **Assinatura:** banner do plano + preço, e-mail, desde; CTA alterar plano.
+- **Contato, endereço e horário** (mesmo card): telefone com máscara + endereço (um botão Salvar contato); horário de funcionamento no mesmo card (preview com pills Dom–Sáb + edição expandível, validação `HH:mm`); `PUT /api/account` com `phone`/`address` ou `openingHours`. O bot informa o endereço na conversa.
+- **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
+- **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
+- **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
+- **Sessão:** zona de saída (logout) no rodapé da tela.
 
 ### Suporte
 

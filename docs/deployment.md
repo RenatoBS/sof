@@ -135,8 +135,11 @@ npm run deploy:web
 npm run deploy:admin
 # só um lado: npm run deploy:admin -- --api-only | --web-only
 
-# produto (api → web)
+# produto: api → web (sequencial)
 npm run deploy
+
+# produto: api + web em paralelo
+npm run deploy:together
 
 # os quatro
 npm run deploy:all

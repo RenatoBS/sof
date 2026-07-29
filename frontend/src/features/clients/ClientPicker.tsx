@@ -3,14 +3,17 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Client } from '@/src/api/types';
 import { formatPhone } from '@/src/context/DashboardContext';
 import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  hasFieldErrors,
+  maskBrPhone,
+  normalizePhoneDigits,
+  validateClientFields,
+  type ClientFieldErrors,
+} from '@/src/lib/validation';
 import { d } from '@/src/theme/dashboard';
 
-function digitsOnly(value: string) {
-  return String(value || '').replace(/\D/g, '');
-}
-
 function looksLikePhone(value: string) {
-  const digits = digitsOnly(value);
+  const digits = normalizePhoneDigits(value);
   return digits.length >= 8 && /^\d[\d\s()-]*$/.test(value.trim());
 }
 
@@ -33,17 +36,28 @@ export function ClientPicker({
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<ClientFieldErrors>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState(false);
+
+  const clearField = (key: keyof ClientFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const qDigits = digitsOnly(query);
+    const qDigits = normalizePhoneDigits(query);
     if (!q && !qDigits) return clients;
     return clients.filter((c) => {
       const nameMatch = c.name.toLowerCase().includes(q);
       const phoneMatch = qDigits
-        ? digitsOnly(c.phone).includes(qDigits)
+        ? normalizePhoneDigits(c.phone).includes(qDigits)
         : false;
       return nameMatch || phoneMatch;
     });
@@ -51,8 +65,10 @@ export function ClientPicker({
 
   const openCreate = () => {
     setError('');
+    setFieldErrors({});
+    setTouched(false);
     if (looksLikePhone(query)) {
-      setPhone(digitsOnly(query));
+      setPhone(maskBrPhone(query));
       setName('');
     } else {
       setName(query.trim());
@@ -63,25 +79,24 @@ export function ClientPicker({
 
   const saveNew = async () => {
     setError('');
-    if (!name.trim()) {
-      setError('Informe o nome do cliente.');
-      return;
-    }
-    if (!digitsOnly(phone)) {
-      setError('Informe o telefone do cliente.');
-      return;
-    }
+    setTouched(true);
+    const errors = validateClientFields({ name, phone });
+    setFieldErrors(errors);
+    if (hasFieldErrors(errors)) return;
+
     setLoading(true);
     try {
       const client = await onCreateClient({
         name: name.trim(),
-        phone: digitsOnly(phone),
+        phone: normalizePhoneDigits(phone),
       });
       onSelect(client.id);
       setQuery('');
       setShowCreate(false);
       setName('');
       setPhone('');
+      setFieldErrors({});
+      setTouched(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar');
     } finally {
@@ -121,18 +136,26 @@ export function ClientPicker({
           <SofInput
             label="Nome"
             value={name}
-            onChangeText={setName}
+            onChangeText={(t) => {
+              setName(t);
+              clearField('name');
+            }}
             theme="dashboard"
             placeholder="Nome do cliente"
             autoCapitalize="words"
+            error={touched ? fieldErrors.name : undefined}
           />
           <SofInput
             label="Telefone"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(t) => {
+              setPhone(maskBrPhone(t));
+              clearField('phone');
+            }}
             theme="dashboard"
-            placeholder="11999990000"
+            placeholder="(11) 99999-0000"
             keyboardType="phone-pad"
+            error={touched ? fieldErrors.phone : undefined}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.row}>
@@ -150,6 +173,8 @@ export function ClientPicker({
               onPress={() => {
                 setShowCreate(false);
                 setError('');
+                setFieldErrors({});
+                setTouched(false);
               }}
             />
           </View>

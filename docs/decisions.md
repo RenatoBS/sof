@@ -17,6 +17,60 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Skills Cursor Impeccable + frontend-design
+
+- **Contexto:** Agentes geravam UI genérica (“AI slop”) sem vocabulário de design consistente no monorepo.  
+- **Decisão:** Versionar no repo `.cursor/skills/impeccable` (v4) e `.cursor/skills/frontend-design` (Anthropic), com hook `preToolUse` do detector Impeccable.  
+- **Consequências:** Agent Skills no Cursor usam `/impeccable` (audit, polish, typeset…) e a skill Anthropic em tarefas de UI; detector pode bloquear padrões ruins antes do write.  
+- **Alternativas descartadas:** Só regras em user rules; UI Skills / Taste Skills sem Impeccable; instalar só global sem versionar no repo.
+
+---
+
+## 2026-07-28 — `deploy:together` (API + front em paralelo)
+
+- **Contexto:** `npm run deploy` publica API e depois front; quem quer ambos ao mesmo tempo precisava de dois terminais.  
+- **Decisão:** Script `scripts/deploy-together.sh` + `npm run deploy:together` faz `git push` paralelo para `heroku-api` e `heroku-web`, agrega logs e falha se qualquer um falhar. `deploy` sequencial permanece.  
+- **Consequências:** Builds Heroku sobem juntos; tempo de parede menor. Se a API falhar, o front ainda pode ter sido aceito (checar logs).  
+- **Alternativas descartadas:** Só alias de `deploy`; forçar paralelo no `deploy` padrão (quebra expectativa api-first).
+
+---
+
+## 2026-07-28 — Máscara e validação em Clientes e Profissionais
+
+- **Contexto:** Forms de cliente/profissional (e cadastro rápido na agenda) sem máscara de telefone e com validação fraca ou só mensagem genérica.  
+- **Decisão:** Reusar `maskBrPhone` + `validateClientFields` / `validateEmployeeFields` em `clients.tsx`, `employees.tsx` e `ClientPicker`; erros por campo no `SofInput`.  
+- **Consequências:** Mesmo padrão do checkout/Conta; telefone exibido formatado nos cards de profissional.  
+- **Alternativas descartadas:** Validar só no backend; máscara só na listagem.
+
+---
+
+## 2026-07-28 — Conta: máscara de telefone, save único, gate WA
+
+- **Contexto:** Telefone na Conta sem máscara; pausa do bot e lembretes apareciam sem WhatsApp conectado; telefone e endereço tinham botões separados.  
+- **Decisão:** Máscara BR `(DD) NNNNN-NNNN` no input; um botão Salvar envia `phone`+`address`; seções pausa/lembretes só com `waLinked` (+ entitlements).  
+- **Consequências:** UI coerente com o estado real da integração; menos cliques no cadastro do estabelecimento.  
+- **Alternativas descartadas:** Manter saves separados; esconder só via entitlement.
+
+---
+
+## 2026-07-28 — Validação de cadastro de conta no front
+
+- **Contexto:** CheckoutModal só desabilitava o botão sem feedback; e-mail não era checado; admin Nova conta e Conta (telefone/horários) iam direto à API.  
+- **Decisão:** Helpers em `frontend/src/lib/validation.ts` espelhando backend; `SofInput`/`Field` com prop `error`; validação por campo no submit (checkout, admin nova conta, telefone/horários na Conta). Botão permanece clicável para exibir erros.  
+- **Consequências:** Usuário vê o que corrigir antes do round-trip; backend continua como fonte de verdade.  
+- **Alternativas descartadas:** Manter só `disabled` silencioso; biblioteca de forms pesada.
+
+---
+
+## 2026-07-28 — Conta: UI por seções + hero do estabelecimento
+
+- **Contexto:** A tela Conta era uma pilha longa de cards sem hierarquia (telefone/endereço separados, status WhatsApp só em texto, logout como card).  
+- **Decisão:** Hero com iniciais/nome/plano/status WA; labels de seção; telefone+endereço no mesmo card; preview de expediente com pills Dom–Sáb; status servidor/dispositivo em cards; logout em zona de sessão no rodapé. Tokens e componentes do dashboard (`d`, `SofButton`/`SofInput`) mantidos.  
+- **Consequências:** Mesmo contrato de API e comportamento; navegação visual mais clara sem mudar fluxos.  
+- **Alternativas descartadas:** Tabs internas (mais estado); redesign fora do design system do painel.
+
+---
+
 ## 2026-07-28 — Sync Stripe de planos seed + Payment Link alinhado ao preço
 
 - **Contexto:** Planos Solo/Equipe/Rede no DB tinham `stripeProductId=seed_*` e Payment Links/Prices antigos (R$99/197/249) enquanto o catálogo mostrava R$139/199/259; Solo sem link; seed sobrescrevia IDs Stripe; save no admin sempre mandava `paymentLinkUrl` e bloqueava regeneração.  

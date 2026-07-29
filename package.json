@@ -21,6 +21,7 @@
     "deploy:admin-web": "git push heroku-admin-web HEAD:main",
     "deploy:admin": "bash scripts/deploy-admin.sh",
     "deploy": "npm run deploy:api && npm run deploy:web",
+    "deploy:together": "bash scripts/deploy-together.sh",
     "deploy:all": "npm run deploy:api && npm run deploy:web && npm run deploy:admin"
   },
   "engines": {

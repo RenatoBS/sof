@@ -64,8 +64,13 @@ export function SofButton({
 export function SofInput({
   label,
   theme = 'marketing',
+  error,
   ...props
-}: { label: string; theme?: 'marketing' | 'dashboard' } & TextInputProps) {
+}: {
+  label: string;
+  theme?: 'marketing' | 'dashboard';
+  error?: string;
+} & TextInputProps) {
   const isDash = theme === 'dashboard';
   return (
     <View style={field.wrap}>
@@ -73,9 +78,16 @@ export function SofInput({
       <TextInput
         {...props}
         placeholderTextColor={isDash ? '#94a3b8' : m.muted}
-        style={[field.input, isDash && field.inputDash, props.style]}
+        style={[
+          field.input,
+          isDash && field.inputDash,
+          error ? field.inputError : null,
+          props.style,
+        ]}
         autoCapitalize={props.autoCapitalize ?? 'none'}
+        accessibilityInvalid={Boolean(error)}
       />
+      {error ? <Text style={field.errorText}>{error}</Text> : null}
     </View>
   );
 }
@@ -152,6 +164,15 @@ const field = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     fontSize: 14,
+  },
+  inputError: {
+    borderColor: d.danger,
+  },
+  errorText: {
+    color: d.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: -2,
   },
   eyebrow: {
     fontFamily: m.fonts.display,

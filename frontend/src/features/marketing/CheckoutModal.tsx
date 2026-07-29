@@ -16,9 +16,14 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { setToken } from '@/src/auth/tokenStorage';
 import { FeatureIcon } from '@/src/components/FeatureIcon';
 import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  ACCOUNT_PASSWORD_MIN,
+  hasFieldErrors,
+  normalizePhoneDigits,
+  validateCheckoutFields,
+  type CheckoutFieldErrors,
+} from '@/src/lib/validation';
 import { m } from '@/src/theme/marketing';
-
-const PASSWORD_MIN = 8;
 
 export type MarketingPlan = {
   name: string;
@@ -167,15 +172,21 @@ export function CheckoutModal({
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [couponCode, setCouponCode] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   const hasCoupon = Boolean(couponCode.trim());
-  const canSubmit =
-    Boolean(name.trim()) &&
-    Boolean(email.trim()) &&
-    Boolean(phone.replace(/\D/g, '').length >= 10) &&
-    password.length >= PASSWORD_MIN;
+
+  const clearFieldError = (key: keyof CheckoutFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const reset = () => {
     setName('');
@@ -183,7 +194,9 @@ export function CheckoutModal({
     setPhone('');
     setPassword('');
     setCouponCode('');
+    setFieldErrors({});
     setError('');
+    setTouched(false);
     setLoading(false);
   };
 
@@ -201,15 +214,12 @@ export function CheckoutModal({
 
   const submit = async () => {
     setError('');
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      setError('Informe um telefone válido com DDD.');
-      return;
-    }
-    if (password.length < PASSWORD_MIN) {
-      setError(`A senha deve ter pelo menos ${PASSWORD_MIN} caracteres.`);
-      return;
-    }
+    setTouched(true);
+    const errors = validateCheckoutFields({ name, phone, email, password });
+    setFieldErrors(errors);
+    if (hasFieldErrors(errors)) return;
+
+    const phoneDigits = normalizePhoneDigits(phone);
     setLoading(true);
     try {
       const data = await checkoutApi.create(
@@ -282,32 +292,48 @@ export function CheckoutModal({
           <SofInput
             label="Nome completo"
             value={name}
-            onChangeText={setName}
+            onChangeText={(t) => {
+              setName(t);
+              clearFieldError('name');
+            }}
             placeholder="Nome do responsável pela conta"
             autoCapitalize="words"
+            error={touched ? fieldErrors.name : undefined}
           />
           <SofInput
             label="Telefone"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(t) => {
+              setPhone(t);
+              clearFieldError('phone');
+            }}
             keyboardType="phone-pad"
             placeholder="DDD + número"
+            error={touched ? fieldErrors.phone : undefined}
           />
           <SofInput
             label="E-mail"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(t) => {
+              setEmail(t);
+              clearFieldError('email');
+            }}
             keyboardType="email-address"
             placeholder="Onde você acessa o painel"
+            error={touched ? fieldErrors.email : undefined}
           />
           <SofInput
             label="Senha"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(t) => {
+              setPassword(t);
+              clearFieldError('password');
+            }}
             secureTextEntry
-            placeholder={`Mínimo ${PASSWORD_MIN} caracteres`}
+            placeholder={`Mínimo ${ACCOUNT_PASSWORD_MIN} caracteres`}
             textContentType="newPassword"
             autoComplete="new-password"
+            error={touched ? fieldErrors.password : undefined}
           />
           <SofInput
             label="Cupom promocional (opcional)"
@@ -326,7 +352,7 @@ export function CheckoutModal({
             }
             variant="accent"
             block
-            disabled={loading || !canSubmit}
+            disabled={loading}
             onPress={submit}
           />
           <Text style={styles.payNote}>

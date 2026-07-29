@@ -140,6 +140,19 @@ Ver lista completa em `backend/.env.example`, `frontend/.env.example`, `admin-ba
 6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).  
 7. Lembretes: com a API no ar (`backend:dev`), o job roda no boot e a cada 30 min. Configure antecedência/fuso em Conta → Lembrete WhatsApp (default 2h, `America/Sao_Paulo`). Precisa de instância conectada para enviar de verdade.
 
+## Cursor — Agent Skills de design
+
+O repo versiona skills em `.cursor/skills/`:
+
+| Skill | Uso |
+|-------|-----|
+| `impeccable` | Design UI/UX (audit, polish, typeset, animate…). Rodar `/impeccable init` uma vez por produto. |
+| `frontend-design` | Skill Anthropic para direção visual distinta (anti-template). |
+
+Hook: `.cursor/hooks.json` (detector Impeccable em `preToolUse`). Em Settings → Rules, deixe **Agent Skills** habilitado.
+
+Atualizar Impeccable: `npx impeccable install --providers=cursor --scope=project`.
+
 ## Troubleshooting
 
 | Sintoma | Causa provável | Ação |
