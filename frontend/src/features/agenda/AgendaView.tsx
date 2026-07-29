@@ -703,9 +703,20 @@ const styles = StyleSheet.create({
   panelHeadCompact: {
     gap: 12,
   },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
+  h2: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.4,
+  },
   h2Compact: { fontSize: 22 },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
+  sub: {
+    color: d.muted,
+    fontSize: 14,
+    marginTop: 8,
+    fontFamily: d.fonts.body,
+  },
   subCompact: { fontSize: 13, marginTop: 4 },
   toolbar: {
     flexDirection: 'row',

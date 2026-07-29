@@ -1,11 +1,29 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SofButton } from '@/src/components/ui';
 import { m } from '@/src/theme/marketing';
 
+const NAV_LINKS = [
+  { key: 'home', label: 'Início', href: '/' },
+  { key: 'pricing', label: 'Planos', href: '/pricing' },
+  { key: 'about', label: 'Quem somos', href: '/about' },
+] as const;
+
 export function Wordmark({ onPress }: { onPress?: () => void }) {
   return (
-    <Pressable onPress={onPress || (() => router.push('/'))} style={styles.wordmark}>
+    <Pressable
+      onPress={onPress || (() => router.push('/'))}
+      style={({ pressed }) => [styles.wordmark, pressed && { opacity: 0.8 }]}
+      accessibilityRole="link"
+      accessibilityLabel="Sof — início"
+    >
       <Text style={styles.wordmarkText}>sof</Text>
       <View style={styles.dot} />
     </Pressable>
@@ -15,6 +33,12 @@ export function Wordmark({ onPress }: { onPress?: () => void }) {
 export function MarketingNav({ active }: { active?: string }) {
   const { width } = useWindowDimensions();
   const compact = width < 860;
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const go = (href: string) => {
+    setMenuOpen(false);
+    router.push(href as '/');
+  };
 
   return (
     <View style={styles.nav}>
@@ -22,24 +46,64 @@ export function MarketingNav({ active }: { active?: string }) {
         <Wordmark />
         {!compact ? (
           <View style={styles.links}>
-            {[
-              { key: 'home', label: 'Início', href: '/' },
-              { key: 'pricing', label: 'Planos', href: '/pricing' },
-              { key: 'about', label: 'Quem somos', href: '/about' },
-            ].map((item) => (
-              <Pressable key={item.key} onPress={() => router.push(item.href as '/')}>
-                <Text style={[styles.link, active === item.key && styles.linkActive]}>
+            {NAV_LINKS.map((item) => (
+              <Pressable
+                key={item.key}
+                onPress={() => go(item.href)}
+                accessibilityRole="link"
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
+              >
+                <Text
+                  style={[styles.link, active === item.key && styles.linkActive]}
+                >
                   {item.label}
                 </Text>
               </Pressable>
             ))}
           </View>
-        ) : null}
+        ) : (
+          <Pressable
+            onPress={() => setMenuOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+            style={({ pressed }) => [styles.menuBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.menuBtnText}>{menuOpen ? 'Fechar' : 'Menu'}</Text>
+          </Pressable>
+        )}
         <View style={styles.cta}>
-          <SofButton title="Entrar" variant="ghost" onPress={() => router.push('/login')} />
-          <SofButton title="Começar" variant="solid" onPress={() => router.push('/pricing')} />
+          <SofButton title="Entrar" variant="ghost" onPress={() => go('/login')} />
+          <SofButton
+            title="Começar"
+            variant="solid"
+            onPress={() => go('/pricing')}
+          />
         </View>
       </View>
+      {compact && menuOpen ? (
+        <View style={styles.mobileMenu}>
+          {NAV_LINKS.map((item) => (
+            <Pressable
+              key={item.key}
+              onPress={() => go(item.href)}
+              style={({ pressed }) => [
+                styles.mobileLink,
+                active === item.key && styles.mobileLinkActive,
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.mobileLinkText,
+                  active === item.key && styles.linkActive,
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -70,7 +134,7 @@ const styles = StyleSheet.create({
   nav: {
     backgroundColor: 'rgba(244,244,246,0.92)',
     borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
+    borderBottomColor: m.line,
     zIndex: 50,
   },
   inner: {
@@ -105,6 +169,38 @@ const styles = StyleSheet.create({
     fontFamily: m.fonts.bodyMedium,
   },
   linkActive: { color: m.ink },
+  menuBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: m.line,
+    backgroundColor: m.surface,
+  },
+  menuBtnText: {
+    fontFamily: m.fonts.bodyMedium,
+    fontSize: 14,
+    color: m.ink,
+  },
+  mobileMenu: {
+    borderTopWidth: 1,
+    borderTopColor: m.line,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    gap: 4,
+    backgroundColor: m.paper,
+  },
+  mobileLink: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: m.radiusSm,
+  },
+  mobileLinkActive: { backgroundColor: m.accentSoft },
+  mobileLinkText: {
+    fontFamily: m.fonts.bodyMedium,
+    fontSize: 16,
+    color: m.muted,
+  },
   cta: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   footer: {
     borderTopWidth: 1,
@@ -124,6 +220,6 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   footerLinks: { flexDirection: 'row', gap: 22 },
-  footerLink: { color: m.muted, fontSize: 14 },
-  fine: { color: m.muted, fontSize: 14 },
+  footerLink: { color: m.muted, fontSize: 14, fontFamily: m.fonts.body },
+  fine: { color: m.muted, fontSize: 14, fontFamily: m.fonts.body },
 });

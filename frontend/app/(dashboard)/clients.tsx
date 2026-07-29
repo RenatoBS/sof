@@ -3,7 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Client } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
-import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  SofButton,
+  SofCard,
+  SofEmptyState,
+  SofErrorBanner,
+  SofInput,
+  SofPageHeader,
+} from '@/src/components/ui';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import {
   hasFieldErrors,
@@ -182,28 +189,26 @@ export default function ClientsScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Clientes</Text>
-          <Text style={styles.sub}>
-            Cadastre nome e telefone para vincular aos agendamentos
-          </Text>
-        </View>
-        <SofButton
-          title={showForm ? 'Cancelar' : 'Adicionar Cliente'}
-          variant="dark"
-          theme="dashboard"
-          onPress={() => {
-            if (showForm) resetForm();
-            else startCreate();
-          }}
-        />
-      </View>
+      <SofPageHeader
+        title="Clientes"
+        subtitle="Cadastre nome e telefone para vincular aos agendamentos"
+        action={
+          <SofButton
+            title={showForm ? 'Cancelar' : 'Adicionar cliente'}
+            variant="dark"
+            theme="dashboard"
+            onPress={() => {
+              if (showForm) resetForm();
+              else startCreate();
+            }}
+          />
+        }
+      />
 
       {showForm ? (
-        <View style={styles.card}>
+        <SofCard>
           <Text style={styles.cardTitle}>
-            {isEditing ? 'Editar Cliente' : 'Novo Cliente'}
+            {isEditing ? 'Editar cliente' : 'Novo cliente'}
           </Text>
           <View style={styles.formGrid}>
             <SofInput
@@ -261,19 +266,14 @@ export default function ClientsScreen() {
               </>
             ) : null}
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <SofErrorBanner message={error} /> : null}
           <View style={styles.actions}>
             <SofButton
-              title={
-                loading
-                  ? 'Salvando…'
-                  : isEditing
-                    ? 'Salvar alterações'
-                    : 'Adicionar'
-              }
+              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
               theme="dashboard"
               onPress={save}
+              loading={loading}
               disabled={loading}
             />
             <SofButton
@@ -283,20 +283,30 @@ export default function ClientsScreen() {
               onPress={resetForm}
             />
           </View>
-        </View>
+        </SofCard>
       ) : null}
 
-      <View style={styles.grid}>
-        {clients.length === 0 ? (
-          <Text style={styles.empty}>
-            Nenhum cliente cadastrado ainda. Adicione manualmente ou aguarde o
-            cadastro pelo WhatsApp.
-          </Text>
-        ) : (
-          clients.map((c) => {
+      {clients.length === 0 ? (
+        <SofCard padded={false}>
+          <SofEmptyState
+            title="Nenhum cliente cadastrado ainda"
+            body="Adicione manualmente ou aguarde o cadastro pelo WhatsApp."
+            action={
+              <SofButton
+                title="Adicionar cliente"
+                variant="dark"
+                theme="dashboard"
+                onPress={startCreate}
+              />
+            }
+          />
+        </SofCard>
+      ) : (
+        <View style={styles.grid}>
+          {clients.map((c) => {
             const badge = pauseBadge(c);
             return (
-              <View key={c.id} style={styles.entity}>
+              <SofCard key={c.id} style={styles.entity}>
                 <View style={styles.rowTop}>
                   <Text style={styles.name}>{c.name}</Text>
                   {badge ? (
@@ -324,61 +334,50 @@ export default function ClientsScreen() {
                     <Text style={styles.delete}>Remover</Text>
                   </Pressable>
                 </View>
-              </View>
+              </SofCard>
             );
-          })
-        )}
-      </View>
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { gap: 24 },
-  head: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'center',
+  cardTitle: {
+    fontWeight: '600',
+    marginBottom: 8,
+    fontSize: 16,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
   },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 12,
-  },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: d.ink },
   formGrid: { gap: 12 },
-  label: { fontWeight: '600', color: d.ink, fontSize: 14 },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
+  label: {
+    fontWeight: '600',
+    color: d.mutedStrong,
+    fontSize: 14,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  hint: { color: d.muted, fontSize: 13, lineHeight: 20, fontFamily: d.fonts.body },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fff',
-  },
-  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
-  chipText: { color: d.ink, fontSize: 13 },
-  chipTextActive: { fontWeight: '700' },
-  error: { color: '#dc2626', fontWeight: '600' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  empty: { color: d.muted, fontSize: 14 },
-  entity: {
     backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 20,
-    width: 280,
+  },
+  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
+  chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
+  chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  entity: {
+    minWidth: 280,
+    flexGrow: 1,
+    flexBasis: 280,
     gap: 8,
   },
   rowTop: {
@@ -387,7 +386,12 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
   },
-  name: { fontSize: 17, fontWeight: '700', color: d.ink },
+  name: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
   badge: {
     fontSize: 11,
     fontWeight: '700',
@@ -397,14 +401,28 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     overflow: 'hidden',
+    fontFamily: d.fonts.bodyMedium,
   },
   badgePermanent: {
     color: '#991b1b',
-    backgroundColor: '#fee2e2',
+    backgroundColor: d.dangerSoft,
   },
-  meta: { color: d.muted, fontSize: 13 },
-  metaMuted: { color: d.muted, fontSize: 12, fontStyle: 'italic' },
+  meta: { color: d.muted, fontSize: 13, fontFamily: d.fonts.body },
+  metaMuted: {
+    color: d.muted,
+    fontSize: 12,
+    fontStyle: 'italic',
+    fontFamily: d.fonts.body,
+  },
   cardActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
-  edit: { color: d.accent, fontWeight: '600' },
-  delete: { color: '#dc2626', fontWeight: '600' },
+  edit: {
+    color: d.accent,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
+  delete: {
+    color: d.danger,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
 });

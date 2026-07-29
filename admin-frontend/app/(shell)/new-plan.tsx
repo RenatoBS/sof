@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { plansApi, type EntitlementsMap } from '@/src/api/endpoints';
 import { EntitlementsEditor } from '@/src/components/EntitlementsEditor';
-import { Button, Field } from '@/src/components/ui';
+import { Button, ErrorText, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
 export default function NewPlanScreen() {
@@ -77,10 +77,10 @@ export default function NewPlanScreen() {
         onChangeText={setStripePriceId}
         autoCapitalize="none"
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       <View style={styles.actions}>
         <Button title="Cancelar" variant="ghost" onPress={() => router.back()} />
-        <Button title={busy ? 'Criando…' : 'Criar'} onPress={onSubmit} disabled={busy} />
+        <Button title="Criar" onPress={onSubmit} loading={busy} />
       </View>
     </ScrollView>
   );
@@ -99,6 +99,5 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: space.lg,
   },
-  error: { color: colors.danger, marginBottom: space.md },
   actions: { flexDirection: 'row', gap: space.sm },
 });

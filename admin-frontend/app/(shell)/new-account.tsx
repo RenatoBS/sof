@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { accountsApi, plansApi, type PlanRow } from '@/src/api/endpoints';
-import { Button, Field } from '@/src/components/ui';
-import { colors, space } from '@/src/theme/admin';
+import { Button, ErrorText, Field } from '@/src/components/ui';
+import { colors, fonts, space } from '@/src/theme/admin';
 
 const PASSWORD_MIN = 8;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -201,9 +201,7 @@ export default function NewAccountScreen() {
           />
         ))}
       </View>
-      {touched && fieldErrors.plan ? (
-        <Text style={styles.error}>{fieldErrors.plan}</Text>
-      ) : null}
+      <ErrorText>{touched ? fieldErrors.plan : undefined}</ErrorText>
       <Field
         label="Preço (R$)"
         keyboardType="decimal-pad"
@@ -214,7 +212,7 @@ export default function NewAccountScreen() {
         }}
         error={touched ? fieldErrors.planPrice : undefined}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       {tempPw ? (
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Conta criada</Text>
@@ -232,11 +230,7 @@ export default function NewAccountScreen() {
       ) : (
         <View style={styles.actions}>
           <Button title="Cancelar" variant="ghost" onPress={() => router.back()} />
-          <Button
-            title={busy ? 'Salvando…' : 'Criar'}
-            onPress={onSubmit}
-            disabled={busy}
-          />
+          <Button title="Criar" onPress={onSubmit} loading={busy} />
         </View>
       )}
     </ScrollView>
@@ -263,7 +257,6 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginBottom: space.md,
   },
-  error: { color: colors.danger, marginBottom: space.md },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   notice: {
     backgroundColor: colors.accentSoft,
@@ -271,6 +264,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: space.sm,
   },
-  noticeTitle: { fontFamily: 'HankenGrotesk_600SemiBold', color: colors.ink },
-  noticeBody: { fontFamily: 'Inter_400Regular', color: colors.ink },
+  noticeTitle: { fontFamily: fonts.display, color: colors.ink },
+  noticeBody: { fontFamily: fonts.body, color: colors.ink },
 });

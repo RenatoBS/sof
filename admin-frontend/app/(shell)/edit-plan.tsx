@@ -8,7 +8,7 @@ import {
   type PlanRow,
 } from '@/src/api/endpoints';
 import { EntitlementsEditor } from '@/src/components/EntitlementsEditor';
-import { Button, Field } from '@/src/components/ui';
+import { Button, ErrorText, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
 function paramId(value: string | string[] | undefined) {
@@ -179,22 +179,18 @@ export default function PlanDetailScreen() {
         />
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       {message ? <Text style={styles.ok}>{message}</Text> : null}
       <View style={styles.actions}>
+        <Button title="Salvar" onPress={save} loading={busy} />
         <Button
-          title={busy ? 'Salvando…' : 'Salvar'}
-          onPress={save}
-          disabled={busy}
-        />
-        <Button
-          title={busy ? '…' : 'Sincronizar Stripe'}
+          title="Sincronizar Stripe"
           variant="ghost"
           onPress={onSyncStripe}
           disabled={busy || !plan}
         />
         <Button
-          title={busy ? 'Apagando…' : 'Apagar plano'}
+          title="Apagar plano"
           variant="danger"
           onPress={onDelete}
           disabled={busy || !plan}
@@ -230,6 +226,5 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginTop: space.sm,
   },
-  error: { color: colors.danger, marginBottom: space.sm },
   ok: { color: colors.accent, marginBottom: space.md },
 });

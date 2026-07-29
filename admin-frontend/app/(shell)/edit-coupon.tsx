@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { couponsApi, type CouponRow } from '@/src/api/endpoints';
-import { Button, Field } from '@/src/components/ui';
+import { Button, ErrorText, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
 export default function EditCouponScreen() {
@@ -90,7 +90,7 @@ export default function EditCouponScreen() {
   if (!coupon) {
     return (
       <View style={styles.wrap}>
-        <Text style={styles.error}>{error || 'Cupom não encontrado.'}</Text>
+        <ErrorText>{error || 'Cupom não encontrado.'}</ErrorText>
         <Button title="Voltar" onPress={() => router.back()} />
       </View>
     );
@@ -114,14 +114,10 @@ export default function EditCouponScreen() {
         value={note}
         onChangeText={setNote}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       <View style={styles.actions}>
         <Button title="Voltar" variant="ghost" onPress={() => router.back()} />
-        <Button
-          title={busy ? 'Salvando…' : 'Salvar'}
-          onPress={onSave}
-          disabled={busy}
-        />
+        <Button title="Salvar" onPress={onSave} loading={busy} />
       </View>
       <View style={[styles.actions, { marginTop: space.md }]}>
         <Button
@@ -157,6 +153,5 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: space.lg,
   },
-  error: { color: colors.danger, marginBottom: space.sm },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
 });

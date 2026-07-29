@@ -11,11 +11,12 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider } from '@/src/auth/AuthProvider';
 import { EmployeeAuthProvider } from '@/src/auth/EmployeeAuthProvider';
 import { ToastProvider, useToast } from '@/src/context/ToastContext';
 import { m } from '@/src/theme/marketing';
+import { d } from '@/src/theme/dashboard';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -64,12 +65,18 @@ export default function RootLayout() {
 }
 
 function ToastBanner() {
-  const { message } = useToast();
+  const { message, clearToast } = useToast();
   if (!message) return null;
   return (
-    <View style={styles.toast}>
+    <Pressable
+      onPress={clearToast}
+      accessibilityRole="button"
+      accessibilityLabel="Fechar notificação"
+      style={({ pressed }) => [styles.toast, pressed && { opacity: 0.9 }]}
+    >
       <Text style={styles.toastText}>{message}</Text>
-    </View>
+      <Text style={styles.toastDismiss}>Fechar</Text>
+    </Pressable>
   );
 }
 
@@ -78,12 +85,29 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    backgroundColor: '#1a202c',
+    left: 24,
+    maxWidth: 360,
+    marginLeft: 'auto',
+    backgroundColor: d.ink,
     paddingVertical: 14,
-    paddingHorizontal: 19,
-    borderRadius: 8,
-    maxWidth: 320,
+    paddingHorizontal: 18,
+    borderRadius: d.radiusSm,
     zIndex: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    ...d.shadow.soft,
   },
-  toastText: { color: '#fff', fontSize: 14 },
+  toastText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: d.fonts.body,
+    flex: 1,
+    lineHeight: 20,
+  },
+  toastDismiss: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontFamily: d.fonts.bodyMedium,
+  },
 });

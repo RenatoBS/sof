@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Text,
   View,
-  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useAuth } from '@/src/auth/AuthProvider';
@@ -15,9 +14,10 @@ import { dashboardApi } from '@/src/api/endpoints';
 import { DashboardProvider, useDashboard } from '@/src/context/DashboardContext';
 import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
-import { SofButton } from '@/src/components/ui';
+import { SofButton, SofLoadingGate } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 import type { Appointment, WhatsappHandoff } from '@/src/api/types';
+import { m } from '@/src/theme/marketing';
 
 const ALL_TABS = [
   { href: '/(dashboard)/agenda', label: 'Agenda', match: 'agenda' },
@@ -115,12 +115,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   );
 
   if (loading) {
-    return (
-      <View style={styles.gate}>
-        <ActivityIndicator color={d.muted} />
-        <Text style={styles.gateText}>Carregando painel…</Text>
-      </View>
-    );
+    return <SofLoadingGate label="Carregando painel…" />;
   }
 
   if (!account) return <Redirect href="/login" />;
@@ -178,7 +173,13 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
               <Pressable
                 key={tab.match}
                 onPress={() => router.push(tab.href as '/')}
-                style={[styles.tabBtn, active && styles.tabActive]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                style={({ pressed }) => [
+                  styles.tabBtn,
+                  active && styles.tabActive,
+                  pressed && { opacity: 0.75 },
+                ]}
               >
                 <View style={styles.tabLabelRow}>
                   <Text
@@ -226,14 +227,6 @@ export default function DashboardLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: d.paper },
-  gate: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    backgroundColor: d.paper,
-  },
-  gateText: { color: d.muted, fontSize: 15 },
   topbar: {
     backgroundColor: d.surface,
     borderBottomWidth: 1,
@@ -251,9 +244,20 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  biz: { fontSize: 24, fontWeight: '700', color: d.ink },
+  biz: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.3,
+  },
   bizCompact: { fontSize: 18 },
-  email: { fontSize: 14, color: d.muted, marginTop: 4 },
+  email: {
+    fontSize: 14,
+    color: d.muted,
+    marginTop: 4,
+    fontFamily: d.fonts.body,
+  },
   tabbar: {
     backgroundColor: d.surface,
     borderBottomWidth: 1,
@@ -261,7 +265,7 @@ const styles = StyleSheet.create({
   },
   tabbarInner: {
     paddingHorizontal: 32,
-    gap: 48,
+    gap: 36,
   },
   tabbarInnerCompact: {
     paddingHorizontal: 16,
@@ -272,9 +276,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: d.ink },
+  tabActive: { borderBottomColor: m.accent },
   tabLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tabText: { fontSize: 15, color: d.muted, fontWeight: '500' },
+  tabText: {
+    fontSize: 15,
+    color: d.muted,
+    fontWeight: '500',
+    fontFamily: d.fonts.bodyMedium,
+  },
   tabTextActive: { color: d.ink, fontWeight: '600' },
   tabBadge: {
     minWidth: 18,

@@ -186,8 +186,11 @@ Token storage: web `localStorage` chave `sof_token`; native SecureStore.
 
 ### UI
 
-Componentes de marca: `SofButton`, `SofInput`, `SofChatCard`, `FeatureIcon`, `MarketingNav`.  
-Visual alinhado ao HTML legado (tokens `#F4F4F6`, `#6B6FB5`).
+Temas: `src/theme/marketing.ts` (`m`, lavender) e `src/theme/dashboard.ts` (`d`, Operate — azul + tipografia Hanken/Inter alinhada ao marketing).
+
+Kit compartilhado em `src/components/ui.tsx`: `SofButton` (pressed/hover/`loading`), `SofInput`, `SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, `SofListRow`, `Eyebrow`, `Wrap`. Marketing: `MarketingNav` (menu mobile), `SiteFooter`, `SofChatCard`, `FeatureIcon`.
+
+Toast dismissível no root layout. Shell do dashboard usa tabs com accent Sof e `SofLoadingGate`.
 
 ## Infraestrutura
 
@@ -237,3 +240,4 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
 - Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.
+- UI kit próprio (não compartilha código com `frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter do produto, accent verde próprio do admin) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.

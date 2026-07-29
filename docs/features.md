@@ -20,9 +20,9 @@ Sof ajuda salões/barbearias a:
 | Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
-| Nav / footer | global | Wordmark `sof`, CTAs |
+| Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
 
-Copy e tokens devem permanecer alinhados à marca Sof.
+Copy e tokens devem permanecer alinhados à marca Sof. Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`.
 
 ## Checkout e assinatura
 

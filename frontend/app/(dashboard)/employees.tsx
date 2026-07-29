@@ -4,7 +4,13 @@ import { router } from 'expo-router';
 import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
-import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  SofButton,
+  SofCard,
+  SofErrorBanner,
+  SofInput,
+  SofPageHeader,
+} from '@/src/components/ui';
 import {
   hasFieldErrors,
   maskBrPhone,
@@ -227,26 +233,24 @@ export default function EmployeesScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Profissionais</Text>
-          <Text style={styles.sub}>
-            Gerencie a equipe e o acesso de cada profissional
-          </Text>
-        </View>
-        <SofButton
-          title={showForm ? 'Cancelar' : 'Adicionar Profissional'}
-          variant="dark"
-          theme="dashboard"
-          onPress={() => {
-            if (showForm) resetForm();
-            else startCreate();
-          }}
-        />
-      </View>
+      <SofPageHeader
+        title="Profissionais"
+        subtitle="Gerencie a equipe e o acesso de cada profissional"
+        action={
+          <SofButton
+            title={showForm ? 'Cancelar' : 'Adicionar profissional'}
+            variant="dark"
+            theme="dashboard"
+            onPress={() => {
+              if (showForm) resetForm();
+              else startCreate();
+            }}
+          />
+        }
+      />
 
       {inviteLink ? (
-        <View style={styles.passwordCard}>
+        <SofCard style={styles.passwordCard}>
           <Text style={styles.cardTitle}>Link de acesso gerado</Text>
           <Text style={styles.hint}>
             Envie pelo WhatsApp do estabelecimento (mensagem com instruções +
@@ -265,15 +269,10 @@ export default function EmployeesScreen() {
           </Text>
           <View style={styles.actions}>
             <SofButton
-              title={
-                sendingWa
-                  ? 'Enviando…'
-                  : waSent
-                    ? 'Enviado no WhatsApp'
-                    : 'Enviar no WhatsApp'
-              }
+              title={waSent ? 'Enviado no WhatsApp' : 'Enviar no WhatsApp'}
               variant="dark"
               theme="dashboard"
+              loading={sendingWa}
               disabled={sendingWa || waSent || !inviteEmployeeId}
               onPress={() => sendInviteWhatsapp()}
             />
@@ -296,14 +295,14 @@ export default function EmployeesScreen() {
               }}
             />
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
+          {error ? <SofErrorBanner message={error} /> : null}
+        </SofCard>
       ) : null}
 
       {showForm ? (
-        <View style={styles.card}>
+        <SofCard>
           <Text style={styles.cardTitle}>
-            {isEditing ? 'Editar Profissional' : 'Novo Profissional'}
+            {isEditing ? 'Editar profissional' : 'Novo profissional'}
           </Text>
           <View style={styles.formGrid}>
             <SofInput
@@ -383,7 +382,7 @@ export default function EmployeesScreen() {
               })}
             </View>
             {touched && fieldErrors.services ? (
-              <Text style={styles.error}>{fieldErrors.services}</Text>
+              <SofErrorBanner message={fieldErrors.services} />
             ) : null}
             {isEditing ? (
               <Pressable
@@ -408,19 +407,14 @@ export default function EmployeesScreen() {
               </Text>
             )}
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <SofErrorBanner message={error} /> : null}
           <View style={styles.actions}>
             <SofButton
-              title={
-                loading
-                  ? 'Salvando…'
-                  : isEditing
-                    ? 'Salvar alterações'
-                    : 'Adicionar'
-              }
+              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
               theme="dashboard"
               onPress={save}
+              loading={loading}
               disabled={loading}
             />
             <SofButton
@@ -430,12 +424,12 @@ export default function EmployeesScreen() {
               onPress={resetForm}
             />
           </View>
-        </View>
+        </SofCard>
       ) : null}
 
       <View style={styles.grid}>
         {employees.map((e) => (
-          <View key={e.id} style={styles.entity}>
+          <SofCard key={e.id} style={styles.entity}>
             <View style={styles.rowTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{e.name}</Text>
@@ -470,7 +464,7 @@ export default function EmployeesScreen() {
                 </Text>
               </Pressable>
             </View>
-          </View>
+          </SofCard>
         ))}
       </View>
     </View>
@@ -479,36 +473,26 @@ export default function EmployeesScreen() {
 
 const styles = StyleSheet.create({
   page: { gap: 24 },
-  head: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'center',
-  },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 12,
-  },
   passwordCard: {
     backgroundColor: '#ecfdf5',
-    borderRadius: d.radius,
-    borderWidth: 1,
     borderColor: '#a7f3d0',
-    padding: 24,
     gap: 12,
   },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: d.ink },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    marginBottom: 4,
+  },
   formGrid: { gap: 12 },
-  label: { fontWeight: '600', color: d.ink, fontSize: 14 },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
-  code: { fontFamily: 'monospace', color: d.ink },
+  label: {
+    fontWeight: '600',
+    color: d.mutedStrong,
+    fontSize: 14,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  hint: { color: d.muted, fontSize: 13, lineHeight: 20, fontFamily: d.fonts.body },
   tempPass: {
     fontSize: 13,
     fontWeight: '600',
@@ -533,38 +517,39 @@ const styles = StyleSheet.create({
   chip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: d.surface,
   },
   resetChip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: d.surface,
     alignSelf: 'flex-start',
   },
-  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
-  chipText: { color: d.ink, fontSize: 13 },
-  chipTextActive: { fontWeight: '700' },
-  error: { color: '#dc2626', fontWeight: '600' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
+  chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
+  chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   entity: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 20,
-    width: 280,
+    minWidth: 280,
+    flexGrow: 1,
+    flexBasis: 280,
     gap: 12,
   },
   rowTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  name: { fontSize: 17, fontWeight: '700', color: d.ink },
-  meta: { color: d.muted, fontSize: 13, marginTop: 4 },
+  name: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  meta: { color: d.muted, fontSize: 13, marginTop: 4, fontFamily: d.fonts.body },
   dot: { width: 14, height: 14, borderRadius: 7, marginTop: 4 },
   cardActions: { gap: 10 },
   cardActionsRow: {
@@ -576,6 +561,14 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingTop: 2,
   },
-  edit: { color: d.accent, fontWeight: '600' },
-  delete: { color: '#dc2626', fontWeight: '600' },
+  edit: {
+    color: d.accent,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
+  delete: {
+    color: d.danger,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
 });

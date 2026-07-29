@@ -17,6 +17,33 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Polish UI/UX produto com Impeccable (shared layer)
+
+- **Contexto:** Skills Impeccable + frontend-design pediam polish de todas as páginas; o painel repetia card/header/empty e o marketing perdia links no mobile. Redesign completo quebraria a identidade dual (lavender marketing vs Operate dashboard).  
+- **Decisão:** Refinar o sistema compartilhado (`SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, press/`loading` em botões, tipografia Hanken no dashboard) e migrar telas para esses primitivos; menu mobile na `MarketingNav`; toast dismissível. Conta/Agenda receberam tipografia/sombra sem reescrever fluxos densos. Admin polish isolado (ADR própria).  
+- **Consequências:** Hierarquia e estados consistentes em marketing + painel + profissional; Conta e agendas ainda têm padrões locais de domínio. `/impeccable init` ainda recomendado para PRODUCT.md.  
+- **Alternativas descartadas:** Redesign unificando accent do dashboard no lavender (mudaria Operate); unificar UI kit admin↔produto.
+
+---
+
+## 2026-07-28 — Polish do painel admin com UI kit próprio
+
+- **Contexto:** `admin-frontend` tinha telas de listagem (contas, tickets, planos, cupons) com cabeçalho, busca, linhas e vazio reimplementados manualmente em cada arquivo; `Button` não tinha estado de loading/hover e a nav do shell não escalava bem em telas estreitas.
+- **Decisão:** Expandir `src/theme/admin.ts` (radius, shadow.soft, fonts nas mesmas famílias Hanken/Inter do produto, dangerSoft, fill) e `src/components/ui.tsx` (Button com loading/size/hover-pressed; novos `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Migrar as 4 listagens e o login (card com `shadow.soft`) para esses componentes; nos formulários, trocar só o texto de erro por `ErrorText` e o texto "Salvando…/Criando…" por `Button loading`, sem tocar na lógica. Nav do shell (`(shell)/_layout.tsx`) ganhou `ScrollView` horizontal para os links e estado hover/pressed.
+- **Consequências:** Continua um pacote de UI **isolado** do `frontend/` (nenhum import cruzado) — reaproveita só os nomes de fontes Google já carregadas nos dois apps. Em telas com múltiplas ações sob o mesmo `busy` (ex.: salvar+resetar senha em `edit-account`, salvar+sincronizar+apagar em `edit-plan`), manteve-se `disabled`+texto dinâmico em vez de `loading` para não acender spinner num botão que não é o da ação em andamento.
+- **Alternativas descartadas:** Compartilhar componentes com `frontend/src/components/ui.tsx` (rejeitado — admin é pacote isolado por design); usar `loading` em todos os botões de telas multi-ação (rejeitado — spinner enganoso em botão inativo).
+
+---
+
+## 2026-07-28 — Polish das telas de auth/marketing com componentes compartilhados
+
+- **Contexto:** `login.tsx`, `esqueci-senha.tsx`, `definir-senha.tsx`, `checkout-return.tsx`, `+not-found.tsx`, `trocar-senha.tsx` e `choose-plan.tsx` tinham cartões, banners de erro e botões de loading reimplementados à mão (cores, radius e texto de loading variavam tela a tela), divergindo de `SofAuthCard`/`SofErrorBanner`/`SofButton`/`SofCard`/`SofPageHeader` já usados no restante do produto.
+- **Decisão:** Migrar essas telas para os componentes compartilhados de `frontend/src/components/ui.tsx`; `definir-senha.tsx` passou do tema `dashboard` para `marketing` (fica lado a lado de login/esqueci-senha como parte do funil de auth); `checkout-return.tsx` ganhou `MarketingNav`/`SiteFooter`; `+not-found.tsx` ganhou `Wordmark` + `SofButton`.
+- **Consequências:** Banner de erro agora usa sempre a cor de `SofErrorBanner` (tokens do tema dashboard) mesmo em telas de marketing, substituindo o vermelho quente (`m.danger`) que essas telas usavam antes — leve mudança visual, mas consistente em todo o app. Botões de loading passaram a usar título estático + spinner (prop `loading`) em vez de trocar o texto ("Entrando…", "Salvando…"), padronizando com o resto do dashboard.
+- **Alternativas descartadas:** Manter estilos locais por tela (mais divergência visual); criar uma variante de `SofErrorBanner` por tema (mais um eixo de configuração para um componente que deveria ser neutro).
+
+---
+
 ## 2026-07-28 — Skills Cursor Impeccable + frontend-design
 
 - **Contexto:** Agentes geravam UI genérica (“AI slop”) sem vocabulário de design consistente no monorepo.  

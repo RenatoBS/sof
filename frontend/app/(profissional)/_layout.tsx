@@ -1,8 +1,8 @@
 import { Redirect, Slot, router, usePathname } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
-import { SofButton } from '@/src/components/ui';
+import { SofButton, SofLoadingGate } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 function EmployeeChrome({ children }: { children: React.ReactNode }) {
@@ -12,12 +12,7 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   const onSupport = pathname.includes('support');
 
   if (loading) {
-    return (
-      <View style={styles.gate}>
-        <ActivityIndicator color={d.muted} />
-        <Text style={styles.gateText}>Carregando…</Text>
-      </View>
-    );
+    return <SofLoadingGate label="Carregando…" />;
   }
 
   if (!employee) return <Redirect href="/login" />;
@@ -84,14 +79,6 @@ export default function ProfissionalLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: d.paper },
-  gate: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    backgroundColor: d.paper,
-  },
-  gateText: { color: d.muted, fontSize: 15 },
   topbar: {
     backgroundColor: d.surface,
     borderBottomWidth: 1,
@@ -107,7 +94,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  biz: { fontSize: 22, fontWeight: '700', color: d.ink },
-  email: { fontSize: 14, color: d.muted, marginTop: 4 },
+  biz: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.3,
+  },
+  email: { fontSize: 14, color: d.muted, marginTop: 4, fontFamily: d.fonts.body },
   main: { flex: 1, padding: 32 },
 });

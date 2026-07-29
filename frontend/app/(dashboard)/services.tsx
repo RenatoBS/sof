@@ -4,7 +4,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import type { Service } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
-import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  SofButton,
+  SofCard,
+  SofEmptyState,
+  SofErrorBanner,
+  SofInput,
+  SofPageHeader,
+} from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
@@ -75,7 +82,6 @@ export default function ServicesScreen() {
         setServices((prev) =>
           prev.map((s) => (s.id === service.id ? service : s)),
         );
-        // Keep employee.services in sync when a linked service is renamed/priced
         setEmployees((prev) =>
           prev.map((e) => ({
             ...e,
@@ -115,26 +121,26 @@ export default function ServicesScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Serviços</Text>
-          <Text style={styles.sub}>Configure seu cardápio de serviços</Text>
-        </View>
-        <SofButton
-          title={showForm ? 'Cancelar' : 'Adicionar Serviço'}
-          variant="dark"
-          theme="dashboard"
-          onPress={() => {
-            if (showForm) resetForm();
-            else startCreate();
-          }}
-        />
-      </View>
+      <SofPageHeader
+        title="Serviços"
+        subtitle="Configure o cardápio de serviços do estabelecimento"
+        action={
+          <SofButton
+            title={showForm ? 'Cancelar' : 'Adicionar serviço'}
+            variant="dark"
+            theme="dashboard"
+            onPress={() => {
+              if (showForm) resetForm();
+              else startCreate();
+            }}
+          />
+        }
+      />
 
       {showForm ? (
-        <View style={styles.card}>
+        <SofCard>
           <Text style={styles.cardTitle}>
-            {isEditing ? 'Editar Serviço' : 'Novo Serviço'}
+            {isEditing ? 'Editar serviço' : 'Novo serviço'}
           </Text>
           {fromEmployees && !isEditing ? (
             <Text style={styles.fromHint}>
@@ -142,7 +148,7 @@ export default function ServicesScreen() {
             </Text>
           ) : null}
           <SofInput
-            label="Nome do Serviço"
+            label="Nome do serviço"
             value={name}
             onChangeText={setName}
             theme="dashboard"
@@ -162,19 +168,14 @@ export default function ServicesScreen() {
             theme="dashboard"
             keyboardType="numeric"
           />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <SofErrorBanner message={error} /> : null}
           <View style={styles.actions}>
             <SofButton
-              title={
-                loading
-                  ? 'Salvando…'
-                  : isEditing
-                    ? 'Salvar alterações'
-                    : 'Adicionar'
-              }
+              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
               theme="dashboard"
               onPress={save}
+              loading={loading}
               disabled={loading}
             />
             <SofButton
@@ -184,67 +185,100 @@ export default function ServicesScreen() {
               onPress={resetForm}
             />
           </View>
-        </View>
+        </SofCard>
       ) : null}
 
-      <View style={styles.grid}>
-        {services.map((s) => (
-          <View key={s.id} style={styles.entity}>
-            <Text style={styles.name}>{s.name}</Text>
-            <Text style={styles.meta}>
-              {s.duration} min — {formatCurrency(s.price)}
-            </Text>
-            <View style={styles.cardActions}>
-              <Pressable onPress={() => startEdit(s)}>
-                <Text style={styles.edit}>Editar</Text>
-              </Pressable>
-              <Pressable onPress={() => remove(s.id)}>
-                <Text style={styles.delete}>Remover</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-      </View>
+      {services.length === 0 && !showForm ? (
+        <SofCard padded={false}>
+          <SofEmptyState
+            title="Nenhum serviço ainda"
+            body="Cadastre os serviços que seus clientes poderão agendar pelo WhatsApp e pelo painel."
+            action={
+              <SofButton
+                title="Adicionar serviço"
+                variant="dark"
+                theme="dashboard"
+                onPress={startCreate}
+              />
+            }
+          />
+        </SofCard>
+      ) : (
+        <View style={styles.grid}>
+          {services.map((s) => (
+            <SofCard key={s.id} style={styles.entity}>
+              <Text style={styles.name}>{s.name}</Text>
+              <Text style={styles.meta}>
+                {s.duration} min — {formatCurrency(s.price)}
+              </Text>
+              <View style={styles.cardActions}>
+                <Pressable
+                  onPress={() => startEdit(s)}
+                  style={({ pressed }) => pressed && { opacity: 0.7 }}
+                >
+                  <Text style={styles.edit}>Editar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => remove(s.id)}
+                  style={({ pressed }) => pressed && { opacity: 0.7 }}
+                >
+                  <Text style={styles.delete}>Remover</Text>
+                </Pressable>
+              </View>
+            </SofCard>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { gap: 24 },
-  head: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-    gap: 16,
+  cardTitle: {
+    fontWeight: '600',
+    marginBottom: 8,
+    fontSize: 16,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
   },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
+  fromHint: {
+    color: d.muted,
+    fontSize: 14,
+    marginBottom: 12,
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
   },
-  cardTitle: { fontWeight: '600', marginBottom: 8 },
-  fromHint: { color: d.muted, fontSize: 14, marginBottom: 12, lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  error: { color: d.danger },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 8, flexWrap: 'wrap' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   entity: {
-    backgroundColor: d.surface,
-    padding: 24,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
     minWidth: 280,
     flexGrow: 1,
     flexBasis: 280,
   },
-  name: { fontWeight: '700', fontSize: 16 },
-  meta: { fontSize: 14, color: d.muted, marginTop: 4 },
+  name: {
+    fontWeight: '700',
+    fontSize: 16,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  meta: {
+    fontSize: 14,
+    color: d.muted,
+    marginTop: 4,
+    fontFamily: d.fonts.body,
+  },
   cardActions: { flexDirection: 'row', gap: 16, marginTop: 16 },
-  edit: { color: d.accent, fontWeight: '600', fontSize: 14 },
-  delete: { color: d.danger, fontWeight: '600', fontSize: 14 },
+  edit: {
+    color: d.accent,
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  delete: {
+    color: d.danger,
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: d.fonts.bodyMedium,
+  },
 });

@@ -5,6 +5,7 @@ import {
   formatCurrency,
   useDashboard,
 } from '@/src/context/DashboardContext';
+import { SofCard, SofEmptyState, SofPageHeader } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 
@@ -83,18 +84,18 @@ export default function BillingScreen() {
 
   return (
     <View style={styles.page}>
-      <View>
-        <Text style={styles.h2}>Faturamento</Text>
-        <Text style={styles.sub}>Acompanhe a receita de seus serviços</Text>
-      </View>
+      <SofPageHeader
+        title="Faturamento"
+        subtitle="Acompanhe a receita de seus serviços"
+      />
 
       <View style={styles.statGrid}>
         {[
           { label: 'Hoje', value: stats.day.total },
-          { label: 'Esta Semana', value: stats.week.total },
-          { label: 'Este Mês', value: stats.month.total },
+          { label: 'Esta semana', value: stats.week.total },
+          { label: 'Este mês', value: stats.month.total },
           {
-            label: 'Ticket Médio (mês)',
+            label: 'Ticket médio (mês)',
             value: stats.month.average,
             hint:
               stats.month.count > 0
@@ -102,20 +103,20 @@ export default function BillingScreen() {
                 : 'Sem agendamentos no mês',
           },
         ].map((s) => (
-          <View key={s.label} style={styles.stat}>
+          <SofCard key={s.label} style={styles.stat}>
             <Text style={styles.statLabel}>{s.label}</Text>
             <Text style={styles.statValue}>{formatCurrency(s.value)}</Text>
             {'hint' in s && s.hint ? (
               <Text style={styles.statHint}>{s.hint}</Text>
             ) : null}
-          </View>
+          </SofCard>
         ))}
       </View>
 
-      <View style={styles.card}>
+      <SofCard padded={false} style={styles.card}>
         <Text style={styles.cardTitle}>Agendamentos</Text>
         {rows.length === 0 ? (
-          <Text style={styles.empty}>Nenhum agendamento confirmado</Text>
+          <SofEmptyState title="Nenhum agendamento confirmado" />
         ) : (
           rows.map((a) => {
             const [y, m, day] = a.date.split('-');
@@ -136,55 +137,64 @@ export default function BillingScreen() {
             );
           })
         )}
-      </View>
+      </SofCard>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { gap: 24 },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
   stat: {
-    backgroundColor: d.surface,
-    padding: 24,
-    borderRadius: d.radius,
     borderWidth: 2,
     borderColor: d.accent,
     minWidth: 240,
     flexGrow: 1,
     flexBasis: 240,
   },
-  statLabel: { fontSize: 14, color: d.muted, fontWeight: '600', marginBottom: 12 },
-  statValue: { fontSize: 32, fontWeight: '700', color: d.ink },
-  statHint: { fontSize: 12, color: d.muted, marginTop: 8 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    overflow: 'hidden',
-    paddingTop: 8,
+  statLabel: {
+    fontSize: 14,
+    color: d.muted,
+    fontWeight: '600',
+    marginBottom: 12,
+    fontFamily: d.fonts.bodyMedium,
   },
+  statValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+  },
+  statHint: { fontSize: 12, color: d.muted, marginTop: 8, fontFamily: d.fonts.body },
+  card: { overflow: 'hidden', paddingTop: 8 },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: d.ink,
+    fontFamily: d.fonts.displayBold,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  empty: { padding: 32, textAlign: 'center', color: d.muted },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: d.line,
     gap: 12,
   },
-  rowTitle: { fontSize: 14, color: d.ink, fontWeight: '500' },
-  rowMeta: { fontSize: 12, color: d.muted, marginTop: 4 },
-  rowPrice: { fontWeight: '700', fontSize: 14 },
+  rowTitle: {
+    fontSize: 14,
+    color: d.ink,
+    fontWeight: '500',
+    fontFamily: d.fonts.body,
+  },
+  rowMeta: { fontSize: 12, color: d.muted, marginTop: 4, fontFamily: d.fonts.body },
+  rowPrice: {
+    fontWeight: '700',
+    fontSize: 14,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
 });

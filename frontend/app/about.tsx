@@ -77,9 +77,8 @@ const styles = StyleSheet.create({
   lead: {
     fontFamily: m.fonts.display,
     fontSize: 27,
-    fontWeight: '500',
     lineHeight: 34,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
     color: m.ink,
   },
   body: { color: m.muted, fontSize: 15, lineHeight: 24 },
@@ -93,7 +92,6 @@ const styles = StyleSheet.create({
   },
   k: {
     fontFamily: m.fonts.display,
-    fontWeight: '600',
     fontSize: 16,
     minWidth: 120,
     color: m.ink,

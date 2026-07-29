@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { couponsApi, plansApi, type PlanRow } from '@/src/api/endpoints';
-import { Button, Field } from '@/src/components/ui';
+import { Button, ErrorText, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
 const FREE_DAY_OPTIONS = [7, 30, 60] as const;
@@ -113,13 +113,14 @@ export default function NewCouponScreen() {
         onChangeText={setNote}
         placeholder="Campanha, parceiro…"
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       <View style={styles.actions}>
         <Button title="Cancelar" variant="ghost" onPress={() => router.back()} />
         <Button
-          title={busy ? 'Criando…' : 'Criar'}
+          title="Criar"
           onPress={onSubmit}
-          disabled={busy || !code.trim() || !planId}
+          loading={busy}
+          disabled={!code.trim() || !planId}
         />
       </View>
     </ScrollView>
@@ -157,6 +158,5 @@ const styles = StyleSheet.create({
   chipOn: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   chipText: { fontFamily: 'Inter_500Medium', color: colors.muted, fontSize: 13 },
   chipTextOn: { color: colors.accent },
-  error: { color: colors.danger, marginBottom: space.sm },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
 });
