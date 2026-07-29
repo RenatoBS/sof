@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Conta sem dados duplicados
+
+- **Contexto:** Perfil repetia e-mail/plano/WhatsApp/telefone/endereço já presentes no header, Assinatura, WhatsApp e formulário de contato.  
+- **Decisão:** Assinatura só comercial; um card Estabelecimento com logo+identidade+contato+horário; e-mail só no header; WA só na seção WhatsApp.  
+- **Consequências:** Menos scroll e scan mais claro.  
+- **Alternativas descartadas:** Manter hero + chips de status.
+
+---
+
 ## 2026-07-28 — Cor do profissional: qualquer hex + seletor
 
 - **Contexto:** API só aceitava 6 hex fixos (Tailwind); o form do painel já usava presets da marca Sof — salvar/editar falhava com “Cor inválida”.  
