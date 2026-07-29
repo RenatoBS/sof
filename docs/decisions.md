@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — E-mail SMTP (Gmail) + reset conta + boas-vindas
+
+- **Contexto:** Sem canal de e-mail; reset só WhatsApp (profissional); conta dona sem “esqueci senha”; pós-checkout sem boas-vindas.  
+- **Decisão:** `MailModule` (nodemailer + `SMTP_*`/`MAIL_FROM`); esqueci senha unificado (conta/prof) via e-mail + WhatsApp; link do profissional pelo painel continua **só WhatsApp**; tickets sem e-mail; boas-vindas no `provisionAccount` (nova conta).  
+- **Consequências:** `AccountPasswordToken`; páginas `/esqueci-senha` e `/definir-senha`; Gmail App Password ok para MVP (limites de volume).  
+- **Alternativas descartadas:** Resend/SendGrid já no MVP; e-mail no convite do profissional pelo painel.
+
+---
+
 ## 2026-07-29 — Ícones na tabbar do painel
 
 - **Contexto:** Menu superior só com texto; 7 abas com scroll horizontal no mobile.  

@@ -40,7 +40,8 @@ Registrados em `backend/src/app.module.ts`:
 | Módulo | Responsabilidade |
 |--------|------------------|
 | `PrismaModule` | Cliente Prisma |
-| `AuthModule` | login / logout / me |
+| `AuthModule` | login / logout / me / esqueci senha (conta) |
+| `MailModule` | SMTP transacional (nodemailer; global) |
 | `AccountModule` | conta + status integrações |
 | `EmployeesModule` | profissionais |
 | `ServicesModule` | serviços (cardápio) |

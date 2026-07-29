@@ -20,6 +20,9 @@ Sof ajuda salões/barbearias a:
 | Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
+| Esqueci senha | `/esqueci-senha` | Conta ou profissional; e-mail + WhatsApp (se disponível); link 2h |
+| Definir senha (conta) | `/definir-senha?token=` | Reset da conta dona |
+| Definir senha (prof) | `/profissional/definir-senha?token=` | Convite/reset do profissional |
 | Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
 
 Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`. Tabbar do painel: ícone + label por aba (`DashboardTabIcon`).
@@ -36,7 +39,7 @@ Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, f
 
 Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — provisiona na hora e já entra na agenda.
 
-A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, 10–15 dígitos). No front, nome/e-mail/telefone/senha são validados por campo (borda + mensagem) antes do POST — alinhado às regras do backend.
+A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, 10–15 dígitos). No front, nome/e-mail/telefone/senha são validados por campo (borda + mensagem) antes do POST — alinhado às regras do backend. Em **nova conta**, após provisionar, a API envia e-mail de **boas-vindas** (`MailService`, SMTP) com link de login.
 
 ### Cupons promocionais
 
@@ -111,7 +114,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 - Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`) e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
 - Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/profissional/definir-senha?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
-- **Enviar no WhatsApp:** `POST /api/employees/:id/send-password-link` gera (ou regenera) o link, invalida a senha atual e envia pelo WhatsApp da conta uma mensagem com instruções + botão/CTA **Redefinir senha** (Meta: `cta_url`; Uazapi: CTA se suportado, senão texto com o link). Exige telefone do profissional e WhatsApp conectado.  
+- **Enviar no WhatsApp:** `POST /api/employees/:id/send-password-link` gera (ou regenera) o link, invalida a senha atual e envia **somente pelo WhatsApp** da conta (não por e-mail). Exige telefone do profissional e WhatsApp conectado.  
 - **Self-service:** o profissional também pode pedir o link — ver área do profissional e bot WhatsApp.
 - `PUT /api/employees/:id` substitui nome, e-mail, telefone, cor e a lista de serviços (`resetPassword` opcional → novo link).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
@@ -119,9 +122,10 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 ### Área do profissional
 
 - Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
-- **Esqueci a senha:** `/profissional/esqueci-senha` (link em `/login`) → `POST /api/employee-auth/request-password-reset` (público, throttle). Resposta sempre genérica; se e-mail + telefone + WhatsApp da conta OK, envia CTA no WhatsApp e invalida a senha atual (`EmployeePasswordResetService`).  
-- **Definir senha (convite/reset):** `/profissional/definir-senha?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).  
-- Portal `/(profissional)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.  
+- **Esqueci a senha:** `/esqueci-senha` (link em `/login`) → `POST /api/auth/request-password-reset` (público, throttle). Resolve conta ou profissional pelo e-mail; envia link por **e-mail** e/ou **WhatsApp** (best-effort). Conta: `/definir-senha?token=`; profissional: mesmo fluxo legado em `/profissional/definir-senha` (ou via endpoint employee). Resposta sempre genérica.
+- **Definir senha (convite/reset profissional):** `/profissional/definir-senha?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).
+- **Definir senha (conta):** `/definir-senha?token=` — `GET/POST /api/auth/password-setup`.
+- Portal `/(profissional)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.
 - Pode **marcar como concluído** (`POST /api/employee/appointments/:id/complete`) **somente dentro da janela** [início, fim] do atendimento; conclusão antecipada libera o restante do slot.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
 - Se `mustChangePassword` (legado), redireciona para `/(profissional)/trocar-senha` (exige senha atual).

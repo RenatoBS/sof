@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
+import { MailModule } from './mail/mail.module';
 import { AuthModule } from './auth/auth.module';
 import { AccountModule } from './account/account.module';
 import { EmployeesModule } from './employees/employees.module';
@@ -37,6 +38,7 @@ import { HealthController } from './health/health.controller';
       },
     ]),
     PrismaModule,
+    MailModule,
     EntitlementsModule,
     PromoCouponsModule,
     AuthModule,

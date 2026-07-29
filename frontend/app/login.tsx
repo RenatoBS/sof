@@ -90,9 +90,9 @@ export default function LoginScreen() {
           />
           <Text
             style={styles.forgot}
-            onPress={() => router.push('/profissional/esqueci-senha')}
+            onPress={() => router.push('/esqueci-senha')}
           >
-            Esqueci minha senha (profissional)
+            Esqueci minha senha
           </Text>
           <Text style={styles.alt}>
             Ainda não tem conta?{' '}

@@ -23,6 +23,27 @@ export const authApi = {
     }),
   me: () => api<{ account: Account }>('/auth/me'),
   logout: () => api<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  requestPasswordReset: (email: string) =>
+    api<{ ok: boolean; message: string }>('/auth/request-password-reset', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    }),
+  passwordSetupInfo: (token: string) =>
+    api<{
+      email: string;
+      name: string;
+      businessName: string;
+      expiresAt: string;
+    }>(`/auth/password-setup?token=${encodeURIComponent(token)}`, {
+      auth: false,
+    }),
+  passwordSetup: (token: string, password: string) =>
+    api<{ account: Account; token: string }>('/auth/password-setup', {
+      method: 'POST',
+      body: { token, password },
+      auth: false,
+    }),
 };
 
 export const employeeAuthApi = {

@@ -79,6 +79,7 @@ CLI Heroku pode ecoar secrets — rotacionar se vazar em logs.
 | `WHATSAPP_TOKEN` | token de instância (legado) / Meta access token |
 | `OPENAI_API_KEY` | transcrição de áudio do bot (Uazapi) + NLU de frases livres (`gpt-4o-mini`) |
 | `SEED_DEMO_*` | só para `prisma db seed` (não usados em runtime) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM` | e-mail transacional (Gmail App Password ok para começar); vazio = e-mails ignorados |
 
 Só Meta (`WHATSAPP_PROVIDER=meta`): `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`.
 

@@ -104,7 +104,7 @@ export class EmployeeAuthController {
 
   /**
    * Esqueci a senha (profissional). Sempre responde OK genérico.
-   * Se o e-mail existir e tiver WhatsApp, envia o link no telefone cadastrado.
+   * Envia link por e-mail e/ou WhatsApp quando possível.
    */
   @Post('request-password-reset')
   @HttpCode(200)
@@ -117,7 +117,7 @@ export class EmployeeAuthController {
     const generic = {
       ok: true,
       message:
-        'Se houver um profissional com este e-mail e telefone cadastrado, enviamos o link de redefinição no WhatsApp.',
+        'Se houver um profissional com este e-mail, enviamos o link de redefinição por e-mail e/ou WhatsApp.',
     };
 
     if (!isEmail(email)) {
@@ -135,10 +135,9 @@ export class EmployeeAuthController {
     }
 
     try {
-      await this.passwordReset.issueAndSendWhatsapp({
+      await this.passwordReset.issueAndNotifyForgot({
         employee,
         account: employee.account,
-        source: 'self',
       });
     } catch {
       // Não vaza motivo (WhatsApp off, sem telefone, etc.)
