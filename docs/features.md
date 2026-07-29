@@ -168,11 +168,12 @@ UI agrupada por seções (Assinatura / Estabelecimento / WhatsApp / Lembretes), 
 - **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
 - **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
 - **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
+- **Suporte:** botão “Abrir suporte” (seção Ajuda) → `/(dashboard)/support`.
 - **Sessão:** zona de saída (logout) no rodapé da tela.
 
 ### Suporte
 
-- Aba **Suporte** no dashboard da conta: abrir ticket (`title` + `description`), listar, comentar e mudar status (`open` | `in_progress` | `resolved` | `closed`).
+- Em **Conta → Abrir suporte** (não há mais aba no menu): abrir ticket (`title` + `description`), listar, comentar e mudar status (`open` | `in_progress` | `resolved` | `closed`). Rota `/(dashboard)/support` com botão “Voltar à Conta”.
 - Portal do profissional: ver tickets da conta, comentar e mudar status (não abre ticket novo).
 - Admin Sof: lista (filtro abertos por padrão), detalhe, responder e status.
 - API produto: `GET/POST /api/tickets`, `GET /api/tickets/:id`, `POST …/comments`, `PATCH …/status` — `TenantAuthGuard` (conta **ou** profissional).

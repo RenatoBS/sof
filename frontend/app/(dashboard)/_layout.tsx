@@ -30,7 +30,6 @@ const ALL_TABS = [
     match: 'handoffs',
     feature: 'handoffs',
   },
-  { href: '/(dashboard)/support', label: 'Suporte', match: 'support' },
   {
     href: '/(dashboard)/billing',
     label: 'Faturamento',

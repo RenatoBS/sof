@@ -1165,6 +1165,23 @@ export default function AccountScreen() {
         </>
       ) : null}
 
+      <Text style={styles.sectionLabel}>Ajuda</Text>
+      <View style={styles.card}>
+        <View style={styles.cardTitleBlock}>
+          <Text style={styles.cardTitle}>Suporte Sof</Text>
+          <Text style={styles.cardHint}>
+            Abra um ticket para falar com a equipe Sof sobre conta, cobrança ou
+            WhatsApp.
+          </Text>
+        </View>
+        <SofButton
+          title="Abrir suporte"
+          variant="light"
+          theme="dashboard"
+          onPress={() => router.push('/(dashboard)/support')}
+        />
+      </View>
+
       <View style={styles.dangerZone}>
         <View style={styles.dangerText}>
           <Text style={styles.dangerTitle}>Sessão</Text>

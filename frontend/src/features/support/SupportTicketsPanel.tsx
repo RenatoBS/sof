@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { ApiError } from '@/src/api/client';
 import { dashboardApi, employeeTicketsApi } from '@/src/api/endpoints';
 import type {
@@ -250,12 +251,20 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
         }
         action={
           mode === 'account' ? (
-            <SofButton
-              title={creating ? 'Cancelar' : 'Novo ticket'}
-              theme="dashboard"
-              variant={creating ? 'light' : 'dark'}
-              onPress={() => setCreating((v) => !v)}
-            />
+            <View style={styles.headerActions}>
+              <SofButton
+                title="Voltar à Conta"
+                theme="dashboard"
+                variant="light"
+                onPress={() => router.push('/(dashboard)/account')}
+              />
+              <SofButton
+                title={creating ? 'Cancelar' : 'Novo ticket'}
+                theme="dashboard"
+                variant={creating ? 'light' : 'dark'}
+                onPress={() => setCreating((v) => !v)}
+              />
+            </View>
           ) : undefined
         }
       />
@@ -317,6 +326,12 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
 
 const styles = StyleSheet.create({
   page: { paddingBottom: 48, gap: 20 },
+  headerActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
   title: {
     fontSize: 20,
     fontWeight: '700',
