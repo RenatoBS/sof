@@ -21,8 +21,8 @@ Formato sugerido:
 
 - **Contexto:** HTML de onboarding/bot existia só em `docs/guides/`; precisava de URL estável sem login para enviar ao cliente.  
 - **Decisão:** Publicar em `admin-frontend/public/guides/` (sync no `export:web`); rotas Expo públicas `/guides`, `/guides/onboarding`, `/guides/bot` (fora do `(shell)`); hub lista os links; nav **Guias** abre em nova aba.  
-- **Consequências:** URLs no admin Heroku (ex. `…/guides/onboarding`); fonte continua em `docs/` + `npm run sync-guides`.  
-- **Alternativas descartadas:** Hospedar no front de produto; exigir login admin para ler o guia.
+- **Consequências:** URLs no admin Heroku (ex. `…/guides/onboarding`); fonte continua em `docs/` + `npm run sync-guides`. No Heroku o monorepo só envia `admin-frontend/` — o sync no-op e usa `public/guides` commitado.  
+- **Alternativas descartadas:** Hospedar no front de produto; exigir login admin para ler o guia; buildpack que copie `docs/` para o slug.
 
 ---
 

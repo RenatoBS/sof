@@ -2,15 +2,30 @@
 /**
  * Copia docs/guides + prints para admin-frontend/public/guides
  * (rotas públicas estáticas no admin web).
+ *
+ * No Heroku (buildpack monorepo) só existe admin-frontend/ — sem docs/.
+ * Nesse caso sai 0 e usa o public/guides já commitado.
  */
 const fs = require('fs');
 const path = require('path');
 
-const root = path.resolve(__dirname, '../..');
-const srcGuides = path.join(root, 'docs/guides');
-const srcAssets = path.join(root, 'docs/assets/onboarding');
-const dest = path.join(root, 'admin-frontend/public/guides');
+const adminRoot = path.resolve(__dirname, '..');
+const monorepoRoot = path.resolve(adminRoot, '..');
+const srcGuides = path.join(monorepoRoot, 'docs/guides');
+const srcAssets = path.join(monorepoRoot, 'docs/assets/onboarding');
+const dest = path.join(adminRoot, 'public/guides');
 const destAssets = path.join(dest, 'assets');
+
+if (!fs.existsSync(srcGuides) || !fs.existsSync(srcAssets)) {
+  console.log(
+    '[sync-guides] docs/ ausente (deploy monorepo) — mantendo public/guides commitado',
+  );
+  if (!fs.existsSync(path.join(dest, 'onboarding-cliente.html'))) {
+    console.error('[sync-guides] public/guides também vazio — falha');
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 fs.mkdirSync(destAssets, { recursive: true });
 
