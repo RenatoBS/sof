@@ -12,7 +12,7 @@ import { AccountPasswordResetService } from './account-password-reset.service';
   imports: [
     EntitlementsModule,
     PromoCouponsModule,
-    forwardRef(() => EmployeePortalModule),
+    EmployeePortalModule,
     forwardRef(() => WhatsappModule),
   ],
   controllers: [AuthController],
@@ -21,6 +21,10 @@ import { AccountPasswordResetService } from './account-password-reset.service';
     AccountPasswordTokenService,
     AccountPasswordResetService,
   ],
-  exports: [AuthGuard, AccountPasswordTokenService, AccountPasswordResetService],
+  exports: [
+    AuthGuard,
+    AccountPasswordTokenService,
+    AccountPasswordResetService,
+  ],
 })
 export class AuthModule {}
