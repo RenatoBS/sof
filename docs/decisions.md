@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — `deploy:together` (API + front em paralelo)
+
+- **Contexto:** `npm run deploy` publica API e depois front; quem quer ambos ao mesmo tempo precisava de dois terminais.  
+- **Decisão:** Script `scripts/deploy-together.sh` + `npm run deploy:together` faz `git push` paralelo para `heroku-api` e `heroku-web`, agrega logs e falha se qualquer um falhar. `deploy` sequencial permanece.  
+- **Consequências:** Builds Heroku sobem juntos; tempo de parede menor. Se a API falhar, o front ainda pode ter sido aceito (checar logs).  
+- **Alternativas descartadas:** Só alias de `deploy`; forçar paralelo no `deploy` padrão (quebra expectativa api-first).
+
+---
+
 ## 2026-07-28 — Máscara e validação em Clientes e Profissionais
 
 - **Contexto:** Forms de cliente/profissional (e cadastro rápido na agenda) sem máscara de telefone e com validação fraca ou só mensagem genérica.  
