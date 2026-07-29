@@ -13,6 +13,13 @@ import {
   SofPageHeader,
   SofRowActions,
 } from '@/src/components/ui';
+import {
+  EntityAvatar,
+  EntityCardBody,
+  EntityCardFooter,
+  EntityStat,
+  entityCardStyles as ec,
+} from '@/src/features/dashboard/EntityCard';
 import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
@@ -121,10 +128,10 @@ export default function ServicesScreen() {
   };
 
   return (
-    <View style={styles.page}>
+    <View style={ec.page}>
       <SofPageHeader
         title="Serviços"
-        subtitle="Configure o cardápio de serviços do estabelecimento"
+        subtitle="Cardápio que aparece no WhatsApp e na agenda"
         action={
           <SofButton
             title={showForm ? 'Cancelar' : 'Adicionar serviço'}
@@ -137,14 +144,20 @@ export default function ServicesScreen() {
           />
         }
       />
+      {services.length > 0 ? (
+        <Text style={ec.count}>
+          {services.length}{' '}
+          {services.length === 1 ? 'serviço' : 'serviços'}
+        </Text>
+      ) : null}
 
       {showForm ? (
         <SofCard>
-          <Text style={styles.cardTitle}>
+          <Text style={ec.formTitle}>
             {isEditing ? 'Editar serviço' : 'Novo serviço'}
           </Text>
           {fromEmployees && !isEditing ? (
-            <Text style={styles.fromHint}>
+            <Text style={ec.formHint}>
               Cadastre ao menos um serviço antes de adicionar profissionais.
             </Text>
           ) : null}
@@ -155,22 +168,28 @@ export default function ServicesScreen() {
             theme="dashboard"
             placeholder="Ex: Corte"
           />
-          <SofInput
-            label="Duração (minutos)"
-            value={duration}
-            onChangeText={setDuration}
-            theme="dashboard"
-            keyboardType="numeric"
-          />
-          <SofInput
-            label="Preço (R$)"
-            value={price}
-            onChangeText={setPrice}
-            theme="dashboard"
-            keyboardType="numeric"
-          />
+          <View style={styles.formRow}>
+            <View style={styles.formCol}>
+              <SofInput
+                label="Duração (min)"
+                value={duration}
+                onChangeText={setDuration}
+                theme="dashboard"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.formCol}>
+              <SofInput
+                label="Preço (R$)"
+                value={price}
+                onChangeText={setPrice}
+                theme="dashboard"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
           {error ? <SofErrorBanner message={error} /> : null}
-          <View style={styles.actions}>
+          <View style={ec.formActions}>
             <SofButton
               title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
@@ -205,19 +224,29 @@ export default function ServicesScreen() {
           />
         </SofCard>
       ) : (
-        <View style={styles.grid}>
+        <View style={ec.grid}>
           {services.map((s) => (
-            <SofCard key={s.id} style={styles.entity}>
-              <Text style={styles.name}>{s.name}</Text>
-              <Text style={styles.meta}>
-                {s.duration} min — {formatCurrency(s.price)}
-              </Text>
-              <View style={styles.cardActions}>
+            <SofCard key={s.id} padded={false} style={ec.entity}>
+              <EntityCardBody>
+                <View style={styles.head}>
+                  <EntityAvatar name={s.name} color={d.accent} />
+                  <View style={styles.headCopy}>
+                    <Text style={styles.name} numberOfLines={2}>
+                      {s.name}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.stats}>
+                  <EntityStat label="Duração" value={`${s.duration} min`} />
+                  <EntityStat label="Preço" value={formatCurrency(s.price)} />
+                </View>
+              </EntityCardBody>
+              <EntityCardFooter>
                 <SofRowActions
                   onEdit={() => startEdit(s)}
                   onRemove={() => remove(s.id)}
                 />
-              </View>
+              </EntityCardFooter>
             </SofCard>
           ))}
         </View>
@@ -227,39 +256,16 @@ export default function ServicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24 },
-  cardTitle: {
-    fontWeight: '600',
-    marginBottom: 8,
-    fontSize: 16,
-    color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
-  },
-  fromHint: {
-    color: d.muted,
-    fontSize: 14,
-    marginBottom: 12,
-    lineHeight: 20,
-    fontFamily: d.fonts.body,
-  },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 8, flexWrap: 'wrap' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  entity: {
-    minWidth: 280,
-    flexGrow: 1,
-    flexBasis: 280,
-  },
+  formRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  formCol: { flexGrow: 1, flexBasis: 140, minWidth: 120 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headCopy: { flex: 1, minWidth: 0 },
   name: {
+    fontSize: 17,
     fontWeight: '700',
-    fontSize: 16,
     color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
   },
-  meta: {
-    fontSize: 14,
-    color: d.muted,
-    marginTop: 4,
-    fontFamily: d.fonts.body,
-  },
-  cardActions: { marginTop: 16 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });

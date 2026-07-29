@@ -12,6 +12,7 @@ export const d = {
   accent: m.accent,
   accentSoft: m.accentSoft,
   copper: m.copper,
+  copperInk: m.copperInk,
   copperSoft: m.copperSoft,
   fill: '#EEF0EF',
   danger: '#dc2626',

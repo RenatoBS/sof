@@ -7,11 +7,20 @@ import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
 import {
   SofButton,
   SofCard,
+  SofEmptyState,
   SofErrorBanner,
   SofInput,
   SofPageHeader,
   SofRowActions,
 } from '@/src/components/ui';
+import {
+  EntityAvatar,
+  EntityCardBody,
+  EntityCardFooter,
+  EntityChip,
+  EntityStat,
+  entityCardStyles as ec,
+} from '@/src/features/dashboard/EntityCard';
 import {
   hasFieldErrors,
   maskBrPhone,
@@ -233,10 +242,10 @@ export default function EmployeesScreen() {
   };
 
   return (
-    <View style={styles.page}>
+    <View style={ec.page}>
       <SofPageHeader
         title="Profissionais"
-        subtitle="Gerencie a equipe e o acesso de cada profissional"
+        subtitle="Equipe, serviços e acesso à agenda"
         action={
           <SofButton
             title={showForm ? 'Cancelar' : 'Adicionar profissional'}
@@ -249,26 +258,30 @@ export default function EmployeesScreen() {
           />
         }
       />
+      {employees.length > 0 ? (
+        <Text style={ec.count}>
+          {employees.length}{' '}
+          {employees.length === 1 ? 'profissional' : 'profissionais'}
+        </Text>
+      ) : null}
 
       {inviteLink ? (
         <SofCard style={styles.passwordCard}>
-          <Text style={styles.cardTitle}>Link de acesso gerado</Text>
-          <Text style={styles.hint}>
-            Envie pelo WhatsApp do estabelecimento (mensagem com instruções +
-            botão &quot;Redefinir senha&quot;) ou copie o link. Uso único, expira
-            em 2 horas — ao abrir, o profissional define a senha e já entra na
-            agenda.
+          <Text style={ec.formTitle}>Link de acesso gerado</Text>
+          <Text style={ec.formHint}>
+            Envie pelo WhatsApp do estabelecimento ou copie o link. Uso único,
+            expira em 2 horas — ao abrir, o profissional define a senha e entra
+            na agenda.
           </Text>
           {inviteExpiresAt ? (
-            <Text style={styles.hint}>
-              Válido até{' '}
-              {new Date(inviteExpiresAt).toLocaleString('pt-BR')}
+            <Text style={ec.formHint}>
+              Válido até {new Date(inviteExpiresAt).toLocaleString('pt-BR')}
             </Text>
           ) : null}
           <Text selectable style={styles.tempPass}>
             {inviteLink}
           </Text>
-          <View style={styles.actions}>
+          <View style={ec.formActions}>
             <SofButton
               title={waSent ? 'Enviado no WhatsApp' : 'Enviar no WhatsApp'}
               variant="dark"
@@ -302,7 +315,7 @@ export default function EmployeesScreen() {
 
       {showForm ? (
         <SofCard>
-          <Text style={styles.cardTitle}>
+          <Text style={ec.formTitle}>
             {isEditing ? 'Editar profissional' : 'Novo profissional'}
           </Text>
           <View style={styles.formGrid}>
@@ -402,14 +415,14 @@ export default function EmployeesScreen() {
                 </Text>
               </Pressable>
             ) : (
-              <Text style={styles.hint}>
+              <Text style={ec.formHint}>
                 Ao salvar, um link de uso único (válido por 2h) será gerado para
                 o profissional definir a senha.
               </Text>
             )}
           </View>
           {error ? <SofErrorBanner message={error} /> : null}
-          <View style={styles.actions}>
+          <View style={ec.formActions}>
             <SofButton
               title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
@@ -428,70 +441,121 @@ export default function EmployeesScreen() {
         </SofCard>
       ) : null}
 
-      <View style={styles.grid}>
-        {employees.map((e) => (
-          <SofCard key={e.id} style={styles.entity}>
-            <View style={styles.rowTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{e.name}</Text>
-                <Text style={styles.meta}>{e.email || 'Sem e-mail de acesso'}</Text>
-                <Text style={styles.meta}>
-                  {e.phone ? formatPhone(e.phone) : 'Sem telefone'}
-                </Text>
-                <Text style={styles.meta}>
-                  {(e.services || []).map((s) => s.name).join(', ') || '—'}
-                </Text>
-              </View>
-              <View style={[styles.dot, { backgroundColor: e.color }]} />
-            </View>
-            <View style={styles.cardActions}>
-              <SofRowActions
-                onEdit={() => startEdit(e)}
-                onRemove={() => remove(e.id)}
+      {employees.length === 0 && !showForm && !inviteLink ? (
+        <SofCard padded={false}>
+          <SofEmptyState
+            title="Nenhum profissional ainda"
+            body={
+              services.length === 0
+                ? 'Cadastre ao menos um serviço e depois adicione a equipe.'
+                : 'Adicione a equipe para montar a agenda e liberar acesso.'
+            }
+            action={
+              <SofButton
+                title={
+                  services.length === 0
+                    ? 'Cadastrar serviço'
+                    : 'Adicionar profissional'
+                }
+                variant="dark"
+                theme="dashboard"
+                onPress={startCreate}
               />
-              <Pressable
-                onPress={() => sendInviteWhatsapp(e.id)}
-                disabled={sendingWa}
-                style={styles.waAction}
-                accessibilityRole="button"
-                accessibilityLabel="Enviar senha no WhatsApp"
-              >
-                <Text style={styles.waText}>
-                  {sendingWa && inviteEmployeeId === e.id
-                    ? 'Enviando…'
-                    : 'Enviar senha no WhatsApp'}
-                </Text>
-              </Pressable>
-            </View>
-          </SofCard>
-        ))}
-      </View>
+            }
+          />
+        </SofCard>
+      ) : (
+        <View style={ec.grid}>
+          {employees.map((e) => {
+            const serviceNames = (e.services || []).map((s) => s.name);
+            return (
+              <SofCard key={e.id} padded={false} style={ec.entity}>
+                <EntityCardBody>
+                  <View style={styles.head}>
+                    <EntityAvatar
+                      name={e.name}
+                      color={e.color || d.accent}
+                      size={48}
+                    />
+                    <View style={styles.headCopy}>
+                      <Text style={styles.name} numberOfLines={2}>
+                        {e.name}
+                      </Text>
+                      <Text style={styles.email} numberOfLines={1}>
+                        {e.email || 'Sem e-mail de acesso'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.stats}>
+                    <EntityStat
+                      label="Telefone"
+                      value={e.phone ? formatPhone(e.phone) : '—'}
+                    />
+                  </View>
+                  <View style={styles.serviceWrap}>
+                    <Text style={styles.servicesLabel}>Serviços</Text>
+                    <View style={styles.serviceChips}>
+                      {serviceNames.length ? (
+                        serviceNames.slice(0, 4).map((label) => (
+                          <EntityChip key={label} tone="accent">
+                            {label}
+                          </EntityChip>
+                        ))
+                      ) : (
+                        <EntityChip tone="neutral">Nenhum</EntityChip>
+                      )}
+                      {serviceNames.length > 4 ? (
+                        <EntityChip tone="neutral">
+                          {`+${serviceNames.length - 4}`}
+                        </EntityChip>
+                      ) : null}
+                    </View>
+                  </View>
+                </EntityCardBody>
+                <EntityCardFooter>
+                  <View style={styles.footerRow}>
+                    <SofRowActions
+                      onEdit={() => startEdit(e)}
+                      onRemove={() => remove(e.id)}
+                    />
+                    <SofButton
+                      title={
+                        sendingWa && inviteEmployeeId === e.id
+                          ? 'Enviando…'
+                          : 'Senha no WhatsApp'
+                      }
+                      variant="light"
+                      theme="dashboard"
+                      onPress={() => sendInviteWhatsapp(e.id)}
+                      disabled={sendingWa}
+                      loading={sendingWa && inviteEmployeeId === e.id}
+                    />
+                  </View>
+                </EntityCardFooter>
+              </SofCard>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24 },
   passwordCard: {
     backgroundColor: '#ecfdf5',
     borderColor: '#a7f3d0',
-    gap: 12,
+    gap: 4,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: d.ink,
-    fontFamily: d.fonts.displayBold,
-    marginBottom: 4,
-  },
-  formGrid: { gap: 12 },
+  formGrid: { gap: 4 },
   label: {
     fontWeight: '600',
     color: d.mutedStrong,
     fontSize: 14,
     fontFamily: d.fonts.bodyMedium,
+    marginTop: 6,
+    marginBottom: 6,
   },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20, fontFamily: d.fonts.body },
   tempPass: {
     fontSize: 13,
     fontWeight: '600',
@@ -499,8 +563,12 @@ const styles = StyleSheet.create({
     color: d.ink,
     fontFamily: 'monospace',
     lineHeight: 20,
+    backgroundColor: d.fill,
+    padding: 12,
+    borderRadius: d.radiusSm,
+    overflow: 'hidden',
   },
-  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
   colorSwatch: {
     width: 32,
     height: 32,
@@ -512,7 +580,7 @@ const styles = StyleSheet.create({
     borderColor: d.ink,
     transform: [{ scale: 1.08 }],
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
@@ -529,38 +597,42 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: d.surface,
     alignSelf: 'flex-start',
+    marginTop: 4,
   },
   chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
   chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
   chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  entity: {
-    minWidth: 280,
-    flexGrow: 1,
-    flexBasis: 280,
-    gap: 12,
-  },
-  rowTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headCopy: { flex: 1, minWidth: 0, gap: 2 },
   name: {
     fontSize: 17,
     fontWeight: '700',
     color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
   },
-  meta: { color: d.muted, fontSize: 13, marginTop: 4, fontFamily: d.fonts.body },
-  dot: { width: 14, height: 14, borderRadius: 7, marginTop: 4 },
-  cardActions: { gap: 10 },
-  waAction: {
-    alignSelf: 'flex-start',
-    paddingTop: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+  email: {
+    fontSize: 13,
+    color: d.muted,
+    fontFamily: d.fonts.body,
   },
-  waText: {
-    color: d.accent,
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  serviceWrap: { gap: 8 },
+  servicesLabel: {
+    fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: d.muted,
     fontFamily: d.fonts.bodyMedium,
-    fontSize: 14,
+  },
+  serviceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  footerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    justifyContent: 'space-between',
   },
 });

@@ -14,6 +14,14 @@ import {
 } from '@/src/components/ui';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import {
+  EntityAvatar,
+  EntityCardBody,
+  EntityCardFooter,
+  EntityChip,
+  EntityStat,
+  entityCardStyles as ec,
+} from '@/src/features/dashboard/EntityCard';
+import {
   hasFieldErrors,
   maskBrPhone,
   normalizePhoneDigits,
@@ -40,19 +48,22 @@ function isClientBotPaused(client: Client) {
   return !Number.isNaN(until.getTime()) && until.getTime() > Date.now();
 }
 
-function pauseBadge(client: Client) {
-  if (client.botPausedPermanent) return 'Bot off';
+function pauseBadge(client: Client): { label: string; tone: 'warn' | 'danger' } | null {
+  if (client.botPausedPermanent) return { label: 'Bot desligado', tone: 'danger' };
   if (!client.botPausedUntil) return null;
   const until = new Date(client.botPausedUntil);
   if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
     return null;
   }
-  return `Bot pausado até ${until.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })}`;
+  return {
+    label: `Pausado até ${until.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`,
+    tone: 'warn',
+  };
 }
 
 function pauseModeFromClient(client: Client): PauseMode {
@@ -62,7 +73,7 @@ function pauseModeFromClient(client: Client): PauseMode {
   if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
     return 'off';
   }
-  return '24h'; // modo temporário genérico ao editar (usuário reescolhe o preset)
+  return '24h';
 }
 
 function pausePayload(mode: PauseMode): {
@@ -189,10 +200,10 @@ export default function ClientsScreen() {
   };
 
   return (
-    <View style={styles.page}>
+    <View style={ec.page}>
       <SofPageHeader
         title="Clientes"
-        subtitle="Cadastre nome e telefone para vincular aos agendamentos"
+        subtitle="Nome e telefone para vincular aos agendamentos"
         action={
           <SofButton
             title={showForm ? 'Cancelar' : 'Adicionar cliente'}
@@ -205,10 +216,15 @@ export default function ClientsScreen() {
           />
         }
       />
+      {clients.length > 0 ? (
+        <Text style={ec.count}>
+          {clients.length} {clients.length === 1 ? 'cliente' : 'clientes'}
+        </Text>
+      ) : null}
 
       {showForm ? (
         <SofCard>
-          <Text style={styles.cardTitle}>
+          <Text style={ec.formTitle}>
             {isEditing ? 'Editar cliente' : 'Novo cliente'}
           </Text>
           <View style={styles.formGrid}>
@@ -239,9 +255,9 @@ export default function ClientsScreen() {
             {isEditing && has('botPause') ? (
               <>
                 <Text style={styles.label}>Bot WhatsApp</Text>
-                <Text style={styles.hint}>
-                  Desative para este cliente: o bot para de responder a conversa
-                  (silêncio). Pode ser permanente ou por um tempo.
+                <Text style={ec.formHint}>
+                  Desative para este cliente: o bot para de responder (silêncio).
+                  Pode ser permanente ou por um tempo.
                 </Text>
                 <View style={styles.chips}>
                   {PAUSE_PRESETS.map((p) => {
@@ -268,7 +284,7 @@ export default function ClientsScreen() {
             ) : null}
           </View>
           {error ? <SofErrorBanner message={error} /> : null}
-          <View style={styles.actions}>
+          <View style={ec.formActions}>
             <SofButton
               title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
@@ -287,10 +303,10 @@ export default function ClientsScreen() {
         </SofCard>
       ) : null}
 
-      {clients.length === 0 ? (
+      {clients.length === 0 && !showForm ? (
         <SofCard padded={false}>
           <SofEmptyState
-            title="Nenhum cliente cadastrado ainda"
+            title="Nenhum cliente ainda"
             body="Adicione manualmente ou aguarde o cadastro pelo WhatsApp."
             action={
               <SofButton
@@ -302,64 +318,67 @@ export default function ClientsScreen() {
             }
           />
         </SofCard>
-      ) : (
-        <View style={styles.grid}>
+      ) : clients.length > 0 ? (
+        <View style={ec.grid}>
           {clients.map((c) => {
             const badge = pauseBadge(c);
             return (
-              <SofCard key={c.id} style={styles.entity}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.name}>{c.name}</Text>
-                  {badge ? (
-                    <Text
-                      style={[
-                        styles.badge,
-                        c.botPausedPermanent && styles.badgePermanent,
-                      ]}
-                    >
-                      {badge}
+              <SofCard key={c.id} padded={false} style={ec.entity}>
+                <EntityCardBody>
+                  <View style={styles.head}>
+                    <EntityAvatar name={c.name} color={d.accent} />
+                    <View style={styles.headCopy}>
+                      <Text style={styles.name} numberOfLines={2}>
+                        {c.name}
+                      </Text>
+                      {has('botPause') ? (
+                        <View style={styles.badgeRow}>
+                          {badge ? (
+                            <EntityChip tone={badge.tone}>{badge.label}</EntityChip>
+                          ) : (
+                            <EntityChip tone="ok">Bot ativo</EntityChip>
+                          )}
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View style={styles.stats}>
+                    <EntityStat
+                      label="Telefone"
+                      value={formatPhone(c.phone) || '—'}
+                    />
+                  </View>
+                  {isClientBotPaused(c) && !c.botPausedPermanent ? (
+                    <Text style={styles.note}>
+                      Bot silencioso neste período
                     </Text>
                   ) : null}
-                </View>
-                <Text style={styles.meta}>{formatPhone(c.phone)}</Text>
-                {isClientBotPaused(c) && !c.botPausedPermanent ? (
-                  <Text style={styles.metaMuted}>
-                    Bot silencioso neste período
-                  </Text>
-                ) : null}
-                <View style={styles.cardActions}>
+                </EntityCardBody>
+                <EntityCardFooter>
                   <SofRowActions
                     onEdit={() => startEdit(c)}
                     onRemove={() => remove(c.id)}
                   />
-                </View>
+                </EntityCardFooter>
               </SofCard>
             );
           })}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24 },
-  cardTitle: {
-    fontWeight: '600',
-    marginBottom: 8,
-    fontSize: 16,
-    color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
-  },
-  formGrid: { gap: 12 },
+  formGrid: { gap: 4 },
   label: {
     fontWeight: '600',
     color: d.mutedStrong,
     fontSize: 14,
     fontFamily: d.fonts.bodyMedium,
+    marginTop: 4,
   },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20, fontFamily: d.fonts.body },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
@@ -371,47 +390,21 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
   chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
   chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  entity: {
-    minWidth: 280,
-    flexGrow: 1,
-    flexBasis: 280,
-    gap: 8,
-  },
-  rowTop: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    alignItems: 'center',
-  },
+  head: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  headCopy: { flex: 1, minWidth: 0, gap: 8 },
   name: {
     fontSize: 17,
     fontWeight: '700',
     color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
   },
-  badge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#92400e',
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    overflow: 'hidden',
-    fontFamily: d.fonts.bodyMedium,
-  },
-  badgePermanent: {
-    color: '#991b1b',
-    backgroundColor: d.dangerSoft,
-  },
-  meta: { color: d.muted, fontSize: 13, fontFamily: d.fonts.body },
-  metaMuted: {
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  note: {
     color: d.muted,
     fontSize: 12,
-    fontStyle: 'italic',
     fontFamily: d.fonts.body,
+    fontStyle: 'italic',
   },
-  cardActions: { marginTop: 4 },
 });

@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Cards entity (Profissionais / Serviços / Clientes)
+
+- **Contexto:** Cards das três listagens eram blocos de texto plano com ações soltas; pouca hierarquia e empty fraco em profissionais.  
+- **Decisão:** Primitivos `EntityAvatar` / `EntityStat` / `EntityChip` / footer em `features/dashboard/EntityCard.tsx`; cards com avatar, meta rotulada, chips e rodapé de ações; contagem no header; empty state em profissionais.  
+- **Consequências:** Visual Operate mais scannable e consistente entre as três telas.  
+- **Alternativas descartadas:** Tabela densa; redesign total da IA.
+
+---
+
 ## 2026-07-28 — Logo do estabelecimento em base64 (≤5 MB)
 
 - **Contexto:** Dono precisa de identidade visual no painel; storage de objetos (S3/Blob) ainda não está no stack.  
