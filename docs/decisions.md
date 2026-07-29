@@ -21,6 +21,15 @@ Formato sugerido:
 
 ---
 
+---
+
+## 2026-07-29 — Bot Solo: awaiting_employee sem horário (loop)
+
+- **Contexto:** Planos sem `bookingPathChoice` (Solo) gravavam `awaiting_employee` só com `serviceId`. O handler de `awaiting_employee` exigia `date`+`time` e caía em `pathMenu` de novo → cliente recebia “Não entendi” / menu repetido ao escolher profissional.
+- **Decisão:** Pré-horário sempre usa step `awaiting_path`; sessões legadas sem slot no `awaiting_employee` resolvem profissional e seguem para `dayMenu`.
+- **Consequências:** Agendamento Solo volta a avançar após escolher o profissional.
+- **Alternativas descartadas:** Manter dois steps distintos com handlers separados só para Solo.
+
 ## 2026-07-29 — Guias admin: prints Conta/modais atualizados
 
 - **Contexto:** Prints do onboarding no admin-web mostravam Conta antiga (formulário inline, botão Escanear QR) e CRUD sem modal.
