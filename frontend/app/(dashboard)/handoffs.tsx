@@ -282,8 +282,18 @@ const styles = StyleSheet.create({
     fontFamily: d.fonts.displayBold,
     marginBottom: 4,
   },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20, fontFamily: d.fonts.body },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  hint: {
+    color: d.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
@@ -374,5 +384,10 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontFamily: d.fonts.body,
   },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
 });
