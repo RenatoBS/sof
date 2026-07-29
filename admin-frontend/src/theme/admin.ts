@@ -1,16 +1,18 @@
-/** Tokens do painel admin da Sof. Tipografia alinhada ao produto (Hanken/Inter); accent verde próprio do admin. */
+/** Tokens do painel admin Sof — mesma família cromática do produto (verde floresta). */
 export const colors = {
   bg: '#F4F4F6',
   paper: '#FFFFFF',
-  ink: '#141414',
-  muted: '#6B6B76',
-  line: '#E4E4EA',
-  fill: '#EEEEF2',
-  accent: '#1A5C4A',
-  accentSoft: '#E8F2EE',
+  ink: '#1F2623',
+  muted: '#6E7873',
+  line: '#E3E6E4',
+  fill: '#EEF0EF',
+  accent: '#3D4743',
+  accentSoft: '#E8EBE9',
+  copper: '#C19A6B',
+  copperSoft: '#F4EEE6',
   danger: '#B42318',
   dangerSoft: '#FBEAE7',
-  warn: '#B54708',
+  warn: '#8F6E45',
 };
 
 export const space = {

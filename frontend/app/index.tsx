@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: m.line,
     marginBottom: 16,
   },
-  ruleAccent: { width: 28, height: 1, backgroundColor: m.accent },
+  ruleAccent: { width: 28, height: 1, backgroundColor: m.copper },
   stepNum: {
     fontFamily: m.fonts.displayBold,
     fontSize: 13,

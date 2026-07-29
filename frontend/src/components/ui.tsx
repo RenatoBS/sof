@@ -375,7 +375,7 @@ const field = StyleSheet.create({
     fontSize: 12.5,
     letterSpacing: 2.2,
     textTransform: 'uppercase',
-    color: m.accentInk,
+    color: m.copperInk,
     fontWeight: '600',
   },
   wrapMax: {

@@ -186,7 +186,7 @@ Token storage: web `localStorage` chave `sof_token`; native SecureStore.
 
 ### UI
 
-Temas: `src/theme/marketing.ts` (`m`, lavender) e `src/theme/dashboard.ts` (`d`, Operate — azul + tipografia Hanken/Inter alinhada ao marketing).
+Temas: `src/theme/marketing.ts` (`m`) e `src/theme/dashboard.ts` (`d`) — identidade Sof da logo: verde floresta `#3D4743` + cobre `#C19A6B`, fundos claros (`paper` `#F4F4F6` / `surface` branco).
 
 Kit compartilhado em `src/components/ui.tsx`: `SofButton` (pressed/hover/`loading`), `SofInput`, `SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, `SofListRow`, `Eyebrow`, `Wrap`. Marketing: `MarketingNav` (menu mobile), `SiteFooter`, `SofChatCard`, `FeatureIcon`.
 
@@ -240,4 +240,4 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
 - Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.
-- UI kit próprio (não compartilha código com `frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter do produto, accent verde próprio do admin) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.
+- UI kit próprio (não compartilha código com `frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter e mesma cromia Sof: verde floresta + cobre) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.

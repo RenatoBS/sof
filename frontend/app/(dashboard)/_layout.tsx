@@ -17,7 +17,6 @@ import { useRealtime } from '@/src/hooks/useRealtime';
 import { SofButton, SofLoadingGate } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 import type { Appointment, WhatsappHandoff } from '@/src/api/types';
-import { m } from '@/src/theme/marketing';
 
 const ALL_TABS = [
   { href: '/(dashboard)/agenda', label: 'Agenda', match: 'agenda' },
@@ -276,7 +275,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: m.accent },
+  tabActive: { borderBottomColor: d.accent },
   tabLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: {
     fontSize: 15,

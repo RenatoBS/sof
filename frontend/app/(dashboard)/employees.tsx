@@ -21,12 +21,12 @@ import {
 import { d } from '@/src/theme/dashboard';
 
 const EMPLOYEE_COLORS = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
+  '#3D4743',
+  '#C19A6B',
+  '#5B7A6E',
+  '#8F6E45',
+  '#6E7873',
+  '#A67C52',
 ] as const;
 
 export default function EmployeesScreen() {

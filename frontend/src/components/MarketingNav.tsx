@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: m.accent,
+    backgroundColor: m.copper,
     marginBottom: 2,
   },
   links: { flexDirection: 'row', gap: 32, flex: 1, justifyContent: 'center' },
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: m.radiusSm,
   },
-  mobileLinkActive: { backgroundColor: m.accentSoft },
+  mobileLinkActive: { backgroundColor: m.copperSoft },
   mobileLinkText: {
     fontFamily: m.fonts.bodyMedium,
     fontSize: 16,

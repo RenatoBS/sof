@@ -1,17 +1,19 @@
 import { m } from '@/src/theme/marketing';
 
-/** Tokens do painel (Operate). Tipografia alinhada ao marketing; accent próprio para scanabilidade. */
+/** Tokens do painel (Operate) — mesma marca Sof; fundos claros para scanabilidade. */
 export const d = {
-  ink: '#1a202c',
-  muted: '#64748b',
-  mutedStrong: '#475569',
-  line: '#e2e8f0',
-  lineStrong: '#cbd5e1',
-  paper: '#fafbfc',
-  surface: '#ffffff',
-  accent: '#3b82f6',
-  accentSoft: '#eff6ff',
-  fill: '#f1f5f9',
+  ink: m.ink,
+  muted: m.muted,
+  mutedStrong: '#4A5450',
+  line: m.line,
+  lineStrong: '#CDD2CF',
+  paper: '#F7F8F7',
+  surface: m.surface,
+  accent: m.accent,
+  accentSoft: m.accentSoft,
+  copper: m.copper,
+  copperSoft: m.copperSoft,
+  fill: '#EEF0EF',
   danger: '#dc2626',
   dangerSoft: '#fee2e2',
   waGreen: '#25D366',
@@ -28,7 +30,7 @@ export const d = {
   },
   shadow: {
     soft: {
-      shadowColor: '#1a202c',
+      shadowColor: m.ink,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.04,
       shadowRadius: 16,

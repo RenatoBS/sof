@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Paleta Sof da logo (verde floresta + cobre)
+
+- **Contexto:** Identidade visual oficial (SOF + “AGENDA · CONVERSA · CONECTA”) usa fundo verde floresta e pontos cobre; o produto ainda tinha lavender marketing e azul Tailwind no dashboard.  
+- **Decisão:** Tokens `m`/`d` (e admin) passam a `#3D4743` (accent) + `#C19A6B` (copper); fundos permanecem claros (`#F4F4F6` / branco). Wordmark usa ponto cobre; plano featured e eyebrows usam cobre; CTAs/ícones usam verde.  
+- **Consequências:** Marketing, painel e admin compartilham a mesma cromia; WhatsApp green (`waGreen`) permanece só para estados WA.  
+- **Alternativas descartadas:** Fundo verde escuro na UI (pedido: manter branco/cinza); manter azul Operate separado.
+
+---
+
 ## 2026-07-28 — Polish UI/UX produto com Impeccable (shared layer)
 
 - **Contexto:** Skills Impeccable + frontend-design pediam polish de todas as páginas; o painel repetia card/header/empty e o marketing perdia links no mobile. Redesign completo quebraria a identidade dual (lavender marketing vs Operate dashboard).  

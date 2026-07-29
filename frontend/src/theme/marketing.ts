@@ -1,26 +1,32 @@
+/** Tokens de marca Sof — derivados da identidade (verde floresta + cobre). Fundos claros. */
 export const m = {
   paper: '#F4F4F6',
   surface: '#FFFFFF',
-  ink: '#232329',
-  muted: '#87878F',
-  line: '#E7E7EB',
-  accent: '#6B6FB5',
-  accentInk: '#565A9E',
-  accentSoft: '#ECECF6',
+  ink: '#1F2623',
+  muted: '#6E7873',
+  line: '#E3E6E4',
+  /** Verde floresta da marca (CTAs, ícones, ênfase). */
+  accent: '#3D4743',
+  accentInk: '#2F3834',
+  accentSoft: '#E8EBE9',
+  /** Cobre dos pontos da logo (destaques secundários). */
+  copper: '#C19A6B',
+  copperInk: '#8F6E45',
+  copperSoft: '#F4EEE6',
   danger: '#B4453C',
   dangerSoft: '#fbecea',
   radius: 20,
   radiusSm: 12,
   shadow: {
     soft: {
-      shadowColor: '#232329',
+      shadowColor: '#1F2623',
       shadowOffset: { width: 0, height: 12 },
       shadowOpacity: 0.05,
       shadowRadius: 16,
       elevation: 2,
     },
     lift: {
-      shadowColor: '#232329',
+      shadowColor: '#1F2623',
       shadowOffset: { width: 0, height: 20 },
       shadowOpacity: 0.08,
       shadowRadius: 24,

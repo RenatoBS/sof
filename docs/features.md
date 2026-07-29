@@ -22,7 +22,7 @@ Sof ajuda salões/barbearias a:
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
 | Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
 
-Copy e tokens devem permanecer alinhados à marca Sof. Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`.
+Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`.
 
 ## Checkout e assinatura
 

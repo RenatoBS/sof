@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   chipInline: { marginBottom: 0 },
-  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
   hint: { color: d.muted, fontSize: 14, marginBottom: 8 },
   error: { color: d.danger },
   actions: { gap: 10, marginTop: 8 },
