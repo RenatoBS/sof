@@ -22,7 +22,7 @@ Sof ajuda salões/barbearias a:
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
 | Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
 
-Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`.
+Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`. Tabbar do painel: ícone + label por aba (`DashboardTabIcon`).
 
 ## Checkout e assinatura
 
@@ -82,7 +82,7 @@ Seed: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@sof.com`).
 
 ## Painel (dashboard)
 
-Shell: topbar (negócio + email + Sair) + abas horizontais.
+Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label** por seção (Agenda, Profissionais, Serviços, Clientes, Atendimentos, Faturamento, Conta).
 
 ### Agenda
 
@@ -143,7 +143,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Atendimentos (escalonamento humano)
 
-- Aba **Atendimentos** com **badge vermelho** na tabbar contando alertas abertos (tempo real via SSE).  
+- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com alertas abertos em tempo real via SSE).  
 - Alerta abre quando: (a) o interlocutor **pede atendente explicitamente** (regex + intent `human` do NLU) — imediato; ou (b) o bot responde "não entendi" **N vezes seguidas** (default 2; configurável na aba: 1 / 2 / 3 / 5, salvo em `Account.whatsappHandoffThreshold`). Vale para **cliente** e **profissional**.  
 - Cada card mostra badge **Cliente** (azul) ou **Profissional** (lilás), nome/telefone, motivo (Pediu atendente / Bot não entendeu), última mensagem e desde quando; botões **Abrir no WhatsApp** (WhatsApp Web no navegador, `wa.me` no celular) e **Marcar resolvido**.  
 - Quando o alerta abre, a pessoa recebe no WhatsApp: "Avisei a equipe — alguém vai te responder por aqui em breve."  

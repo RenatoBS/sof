@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Ícones na tabbar do painel
+
+- **Contexto:** Menu superior só com texto; 7 abas com scroll horizontal no mobile.  
+- **Decisão:** Ícone SVG line + label em cada aba (`DashboardTabIcon`); ativo em verde (`d.accent`), inativo em cinza.  
+- **Consequências:** Scan mais rápido; badge de Atendimentos mantido ao lado do label.  
+- **Alternativas descartadas:** Só ícone; biblioteca externa de ícones.
+
+---
+
 ## 2026-07-28 — Conta sem dados duplicados
 
 - **Contexto:** Perfil repetia e-mail/plano/WhatsApp/telefone/endereço já presentes no header, Assinatura, WhatsApp e formulário de contato.  
