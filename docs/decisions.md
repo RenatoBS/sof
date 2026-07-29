@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Logo do estabelecimento em base64 (≤5 MB)
+
+- **Contexto:** Dono precisa de identidade visual no painel; storage de objetos (S3/Blob) ainda não está no stack.  
+- **Decisão:** Campo `Account.logoBase64` (TEXT, data URL); upload na Conta com compressão client-side até 5 MB; validação server-side; limite JSON da API `8mb`; logo no header do dashboard e do portal profissional.  
+- **Consequências:** Payloads de `auth/me` e `PUT /account` ficam maiores quando há logo; solução temporária até object storage.  
+- **Alternativas descartadas:** Upload multipart para disco local; S3 agora; só URL externa.
+
+---
+
 ## 2026-07-28 — Editar/Remover com ícone responsivo
 
 - **Contexto:** Links “Editar”/“Remover” nos cards de Serviços, Clientes e Profissionais ocupavam espaço em mobile e não tinham affordance visual clara.  

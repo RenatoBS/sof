@@ -3,6 +3,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
 import { SofButton, SofLoadingGate } from '@/src/components/ui';
+import { BusinessLogo } from '@/src/components/BusinessLogo';
 import { d } from '@/src/theme/dashboard';
 
 function EmployeeChrome({ children }: { children: React.ReactNode }) {
@@ -29,11 +30,20 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
     <View style={styles.root}>
       <View style={styles.topbar}>
         <View style={styles.topbarInner}>
-          <View>
-            <Text style={styles.biz}>{employee.businessName}</Text>
-            <Text style={styles.email}>
-              {employee.name} · {employee.email}
-            </Text>
+          <View style={styles.brandBlock}>
+            <BusinessLogo
+              uri={employee.logoBase64}
+              initials={employee.businessName}
+              size={40}
+            />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.biz} numberOfLines={1}>
+                {employee.businessName}
+              </Text>
+              <Text style={styles.email} numberOfLines={1}>
+                {employee.name} · {employee.email}
+              </Text>
+            </View>
           </View>
           <View style={styles.actions}>
             {!onChangePassword && !onSupport ? (
@@ -91,6 +101,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
+    gap: 12,
+  },
+  brandBlock: {
+    flex: 1,
+    minWidth: 180,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

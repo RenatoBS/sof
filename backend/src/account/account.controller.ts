@@ -24,6 +24,7 @@ import {
   normalizeReminderLeadMinutes,
   REMINDER_LEAD_MINUTES,
 } from '../reminders/reminder-window';
+import { parseLogoBase64Input } from './logo';
 
 function parseAccountBotPause(body: {
   botPausedPermanent?: boolean;
@@ -81,6 +82,8 @@ export class AccountController {
       timezone?: string;
       botPausedPermanent?: boolean;
       botPausedUntil?: string | null;
+      /** data URL base64; "" ou null remove o logo */
+      logoBase64?: string | null;
     },
   ) {
     const data: {
@@ -93,6 +96,7 @@ export class AccountController {
       timezone?: string;
       botPausedPermanent?: boolean;
       botPausedUntil?: Date | null;
+      logoBase64?: string;
     } = {};
 
     if (typeof body?.businessName === 'string') {
@@ -159,6 +163,16 @@ export class AccountController {
         }
         data.botPausedPermanent = pause.botPausedPermanent;
         data.botPausedUntil = pause.botPausedUntil;
+      }
+    }
+
+    if (body?.logoBase64 !== undefined) {
+      const logo = parseLogoBase64Input(body.logoBase64);
+      if ('error' in logo) {
+        throw new BadRequestException({ error: logo.error });
+      }
+      if (!('noop' in logo)) {
+        data.logoBase64 = logo.logoBase64;
       }
     }
 

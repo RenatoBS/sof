@@ -15,6 +15,7 @@ import { DashboardProvider, useDashboard } from '@/src/context/DashboardContext'
 import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
 import { SofButton, SofLoadingGate } from '@/src/components/ui';
+import { BusinessLogo } from '@/src/components/BusinessLogo';
 import { d } from '@/src/theme/dashboard';
 import type { Appointment, WhatsappHandoff } from '@/src/api/types';
 
@@ -132,16 +133,23 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         <View
           style={[styles.topbarInner, isCompact && styles.topbarInnerCompact]}
         >
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              style={[styles.biz, isCompact && styles.bizCompact]}
-              numberOfLines={1}
-            >
-              {account.businessName}
-            </Text>
-            <Text style={styles.email} numberOfLines={1}>
-              {account.email}
-            </Text>
+          <View style={styles.brandBlock}>
+            <BusinessLogo
+              uri={account.logoBase64}
+              initials={account.businessName}
+              size={isCompact ? 36 : 40}
+            />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[styles.biz, isCompact && styles.bizCompact]}
+                numberOfLines={1}
+              >
+                {account.businessName}
+              </Text>
+              <Text style={styles.email} numberOfLines={1}>
+                {account.email}
+              </Text>
+            </View>
           </View>
           <SofButton
             title="Sair"
@@ -242,6 +250,13 @@ const styles = StyleSheet.create({
   topbarInnerCompact: {
     paddingVertical: 14,
     paddingHorizontal: 16,
+  },
+  brandBlock: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   biz: {
     fontSize: 22,

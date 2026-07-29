@@ -163,6 +163,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 UI agrupada por seções (Assinatura / Estabelecimento / WhatsApp / Lembretes), com hero do estabelecimento (iniciais, plano, status WhatsApp).
 
 - **Assinatura:** banner do plano + preço, e-mail, desde; CTA alterar plano.
+- **Logo do estabelecimento:** upload na Conta (web); `Account.logoBase64` (data URL); máx. 5 MB — front comprime se maior. Aparece no header do painel e do portal profissional (antes do nome). `PUT /api/account` com `logoBase64` (`""` remove).
 - **Contato, endereço e horário** (mesmo card): telefone com máscara + endereço (um botão Salvar contato); horário de funcionamento no mesmo card (preview com pills Dom–Sáb + edição expandível, validação `HH:mm`); `PUT /api/account` com `phone`/`address` ou `openingHours`. O bot informa o endereço na conversa.
 - **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
 - **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.

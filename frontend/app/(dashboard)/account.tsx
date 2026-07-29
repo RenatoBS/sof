@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,7 +13,9 @@ import { dashboardApi } from '@/src/api/endpoints';
 import type { DaySchedule, OpeningHours } from '@/src/api/types';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
+import { BusinessLogo } from '@/src/components/BusinessLogo';
 import { SofButton, SofInput } from '@/src/components/ui';
+import { fileToLogoDataUrl } from '@/src/lib/logo';
 import {
   isValidPhoneDigits,
   isValidTimeHm,
@@ -211,6 +214,9 @@ export default function AccountScreen() {
   const [botPauseSaved, setBotPauseSaved] = useState('');
   const [botPauseError, setBotPauseError] = useState('');
   const [savingBotPause, setSavingBotPause] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const [logoSaved, setLogoSaved] = useState('');
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -369,6 +375,59 @@ export default function AccountScreen() {
     .map((w) => w[0]?.toUpperCase() || '')
     .join('');
 
+  const pickLogo = () => {
+    setLogoError('');
+    setLogoSaved('');
+    if (Platform.OS !== 'web') {
+      setLogoError('O upload de logo está disponível no painel web por enquanto.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setLogoBusy(true);
+      setLogoError('');
+      setLogoSaved('');
+      try {
+        const dataUrl = await fileToLogoDataUrl(file);
+        const { account: updated } = await dashboardApi.updateAccount({
+          logoBase64: dataUrl,
+        });
+        await setSession(updated);
+        setLogoSaved('Logo atualizado.');
+      } catch (err) {
+        setLogoError(
+          err instanceof Error ? err.message : 'Falha ao enviar o logo.',
+        );
+      } finally {
+        setLogoBusy(false);
+      }
+    };
+    input.click();
+  };
+
+  const removeLogo = async () => {
+    setLogoBusy(true);
+    setLogoError('');
+    setLogoSaved('');
+    try {
+      const { account: updated } = await dashboardApi.updateAccount({
+        logoBase64: '',
+      });
+      await setSession(updated);
+      setLogoSaved('Logo removido.');
+    } catch (err) {
+      setLogoError(
+        err instanceof Error ? err.message : 'Falha ao remover o logo.',
+      );
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
   const waDeviceLabel = waLinked
     ? 'Conectado'
     : waStatus === 'connecting'
@@ -382,9 +441,27 @@ export default function AccountScreen() {
   return (
     <View style={styles.page}>
       <View style={styles.hero}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials || 'S'}</Text>
-        </View>
+        <Pressable
+          onPress={pickLogo}
+          disabled={logoBusy}
+          accessibilityRole="button"
+          accessibilityLabel="Alterar logo do estabelecimento"
+          style={({ pressed }) => [
+            styles.avatarPress,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <BusinessLogo
+            uri={account.logoBase64}
+            initials={initials}
+            size={64}
+          />
+          {logoBusy ? (
+            <View style={styles.avatarOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : null}
+        </Pressable>
         <View style={styles.heroText}>
           <Text style={styles.h2}>{account.businessName || 'Sua conta'}</Text>
           <Text style={styles.sub}>
@@ -421,6 +498,31 @@ export default function AccountScreen() {
               </Text>
             </View>
           </View>
+          <View style={styles.logoActions}>
+            <SofButton
+              title="Enviar logo"
+              variant="light"
+              theme="dashboard"
+              onPress={pickLogo}
+              disabled={logoBusy}
+              loading={logoBusy}
+            />
+            {account.logoBase64 ? (
+              <SofButton
+                title="Remover logo"
+                variant="danger"
+                theme="dashboard"
+                onPress={removeLogo}
+                disabled={logoBusy}
+              />
+            ) : null}
+          </View>
+          {logoError ? <Text style={styles.logoError}>{logoError}</Text> : null}
+          {logoSaved ? <Text style={styles.logoSaved}>{logoSaved}</Text> : null}
+          <Text style={styles.logoHint}>
+            PNG, JPEG, WebP ou GIF. Máximo 5 MB — arquivos maiores são
+            redimensionados automaticamente.
+          </Text>
         </View>
       </View>
 
@@ -1089,25 +1191,48 @@ const styles = StyleSheet.create({
   page: { gap: 16, maxWidth: 720 },
   hero: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 16,
     marginBottom: 8,
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: d.ink,
+  avatarPress: {
+    position: 'relative',
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(31,38,35,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    borderRadius: 16,
   },
   heroText: { flex: 1, gap: 4, minWidth: 0 },
+  logoActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  logoHint: {
+    color: d.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: d.fonts.body,
+    marginTop: 4,
+  },
+  logoError: {
+    color: d.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+    marginTop: 4,
+  },
+  logoSaved: {
+    color: d.waGreenText,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+    marginTop: 4,
+  },
   h2: {
     fontSize: 28,
     fontWeight: '700',
