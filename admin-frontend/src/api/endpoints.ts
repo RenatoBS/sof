@@ -20,6 +20,8 @@ export type AccountRow = {
   createdAt: string;
   whatsappConnected: boolean;
   timezone: string;
+  billingSource?: string;
+  promoExpiresAt?: string | null;
 };
 
 export type EntitlementsMap = Record<string, boolean | number | null>;
@@ -47,6 +49,7 @@ export type PlanRow = {
   entitlements: EntitlementsMap;
   active: boolean;
   sortOrder: number;
+  accountCount?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -63,10 +66,11 @@ export const authApi = {
 };
 
 export const accountsApi = {
-  list: (params?: { q?: string; status?: string }) => {
+  list: (params?: { q?: string; status?: string; planId?: string }) => {
     const qs = new URLSearchParams();
     if (params?.q) qs.set('q', params.q);
     if (params?.status) qs.set('status', params.status);
+    if (params?.planId) qs.set('planId', params.planId);
     const suffix = qs.toString() ? `?${qs}` : '';
     return api<{ total: number; accounts: AccountRow[] }>(`/accounts${suffix}`);
   },
@@ -157,6 +161,20 @@ export const featureCatalogApi = {
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
+export type CouponRedemptionRow = {
+  id: string;
+  redeemedAt: string;
+  expiresAt: string;
+  account: {
+    id: string;
+    businessName: string;
+    email: string;
+    status: string;
+    billingSource: string;
+    promoExpiresAt: string | null;
+  };
+};
+
 export type CouponRow = {
   id: string;
   code: string;
@@ -171,6 +189,7 @@ export type CouponRow = {
   note: string;
   createdAt: string;
   updatedAt: string;
+  redemptions?: CouponRedemptionRow[];
 };
 
 export const couponsApi = {

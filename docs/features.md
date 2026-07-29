@@ -70,14 +70,16 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Feature | UI | API |
 |---------|-----|-----|
 | Login admin | `/login` | `POST /api/auth/login` |
-| Listar / buscar contas | `/accounts` | `GET /api/accounts?q=` |
+| Listar / buscar contas | `/accounts` | `GET /api/accounts?q=&planId=` |
 | Criar conta manual | `/accounts/new` | `POST /api/accounts` |
 | Editar conta / plano / status | `/edit-account` | `PUT /api/accounts/:id` |
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
-| Listar planos | `/plans` | `GET /api/plans` |
+| Listar planos (com contagem de contas) | `/plans` | `GET /api/plans` (`accountCount`) |
 | Criar / editar / apagar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT/DELETE /api/plans` |
+| Contas de um plano | `/edit-plan` + filtro `/accounts?planId=` | `GET /api/accounts?planId=` |
 | Sincronizar plano com Stripe (Price + Payment Link = preço Sof) | botão em `/edit-plan` | `POST /api/plans/:id/sync-stripe` |
 | Cupons promocionais (7/30/60 dias) | `/coupons`, `/new-coupon`, `/edit-coupon` | `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id` |
+| Contas que usaram um cupom | `/edit-coupon` (seção Usos) | `GET /api/coupons/:id` (`redemptions`) |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 

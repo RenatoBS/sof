@@ -22,20 +22,38 @@ function normalizeCode(raw: unknown): string {
     .replace(/\s+/g, '');
 }
 
-function publicCoupon(row: {
+type CouponRedemptionRow = {
   id: string;
-  code: string;
-  planId: string;
-  freeDays: number;
-  maxUses: number;
-  usedCount: number;
-  active: boolean;
-  note: string;
-  createdAt: Date;
-  updatedAt: Date;
-  plan?: { id: string; name: string; price: number } | null;
-}) {
-  return {
+  redeemedAt: Date;
+  expiresAt: Date;
+  account: {
+    id: string;
+    businessName: string;
+    email: string;
+    status: string;
+    billingSource: string;
+    promoExpiresAt: Date | null;
+  };
+};
+
+function publicCoupon(
+  row: {
+    id: string;
+    code: string;
+    planId: string;
+    freeDays: number;
+    maxUses: number;
+    usedCount: number;
+    active: boolean;
+    note: string;
+    createdAt: Date;
+    updatedAt: Date;
+    plan?: { id: string; name: string; price: number } | null;
+    redemptions?: CouponRedemptionRow[];
+  },
+  opts?: { includeRedemptions?: boolean },
+) {
+  const base = {
     id: row.id,
     code: row.code,
     planId: row.planId,
@@ -50,6 +68,25 @@ function publicCoupon(row: {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+  if (!opts?.includeRedemptions) return base;
+  return {
+    ...base,
+    redemptions: (row.redemptions || []).map((r) => ({
+      id: r.id,
+      redeemedAt: r.redeemedAt.toISOString(),
+      expiresAt: r.expiresAt.toISOString(),
+      account: {
+        id: r.account.id,
+        businessName: r.account.businessName,
+        email: r.account.email,
+        status: r.account.status,
+        billingSource: r.account.billingSource,
+        promoExpiresAt: r.account.promoExpiresAt
+          ? r.account.promoExpiresAt.toISOString()
+          : null,
+      },
+    })),
+  };
 }
 
 @Controller('api/coupons')
@@ -63,19 +100,36 @@ export class CouponsController {
       include: { plan: { select: { id: true, name: true, price: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    return { coupons: coupons.map(publicCoupon) };
+    return { coupons: coupons.map((c) => publicCoupon(c)) };
   }
 
   @Get(':id')
   async get(@Param('id') id: string) {
     const coupon = await this.prisma.promoCoupon.findUnique({
       where: { id },
-      include: { plan: { select: { id: true, name: true, price: true } } },
+      include: {
+        plan: { select: { id: true, name: true, price: true } },
+        redemptions: {
+          include: {
+            account: {
+              select: {
+                id: true,
+                businessName: true,
+                email: true,
+                status: true,
+                billingSource: true,
+                promoExpiresAt: true,
+              },
+            },
+          },
+          orderBy: { redeemedAt: 'desc' },
+        },
+      },
     });
     if (!coupon) {
       throw new NotFoundException({ error: 'Cupom não encontrado.' });
     }
-    return { coupon: publicCoupon(coupon) };
+    return { coupon: publicCoupon(coupon, { includeRedemptions: true }) };
   }
 
   @Post()

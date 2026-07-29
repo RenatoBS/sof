@@ -3,13 +3,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import {
+  accountsApi,
   plansApi,
+  type AccountRow,
   type EntitlementsMap,
   type PlanRow,
 } from '@/src/api/endpoints';
 import { EntitlementsEditor } from '@/src/components/EntitlementsEditor';
-import { Button, ErrorText, Field } from '@/src/components/ui';
-import { colors, space } from '@/src/theme/admin';
+import { Button, EmptyState, ErrorText, Field, ListRow } from '@/src/components/ui';
+import { colors, fonts, space } from '@/src/theme/admin';
 
 function paramId(value: string | string[] | undefined) {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -35,6 +37,7 @@ export default function PlanDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = paramId(params.id);
   const [plan, setPlan] = useState<PlanRow | null>(null);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [featuresText, setFeaturesText] = useState('');
@@ -56,6 +59,8 @@ export default function PlanDetailScreen() {
     setEntitlements(found.entitlements || {});
     setPaymentLinkUrl(found.paymentLinkUrl);
     setActive(found.active);
+    const acc = await accountsApi.list({ planId: id });
+    setAccounts(acc.accounts);
   }, [id]);
 
   useEffect(() => {
@@ -196,12 +201,45 @@ export default function PlanDetailScreen() {
           disabled={busy || !plan}
         />
       </View>
+
+      <Text style={styles.section}>
+        Contas neste plano ({plan?.accountCount ?? accounts.length})
+      </Text>
+      <Button
+        title="Ver na lista de Contas"
+        variant="ghost"
+        onPress={() =>
+          router.push({
+            pathname: '/accounts',
+            params: { planId: id, planName: plan?.name || name },
+          })
+        }
+      />
+      {accounts.length === 0 ? (
+        <EmptyState message="Nenhuma conta neste plano." />
+      ) : (
+        accounts.map((item) => (
+          <ListRow
+            key={item.id}
+            title={item.businessName}
+            meta={`${item.email} · ${item.status}${
+              item.billingSource === 'promo' ? ' · promo' : ''
+            }`}
+            onPress={() =>
+              router.push({
+                pathname: '/edit-account',
+                params: { id: item.id },
+              })
+            }
+          />
+        ))
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingBottom: 48, maxWidth: 560 },
+  wrap: { paddingBottom: 48, maxWidth: 720 },
   title: {
     fontFamily: 'HankenGrotesk_700Bold',
     fontSize: 28,
@@ -227,4 +265,11 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
   },
   ok: { color: colors.accent, marginBottom: space.md },
+  section: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.ink,
+    marginTop: space.xl,
+    marginBottom: space.sm,
+  },
 });

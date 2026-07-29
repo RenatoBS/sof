@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Admin: contas por cupom e por plano
+
+- **Contexto:** Admin só mostrava `usedCount` do cupom e o plano na linha da conta — sem lista de quem resgatou nem filtro/contagem por plano.  
+- **Decisão:** `GET /api/coupons/:id` inclui `redemptions` (conta + datas); `GET /api/plans` inclui `accountCount`; `GET /api/accounts?planId=` filtra; UI em `/edit-coupon`, `/plans`, `/edit-plan` e filtro em `/accounts`.  
+- **Consequências:** Visibilidade operacional sem query no banco; `billingSource`/`promoExpiresAt` no shape da conta admin.  
+- **Alternativas descartadas:** Dashboard analytics separado; endpoint novo só de redemptions.
+
+---
+
 ## 2026-07-29 — E-mail SMTP (Gmail) + reset conta + boas-vindas
 
 - **Contexto:** Sem canal de e-mail; reset só WhatsApp (profissional); conta dona sem “esqueci senha”; pós-checkout sem boas-vindas.  
