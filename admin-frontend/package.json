@@ -7,8 +7,8 @@
     "start": "expo start --port 8091",
     "web": "expo start --web --port 8091",
     "sync-guides": "node scripts/sync-guides.js",
-    "export:web": "npm run sync-guides && expo export -p web",
-    "start:web": "serve dist -s -l $PORT",
+    "export:web": "npm run sync-guides && expo export -p web && cp serve.json dist/serve.json",
+    "start:web": "serve dist -s -l $PORT -c serve.json",
     "heroku-postbuild": "npm run export:web"
   },
   "dependencies": {
