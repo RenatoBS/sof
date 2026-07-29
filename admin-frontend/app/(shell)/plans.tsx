@@ -58,7 +58,7 @@ export default function PlansScreen() {
           <ListRow
             key={item.id}
             title={item.name}
-            meta={`${item.stripePriceId} · ${item.active ? 'ativo' : 'inativo'}`}
+            meta={`${item.stripePriceId} · ${item.accountCount ?? 0} contas · ${item.active ? 'ativo' : 'inativo'}`}
             onPress={() =>
               router.push({ pathname: '/edit-plan', params: { id: item.id } })
             }

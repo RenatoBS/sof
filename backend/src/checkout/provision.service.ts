@@ -1,14 +1,21 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CheckoutSession, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DEFAULT_OPENING_HOURS } from '../account/opening-hours';
 import { PromoCouponsService } from '../promo-coupons/promo-coupons.service';
+import { MailService } from '../mail/mail.service';
+import { welcomeEmail } from '../mail/mail-templates';
 
 @Injectable()
 export class ProvisionService {
+  private readonly logger = new Logger(ProvisionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly promos: PromoCouponsService,
+    private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async provisionAccount(
@@ -94,14 +101,43 @@ export class ProvisionService {
       },
     });
 
+    let resultAccount = account;
     if (options?.couponCode) {
       const { account: withPromo } = await this.promos.redeemForAccount(
         account.id,
         options.couponCode,
       );
-      return { account: withPromo, alreadyExisted: false, renewed: false };
+      resultAccount = withPromo;
     }
 
-    return { account, alreadyExisted: false, renewed: false };
+    await this.sendWelcomeEmail(resultAccount);
+
+    return {
+      account: resultAccount,
+      alreadyExisted: false,
+      renewed: false,
+    };
+  }
+
+  private async sendWelcomeEmail(account: {
+    email: string;
+    ownerName: string;
+    businessName: string;
+    plan: string;
+  }) {
+    const publicUrl = (
+      this.config.get<string>('publicUrl') || 'http://localhost:8081'
+    ).replace(/\/+$/, '');
+    const tpl = welcomeEmail({
+      name: account.ownerName || account.businessName,
+      businessName: account.businessName,
+      email: account.email,
+      loginUrl: `${publicUrl}/login`,
+      planName: account.plan,
+    });
+    const ok = await this.mail.send({ to: account.email, ...tpl });
+    if (!ok) {
+      this.logger.warn(`Boas-vindas não enviadas para ${account.email}`);
+    }
   }
 }

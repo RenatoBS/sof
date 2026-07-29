@@ -519,6 +519,7 @@ const card = StyleSheet.create({
     borderRadius: d.radius,
     borderWidth: 1,
     borderColor: d.line,
+    gap: d.space.md,
     ...d.shadow.soft,
   },
   padded: { padding: d.space.xl },

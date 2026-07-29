@@ -45,6 +45,7 @@ export class AccountsController {
   async list(
     @Query('q') q?: string,
     @Query('status') status?: string,
+    @Query('planId') planIdRaw?: string,
     @Query('limit') limitRaw?: string,
     @Query('offset') offsetRaw?: string,
   ) {
@@ -54,8 +55,12 @@ export class AccountsController {
     );
     const offset = Math.max(parseInt(offsetRaw || '0', 10) || 0, 0);
     const where: Prisma.AccountWhereInput = {};
-    if (status === 'active' || status === 'suspended') {
+    if (status === 'active' || status === 'suspended' || status === 'paused') {
       where.status = status;
+    }
+    const planId = String(planIdRaw || '').trim();
+    if (planId) {
+      where.planId = planId;
     }
     const query = String(q || '').trim();
     if (query) {

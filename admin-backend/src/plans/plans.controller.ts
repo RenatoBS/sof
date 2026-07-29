@@ -32,6 +32,7 @@ export class PlansController {
   async list() {
     const plans = await this.prisma.plan.findMany({
       orderBy: [{ sortOrder: 'asc' }, { price: 'asc' }],
+      include: { _count: { select: { accounts: true } } },
     });
     return {
       plans: plans.map(publicPlan),
@@ -41,7 +42,10 @@ export class PlansController {
 
   @Get(':id')
   async get(@Param('id') id: string) {
-    const plan = await this.prisma.plan.findUnique({ where: { id } });
+    const plan = await this.prisma.plan.findUnique({
+      where: { id },
+      include: { _count: { select: { accounts: true } } },
+    });
     if (!plan) throw new NotFoundException({ error: 'Plano não encontrado.' });
     return { plan: publicPlan(plan) };
   }

@@ -1,5 +1,4 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
 import { EventsModule } from '../events/events.module';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { EmployeeAuthController } from './employee-auth.controller';
@@ -9,7 +8,10 @@ import { EmployeePasswordTokenService } from './employee-password-token.service'
 import { EmployeePasswordResetService } from './employee-password-reset.service';
 
 @Module({
-  imports: [AuthModule, EventsModule, forwardRef(() => WhatsappModule)],
+  imports: [
+    forwardRef(() => EventsModule),
+    forwardRef(() => WhatsappModule),
+  ],
   controllers: [EmployeeAuthController, EmployeeAppointmentsController],
   providers: [
     EmployeeAuthGuard,

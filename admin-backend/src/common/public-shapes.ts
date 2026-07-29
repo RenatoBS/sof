@@ -40,6 +40,8 @@ export function publicAccount(account: {
   createdAt: Date;
   whatsappConnectedAt: Date | null;
   timezone: string;
+  billingSource?: string | null;
+  promoExpiresAt?: Date | null;
 }) {
   return {
     id: account.id,
@@ -54,6 +56,10 @@ export function publicAccount(account: {
     createdAt: account.createdAt,
     whatsappConnected: Boolean(account.whatsappConnectedAt),
     timezone: account.timezone,
+    billingSource: account.billingSource ?? 'paid',
+    promoExpiresAt: account.promoExpiresAt
+      ? account.promoExpiresAt.toISOString()
+      : null,
   };
 }
 
@@ -73,6 +79,7 @@ export function publicPlan(plan: {
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
+  _count?: { accounts?: number };
 }) {
   const entitlements: EntitlementsMap = mergeEntitlements(
     plan.entitlements,
@@ -94,6 +101,7 @@ export function publicPlan(plan: {
     entitlements,
     active: plan.active,
     sortOrder: plan.sortOrder,
+    accountCount: plan._count?.accounts ?? 0,
     createdAt: plan.createdAt,
     updatedAt: plan.updatedAt,
   };

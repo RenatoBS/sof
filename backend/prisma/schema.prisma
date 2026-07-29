@@ -63,9 +63,25 @@ model Account {
   whatsappHandoffs WhatsappHandoff[]
   supportTickets   SupportTicket[]
   promoRedemptions PromoCouponRedemption[]
+  passwordTokens   AccountPasswordToken[]
 
   @@index([planId])
   @@index([status, promoExpiresAt])
+}
+
+/// Link de reset de senha da conta (dono) — uso único, TTL 2h
+model AccountPasswordToken {
+  id        String    @id @default(cuid())
+  accountId String
+  /// SHA-256 do token opaco enviado no link
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
 }
 
 model Employee {

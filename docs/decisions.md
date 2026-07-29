@@ -17,6 +17,33 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Admin: contas por cupom e por plano
+
+- **Contexto:** Admin só mostrava `usedCount` do cupom e o plano na linha da conta — sem lista de quem resgatou nem filtro/contagem por plano.  
+- **Decisão:** `GET /api/coupons/:id` inclui `redemptions` (conta + datas); `GET /api/plans` inclui `accountCount`; `GET /api/accounts?planId=` filtra; UI em `/edit-coupon`, `/plans`, `/edit-plan` e filtro em `/accounts`.  
+- **Consequências:** Visibilidade operacional sem query no banco; `billingSource`/`promoExpiresAt` no shape da conta admin.  
+- **Alternativas descartadas:** Dashboard analytics separado; endpoint novo só de redemptions.
+
+---
+
+## 2026-07-29 — E-mail SMTP (Gmail) + reset conta + boas-vindas
+
+- **Contexto:** Sem canal de e-mail; reset só WhatsApp (profissional); conta dona sem “esqueci senha”; pós-checkout sem boas-vindas.  
+- **Decisão:** `MailModule` (nodemailer + `SMTP_*`/`MAIL_FROM`); esqueci senha unificado (conta/prof) via e-mail + WhatsApp; link do profissional pelo painel continua **só WhatsApp**; tickets sem e-mail; boas-vindas no `provisionAccount` (nova conta).  
+- **Consequências:** `AccountPasswordToken`; páginas `/esqueci-senha` e `/definir-senha`; Gmail App Password ok para MVP (limites de volume).  
+- **Alternativas descartadas:** Resend/SendGrid já no MVP; e-mail no convite do profissional pelo painel.
+
+---
+
+## 2026-07-29 — Ícones na tabbar do painel
+
+- **Contexto:** Menu superior só com texto; 7 abas com scroll horizontal no mobile.  
+- **Decisão:** Ícone SVG line + label em cada aba (`DashboardTabIcon`); ativo em verde (`d.accent`), inativo em cinza.  
+- **Consequências:** Scan mais rápido; badge de Atendimentos mantido ao lado do label.  
+- **Alternativas descartadas:** Só ícone; biblioteca externa de ícones.
+
+---
+
 ## 2026-07-28 — Conta sem dados duplicados
 
 - **Contexto:** Perfil repetia e-mail/plano/WhatsApp/telefone/endereço já presentes no header, Assinatura, WhatsApp e formulário de contato.  

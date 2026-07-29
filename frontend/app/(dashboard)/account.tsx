@@ -1367,8 +1367,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   label: { fontWeight: '600', color: d.ink, fontSize: 14 },
-  inlineActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  inlineActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
@@ -1428,7 +1438,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: d.line,
-    gap: 10,
+    gap: 12,
   },
   pauseHead: {
     flexDirection: 'row',
@@ -1514,7 +1524,12 @@ const styles = StyleSheet.create({
   toggleText: { fontWeight: '600', fontSize: 13, color: d.ink },
   timeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   timeField: { flexGrow: 1, flexBasis: 120, minWidth: 120 },
-  waActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  waActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
+  },
   pairBlock: { gap: 12 },
   qrWrap: { alignItems: 'center', gap: 12, marginTop: 4 },
   qrImage: {

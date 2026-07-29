@@ -16,28 +16,65 @@ import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
 import { SofButton, SofLoadingGate } from '@/src/components/ui';
 import { BusinessLogo } from '@/src/components/BusinessLogo';
+import {
+  DashboardTabIcon,
+  type DashboardTabIconName,
+} from '@/src/components/DashboardTabIcon';
 import { d } from '@/src/theme/dashboard';
 import type { Appointment, WhatsappHandoff } from '@/src/api/types';
 
-const ALL_TABS = [
-  { href: '/(dashboard)/agenda', label: 'Agenda', match: 'agenda' },
-  { href: '/(dashboard)/employees', label: 'Profissionais', match: 'employees' },
-  { href: '/(dashboard)/services', label: 'Serviços', match: 'services' },
-  { href: '/(dashboard)/clients', label: 'Clientes', match: 'clients' },
+const ALL_TABS: {
+  href: string;
+  label: string;
+  match: string;
+  icon: DashboardTabIconName;
+  feature?: 'handoffs' | 'billing';
+}[] = [
+  {
+    href: '/(dashboard)/agenda',
+    label: 'Agenda',
+    match: 'agenda',
+    icon: 'agenda',
+  },
+  {
+    href: '/(dashboard)/employees',
+    label: 'Profissionais',
+    match: 'employees',
+    icon: 'employees',
+  },
+  {
+    href: '/(dashboard)/services',
+    label: 'Serviços',
+    match: 'services',
+    icon: 'services',
+  },
+  {
+    href: '/(dashboard)/clients',
+    label: 'Clientes',
+    match: 'clients',
+    icon: 'clients',
+  },
   {
     href: '/(dashboard)/handoffs',
     label: 'Atendimentos',
     match: 'handoffs',
+    icon: 'handoffs',
     feature: 'handoffs',
   },
   {
     href: '/(dashboard)/billing',
     label: 'Faturamento',
     match: 'billing',
+    icon: 'billing',
     feature: 'billing',
   },
-  { href: '/(dashboard)/account', label: 'Conta', match: 'account' },
-] as const;
+  {
+    href: '/(dashboard)/account',
+    label: 'Conta',
+    match: 'account',
+    icon: 'account',
+  },
+];
 
 function DashboardChrome({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions();
@@ -187,19 +224,26 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
                   pressed && { opacity: 0.75 },
                 ]}
               >
-                <View style={styles.tabLabelRow}>
-                  <Text
-                    style={[styles.tabText, active && styles.tabTextActive]}
-                  >
-                    {tab.label}
-                  </Text>
-                  {badgeCount > 0 ? (
-                    <View style={styles.tabBadge}>
-                      <Text style={styles.tabBadgeText}>
-                        {badgeCount > 9 ? '9+' : badgeCount}
-                      </Text>
-                    </View>
-                  ) : null}
+                <View style={styles.tabContent}>
+                  <DashboardTabIcon
+                    name={tab.icon}
+                    color={active ? d.accent : d.mutedStrong}
+                    size={isCompact ? 15 : 16}
+                  />
+                  <View style={styles.tabLabelRow}>
+                    <Text
+                      style={[styles.tabText, active && styles.tabTextActive]}
+                    >
+                      {tab.label}
+                    </Text>
+                    {badgeCount > 0 ? (
+                      <View style={styles.tabBadge}>
+                        <Text style={styles.tabBadgeText}>
+                          {badgeCount > 9 ? '9+' : badgeCount}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               </Pressable>
             );
@@ -282,14 +326,15 @@ const styles = StyleSheet.create({
   },
   tabbarInnerCompact: {
     paddingHorizontal: 16,
-    gap: 20,
+    gap: 16,
   },
   tabBtn: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   tabActive: { borderBottomColor: d.accent },
+  tabContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: {
     fontSize: 15,

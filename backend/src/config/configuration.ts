@@ -64,6 +64,15 @@ export default () => {
       /** Transcrição de áudio do bot (Uazapi /message/download transcribe) */
       openaiApiKey: process.env.OPENAI_API_KEY || '',
     },
+    mail: {
+      host: (process.env.SMTP_HOST || '').trim(),
+      port: parseInt(process.env.SMTP_PORT || '465', 10),
+      secure:
+        String(process.env.SMTP_SECURE || 'true').toLowerCase() !== 'false',
+      user: (process.env.SMTP_USER || '').trim(),
+      pass: (process.env.SMTP_PASS || '').trim(),
+      from: (process.env.MAIL_FROM || process.env.SMTP_USER || '').trim(),
+    },
   };
 };
 

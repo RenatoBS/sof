@@ -1,7 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import type { Account, Employee } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { isValidPhone, normalizePhone } from '../common/phone';
+import { MailService } from '../mail/mail.service';
+import { passwordResetEmail } from '../mail/mail-templates';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 import { EmployeePasswordTokenService } from './employee-password-token.service';
 
@@ -12,15 +14,19 @@ export type EmployeePasswordResetResult = {
 };
 
 /**
- * Emite link de redefinição e envia CTA no WhatsApp do profissional.
- * Usado pelo painel da conta, “esqueci a senha” (web) e bot do profissional.
+ * Emite link de redefinição.
+ * - Painel / bot: WhatsApp obrigatório (`issueAndSendWhatsapp`).
+ * - Esqueci a senha (web): WhatsApp + e-mail best-effort (`issueAndNotifyForgot`).
  */
 @Injectable()
 export class EmployeePasswordResetService {
+  private readonly logger = new Logger(EmployeePasswordResetService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordTokens: EmployeePasswordTokenService,
     private readonly whatsapp: WhatsappApiService,
+    private readonly mail: MailService,
   ) {}
 
   assertCanSendWhatsapp(account: Account) {
@@ -72,6 +78,85 @@ export class EmployeePasswordResetService {
       opts.employee.id,
     );
 
+    await this.sendWhatsappCta({
+      employee: opts.employee,
+      account: opts.account,
+      phone,
+      resetLink,
+      source: opts.source,
+    });
+
+    return { resetLink, expiresAt, phone };
+  }
+
+  /**
+   * Esqueci a senha (web): emite link e tenta WhatsApp + e-mail.
+   * Não lança se um canal falhar; retorna quais canais enviaram.
+   */
+  async issueAndNotifyForgot(opts: {
+    employee: Employee;
+    account: Account;
+  }): Promise<{
+    resetLink: string;
+    expiresAt: Date;
+    channels: string[];
+  }> {
+    // Mantém a senha atual até o link ser usado (evita lock se o envio falhar).
+    const { resetLink, expiresAt } = await this.passwordTokens.issueResetLink(
+      opts.employee.id,
+    );
+
+    const channels: string[] = [];
+    const email = (opts.employee.email || '').trim().toLowerCase();
+    if (email) {
+      const tpl = passwordResetEmail({
+        name: opts.employee.name,
+        businessName: opts.account.businessName,
+        resetLink,
+        role: 'employee',
+      });
+      if (await this.mail.send({ to: email, ...tpl })) {
+        channels.push('email');
+      }
+    }
+
+    const phone = normalizePhone(opts.employee.phone);
+    if (isValidPhone(phone)) {
+      try {
+        this.assertCanSendWhatsapp(opts.account);
+        await this.sendWhatsappCta({
+          employee: opts.employee,
+          account: opts.account,
+          phone,
+          resetLink,
+          source: 'self',
+        });
+        channels.push('whatsapp');
+      } catch (err) {
+        this.logger.warn(
+          `WhatsApp reset prof ${opts.employee.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    if (channels.length === 0) {
+      this.logger.warn(
+        `Reset prof ${opts.employee.id}: nenhum canal enviou (e-mail/WhatsApp).`,
+      );
+    }
+
+    return { resetLink, expiresAt, channels };
+  }
+
+  private async sendWhatsappCta(opts: {
+    employee: Employee;
+    account: Account;
+    phone: string;
+    resetLink: string;
+    source: 'account' | 'self';
+  }) {
     const businessName = opts.account.businessName || 'seu estabelecimento';
     const intro =
       opts.source === 'self'
@@ -91,11 +176,11 @@ export class EmployeePasswordResetService {
 
     try {
       await this.whatsapp.sendCtaUrl(
-        phone,
+        opts.phone,
         {
           body,
           buttonText: 'Redefinir senha',
-          url: resetLink,
+          url: opts.resetLink,
           footerText: 'Sof · acesso do profissional',
         },
         opts.account.whatsappInstanceToken || undefined,
@@ -108,7 +193,5 @@ export class EmployeePasswordResetService {
             : 'Não foi possível enviar no WhatsApp.',
       });
     }
-
-    return { resetLink, expiresAt, phone };
   }
 }

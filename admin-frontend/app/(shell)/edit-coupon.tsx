@@ -3,8 +3,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { couponsApi, type CouponRow } from '@/src/api/endpoints';
-import { Button, ErrorText, Field } from '@/src/components/ui';
-import { colors, space } from '@/src/theme/admin';
+import { Button, EmptyState, ErrorText, Field, ListRow } from '@/src/components/ui';
+import { colors, fonts, space } from '@/src/theme/admin';
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR');
+  } catch {
+    return iso;
+  }
+}
 
 export default function EditCouponScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,7 +52,11 @@ export default function EditCouponScreen() {
         maxUses: Number(maxUses),
         note,
       });
-      setCoupon(res.coupon);
+      setCoupon((prev) =>
+        prev
+          ? { ...res.coupon, redemptions: prev.redemptions }
+          : res.coupon,
+      );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Falha ao salvar.');
     } finally {
@@ -58,7 +70,11 @@ export default function EditCouponScreen() {
     setError('');
     try {
       const res = await couponsApi.update(id, { active: !coupon.active });
-      setCoupon(res.coupon);
+      setCoupon((prev) =>
+        prev
+          ? { ...res.coupon, redemptions: prev.redemptions }
+          : res.coupon,
+      );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Falha ao atualizar.');
     } finally {
@@ -95,6 +111,8 @@ export default function EditCouponScreen() {
       </View>
     );
   }
+
+  const redemptions = coupon.redemptions || [];
 
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
@@ -135,13 +153,32 @@ export default function EditCouponScreen() {
           />
         ) : null}
       </View>
+
+      <Text style={styles.section}>Contas que usaram ({redemptions.length})</Text>
+      {redemptions.length === 0 ? (
+        <EmptyState message="Nenhuma conta resgatou este cupom ainda." />
+      ) : (
+        redemptions.map((r) => (
+          <ListRow
+            key={r.id}
+            title={r.account.businessName || r.account.email}
+            meta={`${r.account.email} · resgatado ${formatDate(r.redeemedAt)} · expira ${formatDate(r.expiresAt)} · ${r.account.billingSource}/${r.account.status}`}
+            onPress={() =>
+              router.push({
+                pathname: '/edit-account',
+                params: { id: r.account.id },
+              })
+            }
+          />
+        ))
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  wrap: { paddingBottom: 48, maxWidth: 560 },
+  wrap: { paddingBottom: 48, maxWidth: 720 },
   title: {
     fontFamily: 'HankenGrotesk_700Bold',
     fontSize: 28,
@@ -154,4 +191,11 @@ const styles = StyleSheet.create({
     marginBottom: space.lg,
   },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  section: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.ink,
+    marginTop: space.xl,
+    marginBottom: space.sm,
+  },
 });

@@ -79,6 +79,7 @@ CLI Heroku pode ecoar secrets — rotacionar se vazar em logs.
 | `WHATSAPP_TOKEN` | token de instância (legado) / Meta access token |
 | `OPENAI_API_KEY` | transcrição de áudio do bot (Uazapi) + NLU de frases livres (`gpt-4o-mini`) |
 | `SEED_DEMO_*` | só para `prisma db seed` (não usados em runtime) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM` | e-mail transacional (Gmail App Password ok para começar); vazio = e-mails ignorados |
 
 Só Meta (`WHATSAPP_PROVIDER=meta`): `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`.
 
@@ -160,7 +161,28 @@ curl -sS https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com/api/health
 
 ### Auth cross-origin em produção
 
-Front e API em `*.herokuapp.com` diferentes ⇒ front envia **Bearer**; cookie com `SameSite=None; Secure`.
+Front e API em hosts diferentes ⇒ front envia **Bearer**; cookie com `SameSite=None; Secure`.
+
+### Domínio custom (Hostinger + Heroku)
+
+Registrar na Hostinger; DNS aponta para targets `*.herokudns.com`. Apps:
+
+| Hostname | App Heroku | Tipo DNS |
+|----------|------------|----------|
+| `sof.solutions` | `sof-agendamento-web` | ALIAS/ANAME (ou redirect → `www`) |
+| `www.sof.solutions` | `sof-agendamento-web` | CNAME |
+| `api.sof.solutions` | `sof-agendamento-api` | CNAME |
+
+Targets atuais: `heroku domains -a sof-agendamento-web` / `-a sof-agendamento-api`. SSL: `heroku certs:auto` (ACM).
+
+Após DNS + certificado OK, atualizar envs:
+
+| App | Vars |
+|-----|------|
+| `sof-agendamento-web` | `EXPO_PUBLIC_API_URL=https://api.sof.solutions` (+ **rebuild**/redeploy) |
+| `sof-agendamento-api` | `PUBLIC_URL=https://www.sof.solutions`, `CORS_ORIGIN=https://www.sof.solutions,https://sof.solutions`, `API_PUBLIC_URL=https://api.sof.solutions` |
+
+Admin continua nos `*.herokuapp.com` até ter subdomínios próprios (ex. `admin.sof.solutions`).
 
 ## Alternativa: Render
 
