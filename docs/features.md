@@ -173,12 +173,12 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 
 ### Conta
 
-UI em seções sem repetir dados: **Assinatura** (plano/preço/desde) → **Estabelecimento** (logo + nome + responsável + contato + horário num único card) → **WhatsApp** / **Lembretes** / **Ajuda**. E-mail fica só no header do painel; status do WhatsApp só na seção WhatsApp.
+Layout em grade: em telas ≥ 900px o conteúdo centraliza (`maxWidth` ~1040) com **até 2 cards por linha** (`flexWrap`). Ordem: **Estabelecimento | Horário** → **Assinatura | WhatsApp** → **Lembretes** (se entitlement) **| Ajuda**. Em mobile, uma coluna. E-mail fica só no header do painel; status do WhatsApp só no card WhatsApp. Logout no rodapé (fora da grade).
 
+- **Estabelecimento (resumo):** logo + nome + responsável + telefone + endereço (somente leitura) + `SofIconAction` editar → `EstablishmentModal` (logo upload/remoção web, telefone, endereço). `PUT /api/account` com `logoBase64` / `phone` / `address`. Logo: data URL, máx. 5 MB (front comprime); aparece no header do painel e do portal profissional.
+- **Horário:** pills Dom–Sáb + preview `formatHoursSummary` + editar → `OpeningHoursModal` (`HH:mm` por dia). `PUT /api/account` com `openingHours`. Sem editor inline na página.
 - **Assinatura:** plano + preço + desde (+ promo se houver); CTA alterar plano.
-- **Logo do estabelecimento:** upload na Conta (web); `Account.logoBase64` (data URL); máx. 5 MB — front comprime se maior. Aparece no header do painel e do portal profissional (antes do nome). `PUT /api/account` com `logoBase64` (`""` remove).
-- **Contato, endereço e horário** (mesmo card Estabelecimento): telefone com máscara + endereço (Salvar contato); horário com preview Dom–Sáb + edição expandível (`HH:mm`); `PUT /api/account` com `phone`/`address` ou `openingHours`. O bot informa o endereço na conversa.
-- **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
+- **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo. Se o dispositivo não estiver pareado, o **QR abre sozinho** (sem botão “Escanear”) e **renova automaticamente** (~45s ou quando o status deixa de trazer QR). Alternativa: “Usar código” com telefone. Poll `GET …/status` detecta conexão; `POST …/disconnect` despareia. Token da instância fica só no servidor.
 - **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
 - **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
 - **Suporte:** botão “Abrir suporte” (seção Ajuda) → `/(dashboard)/support`.

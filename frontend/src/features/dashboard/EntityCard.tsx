@@ -34,7 +34,7 @@ export function EntityAvatar({
           backgroundColor: bg,
         },
       ]}
-      accessibilityElementsHidden
+      aria-hidden
     >
       <Text style={[styles.avatarText, { fontSize: Math.round(size * 0.34) }]}>
         {entityInitials(name)}

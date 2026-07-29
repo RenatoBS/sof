@@ -299,7 +299,7 @@ function ActionGlyph({
   };
   if (name === 'edit') {
     return (
-      <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
+      <Svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
         <Path {...common} d="M12 20h9" />
         <Path {...common} d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
       </Svg>
@@ -307,13 +307,13 @@ function ActionGlyph({
   }
   if (name === 'close') {
     return (
-      <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
+      <Svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
         <Path {...common} d="M18 6L6 18M6 6l12 12" />
       </Svg>
     );
   }
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
+    <Svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
       <Path {...common} d="M3 6h18" />
       <Path {...common} d="M8 6V4h8v2" />
       <Path {...common} d="M19 6l-1 14H6L5 6" />

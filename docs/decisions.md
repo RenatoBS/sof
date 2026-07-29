@@ -17,6 +17,33 @@ Formato sugerido:
 
 ---
 
+---
+
+---
+
+## 2026-07-29 — Guias admin: prints Conta/modais atualizados
+
+- **Contexto:** Prints do onboarding no admin-web mostravam Conta antiga (formulário inline, botão Escanear QR) e CRUD sem modal.
+- **Decisão:** Recapturar `07-conta`, `07b`, `07c`, serviços e profissionais; alinhar copy do MD/HTML; `sync-guides` → `admin-frontend/public/guides`.
+- **Consequências:** Material público `/guides` reflete grade 2 colunas, QR automático e modais.
+- **Alternativas descartadas:** Manter prints antigos com nota de “UI em mudança”.
+
+## 2026-07-29 — Conta: QR WhatsApp aberto e auto-refresh
+
+- **Contexto:** O pareamento exigia clicar em “Escanear QR”; o código expirava sem renovação clara.
+- **Decisão:** Com pairing disponível e dispositivo desconectado, chamar `connect` automaticamente e exibir o QR; poll de status atualiza a imagem e, se o QR sumir ou passar ~45s, regenera em silêncio. “Usar código” continua opcional.
+- **Consequências:** Menos fricção no onboarding; mais chamadas a `POST /account/whatsapp/connect` enquanto a aba Conta estiver aberta sem parear.
+- **Alternativas descartadas:** Manter botão manual; só confiar no QR do `GET /status` sem reconnect.
+
+## 2026-07-29 — Conta: grade 2 colunas + modais de edição
+
+- **Contexto:** A tela Conta empilhava formulários longos (logo, contato, horário expandível) e desperdiçava largura em monitores grandes.  
+- **Decisão:** Em ≥ 900px, conteúdo centralizado (`maxWidth` ~1040) com grid de até 2 cards/linha (Estabelecimento|Horário, Assinatura|WhatsApp, Lembretes|Ajuda). Edição de estabelecimento e horário sai da página para `EstablishmentModal` / `OpeningHoursModal`; cards ficam resumo + `SofIconAction` edit.  
+- **Consequências:** Página mais escaneável no desktop; WhatsApp/lembretes/pausa/logout intactos na página.  
+- **Alternativas descartadas:** Manter formulários inline; três colunas; accordion de horário na página.
+
+---
+
 ## 2026-07-29 — CRUD serviço/prof/cliente em modal (padrão agenda)
 
 - **Contexto:** Formulários inline na página duplicavam Cancelar e quebravam o padrão visual da agenda.  

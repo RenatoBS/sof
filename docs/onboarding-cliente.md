@@ -79,34 +79,34 @@ Se a mensagem for *“Nenhum profissional cadastrado”*, siga os passos 4–6 a
 
 ## Passo 4 — Conta: identidade, contato e horário
 
-Aba **Conta**.
+Aba **Conta**. Em telas largas, os cards ficam em **duas colunas**.
 
-### Assinatura e estabelecimento
+### Estabelecimento e assinatura
 
 - Confira o plano em **Assinatura** (ou **Alterar plano**).  
-- Envie a **logo** (opcional).  
-- Preencha **telefone** e **endereço** (o bot usa isso na conversa) → **Salvar contato**.
+- No card **Estabelecimento**, toque no ícone de **editar** → modal com logo, telefone e endereço (o bot usa isso na conversa) → **Salvar**.
 
-![Conta — assinatura, logo e contato](assets/onboarding/07-conta.png)
+![Conta — grade com estabelecimento, horário, plano e WhatsApp](assets/onboarding/07-conta.png)
 
 ### Horário de funcionamento
 
-**Editar** → marque dias abertos/fechados e horários → **Salvar horários**.  
+No card **Horário**, ícone de **editar** → marque dias abertos/fechados e horários → **Salvar**.  
 O bot só oferece horários dentro desse expediente.
 
-![Edição de horário Dom–Sáb](assets/onboarding/07c-horarios.png)
+![Modal Horário de funcionamento](assets/onboarding/07c-horarios.png)
 
 ---
 
 ## Passo 5 — Conectar o WhatsApp
 
-Na mesma aba **Conta**, seção **WhatsApp**:
+Na mesma aba **Conta**, card **WhatsApp** (ao lado do plano no desktop):
 
 1. Confirme **Servidor = Pronto**.  
-2. **Escanear QR** (WhatsApp → Aparelhos conectados) **ou** **Usar código** com o número.  
-3. Aguarde **Dispositivo = Conectado**.
+2. O **QR já aparece aberto** — escaneie no WhatsApp (Aparelhos conectados). O código **renova sozinho**.  
+3. Ou use **Usar código** com o número do aparelho.  
+4. Aguarde **Dispositivo = Conectado**.
 
-![Pareamento WhatsApp — QR ou código](assets/onboarding/07b-conta-whatsapp.png)
+![Pareamento WhatsApp — QR aberto automaticamente](assets/onboarding/07b-conta-whatsapp.png)
 
 Com WhatsApp conectado (e no plano certo), aparecem também **lembretes** e **pausa do bot**.
 
@@ -114,9 +114,9 @@ Com WhatsApp conectado (e no plano certo), aparecem também **lembretes** e **pa
 
 ## Passo 6 — Serviços (cardápio)
 
-Aba **Serviços** → **Adicionar serviço**.
+Aba **Serviços** → **Adicionar serviço** (abre um **modal**).
 
-Informe **nome**, **duração (min)** e **preço (R$)**. Esse cardápio aparece no WhatsApp e na agenda.
+Informe **nome**, **duração (min)** e **preço (R$)** → **Salvar**. Esse cardápio aparece no WhatsApp e na agenda.
 
 ![Lista de serviços](assets/onboarding/05-servicos.png)
 
@@ -126,7 +126,7 @@ Informe **nome**, **duração (min)** e **preço (R$)**. Esse cardápio aparece 
 
 ## Passo 7 — Profissionais
 
-Aba **Profissionais** → **Adicionar profissional**.
+Aba **Profissionais** → **Adicionar profissional** (abre um **modal**).
 
 - Nome, telefone, e-mail de acesso  
 - Cor na agenda  
@@ -134,7 +134,7 @@ Aba **Profissionais** → **Adicionar profissional**.
 
 Ao salvar, a Sof gera um **link de uso único (2h)** para o profissional definir a senha. Depois você pode enviar de novo por **Senha no WhatsApp**.
 
-![Formulário Novo profissional](assets/onboarding/06-novo-profissional.png)
+![Modal Novo profissional](assets/onboarding/06-novo-profissional.png)
 
 ![Lista de profissionais](assets/onboarding/06b-profissionais-lista.png)
 

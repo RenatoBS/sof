@@ -33,7 +33,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Rect {...common} x={3} y={4} width={18} height={17} rx={2} />
           <Path {...common} d="M3 9h18M8 2v4M16 2v4" />
@@ -45,7 +45,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Circle {...common} cx={9} cy={7} r={3} />
           <Path {...common} d="M3 19c0-3 2.5-5.5 6-5.5" />
@@ -59,7 +59,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Path {...common} d="M8 6h13M8 12h13M8 18h13" />
           <Path {...common} d="M3 6h.01M3 12h.01M3 18h.01" />
@@ -71,7 +71,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Circle {...common} cx={12} cy={8} r={4} />
           <Path {...common} d="M5 20c0-4 3.1-7 7-7s7 3 7 7" />
@@ -83,7 +83,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Path
             {...common}
@@ -97,7 +97,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Path {...common} d="M3 3v18h18" />
           <Path {...common} d="M7 16l4-5 3 3 5-7" />
@@ -109,7 +109,7 @@ export function DashboardTabIcon({
           width={size}
           height={size}
           viewBox="0 0 24 24"
-          accessibilityElementsHidden
+          aria-hidden
         >
           <Circle {...common} cx={12} cy={12} r={3} />
           <Path
