@@ -2,12 +2,20 @@ import { Link } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, radius, space } from '@/src/theme/admin';
 
-const STATIC = {
-  onboarding: '/guides/onboarding-cliente.html',
-  bot: '/guides/bot-whatsapp.html',
-} as const;
+const GUIDES = [
+  {
+    title: 'Onboarding',
+    body: 'Do plano ou cupom até WhatsApp, serviços e profissionais — com prints.',
+    path: '/guides/onboarding-cliente.html',
+  },
+  {
+    title: 'Bot WhatsApp',
+    body: 'Fluxo do cliente (agendar) e do profissional (operar a agenda no celular).',
+    path: '/guides/bot-whatsapp.html',
+  },
+] as const;
 
-function openStatic(path: string) {
+function openGuide(path: string) {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     window.location.assign(path);
   }
@@ -19,23 +27,26 @@ export default function GuidesHub() {
       <Text style={styles.kicker}>Sof · Guias públicos</Text>
       <Text style={styles.title}>Material para o cliente</Text>
       <Text style={styles.lede}>
-        Links sem login — copie e envie para o estabelecimento. Também funcionam
-        as rotas /guides/onboarding e /guides/bot.
+        Sem login — abra o guia ou copie o link e envie para o estabelecimento.
       </Text>
 
       <View style={styles.cards}>
-        <GuideCard
-          title="Onboarding"
-          body="Do plano ou cupom até WhatsApp, serviços e profissionais — com prints."
-          href="/guides/onboarding"
-          staticPath={STATIC.onboarding}
-        />
-        <GuideCard
-          title="Bot WhatsApp"
-          body="Fluxo do cliente (agendar) e do profissional (operar a agenda no celular)."
-          href="/guides/bot"
-          staticPath={STATIC.bot}
-        />
+        {GUIDES.map((g) => (
+          <View key={g.path} style={styles.card}>
+            <Text style={styles.cardTitle}>{g.title}</Text>
+            <Text style={styles.cardBody}>{g.body}</Text>
+            <Pressable style={styles.btnPrimary} onPress={() => openGuide(g.path)}>
+              {({ pressed }) => (
+                <Text style={[styles.btnPrimaryText, pressed && { opacity: 0.85 }]}>
+                  Abrir guia
+                </Text>
+              )}
+            </Pressable>
+            <Text style={styles.path} selectable>
+              {g.path}
+            </Text>
+          </View>
+        ))}
       </View>
 
       <Link href="/login" asChild>
@@ -47,46 +58,6 @@ export default function GuidesHub() {
           )}
         </Pressable>
       </Link>
-    </View>
-  );
-}
-
-function GuideCard({
-  title,
-  body,
-  href,
-  staticPath,
-}: {
-  title: string;
-  body: string;
-  href: string;
-  staticPath: string;
-}) {
-  return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardBody}>{body}</Text>
-      <View style={styles.actions}>
-        <Link href={href} asChild>
-          <Pressable style={styles.btnPrimary}>
-            {({ pressed }) => (
-              <Text style={[styles.btnPrimaryText, pressed && { opacity: 0.85 }]}>
-                Abrir guia
-              </Text>
-            )}
-          </Pressable>
-        </Link>
-        <Pressable style={styles.btnGhost} onPress={() => openStatic(staticPath)}>
-          {({ pressed }) => (
-            <Text style={[styles.btnGhostText, pressed && { opacity: 0.7 }]}>
-              HTML direto
-            </Text>
-          )}
-        </Pressable>
-      </View>
-      <Text style={styles.path} selectable>
-        {staticPath}
-      </Text>
     </View>
   );
 }
@@ -143,8 +114,8 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: space.md,
   },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   btnPrimary: {
+    alignSelf: 'flex-start',
     backgroundColor: colors.accent,
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -153,18 +124,6 @@ const styles = StyleSheet.create({
   btnPrimaryText: {
     fontFamily: fonts.bodyMedium,
     color: colors.paper,
-    fontSize: 14,
-  },
-  btnGhost: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  btnGhostText: {
-    fontFamily: fonts.bodyMedium,
-    color: colors.accent,
     fontSize: 14,
   },
   path: {
