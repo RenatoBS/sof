@@ -14,7 +14,8 @@ import type { DaySchedule, OpeningHours } from '@/src/api/types';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { BusinessLogo } from '@/src/components/BusinessLogo';
-import { SofButton, SofInput } from '@/src/components/ui';
+import { SofButton, SofCard, SofInput } from '@/src/components/ui';
+import { EntityChip } from '@/src/features/dashboard/EntityCard';
 import { fileToLogoDataUrl } from '@/src/lib/logo';
 import {
   isValidPhoneDigits,
@@ -440,64 +441,72 @@ export default function AccountScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.hero}>
-        <Pressable
-          onPress={pickLogo}
-          disabled={logoBusy}
-          accessibilityRole="button"
-          accessibilityLabel="Alterar logo do estabelecimento"
-          style={({ pressed }) => [
-            styles.avatarPress,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <BusinessLogo
-            uri={account.logoBase64}
-            initials={initials}
-            size={64}
-          />
-          {logoBusy ? (
-            <View style={styles.avatarOverlay}>
-              <ActivityIndicator color="#fff" />
-            </View>
-          ) : null}
-        </Pressable>
-        <View style={styles.heroText}>
-          <Text style={styles.h2}>{account.businessName || 'Sua conta'}</Text>
-          <Text style={styles.sub}>
-            {[account.ownerName, account.email].filter(Boolean).join(' · ')}
-          </Text>
-          <View style={styles.heroBadges}>
-            <View style={styles.planPill}>
-              <Text style={styles.planPillText}>{account.plan}</Text>
-            </View>
-            {account.billingSource === 'promo' ? (
-              <View style={styles.promoPill}>
-                <Text style={styles.promoPillText}>Promo</Text>
-              </View>
-            ) : null}
-            <View
-              style={[
-                styles.statusPill,
-                waLinked ? styles.statusPillOn : styles.statusPillOff,
-              ]}
-            >
-              <View
-                style={[
-                  styles.statusDot,
-                  waLinked ? styles.statusDotOn : styles.statusDotOff,
-                ]}
-              />
-              <Text
-                style={[
-                  styles.statusPillText,
-                  waLinked ? styles.statusPillTextOn : styles.statusPillTextOff,
-                ]}
-              >
-                WhatsApp {waDeviceLabel.toLowerCase()}
+      <SofCard padded={false} style={styles.profileCard}>
+        <View style={styles.profileBody}>
+          <Pressable
+            onPress={pickLogo}
+            disabled={logoBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Alterar logo do estabelecimento"
+            style={({ pressed }) => [
+              styles.avatarPress,
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <BusinessLogo
+              uri={account.logoBase64}
+              initials={initials}
+              size={88}
+            />
+            <View style={styles.avatarBadge}>
+              <Text style={styles.avatarBadgeText}>
+                {logoBusy ? '…' : 'Logo'}
               </Text>
             </View>
+            {logoBusy ? (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : null}
+          </Pressable>
+
+          <View style={styles.profileCopy}>
+            <Text style={styles.sectionKicker}>Estabelecimento</Text>
+            <Text style={styles.h2} numberOfLines={2}>
+              {account.businessName || 'Sua conta'}
+            </Text>
+            <Text style={styles.sub} numberOfLines={2}>
+              {[account.ownerName, account.email].filter(Boolean).join(' · ')}
+            </Text>
+            {(phone.trim() || address.trim()) ? (
+              <View style={styles.profileMeta}>
+                {phone.trim() ? (
+                  <Text style={styles.profileMetaLine} numberOfLines={1}>
+                    {phone.trim()}
+                  </Text>
+                ) : null}
+                {address.trim() ? (
+                  <Text style={styles.profileMetaLine} numberOfLines={2}>
+                    {address.trim()}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={styles.heroBadges}>
+              <EntityChip tone="accent">{account.plan || 'Plano'}</EntityChip>
+              {account.billingSource === 'promo' ? (
+                <EntityChip tone="warn">Promo</EntityChip>
+              ) : null}
+              <EntityChip tone={waLinked ? 'ok' : 'neutral'}>
+                {waLinked
+                  ? 'WhatsApp conectado'
+                  : `WhatsApp ${waDeviceLabel.toLowerCase()}`}
+              </EntityChip>
+            </View>
           </View>
+        </View>
+
+        <View style={styles.profileFooter}>
           <View style={styles.logoActions}>
             <SofButton
               title="Enviar logo"
@@ -509,7 +518,7 @@ export default function AccountScreen() {
             />
             {account.logoBase64 ? (
               <SofButton
-                title="Remover logo"
+                title="Remover"
                 variant="danger"
                 theme="dashboard"
                 onPress={removeLogo}
@@ -517,17 +526,16 @@ export default function AccountScreen() {
               />
             ) : null}
           </View>
+          <Text style={styles.logoHint}>
+            PNG, JPEG, WebP ou GIF · até 5 MB (arquivos maiores são reduzidos)
+          </Text>
           {logoError ? <Text style={styles.logoError}>{logoError}</Text> : null}
           {logoSaved ? <Text style={styles.logoSaved}>{logoSaved}</Text> : null}
-          <Text style={styles.logoHint}>
-            PNG, JPEG, WebP ou GIF. Máximo 5 MB — arquivos maiores são
-            redimensionados automaticamente.
-          </Text>
         </View>
-      </View>
+      </SofCard>
 
       <Text style={styles.sectionLabel}>Assinatura</Text>
-      <View style={styles.card}>
+      <SofCard>
         <View style={styles.planBanner}>
           <View style={styles.planBannerText}>
             <Text style={styles.planBannerName}>{account.plan}</Text>
@@ -562,45 +570,54 @@ export default function AccountScreen() {
             </View>
           ) : null}
         </View>
-      </View>
+      </SofCard>
 
-      <Text style={styles.sectionLabel}>Estabelecimento</Text>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Contato, endereço e horário</Text>
-        <Text style={styles.help}>
-          Dados do estabelecimento: telefone do responsável, endereço (o bot
-          pode informar aos clientes) e expediente de agendamento.
-        </Text>
+      <Text style={styles.sectionLabel}>Dados do estabelecimento</Text>
+      <SofCard>
+        <View style={styles.blockHead}>
+          <Text style={styles.cardTitle}>Contato</Text>
+          <Text style={styles.cardHint}>
+            Telefone do responsável e endereço que o bot pode informar aos
+            clientes.
+          </Text>
+        </View>
 
-        <SofInput
-          label="Telefone (com DDD)"
-          value={phone}
-          onChangeText={(t) => {
-            setPhone(maskBrPhone(t));
-            setContactError('');
-          }}
-          theme="dashboard"
-          placeholder="(11) 99999-8888"
-          keyboardType="phone-pad"
-          error={contactError || undefined}
-        />
-        <SofInput
-          label="Endereço do estabelecimento"
-          value={address}
-          onChangeText={(t) => {
-            setAddress(t);
-            setContactError('');
-          }}
-          theme="dashboard"
-          placeholder="Rua Exemplo, 123 — Bairro, Cidade"
-          autoCapitalize="words"
-        />
+        <View style={styles.contactGrid}>
+          <View style={styles.contactCol}>
+            <SofInput
+              label="Telefone (com DDD)"
+              value={phone}
+              onChangeText={(t) => {
+                setPhone(maskBrPhone(t));
+                setContactError('');
+              }}
+              theme="dashboard"
+              placeholder="(11) 99999-8888"
+              keyboardType="phone-pad"
+              error={contactError || undefined}
+            />
+          </View>
+          <View style={styles.contactColWide}>
+            <SofInput
+              label="Endereço"
+              value={address}
+              onChangeText={(t) => {
+                setAddress(t);
+                setContactError('');
+              }}
+              theme="dashboard"
+              placeholder="Rua Exemplo, 123 — Bairro, Cidade"
+              autoCapitalize="words"
+            />
+          </View>
+        </View>
         {contactSaved ? <Text style={styles.saved}>{contactSaved}</Text> : null}
         <View style={styles.inlineActions}>
           <SofButton
-            title={savingContact ? 'Salvando…' : 'Salvar contato'}
+            title="Salvar contato"
             variant="dark"
             theme="dashboard"
+            loading={savingContact}
             disabled={savingContact}
             onPress={async () => {
               setContactError('');
@@ -641,7 +658,9 @@ export default function AccountScreen() {
           <View style={styles.cardTitleBlock}>
             <Text style={styles.subCardTitle}>Horário de funcionamento</Text>
             {!hoursExpanded ? (
-              <Text style={styles.cardHint}>Quando clientes podem agendar</Text>
+              <Text style={styles.cardHint}>
+                Quando clientes podem agendar pelo WhatsApp e pelo painel
+              </Text>
             ) : null}
           </View>
           <Pressable
@@ -685,8 +704,8 @@ export default function AccountScreen() {
         ) : (
           <>
             <Text style={styles.help}>
-              Define os dias e horários em que clientes podem agendar (WhatsApp e
-              painel). O serviço precisa caber inteiro dentro do expediente.
+              Define os dias e horários em que clientes podem agendar. O serviço
+              precisa caber inteiro dentro do expediente.
             </Text>
             {hours.map((day, index) => (
               <View key={DAY_LABELS[index]} style={styles.dayRow}>
@@ -775,10 +794,10 @@ export default function AccountScreen() {
             />
           </>
         )}
-      </View>
+      </SofCard>
 
       <Text style={styles.sectionLabel}>WhatsApp</Text>
-      <View style={styles.card}>
+      <SofCard>
         <Text style={styles.cardTitle}>Bot e conexão</Text>
 
         <View style={styles.statusRow}>
@@ -855,7 +874,7 @@ export default function AccountScreen() {
           <>
             <Text style={styles.help}>
               Escaneie o QR no WhatsApp (Aparelhos conectados) ou use um código
-              de pareamento — igual ao cadastro de instância no Uazapi.
+              de pareamento — igual ao cadastro de um dispositivo no WhatsApp.
             </Text>
 
             {waMode === 'idle' || waMode === 'qrcode' ? (
@@ -1051,12 +1070,12 @@ export default function AccountScreen() {
             />
           </View>
         ) : null}
-      </View>
+      </SofCard>
 
       {has('reminders') && waLinked ? (
         <>
           <Text style={styles.sectionLabel}>Lembretes</Text>
-          <View style={styles.card}>
+          <SofCard>
             <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
             <Text style={styles.help}>
               A Sof envia um lembrete automático pela instância conectada, no
@@ -1161,12 +1180,12 @@ export default function AccountScreen() {
                 }
               }}
             />
-          </View>
+          </SofCard>
         </>
       ) : null}
 
       <Text style={styles.sectionLabel}>Ajuda</Text>
-      <View style={styles.card}>
+      <SofCard>
         <View style={styles.cardTitleBlock}>
           <Text style={styles.cardTitle}>Suporte Sof</Text>
           <Text style={styles.cardHint}>
@@ -1180,7 +1199,7 @@ export default function AccountScreen() {
           theme="dashboard"
           onPress={() => router.push('/(dashboard)/support')}
         />
-      </View>
+      </SofCard>
 
       <View style={styles.dangerZone}>
         <View style={styles.dangerText}>
@@ -1205,15 +1224,69 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 16, maxWidth: 720 },
-  hero: {
+  page: { gap: 18, maxWidth: 760 },
+  profileCard: {
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  profileBody: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 8,
+    alignItems: 'center',
+    gap: 20,
+    padding: 22,
+    flexWrap: 'wrap',
+  },
+  profileCopy: {
+    flex: 1,
+    minWidth: 200,
+    gap: 6,
+  },
+  profileMeta: {
+    gap: 2,
+    marginTop: 2,
+  },
+  profileMetaLine: {
+    color: d.ink,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: d.fonts.body,
+    opacity: 0.85,
+  },
+  sectionKicker: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: d.muted,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  profileFooter: {
+    borderTopWidth: 1,
+    borderTopColor: d.line,
+    backgroundColor: d.fill,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 8,
   },
   avatarPress: {
     position: 'relative',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    backgroundColor: d.ink,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 2,
+    borderColor: d.surface,
+  },
+  avatarBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: d.fonts.bodyMedium,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFill,
@@ -1222,40 +1295,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 16,
   },
-  heroText: { flex: 1, gap: 4, minWidth: 0 },
   logoActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 10,
   },
   logoHint: {
     color: d.muted,
     fontSize: 12,
     lineHeight: 18,
     fontFamily: d.fonts.body,
-    marginTop: 4,
   },
   logoError: {
     color: d.danger,
     fontSize: 13,
     fontWeight: '600',
     fontFamily: d.fonts.bodyMedium,
-    marginTop: 4,
   },
   logoSaved: {
     color: d.waGreenText,
     fontSize: 13,
     fontWeight: '600',
     fontFamily: d.fonts.bodyMedium,
-    marginTop: 4,
   },
   h2: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: d.ink,
     fontFamily: d.fonts.displayBold,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   sub: {
     color: d.muted,
@@ -1268,6 +1336,116 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 6,
+  },
+  blockHead: { gap: 4, marginBottom: 4 },
+  contactGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  contactCol: { flexGrow: 1, flexBasis: 180, minWidth: 160 },
+  contactColWide: { flexGrow: 2, flexBasis: 260, minWidth: 200 },
+  sectionLabel: {
+    color: d.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 8,
+  },
+  card: {
+    backgroundColor: d.surface,
+    borderRadius: d.radius,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 24,
+    gap: 14,
+    ...d.shadow.soft,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
+  },
+  subCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  cardTitleBlock: { flex: 1, gap: 2, minWidth: 0 },
+  cardHint: { color: d.muted, fontSize: 13, fontFamily: d.fonts.body, lineHeight: 19 },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: d.line,
+    marginVertical: 8,
+  },
+  planBanner: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: d.fill,
+    borderRadius: d.radiusSm,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 16,
+  },
+  planBannerText: { gap: 2, flex: 1, minWidth: 140 },
+  planBannerName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+  },
+  planBannerPrice: {
+    fontSize: 14,
+    color: d.muted,
+    fontWeight: '500',
+    fontFamily: d.fonts.body,
+  },
+  hoursHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  expandBtn: {
+    borderRadius: d.radiusSm,
+    borderWidth: 1,
+    borderColor: d.line,
+    backgroundColor: d.fill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  expandBtnText: {
+    fontWeight: '600',
+    fontSize: 13,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  hoursPreview: { gap: 12 },
+  dayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  dayPill: {
+    minWidth: 40,
+    alignItems: 'center',
+    borderRadius: d.radiusSm,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  dayPillOpen: { backgroundColor: '#ecfdf5' },
+  dayPillClosed: { backgroundColor: d.fill },
+  dayPillText: { fontSize: 12, fontWeight: '700' },
+  dayPillTextOpen: { color: d.waGreenText },
+  dayPillTextClosed: { color: d.muted },
+  hoursSummary: {
+    color: d.ink,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
   },
   planPill: {
     backgroundColor: d.accentSoft,
@@ -1292,7 +1470,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusPillOn: { backgroundColor: '#ecfdf5' },
-  statusPillOff: { backgroundColor: '#f1f5f9' },
+  statusPillOff: { backgroundColor: d.fill },
   statusPillText: { fontSize: 12, fontWeight: '600' },
   statusPillTextOn: { color: d.waGreenText },
   statusPillTextOff: { color: d.muted },
@@ -1300,92 +1478,6 @@ const styles = StyleSheet.create({
   statusDotOn: { backgroundColor: d.waGreenText },
   statusDotOff: { backgroundColor: '#94a3b8' },
   statusDotLg: { width: 10, height: 10, borderRadius: 5 },
-  sectionLabel: {
-    color: d.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginTop: 8,
-  },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 14,
-    ...d.shadow.soft,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
-  },
-  subCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: d.ink,
-    fontFamily: d.fonts.bodyMedium,
-  },
-  cardTitleBlock: { flex: 1, gap: 2, minWidth: 0 },
-  cardHint: { color: d.muted, fontSize: 13, fontFamily: d.fonts.body },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: d.line,
-    marginVertical: 4,
-  },
-  planBanner: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    backgroundColor: '#f8fafc',
-    borderRadius: d.radiusSm,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 16,
-  },
-  planBannerText: { gap: 2, flex: 1, minWidth: 140 },
-  planBannerName: { fontSize: 18, fontWeight: '700', color: d.ink },
-  planBannerPrice: { fontSize: 14, color: d.muted, fontWeight: '500' },
-  hoursHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  expandBtn: {
-    borderRadius: d.radiusSm,
-    borderWidth: 1,
-    borderColor: d.line,
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  expandBtnText: { fontWeight: '600', fontSize: 13, color: d.ink },
-  hoursPreview: { gap: 12 },
-  dayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  dayPill: {
-    minWidth: 40,
-    alignItems: 'center',
-    borderRadius: d.radiusSm,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  dayPillOpen: { backgroundColor: '#ecfdf5' },
-  dayPillClosed: { backgroundColor: '#f1f5f9' },
-  dayPillText: { fontSize: 12, fontWeight: '700' },
-  dayPillTextOpen: { color: d.waGreenText },
-  dayPillTextClosed: { color: '#94a3b8' },
-  hoursSummary: {
-    color: d.ink,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
   metaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

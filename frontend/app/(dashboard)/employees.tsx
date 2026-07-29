@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { createElement, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
@@ -31,13 +31,22 @@ import {
 import { d } from '@/src/theme/dashboard';
 
 const EMPLOYEE_COLORS = [
-  '#3D4743',
-  '#C19A6B',
-  '#5B7A6E',
-  '#8F6E45',
-  '#6E7873',
-  '#A67C52',
+  '#3d4743',
+  '#c19a6b',
+  '#5b7a6e',
+  '#8f6e45',
+  '#6e7873',
+  '#a67c52',
 ] as const;
+
+function normalizeHex(raw: string): string {
+  const color = raw.trim().toLowerCase();
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+  }
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  return EMPLOYEE_COLORS[0];
+}
 
 export default function EmployeesScreen() {
   const { employees, setEmployees, services } = useDashboard();
@@ -124,7 +133,7 @@ export default function EmployeesScreen() {
     setName(employee.name);
     setEmail(employee.email || '');
     setPhone(maskBrPhone(employee.phone || ''));
-    setColor((employee.color || EMPLOYEE_COLORS[0]).toLowerCase());
+    setColor(normalizeHex(employee.color || EMPLOYEE_COLORS[0]));
     setServiceIds((employee.services || []).map((s) => s.id));
     setResetPassword(false);
     setFieldErrors({});
@@ -205,7 +214,7 @@ export default function EmployeesScreen() {
         email: email.trim().toLowerCase(),
         phone: normalizePhoneDigits(phone),
         serviceIds,
-        color,
+        color: normalizeHex(color),
       };
       if (editingId) {
         const { employee, resetLink, expiresAt } =
@@ -375,7 +384,68 @@ export default function EmployeesScreen() {
                   />
                 );
               })}
+              {Platform.OS === 'web' ? (
+                <View
+                  style={[
+                    styles.colorSwatch,
+                    styles.customSwatch,
+                    { backgroundColor: normalizeHex(color) },
+                    !(EMPLOYEE_COLORS as readonly string[]).includes(
+                      normalizeHex(color),
+                    ) && styles.colorSwatchActive,
+                  ]}
+                  accessibilityLabel="Escolher qualquer cor"
+                >
+                  {createElement('input', {
+                    type: 'color',
+                    value: normalizeHex(color),
+                    title: 'Escolher qualquer cor',
+                    'aria-label': 'Escolher qualquer cor',
+                    onInput: (e: { target: { value: string } }) => {
+                      setColor(normalizeHex(e.target.value));
+                    },
+                    onChange: (e: { target: { value: string } }) => {
+                      setColor(normalizeHex(e.target.value));
+                    },
+                    style: {
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer',
+                      border: 'none',
+                      padding: 0,
+                    },
+                  })}
+                  <Text style={styles.customSwatchGlyph}>+</Text>
+                </View>
+              ) : null}
             </View>
+            {Platform.OS === 'web' ? (
+              <Text style={styles.colorHint}>
+                Presets ou + para abrir o seletor e escolher qualquer cor
+              </Text>
+            ) : (
+              <SofInput
+                label="Código da cor (hex)"
+                value={color}
+                onChangeText={(t) => {
+                  const next = t.trim().toLowerCase();
+                  if (next === '' || next === '#') {
+                    setColor('#');
+                    return;
+                  }
+                  const withHash = next.startsWith('#') ? next : `#${next}`;
+                  if (/^#[0-9a-f]{0,6}$/i.test(withHash)) {
+                    setColor(withHash.length === 7 ? normalizeHex(withHash) : withHash);
+                  }
+                }}
+                theme="dashboard"
+                placeholder="#3d4743"
+                autoCapitalize="none"
+              />
+            )}
             <Text style={styles.label}>Serviços que realiza</Text>
             <View style={styles.chips}>
               {services.map((s) => {
@@ -575,10 +645,35 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    overflow: 'hidden',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   colorSwatchActive: {
     borderColor: d.ink,
     transform: [{ scale: 1.08 }],
+  },
+  customSwatch: {
+    borderColor: d.line,
+    borderStyle: 'dashed',
+  },
+  customSwatchGlyph: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 20,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    pointerEvents: 'none',
+  },
+  colorHint: {
+    color: d.muted,
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 4,
+    fontFamily: d.fonts.body,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   chip: {

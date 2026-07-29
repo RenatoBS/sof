@@ -17,6 +17,24 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Cor do profissional: qualquer hex + seletor
+
+- **Contexto:** API só aceitava 6 hex fixos (Tailwind); o form do painel já usava presets da marca Sof — salvar/editar falhava com “Cor inválida”.  
+- **Decisão:** backend valida qualquer `#RGB`/`#RRGGBB`; front mantém presets e adiciona `input type=color` (web) / campo hex (nativo).  
+- **Consequências:** cores livres na agenda; defaults de criação alinhados à paleta Sof.  
+- **Alternativas descartadas:** só expandir a whitelist de presets.
+
+---
+
+## 2026-07-28 — Conta: card de perfil do estabelecimento
+
+- **Contexto:** Bloco do estabelecimento na Conta misturava logo, nome e ações sem hierarquia clara; seções usavam `View` card legado inconsistente com o kit.  
+- **Decisão:** Card de perfil (`SofCard`) com logo clicável, kicker, chips (`EntityChip`), preview de telefone/endereço e rodapé de ações de logo; Assinatura / Dados / WhatsApp / Lembretes / Ajuda em `SofCard`.  
+- **Consequências:** Conta mais scannable e alinhada às listagens Operate.  
+- **Alternativas descartadas:** Manter layout flat; página só com formulários sem hero.
+
+---
+
 ## 2026-07-28 — Cards entity (Profissionais / Serviços / Clientes)
 
 - **Contexto:** Cards das três listagens eram blocos de texto plano com ações soltas; pouca hierarquia e empty fraco em profissionais.  
