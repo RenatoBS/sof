@@ -8,7 +8,7 @@ import {
   SofErrorBanner,
   SofInput,
 } from '@/src/components/ui';
-import { authApi } from '@/src/api/endpoints';
+import { authApi, employeeAuthApi } from '@/src/api/endpoints';
 import { ApiError } from '@/src/api/client';
 import { m } from '@/src/theme/marketing';
 
@@ -22,7 +22,12 @@ export default function EsqueciSenhaScreen() {
     setError('');
     setLoading(true);
     try {
-      await authApi.requestPasswordReset(email.trim().toLowerCase());
+      const normalized = email.trim().toLowerCase();
+      // Conta e profissional em endpoints separados (evita ciclo de módulos no Nest).
+      await Promise.all([
+        authApi.requestPasswordReset(normalized),
+        employeeAuthApi.requestPasswordReset(normalized),
+      ]);
       setDone(true);
     } catch (err) {
       setError(

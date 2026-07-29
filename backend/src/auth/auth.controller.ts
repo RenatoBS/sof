@@ -33,7 +33,6 @@ import { AuthGuard } from './auth.guard';
 import type { AuthedRequest } from './auth.guard';
 import { AccountPasswordTokenService } from './account-password-token.service';
 import { AccountPasswordResetService } from './account-password-reset.service';
-import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
 
 function isEmail(value: unknown): value is string {
   return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -48,7 +47,6 @@ export class AuthController {
     private readonly promos: PromoCouponsService,
     private readonly accountPasswordTokens: AccountPasswordTokenService,
     private readonly accountPasswordReset: AccountPasswordResetService,
-    private readonly employeePasswordReset: EmployeePasswordResetService,
   ) {}
 
   @Post('login')
@@ -105,8 +103,8 @@ export class AuthController {
   }
 
   /**
-   * Esqueci a senha (conta ou profissional). Sempre responde OK genérico.
-   * Conta: e-mail + WhatsApp. Profissional: e-mail + WhatsApp.
+   * Esqueci a senha (conta). Sempre responde OK genérico.
+   * E-mail + WhatsApp quando possível. Profissionais usam /api/employee-auth/….
    */
   @Post('request-password-reset')
   @HttpCode(200)
@@ -132,22 +130,6 @@ export class AuthController {
     if (account) {
       try {
         await this.accountPasswordReset.issueAndNotifyForgot(account);
-      } catch {
-        // não vaza motivo
-      }
-      return generic;
-    }
-
-    const employee = await this.prisma.employee.findUnique({
-      where: { email },
-      include: { account: true },
-    });
-    if (employee?.email) {
-      try {
-        await this.employeePasswordReset.issueAndNotifyForgot({
-          employee,
-          account: employee.account,
-        });
       } catch {
         // não vaza motivo
       }
