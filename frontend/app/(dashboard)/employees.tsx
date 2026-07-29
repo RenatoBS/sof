@@ -207,6 +207,12 @@ export default function EmployeesScreen() {
     setFieldErrors(errors);
     if (hasFieldErrors(errors)) return;
 
+    const hexOk = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color.trim());
+    if (!hexOk) {
+      setError('Informe uma cor hexadecimal válida (#RGB ou #RRGGBB).');
+      return;
+    }
+
     setLoading(true);
     try {
       const body = {
