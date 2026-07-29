@@ -20,9 +20,9 @@ Sof ajuda salões/barbearias a:
 | Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
-| Nav / footer | global | Wordmark `sof`, CTAs |
+| Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
 
-Copy e tokens devem permanecer alinhados à marca Sof.
+Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`.
 
 ## Checkout e assinatura
 
@@ -108,12 +108,12 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 - Listagem em cards (cor de identificação; telefone com máscara na UI).  
 - CRUD: adicionar / **editar** / remover.  
 - Form front: máscara de telefone `(11) 99999-8888` + validação por campo (nome, telefone 10–15 dígitos, e-mail, ≥1 serviço) antes do POST/PUT.  
-- Campos: nome, **telefone**, **e-mail de acesso** e **um ou mais serviços** do cardápio (obrigatório).  
+- Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`) e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
 - Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/profissional/definir-senha?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
 - **Enviar no WhatsApp:** `POST /api/employees/:id/send-password-link` gera (ou regenera) o link, invalida a senha atual e envia pelo WhatsApp da conta uma mensagem com instruções + botão/CTA **Redefinir senha** (Meta: `cta_url`; Uazapi: CTA se suportado, senão texto com o link). Exige telefone do profissional e WhatsApp conectado.  
 - **Self-service:** o profissional também pode pedir o link — ver área do profissional e bot WhatsApp.
-- `PUT /api/employees/:id` substitui nome, e-mail, telefone e a lista de serviços (`resetPassword` opcional → novo link).  
+- `PUT /api/employees/:id` substitui nome, e-mail, telefone, cor e a lista de serviços (`resetPassword` opcional → novo link).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
 
 ### Área do profissional
@@ -160,18 +160,20 @@ Shell: topbar (negócio + email + Sair) + abas horizontais.
 
 ### Conta
 
-UI agrupada por seções (Assinatura / Estabelecimento / WhatsApp / Lembretes), com hero do estabelecimento (iniciais, plano, status WhatsApp).
+UI em seções sem repetir dados: **Assinatura** (plano/preço/desde) → **Estabelecimento** (logo + nome + responsável + contato + horário num único card) → **WhatsApp** / **Lembretes** / **Ajuda**. E-mail fica só no header do painel; status do WhatsApp só na seção WhatsApp.
 
-- **Assinatura:** banner do plano + preço, e-mail, desde; CTA alterar plano.
-- **Contato, endereço e horário** (mesmo card): telefone com máscara + endereço (um botão Salvar contato); horário de funcionamento no mesmo card (preview com pills Dom–Sáb + edição expandível, validação `HH:mm`); `PUT /api/account` com `phone`/`address` ou `openingHours`. O bot informa o endereço na conversa.
+- **Assinatura:** plano + preço + desde (+ promo se houver); CTA alterar plano.
+- **Logo do estabelecimento:** upload na Conta (web); `Account.logoBase64` (data URL); máx. 5 MB — front comprime se maior. Aparece no header do painel e do portal profissional (antes do nome). `PUT /api/account` com `logoBase64` (`""` remove).
+- **Contato, endereço e horário** (mesmo card Estabelecimento): telefone com máscara + endereço (Salvar contato); horário com preview Dom–Sáb + edição expandível (`HH:mm`); `PUT /api/account` com `phone`/`address` ou `openingHours`. O bot informa o endereço na conversa.
 - **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
 - **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
 - **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
+- **Suporte:** botão “Abrir suporte” (seção Ajuda) → `/(dashboard)/support`.
 - **Sessão:** zona de saída (logout) no rodapé da tela.
 
 ### Suporte
 
-- Aba **Suporte** no dashboard da conta: abrir ticket (`title` + `description`), listar, comentar e mudar status (`open` | `in_progress` | `resolved` | `closed`).
+- Em **Conta → Abrir suporte** (não há mais aba no menu): abrir ticket (`title` + `description`), listar, comentar e mudar status (`open` | `in_progress` | `resolved` | `closed`). Rota `/(dashboard)/support` com botão “Voltar à Conta”.
 - Portal do profissional: ver tickets da conta, comentar e mudar status (não abre ticket novo).
 - Admin Sof: lista (filtro abertos por padrão), detalhe, responder e status.
 - API produto: `GET/POST /api/tickets`, `GET /api/tickets/:id`, `POST …/comments`, `PATCH …/status` — `TenantAuthGuard` (conta **ou** profissional).

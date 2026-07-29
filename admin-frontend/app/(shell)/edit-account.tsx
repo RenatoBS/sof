@@ -8,7 +8,7 @@ import {
   type AccountRow,
   type PlanRow,
 } from '@/src/api/endpoints';
-import { Button, Field } from '@/src/components/ui';
+import { Button, ErrorText, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
 function paramId(value: string | string[] | undefined) {
@@ -160,11 +160,16 @@ export default function AccountDetailScreen() {
         />
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       {message ? <Text style={styles.ok}>{message}</Text> : null}
 
       <View style={styles.actions}>
-        <Button title="Resetar senha" variant="danger" onPress={resetPassword} disabled={busy} />
+        <Button
+          title="Resetar senha"
+          variant="danger"
+          onPress={resetPassword}
+          disabled={busy}
+        />
         <Button title={busy ? 'Salvando…' : 'Salvar'} onPress={save} disabled={busy} />
       </View>
     </ScrollView>
@@ -197,7 +202,6 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginBottom: space.md,
   },
-  error: { color: colors.danger, marginBottom: space.sm },
   ok: { color: colors.accent, marginBottom: space.sm },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md, flexWrap: 'wrap' },
 });

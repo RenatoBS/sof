@@ -153,6 +153,8 @@ Hook: `.cursor/hooks.json` (detector Impeccable em `preToolUse`). Em Settings �
 
 Atualizar Impeccable: `npx impeccable install --providers=cursor --scope=project`.
 
+Depois do polish UI: no Agent, `/impeccable init` gera `PRODUCT.md` / `DESIGN.md` para futuras iterações de design.
+
 ## Troubleshooting
 
 | Sintoma | Causa provável | Ação |

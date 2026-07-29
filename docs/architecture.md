@@ -85,7 +85,7 @@ AdminUser     (operadores do painel Sof — não é tenant; comentários de supo
 Plan          (catálogo Sof ↔ stripeProductId / stripePriceId / paymentLinkUrl / entitlements)
 ```
 
-Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `planId` (FK opcional a `Plan`), `address` (opcional, informado pelo bot), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended` | `paused`), `billingSource` (`paid` | `promo`), `promoExpiresAt`.
+Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `planId` (FK opcional a `Plan`), `address` (opcional, informado pelo bot), `logoBase64` (data URL do logo; até 5 MB), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended` | `paused`), `billingSource` (`paid` | `promo`), `promoExpiresAt`.
 
 `Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `paymentLinkUrl`, `features` (JSON marketing `string[]`), `entitlements` (JSON mapa featureKey → boolean | number | null), `active`, `sortOrder`. Admin com Stripe cria Product + Price + Payment Link juntos; `DELETE` desativa o link e remove/arquiva o produto na Stripe antes de apagar o registro. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` (Solo/Equipe/Rede) se a tabela estiver vazia.
 
@@ -186,8 +186,11 @@ Token storage: web `localStorage` chave `sof_token`; native SecureStore.
 
 ### UI
 
-Componentes de marca: `SofButton`, `SofInput`, `SofChatCard`, `FeatureIcon`, `MarketingNav`.  
-Visual alinhado ao HTML legado (tokens `#F4F4F6`, `#6B6FB5`).
+Temas: `src/theme/marketing.ts` (`m`) e `src/theme/dashboard.ts` (`d`) — identidade Sof da logo: verde floresta `#3D4743` + cobre `#C19A6B`, fundos claros (`paper` `#F4F4F6` / `surface` branco).
+
+Kit compartilhado em `src/components/ui.tsx`: `SofButton` (pressed/hover/`loading`), `SofInput`, `SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, `SofListRow`, `SofIconAction` / `SofRowActions` (Editar/Remover com ícone; só ícone abaixo de 720px), `Eyebrow`, `Wrap`. Marketing: `MarketingNav` (menu mobile), `SiteFooter`, `SofChatCard`, `FeatureIcon`.
+
+Toast dismissível no root layout. Shell do dashboard usa tabs com accent Sof, `SofLoadingGate` e `BusinessLogo` (logo da conta antes do nome). Body JSON da API: limite `8mb` (para upload de logo em base64).
 
 ## Infraestrutura
 
@@ -237,3 +240,4 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
 - Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.
+- UI kit próprio (não compartilha código com `frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter e mesma cromia Sof: verde floresta + cobre) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.

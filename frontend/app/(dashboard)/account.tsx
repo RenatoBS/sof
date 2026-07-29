@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,7 +13,9 @@ import { dashboardApi } from '@/src/api/endpoints';
 import type { DaySchedule, OpeningHours } from '@/src/api/types';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
-import { SofButton, SofInput } from '@/src/components/ui';
+import { BusinessLogo } from '@/src/components/BusinessLogo';
+import { SofButton, SofCard, SofInput } from '@/src/components/ui';
+import { fileToLogoDataUrl } from '@/src/lib/logo';
 import {
   isValidPhoneDigits,
   isValidTimeHm,
@@ -211,6 +214,9 @@ export default function AccountScreen() {
   const [botPauseSaved, setBotPauseSaved] = useState('');
   const [botPauseError, setBotPauseError] = useState('');
   const [savingBotPause, setSavingBotPause] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const [logoSaved, setLogoSaved] = useState('');
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -369,6 +375,59 @@ export default function AccountScreen() {
     .map((w) => w[0]?.toUpperCase() || '')
     .join('');
 
+  const pickLogo = () => {
+    setLogoError('');
+    setLogoSaved('');
+    if (Platform.OS !== 'web') {
+      setLogoError('O upload de logo está disponível no painel web por enquanto.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setLogoBusy(true);
+      setLogoError('');
+      setLogoSaved('');
+      try {
+        const dataUrl = await fileToLogoDataUrl(file);
+        const { account: updated } = await dashboardApi.updateAccount({
+          logoBase64: dataUrl,
+        });
+        await setSession(updated);
+        setLogoSaved('Logo atualizado.');
+      } catch (err) {
+        setLogoError(
+          err instanceof Error ? err.message : 'Falha ao enviar o logo.',
+        );
+      } finally {
+        setLogoBusy(false);
+      }
+    };
+    input.click();
+  };
+
+  const removeLogo = async () => {
+    setLogoBusy(true);
+    setLogoError('');
+    setLogoSaved('');
+    try {
+      const { account: updated } = await dashboardApi.updateAccount({
+        logoBase64: '',
+      });
+      await setSession(updated);
+      setLogoSaved('Logo removido.');
+    } catch (err) {
+      setLogoError(
+        err instanceof Error ? err.message : 'Falha ao remover o logo.',
+      );
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
   const waDeviceLabel = waLinked
     ? 'Conectado'
     : waStatus === 'connecting'
@@ -381,51 +440,8 @@ export default function AccountScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.hero}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials || 'S'}</Text>
-        </View>
-        <View style={styles.heroText}>
-          <Text style={styles.h2}>{account.businessName || 'Sua conta'}</Text>
-          <Text style={styles.sub}>
-            {[account.ownerName, account.email].filter(Boolean).join(' · ')}
-          </Text>
-          <View style={styles.heroBadges}>
-            <View style={styles.planPill}>
-              <Text style={styles.planPillText}>{account.plan}</Text>
-            </View>
-            {account.billingSource === 'promo' ? (
-              <View style={styles.promoPill}>
-                <Text style={styles.promoPillText}>Promo</Text>
-              </View>
-            ) : null}
-            <View
-              style={[
-                styles.statusPill,
-                waLinked ? styles.statusPillOn : styles.statusPillOff,
-              ]}
-            >
-              <View
-                style={[
-                  styles.statusDot,
-                  waLinked ? styles.statusDotOn : styles.statusDotOff,
-                ]}
-              />
-              <Text
-                style={[
-                  styles.statusPillText,
-                  waLinked ? styles.statusPillTextOn : styles.statusPillTextOff,
-                ]}
-              >
-                WhatsApp {waDeviceLabel.toLowerCase()}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
       <Text style={styles.sectionLabel}>Assinatura</Text>
-      <View style={styles.card}>
+      <SofCard>
         <View style={styles.planBanner}>
           <View style={styles.planBannerText}>
             <Text style={styles.planBannerName}>{account.plan}</Text>
@@ -433,6 +449,16 @@ export default function AccountScreen() {
               {account.planPrice != null
                 ? `R$ ${account.planPrice}/mês`
                 : 'Plano ativo'}
+            </Text>
+            <Text style={styles.planBannerMeta}>
+              {[
+                `Desde ${since}`,
+                account.billingSource === 'promo' && account.promoExpiresAt
+                  ? `Promo até ${new Date(account.promoExpiresAt).toLocaleDateString('pt-BR')}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           </View>
           <SofButton
@@ -442,241 +468,296 @@ export default function AccountScreen() {
             onPress={() => router.push('/(dashboard)/choose-plan')}
           />
         </View>
-        <View style={styles.metaGrid}>
-          <View style={styles.meta}>
-            <Text style={styles.metaLabel}>E-mail</Text>
-            <Text style={styles.metaValue}>{account.email}</Text>
-          </View>
-          <View style={styles.meta}>
-            <Text style={styles.metaLabel}>Assinante desde</Text>
-            <Text style={styles.metaValue}>{since}</Text>
-          </View>
-          {account.billingSource === 'promo' && account.promoExpiresAt ? (
-            <View style={styles.meta}>
-              <Text style={styles.metaLabel}>Promo até</Text>
-              <Text style={styles.metaValue}>
-                {new Date(account.promoExpiresAt).toLocaleDateString('pt-BR')}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
+      </SofCard>
 
       <Text style={styles.sectionLabel}>Estabelecimento</Text>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Contato, endereço e horário</Text>
-        <Text style={styles.help}>
-          Dados do estabelecimento: telefone do responsável, endereço (o bot
-          pode informar aos clientes) e expediente de agendamento.
-        </Text>
-
-        <SofInput
-          label="Telefone (com DDD)"
-          value={phone}
-          onChangeText={(t) => {
-            setPhone(maskBrPhone(t));
-            setContactError('');
-          }}
-          theme="dashboard"
-          placeholder="(11) 99999-8888"
-          keyboardType="phone-pad"
-          error={contactError || undefined}
-        />
-        <SofInput
-          label="Endereço do estabelecimento"
-          value={address}
-          onChangeText={(t) => {
-            setAddress(t);
-            setContactError('');
-          }}
-          theme="dashboard"
-          placeholder="Rua Exemplo, 123 — Bairro, Cidade"
-          autoCapitalize="words"
-        />
-        {contactSaved ? <Text style={styles.saved}>{contactSaved}</Text> : null}
-        <View style={styles.inlineActions}>
-          <SofButton
-            title={savingContact ? 'Salvando…' : 'Salvar contato'}
-            variant="dark"
-            theme="dashboard"
-            disabled={savingContact}
-            onPress={async () => {
-              setContactError('');
-              const digits = normalizePhoneDigits(phone);
-              if (!isValidPhoneDigits(digits)) {
-                setContactError(
-                  'Telefone inválido. Use DDD + número (10 a 15 dígitos).',
-                );
-                return;
-              }
-              setSavingContact(true);
-              try {
-                const { account: updated } = await dashboardApi.updateAccount({
-                  phone: digits,
-                  address: address.trim(),
-                });
-                await setSession(updated);
-                setPhone(maskBrPhone(updated.phone || digits));
-                setAddress(updated.address || address.trim());
-                setContactSaved('Dados salvos!');
-                setTimeout(() => setContactSaved(''), 2000);
-              } catch (err) {
-                setContactError(
-                  err instanceof Error
-                    ? err.message
-                    : 'Não foi possível salvar.',
-                );
-              } finally {
-                setSavingContact(false);
-              }
-            }}
-          />
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        <View style={styles.hoursHeader}>
-          <View style={styles.cardTitleBlock}>
-            <Text style={styles.subCardTitle}>Horário de funcionamento</Text>
-            {!hoursExpanded ? (
-              <Text style={styles.cardHint}>Quando clientes podem agendar</Text>
-            ) : null}
-          </View>
+      <SofCard padded={false} style={styles.profileCard}>
+        <View style={styles.profileBody}>
           <Pressable
-            onPress={() => setHoursExpanded((prev) => !prev)}
-            style={styles.expandBtn}
+            onPress={pickLogo}
+            disabled={logoBusy}
             accessibilityRole="button"
-            accessibilityState={{ expanded: hoursExpanded }}
+            accessibilityLabel="Alterar logo do estabelecimento"
+            style={({ pressed }) => [
+              styles.avatarPress,
+              pressed && { opacity: 0.9 },
+            ]}
           >
-            <Text style={styles.expandBtnText}>
-              {hoursExpanded ? 'Recolher' : 'Editar'}
-            </Text>
+            <BusinessLogo
+              uri={account.logoBase64}
+              initials={initials}
+              size={80}
+            />
+            {logoBusy ? (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : null}
           </Pressable>
+
+          <View style={styles.profileCopy}>
+            <Text style={styles.h2} numberOfLines={2}>
+              {account.businessName || 'Sua conta'}
+            </Text>
+            {account.ownerName ? (
+              <Text style={styles.sub} numberOfLines={1}>
+                Responsável: {account.ownerName}
+              </Text>
+            ) : null}
+            <View style={styles.logoActions}>
+              <SofButton
+                title="Enviar logo"
+                variant="light"
+                theme="dashboard"
+                onPress={pickLogo}
+                disabled={logoBusy}
+                loading={logoBusy}
+              />
+              {account.logoBase64 ? (
+                <SofButton
+                  title="Remover"
+                  variant="danger"
+                  theme="dashboard"
+                  onPress={removeLogo}
+                  disabled={logoBusy}
+                />
+              ) : null}
+            </View>
+            <Text style={styles.logoHint}>
+              PNG, JPEG, WebP ou GIF · até 5 MB
+            </Text>
+            {logoError ? <Text style={styles.logoError}>{logoError}</Text> : null}
+            {logoSaved ? <Text style={styles.logoSaved}>{logoSaved}</Text> : null}
+          </View>
         </View>
 
-        {!hoursExpanded ? (
-          <View style={styles.hoursPreview}>
-            <View style={styles.dayPills}>
-              {hours.map((day, index) => (
-                <View
-                  key={DAY_SHORT[index]}
-                  style={[
-                    styles.dayPill,
-                    day.open ? styles.dayPillOpen : styles.dayPillClosed,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayPillText,
-                      day.open
-                        ? styles.dayPillTextOpen
-                        : styles.dayPillTextClosed,
-                    ]}
-                  >
-                    {DAY_SHORT[index]}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <Text style={styles.hoursSummary}>{formatHoursSummary(hours)}</Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.help}>
-              Define os dias e horários em que clientes podem agendar (WhatsApp e
-              painel). O serviço precisa caber inteiro dentro do expediente.
+        <View style={styles.profileSection}>
+          <View style={styles.blockHead}>
+            <Text style={styles.cardTitle}>Contato</Text>
+            <Text style={styles.cardHint}>
+              Telefone e endereço que o bot pode informar aos clientes.
             </Text>
-            {hours.map((day, index) => (
-              <View key={DAY_LABELS[index]} style={styles.dayRow}>
-                <View style={styles.dayHead}>
-                  <Text style={styles.dayLabel}>{DAY_LABELS[index]}</Text>
-                  <Pressable
-                    onPress={() => patchDay(index, { open: !day.open })}
-                    style={[
-                      styles.toggle,
-                      day.open ? styles.toggleOn : styles.toggleOff,
-                    ]}
-                  >
-                    <Text style={styles.toggleText}>
-                      {day.open ? 'Aberto' : 'Fechado'}
-                    </Text>
-                  </Pressable>
-                </View>
-                {day.open ? (
-                  <View style={styles.timeRow}>
-                    <View style={styles.timeField}>
-                      <SofInput
-                        label="Abre"
-                        value={day.start}
-                        onChangeText={(start) => patchDay(index, { start })}
-                        theme="dashboard"
-                        placeholder="09:00"
-                      />
-                    </View>
-                    <View style={styles.timeField}>
-                      <SofInput
-                        label="Fecha"
-                        value={day.end}
-                        onChangeText={(end) => patchDay(index, { end })}
-                        theme="dashboard"
-                        placeholder="18:00"
-                      />
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-            ))}
-            {hoursError ? <Text style={styles.error}>{hoursError}</Text> : null}
-            {hoursSaved ? <Text style={styles.saved}>{hoursSaved}</Text> : null}
+          </View>
+
+          <View style={styles.contactGrid}>
+            <View style={styles.contactCol}>
+              <SofInput
+                label="Telefone (com DDD)"
+                value={phone}
+                onChangeText={(t) => {
+                  setPhone(maskBrPhone(t));
+                  setContactError('');
+                }}
+                theme="dashboard"
+                placeholder="(11) 99999-8888"
+                keyboardType="phone-pad"
+                error={contactError || undefined}
+              />
+            </View>
+            <View style={styles.contactColWide}>
+              <SofInput
+                label="Endereço"
+                value={address}
+                onChangeText={(t) => {
+                  setAddress(t);
+                  setContactError('');
+                }}
+                theme="dashboard"
+                placeholder="Rua Exemplo, 123 — Bairro, Cidade"
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+          {contactSaved ? <Text style={styles.saved}>{contactSaved}</Text> : null}
+          <View style={styles.inlineActions}>
             <SofButton
-              title={savingHours ? 'Salvando…' : 'Salvar horários'}
+              title="Salvar contato"
               variant="dark"
               theme="dashboard"
-              disabled={savingHours}
+              loading={savingContact}
+              disabled={savingContact}
               onPress={async () => {
-                setHoursError('');
-                for (let i = 0; i < hours.length; i += 1) {
-                  const day = hours[i];
-                  if (!day.open) continue;
-                  if (!isValidTimeHm(day.start) || !isValidTimeHm(day.end)) {
-                    setHoursError(
-                      `${DAY_LABELS[i]}: use horários no formato HH:mm (ex.: 09:00).`,
-                    );
-                    return;
-                  }
-                  if (day.start >= day.end) {
-                    setHoursError(
-                      `${DAY_LABELS[i]}: o horário de abertura deve ser antes do fechamento.`,
-                    );
-                    return;
-                  }
+                setContactError('');
+                const digits = normalizePhoneDigits(phone);
+                if (!isValidPhoneDigits(digits)) {
+                  setContactError(
+                    'Telefone inválido. Use DDD + número (10 a 15 dígitos).',
+                  );
+                  return;
                 }
-                setSavingHours(true);
+                setSavingContact(true);
                 try {
                   const { account: updated } = await dashboardApi.updateAccount({
-                    openingHours: hours,
+                    phone: digits,
+                    address: address.trim(),
                   });
                   await setSession(updated);
-                  setHoursSaved('Horários salvos!');
-                  setTimeout(() => setHoursSaved(''), 2000);
-                  setHoursExpanded(false);
+                  setPhone(maskBrPhone(updated.phone || digits));
+                  setAddress(updated.address || address.trim());
+                  setContactSaved('Dados salvos!');
+                  setTimeout(() => setContactSaved(''), 2000);
                 } catch (err) {
-                  const message =
+                  setContactError(
                     err instanceof Error
                       ? err.message
-                      : 'Não foi possível salvar.';
-                  setHoursError(message);
+                      : 'Não foi possível salvar.',
+                  );
                 } finally {
-                  setSavingHours(false);
+                  setSavingContact(false);
                 }
               }}
             />
-          </>
-        )}
-      </View>
+          </View>
+        </View>
+
+        <View style={styles.profileSection}>
+          <View style={styles.hoursHeader}>
+            <View style={styles.cardTitleBlock}>
+              <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+              {!hoursExpanded ? (
+                <Text style={styles.cardHint}>
+                  Quando clientes podem agendar pelo WhatsApp e pelo painel
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              onPress={() => setHoursExpanded((prev) => !prev)}
+              style={styles.expandBtn}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: hoursExpanded }}
+            >
+              <Text style={styles.expandBtnText}>
+                {hoursExpanded ? 'Recolher' : 'Editar'}
+              </Text>
+            </Pressable>
+          </View>
+
+          {!hoursExpanded ? (
+            <View style={styles.hoursPreview}>
+              <View style={styles.dayPills}>
+                {hours.map((day, index) => (
+                  <View
+                    key={DAY_SHORT[index]}
+                    style={[
+                      styles.dayPill,
+                      day.open ? styles.dayPillOpen : styles.dayPillClosed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayPillText,
+                        day.open
+                          ? styles.dayPillTextOpen
+                          : styles.dayPillTextClosed,
+                      ]}
+                    >
+                      {DAY_SHORT[index]}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.hoursSummary}>
+                {formatHoursSummary(hours)}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.help}>
+                O serviço precisa caber inteiro dentro do expediente.
+              </Text>
+              {hours.map((day, index) => (
+                <View key={DAY_LABELS[index]} style={styles.dayRow}>
+                  <View style={styles.dayHead}>
+                    <Text style={styles.dayLabel}>{DAY_LABELS[index]}</Text>
+                    <Pressable
+                      onPress={() => patchDay(index, { open: !day.open })}
+                      style={[
+                        styles.toggle,
+                        day.open ? styles.toggleOn : styles.toggleOff,
+                      ]}
+                    >
+                      <Text style={styles.toggleText}>
+                        {day.open ? 'Aberto' : 'Fechado'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  {day.open ? (
+                    <View style={styles.timeRow}>
+                      <View style={styles.timeField}>
+                        <SofInput
+                          label="Abre"
+                          value={day.start}
+                          onChangeText={(start) => patchDay(index, { start })}
+                          theme="dashboard"
+                          placeholder="09:00"
+                        />
+                      </View>
+                      <View style={styles.timeField}>
+                        <SofInput
+                          label="Fecha"
+                          value={day.end}
+                          onChangeText={(end) => patchDay(index, { end })}
+                          theme="dashboard"
+                          placeholder="18:00"
+                        />
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+              {hoursError ? <Text style={styles.error}>{hoursError}</Text> : null}
+              {hoursSaved ? <Text style={styles.saved}>{hoursSaved}</Text> : null}
+              <SofButton
+                title={savingHours ? 'Salvando…' : 'Salvar horários'}
+                variant="dark"
+                theme="dashboard"
+                disabled={savingHours}
+                onPress={async () => {
+                  setHoursError('');
+                  for (let i = 0; i < hours.length; i += 1) {
+                    const day = hours[i];
+                    if (!day.open) continue;
+                    if (!isValidTimeHm(day.start) || !isValidTimeHm(day.end)) {
+                      setHoursError(
+                        `${DAY_LABELS[i]}: use horários no formato HH:mm (ex.: 09:00).`,
+                      );
+                      return;
+                    }
+                    if (day.start >= day.end) {
+                      setHoursError(
+                        `${DAY_LABELS[i]}: o horário de abertura deve ser antes do fechamento.`,
+                      );
+                      return;
+                    }
+                  }
+                  setSavingHours(true);
+                  try {
+                    const { account: updated } =
+                      await dashboardApi.updateAccount({
+                        openingHours: hours,
+                      });
+                    await setSession(updated);
+                    setHoursSaved('Horários salvos!');
+                    setTimeout(() => setHoursSaved(''), 2000);
+                    setHoursExpanded(false);
+                  } catch (err) {
+                    const message =
+                      err instanceof Error
+                        ? err.message
+                        : 'Não foi possível salvar.';
+                    setHoursError(message);
+                  } finally {
+                    setSavingHours(false);
+                  }
+                }}
+              />
+            </>
+          )}
+        </View>
+      </SofCard>
 
       <Text style={styles.sectionLabel}>WhatsApp</Text>
-      <View style={styles.card}>
+      <SofCard>
         <Text style={styles.cardTitle}>Bot e conexão</Text>
 
         <View style={styles.statusRow}>
@@ -753,7 +834,7 @@ export default function AccountScreen() {
           <>
             <Text style={styles.help}>
               Escaneie o QR no WhatsApp (Aparelhos conectados) ou use um código
-              de pareamento — igual ao cadastro de instância no Uazapi.
+              de pareamento.
             </Text>
 
             {waMode === 'idle' || waMode === 'qrcode' ? (
@@ -949,12 +1030,12 @@ export default function AccountScreen() {
             />
           </View>
         ) : null}
-      </View>
+      </SofCard>
 
       {has('reminders') && waLinked ? (
         <>
           <Text style={styles.sectionLabel}>Lembretes</Text>
-          <View style={styles.card}>
+          <SofCard>
             <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
             <Text style={styles.help}>
               A Sof envia um lembrete automático pela instância conectada, no
@@ -1059,9 +1140,26 @@ export default function AccountScreen() {
                 }
               }}
             />
-          </View>
+          </SofCard>
         </>
       ) : null}
+
+      <Text style={styles.sectionLabel}>Ajuda</Text>
+      <SofCard>
+        <View style={styles.cardTitleBlock}>
+          <Text style={styles.cardTitle}>Suporte Sof</Text>
+          <Text style={styles.cardHint}>
+            Abra um ticket para falar com a equipe Sof sobre conta, cobrança ou
+            WhatsApp.
+          </Text>
+        </View>
+        <SofButton
+          title="Abrir suporte"
+          variant="light"
+          theme="dashboard"
+          onPress={() => router.push('/(dashboard)/support')}
+        />
+      </SofCard>
 
       <View style={styles.dangerZone}>
         <View style={styles.dangerText}>
@@ -1086,67 +1184,84 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 16, maxWidth: 720 },
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 8,
+  page: { gap: 18, maxWidth: 760 },
+  profileCard: {
+    overflow: 'hidden',
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: d.ink,
+  profileBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 18,
+    padding: 22,
+    flexWrap: 'wrap',
+  },
+  profileCopy: {
+    flex: 1,
+    minWidth: 200,
+    gap: 8,
+  },
+  profileSection: {
+    borderTopWidth: 1,
+    borderTopColor: d.line,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    gap: 12,
+  },
+  avatarPress: {
+    position: 'relative',
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(31,38,35,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 16,
   },
-  avatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  heroText: { flex: 1, gap: 4, minWidth: 0 },
-  h2: { fontSize: 28, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, lineHeight: 20 },
-  heroBadges: {
+  logoActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 6,
+    marginTop: 2,
   },
-  planPill: {
-    backgroundColor: '#eff6ff',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  logoHint: {
+    color: d.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: d.fonts.body,
   },
-  planPillText: { color: d.accent, fontSize: 12, fontWeight: '700' },
-  promoPill: {
-    backgroundColor: '#fef3c7',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  logoError: {
+    color: d.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
   },
-  promoPillText: { color: '#b45309', fontSize: 12, fontWeight: '700' },
-  statusPill: {
+  logoSaved: {
+    color: d.waGreenText,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
+  h2: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.4,
+  },
+  sub: {
+    color: d.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
+  },
+  blockHead: { gap: 4, marginBottom: 4 },
+  contactGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  statusPillOn: { backgroundColor: '#ecfdf5' },
-  statusPillOff: { backgroundColor: '#f1f5f9' },
-  statusPillText: { fontSize: 12, fontWeight: '600' },
-  statusPillTextOn: { color: d.waGreenText },
-  statusPillTextOff: { color: d.muted },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusDotOn: { backgroundColor: d.waGreenText },
-  statusDotOff: { backgroundColor: '#94a3b8' },
-  statusDotLg: { width: 10, height: 10, borderRadius: 5 },
+  contactCol: { flexGrow: 1, flexBasis: 180, minWidth: 160 },
+  contactColWide: { flexGrow: 2, flexBasis: 260, minWidth: 200 },
   sectionLabel: {
     color: d.muted,
     fontSize: 12,
@@ -1162,15 +1277,21 @@ const styles = StyleSheet.create({
     borderColor: d.line,
     padding: 24,
     gap: 14,
+    ...d.shadow.soft,
   },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: d.ink },
-  subCardTitle: { fontSize: 15, fontWeight: '700', color: d.ink },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
+  },
   cardTitleBlock: { flex: 1, gap: 2, minWidth: 0 },
-  cardHint: { color: d.muted, fontSize: 13 },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: d.line,
-    marginVertical: 4,
+  cardHint: {
+    color: d.muted,
+    fontSize: 13,
+    fontFamily: d.fonts.body,
+    lineHeight: 19,
   },
   planBanner: {
     flexDirection: 'row',
@@ -1178,15 +1299,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    backgroundColor: '#f8fafc',
-    borderRadius: d.radiusSm,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 16,
   },
   planBannerText: { gap: 2, flex: 1, minWidth: 140 },
-  planBannerName: { fontSize: 18, fontWeight: '700', color: d.ink },
-  planBannerPrice: { fontSize: 14, color: d.muted, fontWeight: '500' },
+  planBannerName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+  },
+  planBannerPrice: {
+    fontSize: 14,
+    color: d.muted,
+    fontWeight: '500',
+    fontFamily: d.fonts.body,
+  },
+  planBannerMeta: {
+    fontSize: 13,
+    color: d.muted,
+    fontFamily: d.fonts.body,
+    marginTop: 4,
+  },
   hoursHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1197,11 +1329,16 @@ const styles = StyleSheet.create({
     borderRadius: d.radiusSm,
     borderWidth: 1,
     borderColor: d.line,
-    backgroundColor: '#f8fafc',
+    backgroundColor: d.fill,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  expandBtnText: { fontWeight: '600', fontSize: 13, color: d.ink },
+  expandBtnText: {
+    fontWeight: '600',
+    fontSize: 13,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
   hoursPreview: { gap: 12 },
   dayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   dayPill: {
@@ -1212,24 +1349,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dayPillOpen: { backgroundColor: '#ecfdf5' },
-  dayPillClosed: { backgroundColor: '#f1f5f9' },
+  dayPillClosed: { backgroundColor: d.fill },
   dayPillText: { fontSize: 12, fontWeight: '700' },
   dayPillTextOpen: { color: d.waGreenText },
-  dayPillTextClosed: { color: '#94a3b8' },
+  dayPillTextClosed: { color: d.muted },
   hoursSummary: {
     color: d.ink,
     fontSize: 14,
-    lineHeight: 22,
-    fontWeight: '500',
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
   },
-  metaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-  },
-  meta: { minWidth: 140, flexGrow: 1, flexBasis: 140 },
-  metaLabel: { color: d.muted, fontSize: 12, marginBottom: 4, fontWeight: '600' },
-  metaValue: { fontWeight: '600', fontSize: 14, color: d.ink },
   help: { color: d.muted, fontSize: 14, lineHeight: 21 },
   helpCenter: {
     color: d.muted,
@@ -1248,7 +1377,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: '#fff',
   },
-  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
+  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
   chipText: { color: d.ink, fontSize: 13 },
   chipTextActive: { fontWeight: '700', color: d.accent },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -1275,6 +1404,9 @@ const styles = StyleSheet.create({
   statusCardText: { gap: 2 },
   statusCardLabel: { color: d.muted, fontSize: 11, fontWeight: '600' },
   statusCardValue: { color: d.ink, fontSize: 14, fontWeight: '700' },
+  statusDotOn: { backgroundColor: d.waGreenText },
+  statusDotOff: { backgroundColor: '#94a3b8' },
+  statusDotLg: { width: 10, height: 10, borderRadius: 5 },
   infoBox: {
     backgroundColor: '#f8fafc',
     borderRadius: d.radiusSm,
@@ -1346,7 +1478,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: d.line,
   },
-  tzOptionActive: { backgroundColor: '#eff6ff' },
+  tzOptionActive: { backgroundColor: d.accentSoft },
   tzOptionText: { color: d.ink, fontSize: 14, flex: 1 },
   tzOptionTextActive: { fontWeight: '700' },
   tzCheck: { color: d.accent, fontWeight: '700' },

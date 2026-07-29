@@ -1,18 +1,17 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { accountsApi, type AccountRow } from '@/src/api/endpoints';
-import { Button } from '@/src/components/ui';
-import { colors, space } from '@/src/theme/admin';
+import {
+  Button,
+  EmptyState,
+  ErrorText,
+  ListRow,
+  PageHeader,
+  SearchField,
+} from '@/src/components/ui';
+import { colors, fonts, space } from '@/src/theme/admin';
 
 export default function AccountsScreen() {
   const [q, setQ] = useState('');
@@ -41,60 +40,54 @@ export default function AccountsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.title}>Contas</Text>
-          <Text style={styles.sub}>{total} no total</Text>
-        </View>
-        <Button title="Nova conta" onPress={() => router.push('/new-account')} />
-      </View>
+      <PageHeader
+        title="Contas"
+        subtitle={`${total} no total`}
+        action={
+          <Button title="Nova conta" onPress={() => router.push('/new-account')} />
+        }
+      />
 
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.search}
-          placeholder="Buscar por e-mail, negócio ou responsável"
-          placeholderTextColor={colors.muted}
+        <SearchField
           value={q}
           onChangeText={setQ}
+          placeholder="Buscar por e-mail, negócio ou responsável"
           onSubmitEditing={() => load(q)}
         />
         <Button title="Buscar" onPress={() => load(q)} variant="ghost" />
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       {loading ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} />
       ) : accounts.length === 0 ? (
-        <Text style={styles.empty}>Nenhuma conta encontrada.</Text>
+        <EmptyState message="Nenhuma conta encontrada." />
       ) : (
         accounts.map((item) => (
-          <Pressable
+          <ListRow
             key={item.id}
-            style={styles.row}
+            title={item.businessName}
+            meta={`${item.email} · ${item.ownerName}`}
             onPress={() =>
               router.push({ pathname: '/edit-account', params: { id: item.id } })
             }
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{item.businessName}</Text>
-              <Text style={styles.rowMeta}>
-                {item.email} · {item.ownerName}
-              </Text>
-            </View>
-            <View style={styles.badges}>
-              <Text style={styles.plan}>
-                {item.plan} · R$ {item.planPrice}
-              </Text>
-              <Text
-                style={[
-                  styles.status,
-                  item.status === 'suspended' && styles.statusOff,
-                ]}
-              >
-                {item.status}
-              </Text>
-            </View>
-          </Pressable>
+            right={
+              <>
+                <Text style={styles.plan}>
+                  {item.plan} · R$ {item.planPrice}
+                </Text>
+                <Text
+                  style={[
+                    styles.status,
+                    item.status === 'suspended' && styles.statusOff,
+                  ]}
+                >
+                  {item.status}
+                </Text>
+              </>
+            }
+          />
         ))
       )}
     </ScrollView>
@@ -103,65 +96,15 @@ export default function AccountsScreen() {
 
 const styles = StyleSheet.create({
   wrap: { paddingBottom: 40 },
-  head: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: space.lg,
-    gap: space.md,
-    flexWrap: 'wrap',
-  },
-  title: {
-    fontFamily: 'HankenGrotesk_700Bold',
-    fontSize: 28,
-    color: colors.ink,
-  },
-  sub: { fontFamily: 'Inter_400Regular', color: colors.muted, marginTop: 4 },
   searchRow: {
     flexDirection: 'row',
     gap: space.sm,
     marginBottom: space.md,
     alignItems: 'center',
   },
-  search: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 10,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    backgroundColor: colors.paper,
-    fontFamily: 'Inter_400Regular',
-    color: colors.ink,
-  },
-  error: { color: colors.danger, marginBottom: space.sm },
-  empty: { color: colors.muted, marginTop: space.lg },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 12,
-    padding: space.md,
-    marginBottom: space.sm,
-  },
-  rowTitle: {
-    fontFamily: 'HankenGrotesk_600SemiBold',
-    fontSize: 16,
-    color: colors.ink,
-  },
-  rowMeta: {
-    fontFamily: 'Inter_400Regular',
-    color: colors.muted,
-    marginTop: 2,
-    fontSize: 13,
-  },
-  badges: { alignItems: 'flex-end', gap: 4 },
-  plan: { fontFamily: 'Inter_500Medium', color: colors.ink, fontSize: 13 },
+  plan: { fontFamily: fonts.bodyMedium, color: colors.ink, fontSize: 13 },
   status: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     color: colors.accent,
     textTransform: 'uppercase',

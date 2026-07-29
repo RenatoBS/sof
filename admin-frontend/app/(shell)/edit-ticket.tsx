@@ -7,7 +7,7 @@ import {
   type TicketRow,
   type TicketStatus,
 } from '@/src/api/endpoints';
-import { Button, Field } from '@/src/components/ui';
+import { Button, ErrorText, Field } from '@/src/components/ui';
 import { colors, space } from '@/src/theme/admin';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -145,10 +145,11 @@ export default function EditTicketScreen() {
         multiline
         style={{ minHeight: 100, textAlignVertical: 'top' }}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       <Button
-        title={busy ? 'Enviando…' : 'Enviar comentário'}
-        disabled={busy || !comment.trim()}
+        title="Enviar comentário"
+        loading={busy}
+        disabled={!comment.trim()}
         onPress={onComment}
       />
     </ScrollView>
@@ -206,5 +207,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  error: { color: colors.danger, marginBottom: space.sm },
 });

@@ -1,13 +1,15 @@
 import { Redirect, Slot, usePathname, router } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useAdminAuth } from '@/src/auth/AdminAuthProvider';
-import { colors, space } from '@/src/theme/admin';
+import { colors, fonts, radius, space } from '@/src/theme/admin';
 
 export default function ShellLayout() {
   const { admin, loading, logout } = useAdminAuth();
@@ -26,8 +28,16 @@ export default function ShellLayout() {
   return (
     <View style={styles.root}>
       <View style={styles.nav}>
-        <Text style={styles.brand}>Sof Admin</Text>
-        <View style={styles.links}>
+        <View style={styles.brandWrap}>
+          <Text style={styles.brand}>Sof</Text>
+          <Text style={styles.brandTag}>Admin</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.linksScroll}
+          contentContainerStyle={styles.links}
+        >
           <NavLink
             label="Contas"
             active={
@@ -62,11 +72,17 @@ export default function ShellLayout() {
             }
             onPress={() => router.push('/coupons')}
           />
-        </View>
+        </ScrollView>
         <View style={styles.right}>
-          <Text style={styles.email}>{admin.email}</Text>
+          <Text style={styles.email} numberOfLines={1}>
+            {admin.email}
+          </Text>
           <Pressable onPress={() => logout().then(() => undefined)}>
-            <Text style={styles.logout}>Sair</Text>
+            {({ pressed }) => (
+              <Text style={[styles.logout, pressed && styles.logoutPressed]}>
+                Sair
+              </Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -86,10 +102,17 @@ function NavLink({
   active: boolean;
   onPress: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <Pressable
-      style={[styles.link, active ? styles.linkActive : null]}
       onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => [
+        styles.link,
+        active && styles.linkActive,
+        !active && (hovered || pressed) && styles.linkHovered,
+      ]}
     >
       <Text style={[styles.linkText, active ? styles.linkTextActive : null]}>
         {label}
@@ -109,39 +132,54 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
-    flexWrap: 'wrap',
+    gap: space.md,
+  },
+  brandWrap: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
   },
   brand: {
-    fontFamily: 'HankenGrotesk_700Bold',
-    fontSize: 18,
+    fontFamily: fonts.displayBold,
+    fontSize: 20,
+    letterSpacing: -0.3,
     color: colors.accent,
-    marginRight: space.lg,
   },
-  links: { flexDirection: 'row', flex: 1 },
+  brandTag: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.muted,
+  },
+  linksScroll: { flex: 1 },
+  links: { flexDirection: 'row', alignItems: 'center' },
   link: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: radius.sm - 2,
     marginRight: space.sm,
   },
+  linkHovered: { backgroundColor: colors.fill },
   linkActive: { backgroundColor: colors.accentSoft },
   linkText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
     color: colors.muted,
+    fontSize: 14,
   },
   linkTextActive: { color: colors.accent },
-  right: { flexDirection: 'row', alignItems: 'center' },
+  right: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   email: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     color: colors.muted,
     fontSize: 13,
     marginRight: space.md,
+    maxWidth: 200,
   },
   logout: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
     color: colors.danger,
     fontSize: 13,
   },
+  logoutPressed: { opacity: 0.65 },
   body: {
     flex: 1,
     padding: space.lg,

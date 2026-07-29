@@ -1,18 +1,17 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { ticketsApi, type TicketRow } from '@/src/api/endpoints';
-import { Button } from '@/src/components/ui';
-import { colors, space } from '@/src/theme/admin';
+import {
+  Button,
+  EmptyState,
+  ErrorText,
+  ListRow,
+  PageHeader,
+  SearchField,
+} from '@/src/components/ui';
+import { colors, fonts, space } from '@/src/theme/admin';
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Aberto',
@@ -66,12 +65,7 @@ export default function TicketsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.title}>Tickets</Text>
-          <Text style={styles.sub}>{total} no filtro atual</Text>
-        </View>
-      </View>
+      <PageHeader title="Tickets" subtitle={`${total} no filtro atual`} />
 
       <View style={styles.filters}>
         {(
@@ -87,6 +81,7 @@ export default function TicketsScreen() {
           <Button
             key={value}
             title={label}
+            size="sm"
             variant={statusFilter === value ? 'primary' : 'ghost'}
             onPress={() => {
               setStatusFilter(value);
@@ -96,42 +91,35 @@ export default function TicketsScreen() {
       </View>
 
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.search}
-          placeholder="Buscar título, descrição ou estabelecimento"
-          placeholderTextColor={colors.muted}
+        <SearchField
           value={q}
           onChangeText={setQ}
+          placeholder="Buscar título, descrição ou estabelecimento"
           onSubmitEditing={() => load(q)}
         />
         <Button title="Buscar" onPress={() => load(q)} variant="ghost" />
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ErrorText>{error}</ErrorText>
       {loading ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} />
       ) : tickets.length === 0 ? (
-        <Text style={styles.empty}>Nenhum ticket encontrado.</Text>
+        <EmptyState message="Nenhum ticket encontrado." />
       ) : (
         tickets.map((item) => (
-          <Pressable
+          <ListRow
             key={item.id}
-            style={styles.row}
+            title={item.title}
+            meta={`${item.account?.businessName || 'Conta'} · ${item.createdByName} · ${formatWhen(item.updatedAt)} · ${item.commentCount} comentário(s)`}
             onPress={() =>
               router.push({ pathname: '/edit-ticket', params: { id: item.id } })
             }
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              <Text style={styles.rowMeta}>
-                {item.account?.businessName || 'Conta'} · {item.createdByName} ·{' '}
-                {formatWhen(item.updatedAt)} · {item.commentCount} comentário(s)
+            right={
+              <Text style={styles.status}>
+                {STATUS_LABEL[item.status] || item.status}
               </Text>
-            </View>
-            <Text style={styles.status}>
-              {STATUS_LABEL[item.status] || item.status}
-            </Text>
-          </Pressable>
+            }
+          />
         ))
       )}
     </ScrollView>
@@ -140,68 +128,22 @@ export default function TicketsScreen() {
 
 const styles = StyleSheet.create({
   wrap: { paddingBottom: 40 },
-  head: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: space.lg,
-  },
-  title: {
-    fontFamily: 'HankenGrotesk_700Bold',
-    fontSize: 28,
-    color: colors.ink,
-  },
-  sub: { fontFamily: 'Inter_400Regular', color: colors.muted, marginTop: 4 },
   filters: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: space.sm,
     marginBottom: space.md,
   },
   searchRow: {
     flexDirection: 'row',
+    gap: space.sm,
     marginBottom: space.md,
     alignItems: 'center',
   },
-  search: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 10,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    backgroundColor: colors.paper,
-    fontFamily: 'Inter_400Regular',
-    color: colors.ink,
-    marginRight: space.sm,
-  },
-  error: { color: colors.danger, marginBottom: space.sm },
-  empty: { color: colors.muted, marginTop: space.lg },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 12,
-    padding: space.md,
-    marginBottom: space.sm,
-  },
-  rowTitle: {
-    fontFamily: 'HankenGrotesk_600SemiBold',
-    fontSize: 16,
-    color: colors.ink,
-  },
-  rowMeta: {
-    fontFamily: 'Inter_400Regular',
-    color: colors.muted,
-    marginTop: 2,
-    fontSize: 13,
-  },
   status: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     color: colors.accent,
     textTransform: 'uppercase',
-    marginLeft: space.md,
   },
 });

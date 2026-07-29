@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { employeeAuthApi } from '@/src/api/endpoints';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
-import { SofButton, SofInput } from '@/src/components/ui';
+import { SofButton, SofCard, SofErrorBanner, SofInput } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
 export default function TrocarSenhaScreen() {
@@ -43,14 +43,14 @@ export default function TrocarSenhaScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.card}>
+      <SofCard>
         <Text style={styles.h2}>Trocar senha</Text>
         <Text style={styles.sub}>
           {employee.mustChangePassword
             ? 'No primeiro acesso, escolha uma nova senha para continuar.'
             : 'Atualize sua senha de acesso.'}
         </Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <SofErrorBanner message={error} /> : null}
         <SofInput
           label="Senha atual"
           value={currentPassword}
@@ -76,28 +76,33 @@ export default function TrocarSenhaScreen() {
           placeholder="Repita a nova senha"
         />
         <SofButton
-          title={loading ? 'Salvando…' : 'Salvar e continuar'}
+          title="Salvar e continuar"
           variant="dark"
           theme="dashboard"
+          loading={loading}
           disabled={loading}
           onPress={submit}
         />
-      </View>
+      </SofCard>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { maxWidth: 420 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 12,
+  h2: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
-  h2: { fontSize: 24, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, lineHeight: 20, marginBottom: 8 },
-  error: { color: '#dc2626', fontWeight: '600' },
+  sub: {
+    color: d.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+    fontFamily: d.fonts.body,
+  },
 });

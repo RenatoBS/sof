@@ -17,6 +17,96 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Conta sem dados duplicados
+
+- **Contexto:** Perfil repetia e-mail/plano/WhatsApp/telefone/endereço já presentes no header, Assinatura, WhatsApp e formulário de contato.  
+- **Decisão:** Assinatura só comercial; um card Estabelecimento com logo+identidade+contato+horário; e-mail só no header; WA só na seção WhatsApp.  
+- **Consequências:** Menos scroll e scan mais claro.  
+- **Alternativas descartadas:** Manter hero + chips de status.
+
+---
+
+## 2026-07-28 — Cor do profissional: qualquer hex + seletor
+
+- **Contexto:** API só aceitava 6 hex fixos (Tailwind); o form do painel já usava presets da marca Sof — salvar/editar falhava com “Cor inválida”.  
+- **Decisão:** backend valida qualquer `#RGB`/`#RRGGBB`; front mantém presets e adiciona `input type=color` (web) / campo hex (nativo).  
+- **Consequências:** cores livres na agenda; defaults de criação alinhados à paleta Sof.  
+- **Alternativas descartadas:** só expandir a whitelist de presets.
+
+---
+
+## 2026-07-28 — Conta: card de perfil do estabelecimento
+
+- **Contexto:** Bloco do estabelecimento na Conta misturava logo, nome e ações sem hierarquia clara; seções usavam `View` card legado inconsistente com o kit.  
+- **Decisão:** Card de perfil (`SofCard`) com logo clicável, kicker, chips (`EntityChip`), preview de telefone/endereço e rodapé de ações de logo; Assinatura / Dados / WhatsApp / Lembretes / Ajuda em `SofCard`.  
+- **Consequências:** Conta mais scannable e alinhada às listagens Operate.  
+- **Alternativas descartadas:** Manter layout flat; página só com formulários sem hero.
+
+---
+
+## 2026-07-28 — Cards entity (Profissionais / Serviços / Clientes)
+
+- **Contexto:** Cards das três listagens eram blocos de texto plano com ações soltas; pouca hierarquia e empty fraco em profissionais.  
+- **Decisão:** Primitivos `EntityAvatar` / `EntityStat` / `EntityChip` / footer em `features/dashboard/EntityCard.tsx`; cards com avatar, meta rotulada, chips e rodapé de ações; contagem no header; empty state em profissionais.  
+- **Consequências:** Visual Operate mais scannable e consistente entre as três telas.  
+- **Alternativas descartadas:** Tabela densa; redesign total da IA.
+
+---
+
+## 2026-07-28 — Logo do estabelecimento em base64 (≤5 MB)
+
+- **Contexto:** Dono precisa de identidade visual no painel; storage de objetos (S3/Blob) ainda não está no stack.  
+- **Decisão:** Campo `Account.logoBase64` (TEXT, data URL); upload na Conta com compressão client-side até 5 MB; validação server-side; limite JSON da API `8mb`; logo no header do dashboard e do portal profissional.  
+- **Consequências:** Payloads de `auth/me` e `PUT /account` ficam maiores quando há logo; solução temporária até object storage.  
+- **Alternativas descartadas:** Upload multipart para disco local; S3 agora; só URL externa.
+
+---
+
+## 2026-07-28 — Editar/Remover com ícone responsivo
+
+- **Contexto:** Links “Editar”/“Remover” nos cards de Serviços, Clientes e Profissionais ocupavam espaço em mobile e não tinham affordance visual clara.  
+- **Decisão:** `SofIconAction` + `SofRowActions` no kit compartilhado — ícone SVG + label; viewport &lt; 720px mostra só o ícone (com `accessibilityLabel`).  
+- **Consequências:** Únicas telas com esse padrão no front produto; modal de agenda mantém `SofButton` de exclusão (ação destrutiva com copy completa).  
+- **Alternativas descartadas:** Sempre só ícone; ícones emoji; breakpoint por largura do card.
+
+---
+
+## 2026-07-28 — Paleta Sof da logo (verde floresta + cobre)
+
+- **Contexto:** Identidade visual oficial (SOF + “AGENDA · CONVERSA · CONECTA”) usa fundo verde floresta e pontos cobre; o produto ainda tinha lavender marketing e azul Tailwind no dashboard.  
+- **Decisão:** Tokens `m`/`d` (e admin) passam a `#3D4743` (accent) + `#C19A6B` (copper); fundos permanecem claros (`#F4F4F6` / branco). Wordmark usa ponto cobre; plano featured e eyebrows usam cobre; CTAs/ícones usam verde.  
+- **Consequências:** Marketing, painel e admin compartilham a mesma cromia; WhatsApp green (`waGreen`) permanece só para estados WA.  
+- **Alternativas descartadas:** Fundo verde escuro na UI (pedido: manter branco/cinza); manter azul Operate separado.
+
+---
+
+## 2026-07-28 — Polish UI/UX produto com Impeccable (shared layer)
+
+- **Contexto:** Skills Impeccable + frontend-design pediam polish de todas as páginas; o painel repetia card/header/empty e o marketing perdia links no mobile. Redesign completo quebraria a identidade dual (lavender marketing vs Operate dashboard).  
+- **Decisão:** Refinar o sistema compartilhado (`SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, press/`loading` em botões, tipografia Hanken no dashboard) e migrar telas para esses primitivos; menu mobile na `MarketingNav`; toast dismissível. Conta/Agenda receberam tipografia/sombra sem reescrever fluxos densos. Admin polish isolado (ADR própria).  
+- **Consequências:** Hierarquia e estados consistentes em marketing + painel + profissional; Conta e agendas ainda têm padrões locais de domínio. `/impeccable init` ainda recomendado para PRODUCT.md.  
+- **Alternativas descartadas:** Redesign unificando accent do dashboard no lavender (mudaria Operate); unificar UI kit admin↔produto.
+
+---
+
+## 2026-07-28 — Polish do painel admin com UI kit próprio
+
+- **Contexto:** `admin-frontend` tinha telas de listagem (contas, tickets, planos, cupons) com cabeçalho, busca, linhas e vazio reimplementados manualmente em cada arquivo; `Button` não tinha estado de loading/hover e a nav do shell não escalava bem em telas estreitas.
+- **Decisão:** Expandir `src/theme/admin.ts` (radius, shadow.soft, fonts nas mesmas famílias Hanken/Inter do produto, dangerSoft, fill) e `src/components/ui.tsx` (Button com loading/size/hover-pressed; novos `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Migrar as 4 listagens e o login (card com `shadow.soft`) para esses componentes; nos formulários, trocar só o texto de erro por `ErrorText` e o texto "Salvando…/Criando…" por `Button loading`, sem tocar na lógica. Nav do shell (`(shell)/_layout.tsx`) ganhou `ScrollView` horizontal para os links e estado hover/pressed.
+- **Consequências:** Continua um pacote de UI **isolado** do `frontend/` (nenhum import cruzado) — reaproveita só os nomes de fontes Google já carregadas nos dois apps. Em telas com múltiplas ações sob o mesmo `busy` (ex.: salvar+resetar senha em `edit-account`, salvar+sincronizar+apagar em `edit-plan`), manteve-se `disabled`+texto dinâmico em vez de `loading` para não acender spinner num botão que não é o da ação em andamento.
+- **Alternativas descartadas:** Compartilhar componentes com `frontend/src/components/ui.tsx` (rejeitado — admin é pacote isolado por design); usar `loading` em todos os botões de telas multi-ação (rejeitado — spinner enganoso em botão inativo).
+
+---
+
+## 2026-07-28 — Polish das telas de auth/marketing com componentes compartilhados
+
+- **Contexto:** `login.tsx`, `esqueci-senha.tsx`, `definir-senha.tsx`, `checkout-return.tsx`, `+not-found.tsx`, `trocar-senha.tsx` e `choose-plan.tsx` tinham cartões, banners de erro e botões de loading reimplementados à mão (cores, radius e texto de loading variavam tela a tela), divergindo de `SofAuthCard`/`SofErrorBanner`/`SofButton`/`SofCard`/`SofPageHeader` já usados no restante do produto.
+- **Decisão:** Migrar essas telas para os componentes compartilhados de `frontend/src/components/ui.tsx`; `definir-senha.tsx` passou do tema `dashboard` para `marketing` (fica lado a lado de login/esqueci-senha como parte do funil de auth); `checkout-return.tsx` ganhou `MarketingNav`/`SiteFooter`; `+not-found.tsx` ganhou `Wordmark` + `SofButton`.
+- **Consequências:** Banner de erro agora usa sempre a cor de `SofErrorBanner` (tokens do tema dashboard) mesmo em telas de marketing, substituindo o vermelho quente (`m.danger`) que essas telas usavam antes — leve mudança visual, mas consistente em todo o app. Botões de loading passaram a usar título estático + spinner (prop `loading`) em vez de trocar o texto ("Entrando…", "Salvando…"), padronizando com o resto do dashboard.
+- **Alternativas descartadas:** Manter estilos locais por tela (mais divergência visual); criar uma variante de `SofErrorBanner` por tema (mais um eixo de configuração para um componente que deveria ser neutro).
+
+---
+
 ## 2026-07-28 — Skills Cursor Impeccable + frontend-design
 
 - **Contexto:** Agentes geravam UI genérica (“AI slop”) sem vocabulário de design consistente no monorepo.  

@@ -22,6 +22,8 @@ export type Account = {
   whatsappPhoneNumberId: string;
   openingHours: OpeningHours;
   address: string;
+  /** Logo do estabelecimento (data URL base64). */
+  logoBase64?: string;
   /** Minutos antes do horário (0 = desativado). Default 120. */
   whatsappReminderMinutes?: number;
   /** Fuso IANA da conta. Default America/Sao_Paulo. */
@@ -69,6 +71,7 @@ export type EmployeeSession = {
   color: string;
   mustChangePassword: boolean;
   businessName: string;
+  logoBase64?: string;
   createdAt: string;
 };
 

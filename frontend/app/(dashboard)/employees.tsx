@@ -1,10 +1,26 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { createElement, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
-import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  SofButton,
+  SofCard,
+  SofEmptyState,
+  SofErrorBanner,
+  SofInput,
+  SofPageHeader,
+  SofRowActions,
+} from '@/src/components/ui';
+import {
+  EntityAvatar,
+  EntityCardBody,
+  EntityCardFooter,
+  EntityChip,
+  EntityStat,
+  entityCardStyles as ec,
+} from '@/src/features/dashboard/EntityCard';
 import {
   hasFieldErrors,
   maskBrPhone,
@@ -15,13 +31,22 @@ import {
 import { d } from '@/src/theme/dashboard';
 
 const EMPLOYEE_COLORS = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
+  '#3d4743',
+  '#c19a6b',
+  '#5b7a6e',
+  '#8f6e45',
+  '#6e7873',
+  '#a67c52',
 ] as const;
+
+function normalizeHex(raw: string): string {
+  const color = raw.trim().toLowerCase();
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+  }
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  return EMPLOYEE_COLORS[0];
+}
 
 export default function EmployeesScreen() {
   const { employees, setEmployees, services } = useDashboard();
@@ -108,7 +133,7 @@ export default function EmployeesScreen() {
     setName(employee.name);
     setEmail(employee.email || '');
     setPhone(maskBrPhone(employee.phone || ''));
-    setColor((employee.color || EMPLOYEE_COLORS[0]).toLowerCase());
+    setColor(normalizeHex(employee.color || EMPLOYEE_COLORS[0]));
     setServiceIds((employee.services || []).map((s) => s.id));
     setResetPassword(false);
     setFieldErrors({});
@@ -182,6 +207,12 @@ export default function EmployeesScreen() {
     setFieldErrors(errors);
     if (hasFieldErrors(errors)) return;
 
+    const hexOk = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color.trim());
+    if (!hexOk) {
+      setError('Informe uma cor hexadecimal válida (#RGB ou #RRGGBB).');
+      return;
+    }
+
     setLoading(true);
     try {
       const body = {
@@ -189,7 +220,7 @@ export default function EmployeesScreen() {
         email: email.trim().toLowerCase(),
         phone: normalizePhoneDigits(phone),
         serviceIds,
-        color,
+        color: normalizeHex(color),
       };
       if (editingId) {
         const { employee, resetLink, expiresAt } =
@@ -226,54 +257,51 @@ export default function EmployeesScreen() {
   };
 
   return (
-    <View style={styles.page}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Profissionais</Text>
-          <Text style={styles.sub}>
-            Gerencie a equipe e o acesso de cada profissional
-          </Text>
-        </View>
-        <SofButton
-          title={showForm ? 'Cancelar' : 'Adicionar Profissional'}
-          variant="dark"
-          theme="dashboard"
-          onPress={() => {
-            if (showForm) resetForm();
-            else startCreate();
-          }}
-        />
-      </View>
+    <View style={ec.page}>
+      <SofPageHeader
+        title="Profissionais"
+        subtitle="Equipe, serviços e acesso à agenda"
+        action={
+          <SofButton
+            title={showForm ? 'Cancelar' : 'Adicionar profissional'}
+            variant="dark"
+            theme="dashboard"
+            onPress={() => {
+              if (showForm) resetForm();
+              else startCreate();
+            }}
+          />
+        }
+      />
+      {employees.length > 0 ? (
+        <Text style={ec.count}>
+          {employees.length}{' '}
+          {employees.length === 1 ? 'profissional' : 'profissionais'}
+        </Text>
+      ) : null}
 
       {inviteLink ? (
-        <View style={styles.passwordCard}>
-          <Text style={styles.cardTitle}>Link de acesso gerado</Text>
-          <Text style={styles.hint}>
-            Envie pelo WhatsApp do estabelecimento (mensagem com instruções +
-            botão &quot;Redefinir senha&quot;) ou copie o link. Uso único, expira
-            em 2 horas — ao abrir, o profissional define a senha e já entra na
-            agenda.
+        <SofCard style={styles.passwordCard}>
+          <Text style={ec.formTitle}>Link de acesso gerado</Text>
+          <Text style={ec.formHint}>
+            Envie pelo WhatsApp do estabelecimento ou copie o link. Uso único,
+            expira em 2 horas — ao abrir, o profissional define a senha e entra
+            na agenda.
           </Text>
           {inviteExpiresAt ? (
-            <Text style={styles.hint}>
-              Válido até{' '}
-              {new Date(inviteExpiresAt).toLocaleString('pt-BR')}
+            <Text style={ec.formHint}>
+              Válido até {new Date(inviteExpiresAt).toLocaleString('pt-BR')}
             </Text>
           ) : null}
           <Text selectable style={styles.tempPass}>
             {inviteLink}
           </Text>
-          <View style={styles.actions}>
+          <View style={ec.formActions}>
             <SofButton
-              title={
-                sendingWa
-                  ? 'Enviando…'
-                  : waSent
-                    ? 'Enviado no WhatsApp'
-                    : 'Enviar no WhatsApp'
-              }
+              title={waSent ? 'Enviado no WhatsApp' : 'Enviar no WhatsApp'}
               variant="dark"
               theme="dashboard"
+              loading={sendingWa}
               disabled={sendingWa || waSent || !inviteEmployeeId}
               onPress={() => sendInviteWhatsapp()}
             />
@@ -296,14 +324,14 @@ export default function EmployeesScreen() {
               }}
             />
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
+          {error ? <SofErrorBanner message={error} /> : null}
+        </SofCard>
       ) : null}
 
       {showForm ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            {isEditing ? 'Editar Profissional' : 'Novo Profissional'}
+        <SofCard>
+          <Text style={ec.formTitle}>
+            {isEditing ? 'Editar profissional' : 'Novo profissional'}
           </Text>
           <View style={styles.formGrid}>
             <SofInput
@@ -362,7 +390,68 @@ export default function EmployeesScreen() {
                   />
                 );
               })}
+              {Platform.OS === 'web' ? (
+                <View
+                  style={[
+                    styles.colorSwatch,
+                    styles.customSwatch,
+                    { backgroundColor: normalizeHex(color) },
+                    !(EMPLOYEE_COLORS as readonly string[]).includes(
+                      normalizeHex(color),
+                    ) && styles.colorSwatchActive,
+                  ]}
+                  accessibilityLabel="Escolher qualquer cor"
+                >
+                  {createElement('input', {
+                    type: 'color',
+                    value: normalizeHex(color),
+                    title: 'Escolher qualquer cor',
+                    'aria-label': 'Escolher qualquer cor',
+                    onInput: (e: { target: { value: string } }) => {
+                      setColor(normalizeHex(e.target.value));
+                    },
+                    onChange: (e: { target: { value: string } }) => {
+                      setColor(normalizeHex(e.target.value));
+                    },
+                    style: {
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer',
+                      border: 'none',
+                      padding: 0,
+                    },
+                  })}
+                  <Text style={styles.customSwatchGlyph}>+</Text>
+                </View>
+              ) : null}
             </View>
+            {Platform.OS === 'web' ? (
+              <Text style={styles.colorHint}>
+                Presets ou + para abrir o seletor e escolher qualquer cor
+              </Text>
+            ) : (
+              <SofInput
+                label="Código da cor (hex)"
+                value={color}
+                onChangeText={(t) => {
+                  const next = t.trim().toLowerCase();
+                  if (next === '' || next === '#') {
+                    setColor('#');
+                    return;
+                  }
+                  const withHash = next.startsWith('#') ? next : `#${next}`;
+                  if (/^#[0-9a-f]{0,6}$/i.test(withHash)) {
+                    setColor(withHash.length === 7 ? normalizeHex(withHash) : withHash);
+                  }
+                }}
+                theme="dashboard"
+                placeholder="#3d4743"
+                autoCapitalize="none"
+              />
+            )}
             <Text style={styles.label}>Serviços que realiza</Text>
             <View style={styles.chips}>
               {services.map((s) => {
@@ -383,7 +472,7 @@ export default function EmployeesScreen() {
               })}
             </View>
             {touched && fieldErrors.services ? (
-              <Text style={styles.error}>{fieldErrors.services}</Text>
+              <SofErrorBanner message={fieldErrors.services} />
             ) : null}
             {isEditing ? (
               <Pressable
@@ -402,25 +491,20 @@ export default function EmployeesScreen() {
                 </Text>
               </Pressable>
             ) : (
-              <Text style={styles.hint}>
+              <Text style={ec.formHint}>
                 Ao salvar, um link de uso único (válido por 2h) será gerado para
                 o profissional definir a senha.
               </Text>
             )}
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <View style={styles.actions}>
+          {error ? <SofErrorBanner message={error} /> : null}
+          <View style={ec.formActions}>
             <SofButton
-              title={
-                loading
-                  ? 'Salvando…'
-                  : isEditing
-                    ? 'Salvar alterações'
-                    : 'Adicionar'
-              }
+              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
               theme="dashboard"
               onPress={save}
+              loading={loading}
               disabled={loading}
             />
             <SofButton
@@ -430,85 +514,124 @@ export default function EmployeesScreen() {
               onPress={resetForm}
             />
           </View>
-        </View>
+        </SofCard>
       ) : null}
 
-      <View style={styles.grid}>
-        {employees.map((e) => (
-          <View key={e.id} style={styles.entity}>
-            <View style={styles.rowTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{e.name}</Text>
-                <Text style={styles.meta}>{e.email || 'Sem e-mail de acesso'}</Text>
-                <Text style={styles.meta}>
-                  {e.phone ? formatPhone(e.phone) : 'Sem telefone'}
-                </Text>
-                <Text style={styles.meta}>
-                  {(e.services || []).map((s) => s.name).join(', ') || '—'}
-                </Text>
-              </View>
-              <View style={[styles.dot, { backgroundColor: e.color }]} />
-            </View>
-            <View style={styles.cardActions}>
-              <View style={styles.cardActionsRow}>
-                <Pressable onPress={() => startEdit(e)}>
-                  <Text style={styles.edit}>Editar</Text>
-                </Pressable>
-                <Pressable onPress={() => remove(e.id)}>
-                  <Text style={styles.delete}>Remover</Text>
-                </Pressable>
-              </View>
-              <Pressable
-                onPress={() => sendInviteWhatsapp(e.id)}
-                disabled={sendingWa}
-                style={styles.waAction}
-              >
-                <Text style={styles.edit}>
-                  {sendingWa && inviteEmployeeId === e.id
-                    ? 'Enviando…'
-                    : 'Enviar senha no WhatsApp'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-      </View>
+      {employees.length === 0 && !showForm && !inviteLink ? (
+        <SofCard padded={false}>
+          <SofEmptyState
+            title="Nenhum profissional ainda"
+            body={
+              services.length === 0
+                ? 'Cadastre ao menos um serviço e depois adicione a equipe.'
+                : 'Adicione a equipe para montar a agenda e liberar acesso.'
+            }
+            action={
+              <SofButton
+                title={
+                  services.length === 0
+                    ? 'Cadastrar serviço'
+                    : 'Adicionar profissional'
+                }
+                variant="dark"
+                theme="dashboard"
+                onPress={startCreate}
+              />
+            }
+          />
+        </SofCard>
+      ) : (
+        <View style={ec.grid}>
+          {employees.map((e) => {
+            const serviceNames = (e.services || []).map((s) => s.name);
+            return (
+              <SofCard key={e.id} padded={false} style={ec.entity}>
+                <EntityCardBody>
+                  <View style={styles.head}>
+                    <EntityAvatar
+                      name={e.name}
+                      color={e.color || d.accent}
+                      size={48}
+                    />
+                    <View style={styles.headCopy}>
+                      <Text style={styles.name} numberOfLines={2}>
+                        {e.name}
+                      </Text>
+                      <Text style={styles.email} numberOfLines={1}>
+                        {e.email || 'Sem e-mail de acesso'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.stats}>
+                    <EntityStat
+                      label="Telefone"
+                      value={e.phone ? formatPhone(e.phone) : '—'}
+                    />
+                  </View>
+                  <View style={styles.serviceWrap}>
+                    <Text style={styles.servicesLabel}>Serviços</Text>
+                    <View style={styles.serviceChips}>
+                      {serviceNames.length ? (
+                        serviceNames.slice(0, 4).map((label) => (
+                          <EntityChip key={label} tone="accent">
+                            {label}
+                          </EntityChip>
+                        ))
+                      ) : (
+                        <EntityChip tone="neutral">Nenhum</EntityChip>
+                      )}
+                      {serviceNames.length > 4 ? (
+                        <EntityChip tone="neutral">
+                          {`+${serviceNames.length - 4}`}
+                        </EntityChip>
+                      ) : null}
+                    </View>
+                  </View>
+                </EntityCardBody>
+                <EntityCardFooter>
+                  <View style={styles.footerRow}>
+                    <SofRowActions
+                      onEdit={() => startEdit(e)}
+                      onRemove={() => remove(e.id)}
+                    />
+                    <SofButton
+                      title={
+                        sendingWa && inviteEmployeeId === e.id
+                          ? 'Enviando…'
+                          : 'Senha no WhatsApp'
+                      }
+                      variant="light"
+                      theme="dashboard"
+                      onPress={() => sendInviteWhatsapp(e.id)}
+                      disabled={sendingWa}
+                      loading={sendingWa && inviteEmployeeId === e.id}
+                    />
+                  </View>
+                </EntityCardFooter>
+              </SofCard>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24 },
-  head: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'center',
-  },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 12,
-  },
   passwordCard: {
     backgroundColor: '#ecfdf5',
-    borderRadius: d.radius,
-    borderWidth: 1,
     borderColor: '#a7f3d0',
-    padding: 24,
-    gap: 12,
+    gap: 4,
   },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: d.ink },
-  formGrid: { gap: 12 },
-  label: { fontWeight: '600', color: d.ink, fontSize: 14 },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
-  code: { fontFamily: 'monospace', color: d.ink },
+  formGrid: { gap: 4 },
+  label: {
+    fontWeight: '600',
+    color: d.mutedStrong,
+    fontSize: 14,
+    fontFamily: d.fonts.bodyMedium,
+    marginTop: 6,
+    marginBottom: 6,
+  },
   tempPass: {
     fontSize: 13,
     fontWeight: '600',
@@ -516,66 +639,101 @@ const styles = StyleSheet.create({
     color: d.ink,
     fontFamily: 'monospace',
     lineHeight: 20,
+    backgroundColor: d.fill,
+    padding: 12,
+    borderRadius: d.radiusSm,
+    overflow: 'hidden',
   },
-  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
   colorSwatch: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    overflow: 'hidden',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   colorSwatchActive: {
     borderColor: d.ink,
     transform: [{ scale: 1.08 }],
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  customSwatch: {
+    borderColor: d.line,
+    borderStyle: 'dashed',
+  },
+  customSwatchGlyph: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 20,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    pointerEvents: 'none',
+  },
+  colorHint: {
+    color: d.muted,
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 4,
+    fontFamily: d.fonts.body,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: d.surface,
   },
   resetChip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fff',
-    alignSelf: 'flex-start',
-  },
-  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
-  chipText: { color: d.ink, fontSize: 13 },
-  chipTextActive: { fontWeight: '700' },
-  error: { color: '#dc2626', fontWeight: '600' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  entity: {
     backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 20,
-    width: 280,
-    gap: 12,
-  },
-  rowTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  name: { fontSize: 17, fontWeight: '700', color: d.ink },
-  meta: { color: d.muted, fontSize: 13, marginTop: 4 },
-  dot: { width: 14, height: 14, borderRadius: 7, marginTop: 4 },
-  cardActions: { gap: 10 },
-  cardActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  waAction: {
     alignSelf: 'flex-start',
-    paddingTop: 2,
+    marginTop: 4,
   },
-  edit: { color: d.accent, fontWeight: '600' },
-  delete: { color: '#dc2626', fontWeight: '600' },
+  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
+  chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
+  chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headCopy: { flex: 1, minWidth: 0, gap: 2 },
+  name: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
+  },
+  email: {
+    fontSize: 13,
+    color: d.muted,
+    fontFamily: d.fonts.body,
+  },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  serviceWrap: { gap: 8 },
+  servicesLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: d.muted,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  serviceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  footerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    justifyContent: 'space-between',
+  },
 });

@@ -20,30 +20,40 @@ import { EmployeePasswordTokenService } from '../employee-portal/employee-passwo
 import { EmployeePasswordResetService } from '../employee-portal/employee-password-reset.service';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 
-const COLORS = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
+/** Defaults when creating without an explicit color (matches product presets). */
+const DEFAULT_COLORS = [
+  '#3d4743',
+  '#c19a6b',
+  '#5b7a6e',
+  '#8f6e45',
+  '#6e7873',
+  '#a67c52',
 ] as const;
 
-const COLOR_SET = new Set<string>(COLORS);
+const HEX_COLOR_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function normalizeHexColor(raw: string): string {
+  const color = raw.trim().toLowerCase();
+  if (color.length === 4) {
+    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+  }
+  return color;
+}
+
+/** Any CSS hex (#RGB / #RRGGBB). Empty falls back to default. */
 function parseColor(raw: unknown, fallback: string): string {
   const color = String(raw || '')
     .trim()
     .toLowerCase();
-  if (!color) return fallback;
-  if (!COLOR_SET.has(color)) {
+  if (!color) return normalizeHexColor(fallback);
+  if (!HEX_COLOR_RE.test(color)) {
     throw new BadRequestException({
-      error: 'Cor inválida. Escolha uma das cores disponíveis.',
+      error: 'Cor inválida. Use um código hexadecimal (#RGB ou #RRGGBB).',
     });
   }
-  return color;
+  return normalizeHexColor(color);
 }
 
 const employeeInclude = {
@@ -212,7 +222,10 @@ export class EmployeesController {
       where: { accountId: req.account.id },
     });
     await this.entitlements.assertLimit(req.account.id, 'maxEmployees', count);
-    const color = parseColor(body?.color, COLORS[count % COLORS.length]);
+    const color = parseColor(
+      body?.color,
+      DEFAULT_COLORS[count % DEFAULT_COLORS.length],
+    );
     const employee = await this.prisma.employee.create({
       data: {
         accountId: req.account.id,

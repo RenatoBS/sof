@@ -297,6 +297,7 @@ export const dashboardApi = {
     timezone?: string;
     botPausedPermanent?: boolean;
     botPausedUntil?: string | null;
+    logoBase64?: string | null;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
     api<{

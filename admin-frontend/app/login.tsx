@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { useAdminAuth } from '@/src/auth/AdminAuthProvider';
-import { Button, Field } from '@/src/components/ui';
-import { colors, space } from '@/src/theme/admin';
+import { Button, ErrorText, Field } from '@/src/components/ui';
+import { colors, fonts, radius, shadow, space } from '@/src/theme/admin';
 
 export default function LoginScreen() {
   const { login, admin } = useAdminAuth();
@@ -58,8 +58,12 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button title={busy ? 'Entrando…' : 'Entrar'} onPress={onSubmit} disabled={busy} />
+        <ErrorText>{error}</ErrorText>
+        <Button
+          title={busy ? 'Entrando…' : 'Entrar'}
+          onPress={onSubmit}
+          loading={busy}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -77,31 +81,27 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     backgroundColor: colors.paper,
-    borderRadius: 16,
-    padding: space.lg,
+    borderRadius: radius.md + 4,
+    padding: space.xl,
     borderWidth: 1,
     borderColor: colors.line,
+    ...shadow.soft,
   },
   brand: {
-    fontFamily: 'HankenGrotesk_700Bold',
+    fontFamily: fonts.displayBold,
     fontSize: 28,
     color: colors.accent,
   },
   title: {
-    fontFamily: 'HankenGrotesk_600SemiBold',
+    fontFamily: fonts.display,
     fontSize: 22,
     color: colors.ink,
     marginTop: space.sm,
   },
   sub: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     color: colors.muted,
     marginBottom: space.lg,
     marginTop: 4,
-  },
-  error: {
-    color: colors.danger,
-    marginBottom: space.md,
-    fontFamily: 'Inter_400Regular',
   },
 });

@@ -1,10 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { Service } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard, formatCurrency } from '@/src/context/DashboardContext';
-import { SofButton, SofInput } from '@/src/components/ui';
+import {
+  SofButton,
+  SofCard,
+  SofEmptyState,
+  SofErrorBanner,
+  SofInput,
+  SofPageHeader,
+  SofRowActions,
+} from '@/src/components/ui';
+import {
+  EntityAvatar,
+  EntityCardBody,
+  EntityCardFooter,
+  EntityStat,
+  entityCardStyles as ec,
+} from '@/src/features/dashboard/EntityCard';
 import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
@@ -75,7 +90,6 @@ export default function ServicesScreen() {
         setServices((prev) =>
           prev.map((s) => (s.id === service.id ? service : s)),
         );
-        // Keep employee.services in sync when a linked service is renamed/priced
         setEmployees((prev) =>
           prev.map((e) => ({
             ...e,
@@ -114,67 +128,74 @@ export default function ServicesScreen() {
   };
 
   return (
-    <View style={styles.page}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Serviços</Text>
-          <Text style={styles.sub}>Configure seu cardápio de serviços</Text>
-        </View>
-        <SofButton
-          title={showForm ? 'Cancelar' : 'Adicionar Serviço'}
-          variant="dark"
-          theme="dashboard"
-          onPress={() => {
-            if (showForm) resetForm();
-            else startCreate();
-          }}
-        />
-      </View>
+    <View style={ec.page}>
+      <SofPageHeader
+        title="Serviços"
+        subtitle="Cardápio que aparece no WhatsApp e na agenda"
+        action={
+          <SofButton
+            title={showForm ? 'Cancelar' : 'Adicionar serviço'}
+            variant="dark"
+            theme="dashboard"
+            onPress={() => {
+              if (showForm) resetForm();
+              else startCreate();
+            }}
+          />
+        }
+      />
+      {services.length > 0 ? (
+        <Text style={ec.count}>
+          {services.length}{' '}
+          {services.length === 1 ? 'serviço' : 'serviços'}
+        </Text>
+      ) : null}
 
       {showForm ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            {isEditing ? 'Editar Serviço' : 'Novo Serviço'}
+        <SofCard>
+          <Text style={ec.formTitle}>
+            {isEditing ? 'Editar serviço' : 'Novo serviço'}
           </Text>
           {fromEmployees && !isEditing ? (
-            <Text style={styles.fromHint}>
+            <Text style={ec.formHint}>
               Cadastre ao menos um serviço antes de adicionar profissionais.
             </Text>
           ) : null}
           <SofInput
-            label="Nome do Serviço"
+            label="Nome do serviço"
             value={name}
             onChangeText={setName}
             theme="dashboard"
             placeholder="Ex: Corte"
           />
-          <SofInput
-            label="Duração (minutos)"
-            value={duration}
-            onChangeText={setDuration}
-            theme="dashboard"
-            keyboardType="numeric"
-          />
-          <SofInput
-            label="Preço (R$)"
-            value={price}
-            onChangeText={setPrice}
-            theme="dashboard"
-            keyboardType="numeric"
-          />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <View style={styles.actions}>
+          <View style={styles.formRow}>
+            <View style={styles.formCol}>
+              <SofInput
+                label="Duração (min)"
+                value={duration}
+                onChangeText={setDuration}
+                theme="dashboard"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.formCol}>
+              <SofInput
+                label="Preço (R$)"
+                value={price}
+                onChangeText={setPrice}
+                theme="dashboard"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+          {error ? <SofErrorBanner message={error} /> : null}
+          <View style={ec.formActions}>
             <SofButton
-              title={
-                loading
-                  ? 'Salvando…'
-                  : isEditing
-                    ? 'Salvar alterações'
-                    : 'Adicionar'
-              }
+              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
               variant="dark"
               theme="dashboard"
               onPress={save}
+              loading={loading}
               disabled={loading}
             />
             <SofButton
@@ -184,67 +205,67 @@ export default function ServicesScreen() {
               onPress={resetForm}
             />
           </View>
-        </View>
+        </SofCard>
       ) : null}
 
-      <View style={styles.grid}>
-        {services.map((s) => (
-          <View key={s.id} style={styles.entity}>
-            <Text style={styles.name}>{s.name}</Text>
-            <Text style={styles.meta}>
-              {s.duration} min — {formatCurrency(s.price)}
-            </Text>
-            <View style={styles.cardActions}>
-              <Pressable onPress={() => startEdit(s)}>
-                <Text style={styles.edit}>Editar</Text>
-              </Pressable>
-              <Pressable onPress={() => remove(s.id)}>
-                <Text style={styles.delete}>Remover</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-      </View>
+      {services.length === 0 && !showForm ? (
+        <SofCard padded={false}>
+          <SofEmptyState
+            title="Nenhum serviço ainda"
+            body="Cadastre os serviços que seus clientes poderão agendar pelo WhatsApp e pelo painel."
+            action={
+              <SofButton
+                title="Adicionar serviço"
+                variant="dark"
+                theme="dashboard"
+                onPress={startCreate}
+              />
+            }
+          />
+        </SofCard>
+      ) : (
+        <View style={ec.grid}>
+          {services.map((s) => (
+            <SofCard key={s.id} padded={false} style={ec.entity}>
+              <EntityCardBody>
+                <View style={styles.head}>
+                  <EntityAvatar name={s.name} color={d.accent} />
+                  <View style={styles.headCopy}>
+                    <Text style={styles.name} numberOfLines={2}>
+                      {s.name}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.stats}>
+                  <EntityStat label="Duração" value={`${s.duration} min`} />
+                  <EntityStat label="Preço" value={formatCurrency(s.price)} />
+                </View>
+              </EntityCardBody>
+              <EntityCardFooter>
+                <SofRowActions
+                  onEdit={() => startEdit(s)}
+                  onRemove={() => remove(s.id)}
+                />
+              </EntityCardFooter>
+            </SofCard>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 24 },
-  head: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-    gap: 16,
+  formRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  formCol: { flexGrow: 1, flexBasis: 140, minWidth: 120 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headCopy: { flex: 1, minWidth: 0 },
+  name: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    letterSpacing: -0.2,
   },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-  },
-  cardTitle: { fontWeight: '600', marginBottom: 8 },
-  fromHint: { color: d.muted, fontSize: 14, marginBottom: 12, lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  error: { color: d.danger },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
-  entity: {
-    backgroundColor: d.surface,
-    padding: 24,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    minWidth: 280,
-    flexGrow: 1,
-    flexBasis: 280,
-  },
-  name: { fontWeight: '700', fontSize: 16 },
-  meta: { fontSize: 14, color: d.muted, marginTop: 4 },
-  cardActions: { flexDirection: 'row', gap: 16, marginTop: 16 },
-  edit: { color: d.accent, fontWeight: '600', fontSize: 14 },
-  delete: { color: d.danger, fontWeight: '600', fontSize: 14 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });

@@ -28,7 +28,7 @@ export function publicAccount(account: Account | null) {
 
 export function publicEmployeeSession(
   employee: Employee,
-  account: Pick<Account, 'id' | 'businessName'>,
+  account: Pick<Account, 'id' | 'businessName' | 'logoBase64'>,
 ) {
   return {
     id: employee.id,
@@ -39,6 +39,7 @@ export function publicEmployeeSession(
     color: employee.color,
     mustChangePassword: employee.mustChangePassword,
     businessName: account.businessName,
+    logoBase64: account.logoBase64 || '',
     createdAt: employee.createdAt.toISOString(),
   };
 }

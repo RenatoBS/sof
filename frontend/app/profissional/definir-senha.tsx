@@ -1,17 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { employeeAuthApi } from '@/src/api/endpoints';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
-import { SofButton, SofInput } from '@/src/components/ui';
-import { d } from '@/src/theme/dashboard';
+import { SofAuthCard, SofButton, SofErrorBanner, SofInput } from '@/src/components/ui';
+import { m } from '@/src/theme/marketing';
 
 const PASSWORD_MIN = 8;
+const PASSWORD_HINT = `Use pelo menos ${PASSWORD_MIN} caracteres.`;
 
 export default function DefinirSenhaScreen() {
   const params = useLocalSearchParams<{ token?: string }>();
@@ -92,7 +88,7 @@ export default function DefinirSenhaScreen() {
   if (loadingInfo) {
     return (
       <View style={styles.gate}>
-        <ActivityIndicator color={d.muted} />
+        <ActivityIndicator color={m.muted} />
         <Text style={styles.gateText}>Validando link…</Text>
       </View>
     );
@@ -101,20 +97,18 @@ export default function DefinirSenhaScreen() {
   if (infoError) {
     return (
       <View style={styles.page}>
-        <View style={styles.card}>
-          <Text style={styles.h2}>Link indisponível</Text>
-          <Text style={styles.sub}>{infoError}</Text>
+        <SofAuthCard title="Link indisponível" subtitle={infoError}>
           <Text style={styles.hint}>
             Peça ao responsável da conta um novo link de acesso. Links expiram
             em 2 horas e só podem ser usados uma vez.
           </Text>
           <SofButton
             title="Ir para o login"
-            variant="dark"
-            theme="dashboard"
+            variant="accent"
+            block
             onPress={() => router.replace('/login')}
           />
-        </View>
+        </SofAuthCard>
       </View>
     );
   }
@@ -125,14 +119,14 @@ export default function DefinirSenhaScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.card}>
-        <Text style={styles.brand}>Sof</Text>
-        <Text style={styles.h2}>Definir senha</Text>
-        <Text style={styles.sub}>
-          {name ? `Olá, ${name}. ` : ''}
-          {businessName ? `Acesso a ${businessName}.` : ''}
-        </Text>
-
+      <SofAuthCard
+        title="Definir senha"
+        subtitle={
+          [name ? `Olá, ${name}.` : '', businessName ? `Acesso a ${businessName}.` : '']
+            .filter(Boolean)
+            .join(' ') || undefined
+        }
+      >
         <View style={styles.emailBox}>
           <Text style={styles.emailLabel}>E-mail de login</Text>
           <Text style={styles.emailValue}>{email}</Text>
@@ -145,32 +139,32 @@ export default function DefinirSenhaScreen() {
           <Text style={styles.hint}>Este link vale até {expiresLabel}.</Text>
         ) : null}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <SofErrorBanner message={error} /> : null}
 
         <SofInput
           label="Nova senha"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          theme="dashboard"
-          placeholder={`Mínimo ${PASSWORD_MIN} caracteres`}
+          placeholder="Crie uma senha"
         />
+        <Text style={styles.passwordHint}>{PASSWORD_HINT}</Text>
         <SofInput
           label="Confirmar senha"
           value={confirm}
           onChangeText={setConfirm}
           secureTextEntry
-          theme="dashboard"
           placeholder="Repita a nova senha"
         />
         <SofButton
-          title={saving ? 'Salvando…' : 'Salvar e entrar'}
-          variant="dark"
-          theme="dashboard"
+          title="Salvar e entrar"
+          variant="accent"
+          block
+          loading={saving}
           disabled={saving}
           onPress={submit}
         />
-      </View>
+      </SofAuthCard>
     </View>
   );
 }
@@ -181,46 +175,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: d.paper,
+    backgroundColor: m.paper,
     padding: 32,
   },
-  gateText: { color: d.muted, fontSize: 15 },
+  gateText: { color: m.muted, fontSize: 15, fontFamily: m.fonts.body },
   page: {
     flex: 1,
-    backgroundColor: d.paper,
+    backgroundColor: m.paper,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  card: {
-    width: '100%',
-    maxWidth: 440,
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 12,
-  },
-  brand: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: d.ink,
-  },
-  h2: { fontSize: 24, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, lineHeight: 20 },
   emailBox: {
-    backgroundColor: d.paper,
-    borderRadius: 10,
+    backgroundColor: m.paper,
+    borderRadius: m.radiusSm,
     borderWidth: 1,
-    borderColor: d.line,
+    borderColor: m.line,
     padding: 14,
     gap: 4,
-    marginVertical: 4,
+    marginBottom: 20,
   },
-  emailLabel: { fontSize: 12, fontWeight: '600', color: d.muted },
-  emailValue: { fontSize: 16, fontWeight: '700', color: d.ink },
-  emailHint: { fontSize: 12, color: d.muted, lineHeight: 18, marginTop: 4 },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 18 },
-  error: { color: '#dc2626', fontWeight: '600' },
+  emailLabel: {
+    fontSize: 12,
+    color: m.muted,
+    fontFamily: m.fonts.bodyMedium,
+  },
+  emailValue: { fontSize: 16, color: m.ink, fontFamily: m.fonts.displayBold },
+  emailHint: { fontSize: 12, color: m.muted, lineHeight: 18, marginTop: 4, fontFamily: m.fonts.body },
+  hint: {
+    color: m.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+    fontFamily: m.fonts.body,
+  },
+  passwordHint: {
+    marginTop: -10,
+    marginBottom: 14,
+    fontSize: 12.5,
+    color: m.muted,
+    fontFamily: m.fonts.body,
+  },
 });

@@ -11,7 +11,13 @@ import {
 import type { WhatsappHandoff } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
 import { formatPhone, useDashboard } from '@/src/context/DashboardContext';
-import { SofButton } from '@/src/components/ui';
+import {
+  SofButton,
+  SofCard,
+  SofEmptyState,
+  SofErrorBanner,
+  SofPageHeader,
+} from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 
@@ -104,19 +110,12 @@ export default function HandoffsScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.head}>
-        <View>
-          <Text style={styles.h2}>Atendimentos</Text>
-          <Text style={styles.sub}>
-            Conversas em que o bot precisou de ajuda humana — de clientes ou
-            profissionais. Ao responder um cliente pelo WhatsApp, o bot pausa
-            por 1 hora para aquele número e o alerta é resolvido. Resposta a
-            profissional resolve o alerta sem pausar o bot operacional.
-          </Text>
-        </View>
-      </View>
+      <SofPageHeader
+        title="Atendimentos"
+        subtitle="Conversas em que o bot precisou de ajuda humana — de clientes ou profissionais. Ao responder um cliente pelo WhatsApp, o bot pausa por 1 hora para aquele número e o alerta é resolvido. Resposta a profissional resolve o alerta sem pausar o bot operacional."
+      />
 
-      <View style={styles.card}>
+      <SofCard>
         <Text style={styles.cardTitle}>Configuração</Text>
         <Text style={styles.hint}>
           Quantas respostas "não entendi" seguidas do bot abrem um alerta aqui
@@ -140,23 +139,24 @@ export default function HandoffsScreen() {
             );
           })}
         </View>
-        {settingsError ? (
-          <Text style={styles.error}>{settingsError}</Text>
-        ) : null}
-      </View>
+        {settingsError ? <SofErrorBanner message={settingsError} /> : null}
+      </SofCard>
 
       <View>
         <Text style={styles.sectionTitle}>
           Abertos {open.length > 0 ? `(${open.length})` : ''}
         </Text>
         {open.length === 0 ? (
-          <Text style={styles.empty}>
-            Nenhum atendimento pendente — o bot está dando conta.
-          </Text>
+          <SofCard padded={false}>
+            <SofEmptyState
+              title="Nenhum atendimento pendente"
+              body="O bot está dando conta sozinho."
+            />
+          </SofCard>
         ) : (
           <View style={styles.list}>
             {open.map((h) => (
-              <View
+              <SofCard
                 key={h.id}
                 style={[
                   styles.entity,
@@ -208,14 +208,15 @@ export default function HandoffsScreen() {
                     }}
                   />
                   <SofButton
-                    title={resolvingId === h.id ? 'Resolvendo…' : 'Marcar resolvido'}
+                    title="Marcar resolvido"
                     variant="light"
                     theme="dashboard"
+                    loading={resolvingId === h.id}
                     disabled={resolvingId === h.id}
                     onPress={() => resolve(h.id)}
                   />
                 </View>
-              </View>
+              </SofCard>
             ))}
           </View>
         )}
@@ -226,7 +227,7 @@ export default function HandoffsScreen() {
           <Text style={styles.sectionTitle}>Resolvidos recentes</Text>
           <View style={styles.list}>
             {resolved.map((h) => (
-              <View
+              <SofCard
                 key={h.id}
                 style={[
                   styles.entity,
@@ -263,7 +264,7 @@ export default function HandoffsScreen() {
                     “{h.lastMessage}”
                   </Text>
                 ) : null}
-              </View>
+              </SofCard>
             ))}
           </View>
         </View>
@@ -274,52 +275,35 @@ export default function HandoffsScreen() {
 
 const styles = StyleSheet.create({
   page: { gap: 24 },
-  head: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'center',
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.displayBold,
+    marginBottom: 4,
   },
-  h2: { fontSize: 30, fontWeight: '700', color: d.ink },
-  sub: { color: d.muted, fontSize: 14, marginTop: 8, maxWidth: 640 },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 24,
-    gap: 12,
-  },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: d.ink },
-  hint: { color: d.muted, fontSize: 13, lineHeight: 20 },
+  hint: { color: d.muted, fontSize: 13, lineHeight: 20, fontFamily: d.fonts.body },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 8,
+    borderRadius: d.radiusSm,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: d.surface,
   },
-  chipActive: { borderColor: d.accent, backgroundColor: '#eff6ff' },
-  chipText: { color: d.ink, fontSize: 13 },
-  chipTextActive: { fontWeight: '700' },
-  error: { color: d.danger, fontWeight: '600' },
+  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
+  chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
+  chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: d.ink,
+    fontFamily: d.fonts.displayBold,
     marginBottom: 12,
   },
-  empty: { color: d.muted, fontSize: 14 },
   list: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   entity: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 20,
     width: 340,
     maxWidth: '100%',
     gap: 8,
@@ -347,6 +331,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     overflow: 'hidden',
+    fontFamily: d.fonts.bodyMedium,
   },
   partyBadgeClient: {
     color: '#1e40af',
@@ -356,7 +341,12 @@ const styles = StyleSheet.create({
     color: '#5b21b6',
     backgroundColor: '#ede9fe',
   },
-  name: { fontSize: 17, fontWeight: '700', color: d.ink },
+  name: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
   badge: {
     fontSize: 11,
     fontWeight: '700',
@@ -366,17 +356,23 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     overflow: 'hidden',
+    fontFamily: d.fonts.bodyMedium,
   },
   badgeHuman: {
     color: '#991b1b',
-    backgroundColor: '#fee2e2',
+    backgroundColor: d.dangerSoft,
   },
   badgeResolved: {
     color: '#166534',
     backgroundColor: '#dcfce7',
   },
-  meta: { color: d.muted, fontSize: 13 },
-  message: { color: d.ink, fontSize: 14, lineHeight: 20 },
-  messageMuted: { color: d.muted, fontSize: 13, lineHeight: 19 },
+  meta: { color: d.muted, fontSize: 13, fontFamily: d.fonts.body },
+  message: { color: d.ink, fontSize: 14, lineHeight: 20, fontFamily: d.fonts.body },
+  messageMuted: {
+    color: d.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: d.fonts.body,
+  },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
 });

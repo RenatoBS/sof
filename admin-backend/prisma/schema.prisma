@@ -29,6 +29,8 @@ model Account {
   openingHours          Json     @default("[{\"open\":false,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"},{\"open\":true,\"start\":\"09:00\",\"end\":\"18:00\"}]")
   /// Endereço do estabelecimento (opcional; bot pode informar na conversa)
   address               String   @default("")
+  /// Logo do estabelecimento em data URL base64 (image/*; até ~5MB decodificado)
+  logoBase64            String   @default("") @db.Text
   /// Quantas falhas consecutivas do bot abrem alerta de atendimento (1|2|3|5)
   whatsappHandoffThreshold Int   @default(2)
   /// Minutos antes do horário para lembrete WhatsApp (0=off; 60|120|180|360|1440)
