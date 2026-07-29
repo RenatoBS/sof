@@ -10,6 +10,7 @@ import {
   SofErrorBanner,
   SofInput,
   SofPageHeader,
+  SofRowActions,
 } from '@/src/components/ui';
 import {
   hasFieldErrors,
@@ -444,20 +445,18 @@ export default function EmployeesScreen() {
               <View style={[styles.dot, { backgroundColor: e.color }]} />
             </View>
             <View style={styles.cardActions}>
-              <View style={styles.cardActionsRow}>
-                <Pressable onPress={() => startEdit(e)}>
-                  <Text style={styles.edit}>Editar</Text>
-                </Pressable>
-                <Pressable onPress={() => remove(e.id)}>
-                  <Text style={styles.delete}>Remover</Text>
-                </Pressable>
-              </View>
+              <SofRowActions
+                onEdit={() => startEdit(e)}
+                onRemove={() => remove(e.id)}
+              />
               <Pressable
                 onPress={() => sendInviteWhatsapp(e.id)}
                 disabled={sendingWa}
                 style={styles.waAction}
+                accessibilityRole="button"
+                accessibilityLabel="Enviar senha no WhatsApp"
               >
-                <Text style={styles.edit}>
+                <Text style={styles.waText}>
                   {sendingWa && inviteEmployeeId === e.id
                     ? 'Enviando…'
                     : 'Enviar senha no WhatsApp'}
@@ -552,23 +551,16 @@ const styles = StyleSheet.create({
   meta: { color: d.muted, fontSize: 13, marginTop: 4, fontFamily: d.fonts.body },
   dot: { width: 14, height: 14, borderRadius: 7, marginTop: 4 },
   cardActions: { gap: 10 },
-  cardActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
   waAction: {
     alignSelf: 'flex-start',
     paddingTop: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
-  edit: {
+  waText: {
     color: d.accent,
     fontWeight: '600',
     fontFamily: d.fonts.bodyMedium,
-  },
-  delete: {
-    color: d.danger,
-    fontWeight: '600',
-    fontFamily: d.fonts.bodyMedium,
+    fontSize: 14,
   },
 });

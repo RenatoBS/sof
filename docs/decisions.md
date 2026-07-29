@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Editar/Remover com ícone responsivo
+
+- **Contexto:** Links “Editar”/“Remover” nos cards de Serviços, Clientes e Profissionais ocupavam espaço em mobile e não tinham affordance visual clara.  
+- **Decisão:** `SofIconAction` + `SofRowActions` no kit compartilhado — ícone SVG + label; viewport &lt; 720px mostra só o ícone (com `accessibilityLabel`).  
+- **Consequências:** Únicas telas com esse padrão no front produto; modal de agenda mantém `SofButton` de exclusão (ação destrutiva com copy completa).  
+- **Alternativas descartadas:** Sempre só ícone; ícones emoji; breakpoint por largura do card.
+
+---
+
 ## 2026-07-28 — Paleta Sof da logo (verde floresta + cobre)
 
 - **Contexto:** Identidade visual oficial (SOF + “AGENDA · CONVERSA · CONECTA”) usa fundo verde floresta e pontos cobre; o produto ainda tinha lavender marketing e azul Tailwind no dashboard.  

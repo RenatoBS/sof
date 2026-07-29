@@ -10,6 +10,7 @@ import {
   SofErrorBanner,
   SofInput,
   SofPageHeader,
+  SofRowActions,
 } from '@/src/components/ui';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import {
@@ -327,12 +328,10 @@ export default function ClientsScreen() {
                   </Text>
                 ) : null}
                 <View style={styles.cardActions}>
-                  <Pressable onPress={() => startEdit(c)}>
-                    <Text style={styles.edit}>Editar</Text>
-                  </Pressable>
-                  <Pressable onPress={() => remove(c.id)}>
-                    <Text style={styles.delete}>Remover</Text>
-                  </Pressable>
+                  <SofRowActions
+                    onEdit={() => startEdit(c)}
+                    onRemove={() => remove(c.id)}
+                  />
                 </View>
               </SofCard>
             );
@@ -414,15 +413,5 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontFamily: d.fonts.body,
   },
-  cardActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
-  edit: {
-    color: d.accent,
-    fontWeight: '600',
-    fontFamily: d.fonts.bodyMedium,
-  },
-  delete: {
-    color: d.danger,
-    fontWeight: '600',
-    fontFamily: d.fonts.bodyMedium,
-  },
+  cardActions: { marginTop: 4 },
 });

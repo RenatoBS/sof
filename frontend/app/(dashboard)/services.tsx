@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { Service } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
@@ -11,6 +11,7 @@ import {
   SofErrorBanner,
   SofInput,
   SofPageHeader,
+  SofRowActions,
 } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
 
@@ -212,18 +213,10 @@ export default function ServicesScreen() {
                 {s.duration} min — {formatCurrency(s.price)}
               </Text>
               <View style={styles.cardActions}>
-                <Pressable
-                  onPress={() => startEdit(s)}
-                  style={({ pressed }) => pressed && { opacity: 0.7 }}
-                >
-                  <Text style={styles.edit}>Editar</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => remove(s.id)}
-                  style={({ pressed }) => pressed && { opacity: 0.7 }}
-                >
-                  <Text style={styles.delete}>Remover</Text>
-                </Pressable>
+                <SofRowActions
+                  onEdit={() => startEdit(s)}
+                  onRemove={() => remove(s.id)}
+                />
               </View>
             </SofCard>
           ))}
@@ -268,17 +261,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: d.fonts.body,
   },
-  cardActions: { flexDirection: 'row', gap: 16, marginTop: 16 },
-  edit: {
-    color: d.accent,
-    fontWeight: '600',
-    fontSize: 14,
-    fontFamily: d.fonts.bodyMedium,
-  },
-  delete: {
-    color: d.danger,
-    fontWeight: '600',
-    fontSize: 14,
-    fontFamily: d.fonts.bodyMedium,
-  },
+  cardActions: { marginTop: 16 },
 });

@@ -6,10 +6,12 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { m } from '@/src/theme/marketing';
 import { d } from '@/src/theme/dashboard';
 
@@ -277,6 +279,131 @@ export function SofListRow({
   );
 }
 
+const COMPACT_ACTION_BP = 720;
+
+function ActionGlyph({
+  name,
+  color,
+  size = 16,
+}: {
+  name: 'edit' | 'remove';
+  color: string;
+  size?: number;
+}) {
+  const common = {
+    stroke: color,
+    fill: 'none' as const,
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  if (name === 'edit') {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
+        <Path {...common} d="M12 20h9" />
+        <Path {...common} d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
+      <Path {...common} d="M3 6h18" />
+      <Path {...common} d="M8 6V4h8v2" />
+      <Path {...common} d="M19 6l-1 14H6L5 6" />
+      <Path {...common} d="M10 11v6M14 11v6" />
+    </Svg>
+  );
+}
+
+/** Ação de linha (Editar / Remover): ícone + texto; em viewport &lt; 720px só o ícone. */
+export function SofIconAction({
+  action,
+  onPress,
+  label,
+  disabled,
+  forceCompact,
+}: {
+  action: 'edit' | 'remove';
+  onPress: () => void;
+  label?: string;
+  disabled?: boolean;
+  /** Força só ícone (útil em cards estreitos). */
+  forceCompact?: boolean;
+}) {
+  const { width } = useWindowDimensions();
+  const compact = forceCompact ?? width < COMPACT_ACTION_BP;
+  const resolvedLabel =
+    label ?? (action === 'edit' ? 'Editar' : 'Remover');
+  const color = action === 'edit' ? d.accent : d.danger;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={resolvedLabel}
+      hitSlop={8}
+      style={(state) => {
+        const pressed = state.pressed;
+        const hovered = Boolean((state as { hovered?: boolean }).hovered);
+        return [
+          iconAction.base,
+          compact && iconAction.compact,
+          disabled && { opacity: 0.45 },
+          !disabled && pressed && { opacity: 0.7 },
+          !disabled && hovered && !pressed && { backgroundColor: d.fill },
+          Platform.OS === 'web'
+            ? ({ cursor: disabled ? 'default' : 'pointer' } as object)
+            : null,
+        ];
+      }}
+    >
+      <ActionGlyph name={action} color={color} />
+      {!compact ? (
+        <Text style={[iconAction.label, { color }]}>{resolvedLabel}</Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+/** Par Editar + Remover com o mesmo comportamento responsivo. */
+export function SofRowActions({
+  onEdit,
+  onRemove,
+  editLabel = 'Editar',
+  removeLabel = 'Remover',
+  disabled,
+  style,
+}: {
+  onEdit?: () => void;
+  onRemove?: () => void;
+  editLabel?: string;
+  removeLabel?: string;
+  disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[iconAction.row, style]}>
+      {onEdit ? (
+        <SofIconAction
+          action="edit"
+          label={editLabel}
+          onPress={onEdit}
+          disabled={disabled}
+        />
+      ) : null}
+      {onRemove ? (
+        <SofIconAction
+          action="remove"
+          label={removeLabel}
+          onPress={onRemove}
+          disabled={disabled}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 const mktBtn = StyleSheet.create({
   base: {
     borderRadius: 999,
@@ -525,5 +652,32 @@ const listRow = StyleSheet.create({
     fontSize: 13,
     color: d.muted,
     fontFamily: d.fonts.body,
+  },
+});
+
+const iconAction = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
+  base: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: d.radiusSm,
+    minHeight: 36,
+  },
+  compact: {
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
   },
 });
