@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Account } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { hashPassword } from '../common/password';
-import { generatePasswordToken } from '../common/password-token';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { MailService } from '../mail/mail.service';
 import { passwordResetEmail } from '../mail/mail-templates';
@@ -17,7 +14,6 @@ export class AccountPasswordResetService {
   private readonly logger = new Logger(AccountPasswordResetService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly passwordTokens: AccountPasswordTokenService,
     private readonly whatsapp: WhatsappApiService,
     private readonly mail: MailService,
@@ -28,12 +24,8 @@ export class AccountPasswordResetService {
     expiresAt: Date;
     channels: string[];
   }> {
-    // Invalida a senha atual sem tornar a coluna null (passwordHash é obrigatório).
-    await this.prisma.account.update({
-      where: { id: account.id },
-      data: { passwordHash: await hashPassword(generatePasswordToken()) },
-    });
-
+    // Não invalida a senha atual até o usuário concluir o link —
+    // se e-mail/WhatsApp falharem, a conta continua acessível.
     const { resetLink, expiresAt } = await this.passwordTokens.issueResetLink(
       account.id,
     );

@@ -18,13 +18,18 @@ export class MailService {
     if (this.isConfigured()) {
       const port = this.config.get<number>('mail.port') || 465;
       const secure = this.config.get<boolean>('mail.secure') ?? port === 465;
+      // Gmail App Password: Google mostra com espaços; SMTP aceita sem.
+      const pass = (this.config.get<string>('mail.pass') || '').replace(
+        /\s+/g,
+        '',
+      );
       this.transporter = nodemailer.createTransport({
         host: this.config.get<string>('mail.host'),
         port,
         secure,
         auth: {
           user: this.config.get<string>('mail.user'),
-          pass: this.config.get<string>('mail.pass'),
+          pass,
         },
       });
       this.logger.log(
@@ -38,10 +43,14 @@ export class MailService {
   }
 
   isConfigured(): boolean {
+    const pass = (this.config.get<string>('mail.pass') || '').replace(
+      /\s+/g,
+      '',
+    );
     return Boolean(
       (this.config.get<string>('mail.host') || '').trim() &&
         (this.config.get<string>('mail.user') || '').trim() &&
-        (this.config.get<string>('mail.pass') || '').trim(),
+        pass,
     );
   }
 

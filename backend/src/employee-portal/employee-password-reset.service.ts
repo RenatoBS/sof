@@ -101,11 +101,7 @@ export class EmployeePasswordResetService {
     expiresAt: Date;
     channels: string[];
   }> {
-    await this.prisma.employee.update({
-      where: { id: opts.employee.id },
-      data: { passwordHash: null, mustChangePassword: true },
-    });
-
+    // Mantém a senha atual até o link ser usado (evita lock se o envio falhar).
     const { resetLink, expiresAt } = await this.passwordTokens.issueResetLink(
       opts.employee.id,
     );
