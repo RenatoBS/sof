@@ -1,5 +1,5 @@
-import { createElement, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import type { Employee } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
@@ -9,7 +9,6 @@ import {
   SofCard,
   SofEmptyState,
   SofErrorBanner,
-  SofInput,
   SofPageHeader,
   SofRowActions,
 } from '@/src/components/ui';
@@ -22,129 +21,45 @@ import {
   entityCardStyles as ec,
 } from '@/src/features/dashboard/EntityCard';
 import {
-  hasFieldErrors,
-  maskBrPhone,
-  normalizePhoneDigits,
-  validateEmployeeFields,
-  type EmployeeFieldErrors,
-} from '@/src/lib/validation';
+  EMPLOYEE_COLORS,
+  EmployeeFormModal,
+} from '@/src/features/employees/EmployeeFormModal';
 import { d } from '@/src/theme/dashboard';
-
-const EMPLOYEE_COLORS = [
-  '#3d4743',
-  '#c19a6b',
-  '#5b7a6e',
-  '#8f6e45',
-  '#6e7873',
-  '#a67c52',
-] as const;
-
-function normalizeHex(raw: string): string {
-  const color = raw.trim().toLowerCase();
-  if (/^#[0-9a-f]{3}$/i.test(color)) {
-    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
-  }
-  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
-  return EMPLOYEE_COLORS[0];
-}
 
 export default function EmployeesScreen() {
   const { employees, setEmployees, services } = useDashboard();
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [color, setColor] = useState<string>(EMPLOYEE_COLORS[0]);
-  const [serviceIds, setServiceIds] = useState<string[]>([]);
-  const [resetPassword, setResetPassword] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<EmployeeFieldErrors>({});
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [touched, setTouched] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Employee | null>(null);
   const [inviteLink, setInviteLink] = useState('');
   const [inviteExpiresAt, setInviteExpiresAt] = useState('');
   const [inviteEmployeeId, setInviteEmployeeId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
   const [waSent, setWaSent] = useState(false);
+  const [error, setError] = useState('');
 
-  const isEditing = !!editingId;
-
-  const clearField = (key: keyof EmployeeFieldErrors) => {
-    setFieldErrors((prev) => {
-      if (!prev[key]) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
   };
 
   const nextDefaultColor = () =>
     EMPLOYEE_COLORS[employees.length % EMPLOYEE_COLORS.length];
-
-  const toggleService = (id: string) => {
-    setServiceIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-    clearField('services');
-  };
-
-  const resetForm = () => {
-    setName('');
-    setEmail('');
-    setPhone('');
-    setColor(nextDefaultColor());
-    setServiceIds([]);
-    setResetPassword(false);
-    setFieldErrors({});
-    setError('');
-    setTouched(false);
-    setEditingId(null);
-    setShowForm(false);
-    setLoading(false);
-  };
 
   const startCreate = () => {
     if (services.length === 0) {
       router.push('/(dashboard)/services?create=1');
       return;
     }
-    setName('');
-    setEmail('');
-    setPhone('');
-    setColor(nextDefaultColor());
-    setServiceIds([]);
-    setResetPassword(false);
-    setFieldErrors({});
+    setEditing(null);
     setError('');
-    setTouched(false);
-    setInviteLink('');
-    setInviteExpiresAt('');
-    setInviteEmployeeId(null);
-    setCopied(false);
-    setWaSent(false);
-    setEditingId(null);
-    setShowForm(true);
+    setModalOpen(true);
   };
 
   const startEdit = (employee: Employee) => {
-    setEditingId(employee.id);
-    setName(employee.name);
-    setEmail(employee.email || '');
-    setPhone(maskBrPhone(employee.phone || ''));
-    setColor(normalizeHex(employee.color || EMPLOYEE_COLORS[0]));
-    setServiceIds((employee.services || []).map((s) => s.id));
-    setResetPassword(false);
-    setFieldErrors({});
+    setEditing(employee);
     setError('');
-    setTouched(false);
-    setInviteLink('');
-    setInviteExpiresAt('');
-    setInviteEmployeeId(null);
-    setCopied(false);
-    setWaSent(false);
-    setShowForm(true);
+    setModalOpen(true);
   };
 
   const showInvite = (
@@ -157,8 +72,6 @@ export default function EmployeesScreen() {
     setInviteEmployeeId(employeeId || null);
     setCopied(false);
     setWaSent(false);
-    setShowForm(false);
-    setEditingId(null);
   };
 
   const copyInvite = async () => {
@@ -187,73 +100,35 @@ export default function EmployeesScreen() {
       setInviteLink(res.resetLink);
       setInviteExpiresAt(res.expiresAt);
       setWaSent(true);
-      setShowForm(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao enviar no WhatsApp.');
+      setError(
+        err instanceof Error ? err.message : 'Falha ao enviar no WhatsApp.',
+      );
     } finally {
       setSendingWa(false);
     }
   };
 
-  const save = async () => {
-    setError('');
-    setTouched(true);
-    const errors = validateEmployeeFields({
-      name,
-      phone,
-      email,
-      serviceIds,
+  const onSaved = (result: {
+    employee: Employee;
+    resetLink?: string;
+    expiresAt?: string;
+  }) => {
+    setEmployees((prev) => {
+      const exists = prev.some((e) => e.id === result.employee.id);
+      return exists
+        ? prev.map((e) => (e.id === result.employee.id ? result.employee : e))
+        : [...prev, result.employee];
     });
-    setFieldErrors(errors);
-    if (hasFieldErrors(errors)) return;
-
-    const hexOk = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color.trim());
-    if (!hexOk) {
-      setError('Informe uma cor hexadecimal válida (#RGB ou #RRGGBB).');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const body = {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: normalizePhoneDigits(phone),
-        serviceIds,
-        color: normalizeHex(color),
-      };
-      if (editingId) {
-        const { employee, resetLink, expiresAt } =
-          await dashboardApi.updateEmployee(editingId, {
-            ...body,
-            resetPassword,
-          });
-        setEmployees((prev) =>
-          prev.map((e) => (e.id === employee.id ? employee : e)),
-        );
-        if (resetLink) {
-          showInvite(resetLink, expiresAt, editingId);
-          return;
-        }
-      } else {
-        const { employee, resetLink, expiresAt } =
-          await dashboardApi.createEmployee(body);
-        setEmployees((prev) => [...prev, employee]);
-        showInvite(resetLink, expiresAt, employee.id);
-        return;
-      }
-      resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro');
-    } finally {
-      setLoading(false);
+    if (result.resetLink) {
+      showInvite(result.resetLink, result.expiresAt, result.employee.id);
     }
   };
 
   const remove = async (id: string) => {
     await dashboardApi.deleteEmployee(id);
     setEmployees((prev) => prev.filter((e) => e.id !== id));
-    if (editingId === id) resetForm();
+    if (editing?.id === id) closeModal();
   };
 
   return (
@@ -263,13 +138,10 @@ export default function EmployeesScreen() {
         subtitle="Equipe, serviços e acesso à agenda"
         action={
           <SofButton
-            title={showForm ? 'Cancelar' : 'Adicionar profissional'}
+            title="Adicionar profissional"
             variant="dark"
             theme="dashboard"
-            onPress={() => {
-              if (showForm) resetForm();
-              else startCreate();
-            }}
+            onPress={startCreate}
           />
         }
       />
@@ -328,196 +200,7 @@ export default function EmployeesScreen() {
         </SofCard>
       ) : null}
 
-      {showForm ? (
-        <SofCard>
-          <Text style={ec.formTitle}>
-            {isEditing ? 'Editar profissional' : 'Novo profissional'}
-          </Text>
-          <View style={styles.formGrid}>
-            <SofInput
-              label="Nome"
-              value={name}
-              onChangeText={(t) => {
-                setName(t);
-                clearField('name');
-              }}
-              theme="dashboard"
-              placeholder="Nome completo"
-              autoCapitalize="words"
-              error={touched ? fieldErrors.name : undefined}
-            />
-            <SofInput
-              label="Telefone"
-              value={phone}
-              onChangeText={(t) => {
-                setPhone(maskBrPhone(t));
-                clearField('phone');
-              }}
-              theme="dashboard"
-              placeholder="(11) 99999-8888"
-              keyboardType="phone-pad"
-              error={touched ? fieldErrors.phone : undefined}
-            />
-            <SofInput
-              label="E-mail de acesso"
-              value={email}
-              onChangeText={(t) => {
-                setEmail(t);
-                clearField('email');
-              }}
-              theme="dashboard"
-              placeholder="profissional@negocio.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={touched ? fieldErrors.email : undefined}
-            />
-            <Text style={styles.label}>Cor na agenda</Text>
-            <View style={styles.colorRow}>
-              {EMPLOYEE_COLORS.map((c) => {
-                const active = color === c;
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => setColor(c)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Selecionar cor ${c}`}
-                    accessibilityState={{ selected: active }}
-                    style={[
-                      styles.colorSwatch,
-                      { backgroundColor: c },
-                      active && styles.colorSwatchActive,
-                    ]}
-                  />
-                );
-              })}
-              {Platform.OS === 'web' ? (
-                <View
-                  style={[
-                    styles.colorSwatch,
-                    styles.customSwatch,
-                    { backgroundColor: normalizeHex(color) },
-                    !(EMPLOYEE_COLORS as readonly string[]).includes(
-                      normalizeHex(color),
-                    ) && styles.colorSwatchActive,
-                  ]}
-                  accessibilityLabel="Escolher qualquer cor"
-                >
-                  {createElement('input', {
-                    type: 'color',
-                    value: normalizeHex(color),
-                    title: 'Escolher qualquer cor',
-                    'aria-label': 'Escolher qualquer cor',
-                    onInput: (e: { target: { value: string } }) => {
-                      setColor(normalizeHex(e.target.value));
-                    },
-                    onChange: (e: { target: { value: string } }) => {
-                      setColor(normalizeHex(e.target.value));
-                    },
-                    style: {
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      opacity: 0,
-                      cursor: 'pointer',
-                      border: 'none',
-                      padding: 0,
-                    },
-                  })}
-                  <Text style={styles.customSwatchGlyph}>+</Text>
-                </View>
-              ) : null}
-            </View>
-            {Platform.OS === 'web' ? (
-              <Text style={styles.colorHint}>
-                Presets ou + para abrir o seletor e escolher qualquer cor
-              </Text>
-            ) : (
-              <SofInput
-                label="Código da cor (hex)"
-                value={color}
-                onChangeText={(t) => {
-                  const next = t.trim().toLowerCase();
-                  if (next === '' || next === '#') {
-                    setColor('#');
-                    return;
-                  }
-                  const withHash = next.startsWith('#') ? next : `#${next}`;
-                  if (/^#[0-9a-f]{0,6}$/i.test(withHash)) {
-                    setColor(withHash.length === 7 ? normalizeHex(withHash) : withHash);
-                  }
-                }}
-                theme="dashboard"
-                placeholder="#3d4743"
-                autoCapitalize="none"
-              />
-            )}
-            <Text style={styles.label}>Serviços que realiza</Text>
-            <View style={styles.chips}>
-              {services.map((s) => {
-                const active = serviceIds.includes(s.id);
-                return (
-                  <Pressable
-                    key={s.id}
-                    onPress={() => toggleService(s.id)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {s.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {touched && fieldErrors.services ? (
-              <SofErrorBanner message={fieldErrors.services} />
-            ) : null}
-            {isEditing ? (
-              <Pressable
-                onPress={() => setResetPassword((v) => !v)}
-                style={[styles.resetChip, resetPassword && styles.chipActive]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    resetPassword && styles.chipTextActive,
-                  ]}
-                >
-                  {resetPassword
-                    ? '✓ Gerar novo link de senha'
-                    : 'Gerar novo link de senha'}
-                </Text>
-              </Pressable>
-            ) : (
-              <Text style={ec.formHint}>
-                Ao salvar, um link de uso único (válido por 2h) será gerado para
-                o profissional definir a senha.
-              </Text>
-            )}
-          </View>
-          {error ? <SofErrorBanner message={error} /> : null}
-          <View style={ec.formActions}>
-            <SofButton
-              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
-              variant="dark"
-              theme="dashboard"
-              onPress={save}
-              loading={loading}
-              disabled={loading}
-            />
-            <SofButton
-              title="Cancelar"
-              variant="light"
-              theme="dashboard"
-              onPress={resetForm}
-            />
-          </View>
-        </SofCard>
-      ) : null}
-
-      {employees.length === 0 && !showForm && !inviteLink ? (
+      {employees.length === 0 && !inviteLink ? (
         <SofCard padded={false}>
           <SofEmptyState
             title="Nenhum profissional ainda"
@@ -613,6 +296,15 @@ export default function EmployeesScreen() {
           })}
         </View>
       )}
+
+      <EmployeeFormModal
+        visible={modalOpen}
+        onClose={closeModal}
+        employee={editing}
+        services={services}
+        defaultColor={nextDefaultColor()}
+        onSaved={onSaved}
+      />
     </View>
   );
 }
@@ -622,15 +314,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecfdf5',
     borderColor: '#a7f3d0',
     gap: 4,
-  },
-  formGrid: { gap: 4 },
-  label: {
-    fontWeight: '600',
-    color: d.mutedStrong,
-    fontSize: 14,
-    fontFamily: d.fonts.bodyMedium,
-    marginTop: 6,
-    marginBottom: 6,
   },
   tempPass: {
     fontSize: 13,
@@ -644,65 +327,6 @@ const styles = StyleSheet.create({
     borderRadius: d.radiusSm,
     overflow: 'hidden',
   },
-  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
-  colorSwatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    overflow: 'hidden',
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorSwatchActive: {
-    borderColor: d.ink,
-    transform: [{ scale: 1.08 }],
-  },
-  customSwatch: {
-    borderColor: d.line,
-    borderStyle: 'dashed',
-  },
-  customSwatchGlyph: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 20,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    pointerEvents: 'none',
-  },
-  colorHint: {
-    color: d.muted,
-    fontSize: 12,
-    marginTop: -4,
-    marginBottom: 4,
-    fontFamily: d.fonts.body,
-  },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  chip: {
-    borderWidth: 1,
-    borderColor: d.line,
-    borderRadius: d.radiusSm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: d.surface,
-  },
-  resetChip: {
-    borderWidth: 1,
-    borderColor: d.line,
-    borderRadius: d.radiusSm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: d.surface,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
-  chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
-  chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headCopy: { flex: 1, minWidth: 0, gap: 2 },
   name: {
@@ -733,7 +357,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
-    width: '100%',
     justifyContent: 'space-between',
+    width: '100%',
   },
 });

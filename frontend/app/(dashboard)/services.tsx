@@ -8,8 +8,6 @@ import {
   SofButton,
   SofCard,
   SofEmptyState,
-  SofErrorBanner,
-  SofInput,
   SofPageHeader,
   SofRowActions,
 } from '@/src/components/ui';
@@ -20,98 +18,59 @@ import {
   EntityStat,
   entityCardStyles as ec,
 } from '@/src/features/dashboard/EntityCard';
+import { ServiceFormModal } from '@/src/features/services/ServiceFormModal';
 import { d } from '@/src/theme/dashboard';
 
 export default function ServicesScreen() {
   const { services, setServices, setEmployees } = useDashboard();
   const { create } = useLocalSearchParams<{ create?: string }>();
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [duration, setDuration] = useState('45');
-  const [price, setPrice] = useState('60');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Service | null>(null);
   const [fromEmployees, setFromEmployees] = useState(false);
-
-  const isEditing = !!editingId;
 
   useEffect(() => {
     if (create !== '1') return;
     setFromEmployees(true);
-    setName('');
-    setDuration('45');
-    setPrice('60');
-    setError('');
-    setEditingId(null);
-    setShowForm(true);
+    setEditing(null);
+    setModalOpen(true);
   }, [create]);
 
-  const resetForm = () => {
-    setName('');
-    setDuration('45');
-    setPrice('60');
-    setError('');
-    setEditingId(null);
-    setShowForm(false);
-    setLoading(false);
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
     setFromEmployees(false);
   };
 
   const startCreate = () => {
-    setName('');
-    setDuration('45');
-    setPrice('60');
-    setError('');
-    setEditingId(null);
-    setShowForm(true);
+    setEditing(null);
+    setFromEmployees(false);
+    setModalOpen(true);
   };
 
   const startEdit = (service: Service) => {
-    setEditingId(service.id);
-    setName(service.name);
-    setDuration(String(service.duration));
-    setPrice(String(service.price));
-    setError('');
-    setShowForm(true);
+    setEditing(service);
+    setFromEmployees(false);
+    setModalOpen(true);
   };
 
-  const save = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const body = {
-        name: name.trim(),
-        duration: parseInt(duration, 10),
-        price: parseFloat(price),
-      };
-      if (editingId) {
-        const { service } = await dashboardApi.updateService(editingId, body);
-        setServices((prev) =>
-          prev.map((s) => (s.id === service.id ? service : s)),
-        );
-        setEmployees((prev) =>
-          prev.map((e) => ({
-            ...e,
-            services: (e.services || []).map((s) =>
-              s.id === service.id ? service : s,
-            ),
-          })),
-        );
-      } else {
-        const { service } = await dashboardApi.createService(body);
-        setServices((prev) => [...prev, service]);
-        if (fromEmployees) {
-          resetForm();
-          router.push('/(dashboard)/employees');
-          return;
-        }
-      }
-      resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro');
-    } finally {
-      setLoading(false);
+  const onSaved = (service: Service) => {
+    const isCreate = !editing;
+    setServices((prev) => {
+      const exists = prev.some((s) => s.id === service.id);
+      return exists
+        ? prev.map((s) => (s.id === service.id ? service : s))
+        : [...prev, service];
+    });
+    setEmployees((prev) =>
+      prev.map((e) => ({
+        ...e,
+        services: (e.services || []).map((s) =>
+          s.id === service.id ? service : s,
+        ),
+      })),
+    );
+    if (isCreate && fromEmployees) {
+      router.push('/(dashboard)/employees');
     }
   };
 
@@ -124,7 +83,7 @@ export default function ServicesScreen() {
         services: (e.services || []).filter((s) => s.id !== id),
       })),
     );
-    if (editingId === id) resetForm();
+    if (editing?.id === id) closeModal();
   };
 
   return (
@@ -134,13 +93,10 @@ export default function ServicesScreen() {
         subtitle="Cardápio que aparece no WhatsApp e na agenda"
         action={
           <SofButton
-            title={showForm ? 'Cancelar' : 'Adicionar serviço'}
+            title="Adicionar serviço"
             variant="dark"
             theme="dashboard"
-            onPress={() => {
-              if (showForm) resetForm();
-              else startCreate();
-            }}
+            onPress={startCreate}
           />
         }
       />
@@ -151,64 +107,7 @@ export default function ServicesScreen() {
         </Text>
       ) : null}
 
-      {showForm ? (
-        <SofCard>
-          <Text style={ec.formTitle}>
-            {isEditing ? 'Editar serviço' : 'Novo serviço'}
-          </Text>
-          {fromEmployees && !isEditing ? (
-            <Text style={ec.formHint}>
-              Cadastre ao menos um serviço antes de adicionar profissionais.
-            </Text>
-          ) : null}
-          <SofInput
-            label="Nome do serviço"
-            value={name}
-            onChangeText={setName}
-            theme="dashboard"
-            placeholder="Ex: Corte"
-          />
-          <View style={styles.formRow}>
-            <View style={styles.formCol}>
-              <SofInput
-                label="Duração (min)"
-                value={duration}
-                onChangeText={setDuration}
-                theme="dashboard"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.formCol}>
-              <SofInput
-                label="Preço (R$)"
-                value={price}
-                onChangeText={setPrice}
-                theme="dashboard"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-          {error ? <SofErrorBanner message={error} /> : null}
-          <View style={ec.formActions}>
-            <SofButton
-              title={isEditing ? 'Salvar alterações' : 'Adicionar'}
-              variant="dark"
-              theme="dashboard"
-              onPress={save}
-              loading={loading}
-              disabled={loading}
-            />
-            <SofButton
-              title="Cancelar"
-              variant="light"
-              theme="dashboard"
-              onPress={resetForm}
-            />
-          </View>
-        </SofCard>
-      ) : null}
-
-      {services.length === 0 && !showForm ? (
+      {services.length === 0 ? (
         <SofCard padded={false}>
           <SofEmptyState
             title="Nenhum serviço ainda"
@@ -251,13 +150,19 @@ export default function ServicesScreen() {
           ))}
         </View>
       )}
+
+      <ServiceFormModal
+        visible={modalOpen}
+        onClose={closeModal}
+        service={editing}
+        fromEmployees={fromEmployees}
+        onSaved={onSaved}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  formRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  formCol: { flexGrow: 1, flexBasis: 140, minWidth: 120 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headCopy: { flex: 1, minWidth: 0 },
   name: {

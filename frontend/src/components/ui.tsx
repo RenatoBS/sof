@@ -286,7 +286,7 @@ function ActionGlyph({
   color,
   size = 16,
 }: {
-  name: 'edit' | 'remove';
+  name: 'edit' | 'remove' | 'close';
   color: string;
   size?: number;
 }) {
@@ -305,6 +305,13 @@ function ActionGlyph({
       </Svg>
     );
   }
+  if (name === 'close') {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
+        <Path {...common} d="M18 6L6 18M6 6l12 12" />
+      </Svg>
+    );
+  }
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden>
       <Path {...common} d="M3 6h18" />
@@ -315,7 +322,7 @@ function ActionGlyph({
   );
 }
 
-/** Ação de linha (Editar / Remover): ícone + texto; em viewport &lt; 720px só o ícone. */
+/** Ação de linha (Editar / Remover / Fechar): ícone + texto; em viewport &lt; 720px só o ícone. */
 export function SofIconAction({
   action,
   onPress,
@@ -323,7 +330,7 @@ export function SofIconAction({
   disabled,
   forceCompact,
 }: {
-  action: 'edit' | 'remove';
+  action: 'edit' | 'remove' | 'close';
   onPress: () => void;
   label?: string;
   disabled?: boolean;
@@ -333,8 +340,10 @@ export function SofIconAction({
   const { width } = useWindowDimensions();
   const compact = forceCompact ?? width < COMPACT_ACTION_BP;
   const resolvedLabel =
-    label ?? (action === 'edit' ? 'Editar' : 'Remover');
-  const color = action === 'edit' ? d.accent : d.danger;
+    label ??
+    (action === 'edit' ? 'Editar' : action === 'remove' ? 'Remover' : 'Fechar');
+  const color =
+    action === 'edit' ? d.accent : action === 'remove' ? d.danger : d.muted;
 
   return (
     <Pressable

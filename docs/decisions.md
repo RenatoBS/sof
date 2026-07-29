@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — CRUD serviço/prof/cliente em modal (padrão agenda)
+
+- **Contexto:** Formulários inline na página duplicavam Cancelar e quebravam o padrão visual da agenda.  
+- **Decisão:** `EntityFormModal` + `ServiceFormModal` / `EmployeeFormModal` / `ClientFormModal` no mesmo shell do `AppointmentModal` (overlay, Salvar/Fechar).  
+- **Consequências:** Lista fica só cards; header só com “Adicionar …”.  
+- **Alternativas descartadas:** Manter form inline com X no header.
+
+---
+
 ## 2026-07-29 — Home: preço “a partir” dinâmico e copy “negócio”
 
 - **Contexto:** Hero da home ainda dizia “A partir de R$ 99” (catálogo antigo) e falava em “salão”.  

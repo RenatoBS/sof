@@ -116,6 +116,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 
 - Listagem em cards (cor de identificação; telefone com máscara na UI).  
 - CRUD: adicionar / **editar** / remover.  
+- Criação e edição abrem em **modal** (mesmo padrão da agenda: overlay + Salvar / Fechar).  
 - Form front: máscara de telefone `(11) 99999-8888` + validação por campo (nome, telefone 10–15 dígitos, e-mail, ≥1 serviço) antes do POST/PUT.  
 - Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`) e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
@@ -140,12 +141,14 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 
 - Cardápio (nome, duração, preço).  
 - CRUD: adicionar / **editar** / remover (`PUT /api/services/:id`).  
+- Criação e edição em **modal** (padrão agenda).  
 - Copy: “Configure seu cardápio de serviços”.
 
 ### Clientes
 
 - Listagem em cards (nome + telefone formatado).  
 - CRUD: adicionar / editar / remover.  
+- Criação e edição em **modal** (padrão agenda).  
 - Form front (aba Clientes e cadastro rápido no `ClientPicker` da agenda): máscara `(11) 99999-0000` + validação por campo (nome, telefone 10–15 dígitos).  
 - Na **edição**: pausar o bot WhatsApp para aquele cliente — **Bot ativo**, timer (1 h / 8 h / 24 h / 7 dias) ou **Permanente**.  
 - Badge na lista: **Bot off** (permanente) ou **Bot pausado até …** (temporário).  
