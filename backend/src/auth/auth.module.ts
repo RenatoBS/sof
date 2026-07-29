@@ -3,28 +3,12 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { EntitlementsModule } from '../entitlements/entitlements.module';
 import { PromoCouponsModule } from '../promo-coupons/promo-coupons.module';
-import { EmployeePortalModule } from '../employee-portal/employee-portal.module';
-import { WhatsappModule } from '../whatsapp/whatsapp.module';
-import { AccountPasswordTokenService } from './account-password-token.service';
-import { AccountPasswordResetService } from './account-password-reset.service';
+import { PasswordResetModule } from '../password-reset/password-reset.module';
 
 @Module({
-  imports: [
-    EntitlementsModule,
-    PromoCouponsModule,
-    EmployeePortalModule,
-    forwardRef(() => WhatsappModule),
-  ],
+  imports: [EntitlementsModule, PromoCouponsModule, PasswordResetModule],
   controllers: [AuthController],
-  providers: [
-    AuthGuard,
-    AccountPasswordTokenService,
-    AccountPasswordResetService,
-  ],
-  exports: [
-    AuthGuard,
-    AccountPasswordTokenService,
-    AccountPasswordResetService,
-  ],
+  providers: [AuthGuard],
+  exports: [AuthGuard],
 })
 export class AuthModule {}
