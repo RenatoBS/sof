@@ -2,6 +2,8 @@ import { Redirect, Slot, usePathname, router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,14 @@ import {
 } from 'react-native';
 import { useAdminAuth } from '@/src/auth/AdminAuthProvider';
 import { colors, fonts, radius, space } from '@/src/theme/admin';
+
+function openPublicGuides() {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.open('/guides', '_blank', 'noopener,noreferrer');
+    return;
+  }
+  void Linking.openURL('/guides');
+}
 
 export default function ShellLayout() {
   const { admin, loading, logout } = useAdminAuth();
@@ -71,6 +81,11 @@ export default function ShellLayout() {
               pathname === '/new-coupon'
             }
             onPress={() => router.push('/coupons')}
+          />
+          <NavLink
+            label="Guias"
+            active={false}
+            onPress={openPublicGuides}
           />
         </ScrollView>
         <View style={styles.right}>

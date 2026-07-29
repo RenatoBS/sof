@@ -17,6 +17,33 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Guias do cliente públicos no admin-web
+
+- **Contexto:** HTML de onboarding/bot existia só em `docs/guides/`; precisava de URL estável sem login para enviar ao cliente.  
+- **Decisão:** Publicar em `admin-frontend/public/guides/` (sync no `export:web`); rotas Expo públicas `/guides`, `/guides/onboarding`, `/guides/bot` (fora do `(shell)`); hub lista os links; nav **Guias** abre em nova aba.  
+- **Consequências:** URLs no admin Heroku (ex. `…/guides/onboarding`); fonte continua em `docs/` + `npm run sync-guides`.  
+- **Alternativas descartadas:** Hospedar no front de produto; exigir login admin para ler o guia.
+
+---
+
+## 2026-07-29 — Guias HTML para o cliente (onboarding + bot)
+
+- **Contexto:** O markdown de onboarding serve bem no repo, mas o cliente precisa de páginas HTML compartilháveis; faltava material do bot (fluxo cliente vs profissional).  
+- **Decisão:** `docs/guides/onboarding-cliente.html` + `docs/guides/bot-whatsapp.html` + CSS compartilhado (`sof-guides.css`); tipografia Literata (títulos) + Hanken Grotesk (corpo); prints em `assets/onboarding/`.  
+- **Consequências:** Abrir os HTML a partir de `docs/guides/` (paths relativos das imagens). Markdown permanece como fonte espelhada.  
+- **Alternativas descartadas:** PDF gerado; hospedar só no site marketing nesta entrega.
+
+---
+
+## 2026-07-29 — Guia de onboarding do cliente com prints
+
+- **Contexto:** Faltava material único (plano/cupom → cadastros → WhatsApp) para entregar ao cliente, com referência visual das telas reais.  
+- **Decisão:** Criar [`docs/onboarding-cliente.md`](onboarding-cliente.md) + prints em `docs/assets/onboarding/` capturados do produto em produção; indexar em `AGENTS.md` e referenciar em `features.md`.  
+- **Consequências:** Onboarding versionado no repo; atualizar prints quando a UI mudar de forma relevante.  
+- **Alternativas descartadas:** Só Notion/PDF fora do repo; canvas interno sem assets versionados.
+
+---
+
 ## 2026-07-29 — Admin: contas por cupom e por plano
 
 - **Contexto:** Admin só mostrava `usedCount` do cupom e o plano na linha da conta — sem lista de quem resgatou nem filtro/contagem por plano.  

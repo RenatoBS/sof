@@ -240,5 +240,6 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 ### admin-frontend
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
-- Rotas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.
+- Rotas autenticadas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.
+- **Rotas públicas (sem login):** `/guides` (hub), `/guides/onboarding`, `/guides/bot` → HTML estático em `public/guides/` (sync via `npm run sync-guides` no build). Nav **Guias** no shell abre `/guides` em nova aba.
 - UI kit próprio (não compartilha código com `frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter e mesma cromia Sof: verde floresta + cobre) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.

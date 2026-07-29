@@ -119,6 +119,8 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 | `EXPO_PUBLIC_API_URL` | URL HTTPS da admin-api (antes do build) |
 | `NODE_ENV` | `production` |
 
+Guias HTML públicos (sem auth): `/guides`, `/guides/onboarding`, `/guides/bot` e estáticos `/guides/*.html` — gerados no build com `npm run sync-guides` a partir de `docs/guides/` + `docs/assets/onboarding/`.
+
 ### Deploy
 
 Na raiz do monorepo ([`package.json`](../package.json)):

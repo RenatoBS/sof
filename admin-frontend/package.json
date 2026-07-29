@@ -6,7 +6,8 @@
   "scripts": {
     "start": "expo start --port 8091",
     "web": "expo start --web --port 8091",
-    "export:web": "expo export -p web",
+    "sync-guides": "node scripts/sync-guides.js",
+    "export:web": "npm run sync-guides && expo export -p web",
     "start:web": "serve dist -s -l $PORT",
     "heroku-postbuild": "npm run export:web"
   },

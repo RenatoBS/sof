@@ -12,6 +12,9 @@ Sof ajuda salões/barbearias a:
 3. Gerir **equipe**, **cardápio de serviços** e **faturamento**.  
 4. Assinar planos via **Stripe** (ou fluxo demo).
 
+**Onboarding do cliente (com prints):** [`onboarding-cliente.md`](onboarding-cliente.md) · HTML: [`guides/onboarding-cliente.html`](guides/onboarding-cliente.html).  
+**Bot WhatsApp (cliente + profissional):** [`guides/bot-whatsapp.html`](guides/bot-whatsapp.html).
+
 ## Site institucional (marketing)
 
 | Feature | Tela | Notas |
@@ -80,6 +83,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Sincronizar plano com Stripe (Price + Payment Link = preço Sof) | botão em `/edit-plan` | `POST /api/plans/:id/sync-stripe` |
 | Cupons promocionais (7/30/60 dias) | `/coupons`, `/new-coupon`, `/edit-coupon` | `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id` |
 | Contas que usaram um cupom | `/edit-coupon` (seção Usos) | `GET /api/coupons/:id` (`redemptions`) |
+| Guias públicos (onboarding + bot WA) | `/guides`, `/guides/onboarding`, `/guides/bot` (+ HTML em `public/guides/`) | sem auth |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 
