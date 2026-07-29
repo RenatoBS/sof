@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-28 — Skills Cursor Impeccable + frontend-design
+
+- **Contexto:** Agentes geravam UI genérica (“AI slop”) sem vocabulário de design consistente no monorepo.  
+- **Decisão:** Versionar no repo `.cursor/skills/impeccable` (v4) e `.cursor/skills/frontend-design` (Anthropic), com hook `preToolUse` do detector Impeccable.  
+- **Consequências:** Agent Skills no Cursor usam `/impeccable` (audit, polish, typeset…) e a skill Anthropic em tarefas de UI; detector pode bloquear padrões ruins antes do write.  
+- **Alternativas descartadas:** Só regras em user rules; UI Skills / Taste Skills sem Impeccable; instalar só global sem versionar no repo.
+
+---
+
 ## 2026-07-28 — `deploy:together` (API + front em paralelo)
 
 - **Contexto:** `npm run deploy` publica API e depois front; quem quer ambos ao mesmo tempo precisava de dois terminais.  
