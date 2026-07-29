@@ -17,6 +17,15 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Home: preço “a partir” dinâmico e copy “negócio”
+
+- **Contexto:** Hero da home ainda dizia “A partir de R$ 99” (catálogo antigo) e falava em “salão”.  
+- **Decisão:** Nota de preço lê o menor `Plan.price` via `GET /api/plans` (fallback Solo R$ 139); copy marketing usa “negócio” no lugar de “salão”.  
+- **Consequências:** Preço da home acompanha o catálogo admin/Stripe.  
+- **Alternativas descartadas:** Hardcode do novo valor sem API.
+
+---
+
 ## 2026-07-29 — Guias do cliente públicos no admin-web
 
 - **Contexto:** HTML de onboarding/bot existia só em `docs/guides/`; precisava de URL estável sem login para enviar ao cliente.  

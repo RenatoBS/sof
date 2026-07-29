@@ -5,7 +5,7 @@ Documento vivo. Atualize quando alterar comportamento de produto ou contratos de
 
 ## Produto (visão)
 
-Sof ajuda salões/barbearias a:
+Sof ajuda negócios a:
 
 1. Receber agendamentos pelo **WhatsApp** (conversa guiada).  
 2. Ver a **semana** de todos os profissionais num painel.  
@@ -19,7 +19,7 @@ Sof ajuda salões/barbearias a:
 
 | Feature | Tela | Notas |
 |---------|------|--------|
-| Landing | `/` | Hero, chat mock Sof, features com ícones SVG, passos |
+| Landing | `/` | Hero (“negócio”), chat mock Sof; “A partir de R$ …” = menor preço de `GET /api/plans` (fallback Solo) |
 | Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |

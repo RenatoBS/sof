@@ -71,7 +71,7 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
-            placeholder="voce@salao.com"
+            placeholder="voce@negocio.com"
           />
           <SofInput
             label="Senha"

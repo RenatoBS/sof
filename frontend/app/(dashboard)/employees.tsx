@@ -366,7 +366,7 @@ export default function EmployeesScreen() {
                 clearField('email');
               }}
               theme="dashboard"
-              placeholder="profissional@salao.com"
+              placeholder="profissional@negocio.com"
               keyboardType="email-address"
               autoCapitalize="none"
               error={touched ? fieldErrors.email : undefined}

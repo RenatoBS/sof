@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -6,10 +7,12 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { plansApi } from '@/src/api/endpoints';
 import { MarketingNav, SiteFooter } from '@/src/components/MarketingNav';
 import { SofChatCard } from '@/src/components/SofChatCard';
 import { FeatureIcon } from '@/src/components/FeatureIcon';
 import { Eyebrow, SofButton, Wrap } from '@/src/components/ui';
+import { PLANS } from '@/src/features/marketing/CheckoutModal';
 import { m } from '@/src/theme/marketing';
 
 const FEATURES = [
@@ -63,9 +66,40 @@ const STEPS = [
   },
 ];
 
+const FALLBACK_FROM_PRICE = Math.min(...PLANS.map((p) => p.price));
+
+function formatFromPrice(price: number) {
+  return Number(price).toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const twoCol = width >= 860;
+  const [fromPrice, setFromPrice] = useState(FALLBACK_FROM_PRICE);
+
+  useEffect(() => {
+    let cancelled = false;
+    plansApi
+      .list()
+      .then((res) => {
+        if (cancelled) return;
+        const prices = (res.plans || [])
+          .map((p) => Number(p.price))
+          .filter((n) => Number.isFinite(n) && n >= 0);
+        if (prices.length > 0) {
+          setFromPrice(Math.min(...prices));
+        }
+      })
+      .catch(() => {
+        /* mantém fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={{ flexGrow: 1 }}>
@@ -80,7 +114,7 @@ export default function HomeScreen() {
                 Agendar{'\n'}devia ser leve.
               </Text>
               <Text style={styles.lead}>
-                A Sof cuida da agenda do seu salão direto no WhatsApp, com um
+                A Sof cuida da agenda do seu negócio direto no WhatsApp, com um
                 painel que a equipe inteira entende em segundos.
               </Text>
               <View style={styles.actions}>
@@ -97,7 +131,10 @@ export default function HomeScreen() {
                   onPress={() => router.push('/about')}
                 />
               </View>
-              <Text style={styles.note}>A partir de R$ 99 por mês. Sem fidelidade.</Text>
+              <Text style={styles.note}>
+                A partir de R$ {formatFromPrice(fromPrice)} por mês. Sem
+                fidelidade.
+              </Text>
             </View>
             <View style={{ flex: 1 }}>
               <SofChatCard />
