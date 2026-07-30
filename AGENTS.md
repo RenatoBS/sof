@@ -91,7 +91,7 @@ Browser / Expo Go                         Admin (web)
 - **Pagamentos:** Stripe Checkout (ou modo demo sem `STRIPE_SECRET_KEY`); catálogo em tabela `Plan` com entitlements de gate.
 - **Gate por plano:** keys no código; valores no admin; enforcement no backend; front via `account.entitlements`.
 - **WhatsApp:** Uazapi (default) com pareamento QR/código na Conta; Meta Cloud API opcional; simulador se desligado.
-- **Deploy atual:** quatro apps Heroku (`APP_BASE=saas/backend|saas/frontend|admin/backend|admin/frontend`) + Postgres Supabase.
+- **Deploy atual:** Heroku prod (`saas/*` + `admin/*`) + QA SaaS (`sof-agendamento-*-qa`, Supabase staging). `APP_BASE=saas/backend|saas/frontend|admin/backend|admin/frontend`.
 
 ---
 

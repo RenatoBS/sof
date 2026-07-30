@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-30 — Ambiente QA SaaS (Heroku + Supabase staging)
+
+- **Contexto:** Precisávamos de um ambiente isolado do produto (sem admin) para validar com banco/Stripe/Uazapi de staging.
+- **Decisão:** Apps `sof-agendamento-api-qa` + `sof-agendamento-web-qa`; envs a partir de `saas/backend/.env.qa` via `npm run heroku:qa:config` (URLs Heroku sobrescrevem localhost do arquivo); deploy com `npm run deploy:qa`.
+- **Consequências:** Postgres staging separado da prod; admin continua só em produção.
+- **Alternativas descartadas:** Reusar apps de prod com review apps; incluir admin no QA agora.
+
 ## 2026-07-30 — Prisma `adminClient` não escreve fora do slug Heroku
 
 - **Contexto:** Com `APP_BASE=saas/backend`, `prisma generate` tentava `../../../admin/backend/...` → `EACCES mkdir /admin`.

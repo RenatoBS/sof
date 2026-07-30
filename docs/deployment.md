@@ -3,9 +3,9 @@
 Documento vivo. Atualize ao criar apps, mudar envs ou provedores.  
 Índice: [`../AGENTS.md`](../AGENTS.md).
 
-## Produção / staging atual (Heroku + Supabase)
+## Produção / QA (Heroku + Supabase)
 
-### Apps
+### Apps — produção
 
 | App Heroku | `APP_BASE` | URL pública documentada |
 |------------|------------|-------------------------|
@@ -14,14 +14,30 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 | `sof-agendamento-admin-api` | `admin/backend` | https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com |
 | `sof-agendamento-admin-web` | `admin/frontend` | https://painel-admin.sof.solutions (Heroku: `…-234d632f6b1f.herokuapp.com`) |
 
-Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api`. O `admin/backend` carrega uma cópia do schema em `admin/backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
+### Apps — QA (SaaS apenas)
+
+| App Heroku | `APP_BASE` | URL |
+|------------|------------|-----|
+| `sof-agendamento-api-qa` | `saas/backend` | https://sof-agendamento-api-qa-8b73b9b8bd8b.herokuapp.com |
+| `sof-agendamento-web-qa` | `saas/frontend` | https://sof-agendamento-web-qa-caeea22b3c6d.herokuapp.com |
+
+Fonte local das envs da API QA: `saas/backend/.env.qa` (não commitado; template em `.env.qa.example`). Aplicar/atualizar no Heroku:
+
+```bash
+npm run heroku:qa:config   # lê .env.qa; sobrescreve PUBLIC_URL/CORS/API_PUBLIC_URL/NODE_ENV para as URLs Heroku
+npm run deploy:qa          # push API + web QA
+# opcional: heroku run -a sof-agendamento-api-qa npx prisma db seed
+```
+
+Remotes: `heroku-api-qa`, `heroku-web-qa` (`npm run heroku:remotes:qa`). Banco: Supabase **staging** (não o de produção). Admin Sof **não** tem apps QA neste momento.
+
+Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api` (prod) ou `sof-agendamento-api-qa` (QA). O `admin/backend` carrega uma cópia do schema em `admin/backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
 
 Git remotes locais típicos:
 
-- `heroku-api` → API produto  
-- `heroku-web` → front produto  
-- `heroku-admin-api` → API admin  
-- `heroku-admin-web` → front admin  
+- `heroku-api` / `heroku-web` → SaaS produção  
+- `heroku-api-qa` / `heroku-web-qa` → SaaS QA  
+- `heroku-admin-api` / `heroku-admin-web` → admin produção  
 
 ### Buildpacks (ordem)
 
@@ -133,10 +149,14 @@ Na raiz do monorepo ([`package.json`](../package.json)):
 # autenticar: HEROKU_API_KEY no ambiente, ou heroku login
 # (uma vez) configurar remotes
 npm run heroku:remotes
+npm run heroku:remotes:qa
 
-# só API / front produto
+# só API / front produto (produção)
 npm run deploy:api
 npm run deploy:web
+
+# SaaS QA (envs: npm run heroku:qa:config a partir de saas/backend/.env.qa)
+npm run deploy:qa
 
 # admin (schema sync + API + web) — ver scripts/deploy-admin.sh
 npm run deploy:admin
