@@ -159,7 +159,7 @@ Com serviços + profissionais, a **Agenda Semanal** mostra a grade. Clique numa 
 
 ![Agenda com equipe e horários](assets/onboarding/04b-agenda-pronta.png)
 
-Teste rápido: abra **Simulador WhatsApp** (`/simulador` — link no rodapé da Agenda; útil antes ou sem número real). Em produção, a conversa real no número conectado cai na agenda na hora.
+Teste rápido: Conta → WhatsApp → **Simulador WhatsApp** (`/simulador`; o botão some depois de conectar o aparelho). Em produção, a conversa real no número conectado cai na agenda na hora.
 
 ---
 
@@ -186,7 +186,7 @@ A rota `/choose-plan` só aparece quando a conta está pausada / precisa escolhe
 - [ ] ≥ 1 profissional com serviço(s)  
 - [ ] Profissional definiu senha (link / WhatsApp)  
 - [ ] Teste: mensagem “oi” no WhatsApp da barbearia → bot responde e agenda  
-- [ ] (Opcional) Teste no **Simulador WhatsApp** (`/simulador`, link na Agenda)  
+- [ ] (Opcional) Teste no **Simulador WhatsApp** (Conta → WhatsApp, se ainda não conectado; ou `/simulador`)  
 
 ---
 

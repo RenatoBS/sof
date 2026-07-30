@@ -7,7 +7,6 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
 import type { Appointment } from '@/src/api/types';
 import { useDashboard } from '@/src/context/DashboardContext';
 import { SofButton } from '@/src/components/ui';
@@ -605,15 +604,6 @@ export function AgendaView({
           </View>
         </ScrollView>
       )}
-
-      <View style={styles.simLinkRow}>
-        <SofButton
-          title="Simulador WhatsApp"
-          variant="light"
-          theme="dashboard"
-          onPress={() => router.push('/(dashboard)/simulador')}
-        />
-      </View>
     </View>
   );
 }
@@ -873,9 +863,5 @@ const styles = StyleSheet.create({
     color: '#15803d',
     fontWeight: '700',
     marginTop: 4,
-  },
-  simLinkRow: {
-    marginTop: 8,
-    alignItems: 'flex-start',
   },
 });

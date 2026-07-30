@@ -108,7 +108,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
   - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).
 - **Recorrência** na criação (serviço ou evento): diário / semanal / mensal até uma data (máx. 52 ocorrências); editar altera só a ocorrência; excluir pode ser “só esta” ou “série inteira” (`?scope=series`).  
 - Empty state se não houver profissionais.  
-- Página **Simulador WhatsApp** em `/(dashboard)/simulador` (`noindex`, fora das tabs) — telefone + mensagem → `POST /api/whatsapp/simulate`. Link discreto na Agenda e na Conta.  
+- Página **Simulador WhatsApp** em `/(dashboard)/simulador` (`noindex`, fora das tabs) — telefone + mensagem → `POST /api/whatsapp/simulate`. Botão na Conta (seção WhatsApp) só se o dispositivo ainda não estiver conectado; a rota continua acessível pela URL.  
 - Toast + grade atualizam em tempo real via SSE.
 - Faturamento ignora eventos `kind=block` (preço 0).
 - **Status:** `scheduled` (ocupa slot) → `completed` (libera slot; badge “Concluído”) ou `cancelled`. Auto-conclusão quando a hora de fim chega (job a cada 5 min). Conta pode marcar concluído a qualquer momento (`POST /api/appointments/:id/complete`); profissional só na janela do atendimento.

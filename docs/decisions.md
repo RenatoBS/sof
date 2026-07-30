@@ -20,9 +20,9 @@ Formato sugerido:
 ## 2026-07-29 — Simulador WhatsApp fora da Agenda (`noindex`)
 
 - **Contexto:** O bloco do simulador pesava a Agenda (superfície principal) e não precisava de discoverability em busca/nav.
-- **Decisão:** Página `/(dashboard)/simulador` com `robots: noindex,nofollow`, fora das tabs; Agenda só com link discreto; Conta aponta pro mesmo path.
+- **Decisão:** Página `/(dashboard)/simulador` com `robots: noindex,nofollow`, fora das tabs; botão só na Conta (seção WhatsApp) enquanto `!waLinked`; rota aberta se acessada direto.
 - **Consequências:** Demo/teste do bot continua via auth; URL direta `/simulador`.
-- **Alternativas descartadas:** Manter embutido na Agenda; tab dedicada na nav.
+- **Alternativas descartadas:** Manter embutido na Agenda; tab dedicada na nav; esconder a rota quando conectado.
 
 ## 2026-07-29 — Guias HTML por plano (Solo / Equipe / Rede)
 
