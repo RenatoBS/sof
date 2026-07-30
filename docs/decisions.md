@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Simulador WhatsApp fora da Agenda (`noindex`)
+
+- **Contexto:** O bloco do simulador pesava a Agenda (superfície principal) e não precisava de discoverability em busca/nav.
+- **Decisão:** Página `/(dashboard)/simulador` com `robots: noindex,nofollow`, fora das tabs; Agenda só com link discreto; Conta aponta pro mesmo path.
+- **Consequências:** Demo/teste do bot continua via auth; URL direta `/simulador`.
+- **Alternativas descartadas:** Manter embutido na Agenda; tab dedicada na nav.
+
 ## 2026-07-29 — Guias HTML por plano (Solo / Equipe / Rede)
 
 - **Contexto:** Onboarding citava os planos sem detalhar funções; cliente e vendas precisavam de material compartilhavel por plano.

@@ -562,7 +562,14 @@ export default function AccountScreen() {
               <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
               <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
               <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma
-              instância). Enquanto isso, use o simulador na Agenda.
+              instância). Enquanto isso, use o{' '}
+              <Text
+                style={styles.linkInline}
+                onPress={() => router.push('/(dashboard)/simulador')}
+              >
+                simulador WhatsApp
+              </Text>
+              .
             </Text>
           </View>
         ) : waLinked ? (
@@ -1231,6 +1238,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: d.ink,
     backgroundColor: '#f1f5f9',
+  },
+  linkInline: {
+    color: d.accent,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   saved: { color: d.waGreenText, fontWeight: '600' },
   error: { color: d.danger, fontWeight: '600' },
