@@ -2,10 +2,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/// Client para o admin/backend (mesmo schema, output separado)
+/// Client opcional (local). No Heroku use só `--generator client` — o slug não tem admin/.
 generator adminClient {
   provider = "prisma-client-js"
-  output   = "../../../admin/backend/node_modules/.prisma/client"
+  output   = "../node_modules/.prisma/admin-client"
 }
 
 datasource db {

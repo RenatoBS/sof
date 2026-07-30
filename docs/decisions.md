@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-30 — Prisma `adminClient` não escreve fora do slug Heroku
+
+- **Contexto:** Com `APP_BASE=saas/backend`, `prisma generate` tentava `../../../admin/backend/...` → `EACCES mkdir /admin`.
+- **Decisão:** `heroku-postbuild` usa `prisma generate --generator client`; output do `adminClient` fica em `saas/backend/node_modules/.prisma/admin-client`. Admin continua com sync-schema + generate próprio.
+- **Consequências:** Deploy da API produto não depende da pasta `admin/`.
+- **Alternativas descartadas:** Remover `adminClient` do schema; copiar `admin/` para o slug da API.
+
 ## 2026-07-30 — Monorepo em `saas/` + `admin/`
 
 - **Contexto:** Quatro apps na raiz (`backend`, `frontend`, `admin-backend`, `admin-frontend`) misturavam produto e painel interno.

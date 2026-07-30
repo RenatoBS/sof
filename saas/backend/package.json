@@ -23,7 +23,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:reset-seed": "tsx prisma/reset-seed.ts",
-    "heroku-postbuild": "npx prisma generate && npm run build"
+    "heroku-postbuild": "npx prisma generate --generator client && npm run build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

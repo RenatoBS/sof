@@ -229,7 +229,7 @@ Hosts diferentes ⇒ Bearer é a fonte confiável; cookie auxiliar com `SameSite
 
 ## Painel admin (`admin/backend/` + `admin/frontend/`)
 
-Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `saas/backend/prisma/`; o generator `adminClient` emite o client Prisma em `admin/backend/node_modules/.prisma/client`.
+Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `saas/backend/prisma/`; o admin copia o schema via `npm run admin:sync-schema` e gera o client no próprio `admin/backend`. O generator `adminClient` no schema do produto é só local (output dentro de `saas/backend/node_modules`); no Heroku a API produto roda `prisma generate --generator client`.
 
 ### admin/backend
 
