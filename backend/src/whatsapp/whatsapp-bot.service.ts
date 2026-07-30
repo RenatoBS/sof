@@ -751,23 +751,11 @@ export class WhatsappBotService {
 
     const entsPath = await this.entsFor(account.id);
     const includeSof = hasFeature(entsPath, 'sofPickProfessional');
+    const allowPathChoice = hasFeature(entsPath, 'bookingPathChoice');
 
-    if (!hasFeature(entsPath, 'bookingPathChoice')) {
-      await this.saveSession(account.id, customerPhone, {
-        step: 'awaiting_employee',
-        data: {
-          clientId: sessionBase.clientId,
-          clientName: sessionBase.clientName,
-          serviceId: service.id,
-        },
-      });
-      return this.employeeMenu(
-        intro || `Combinado: ${service.name}. Quem você prefere?`,
-        employees,
-        { includeSofPick: includeSof },
-      );
-    }
-
+    // Sempre `awaiting_path` na escolha pré-horário. (Antes, planos sem
+    // bookingPathChoice gravavam `awaiting_employee` sem date/time — e o
+    // handler de awaiting_employee exige slot, gerando loop de "Não entendi".)
     await this.saveSession(account.id, customerPhone, {
       step: 'awaiting_path',
       data: {
@@ -780,6 +768,12 @@ export class WhatsappBotService {
     const body =
       intro ||
       `Combinado: ${service.name}. Quem você prefere?`;
+
+    if (!allowPathChoice) {
+      return this.employeeMenu(body, employees, {
+        includeSofPick: includeSof,
+      });
+    }
 
     const choices: WhatsappMenuChoice[] = [
       ...employees.map((e) => ({
@@ -1750,7 +1744,28 @@ export class WhatsappBotService {
         return this.pathMenu(account, service, sessionData, phone);
       }
 
-      if (this.isTimeFirstChoice(trimmed, employees.length)) {
+      const entsPathStep = await this.entsFor(account.id);
+      if (
+        hasFeature(entsPathStep, 'bookingPathChoice') &&
+        this.isTimeFirstChoice(trimmed, employees.length)
+      ) {
+        return this.dayMenu(
+          account,
+          service,
+          {
+            clientId: sessionData.clientId,
+            clientName: sessionData.clientName,
+            serviceId: service.id,
+          },
+          phone,
+          `Combinado: ${service.name}. Qual dia você prefere?`,
+        );
+      }
+
+      if (
+        this.isSofPickChoice(trimmed, employees.length) &&
+        hasFeature(entsPathStep, 'sofPickProfessional')
+      ) {
         return this.dayMenu(
           account,
           service,
@@ -2047,11 +2062,63 @@ export class WhatsappBotService {
       const service = services.find((s) => s.id === sessionData.serviceId);
       const { date, time } = sessionData;
 
-      // Sessão antiga (sem data/hora): redireciona para path ou horário
-      if (!service || !date || !time) {
-        if (service) {
+      // Sessões legadas (Solo sem bookingPathChoice): awaiting_employee sem
+      // date/time = escolha de profissional antes do horário → mesmo fluxo de awaiting_path.
+      if (service && (!date || !time)) {
+        const employees = await this.employeesForService(
+          account.id,
+          service.id,
+        );
+        if (employees.length === 0) {
           return this.pathMenu(account, service, sessionData, phone);
         }
+
+        if (this.isSofPickChoice(trimmed, employees.length)) {
+          return this.dayMenu(
+            account,
+            service,
+            {
+              clientId: sessionData.clientId,
+              clientName: sessionData.clientName,
+              serviceId: service.id,
+            },
+            phone,
+            `Combinado: ${service.name}. Qual dia você prefere?`,
+          );
+        }
+
+        const idx = this.resolveChoice(trimmed, employees, {
+          idPrefix: 'emp',
+          label: (e) => e.name,
+        });
+        if (idx === null) {
+          const entsEmp = await this.entsFor(account.id);
+          return this.withUnresolved(
+            this.employeeMenu(
+              'Não entendi. Escolha um profissional:',
+              employees,
+              {
+                includeSofPick: hasFeature(entsEmp, 'sofPickProfessional'),
+              },
+            ),
+          );
+        }
+
+        const employee = employees[idx];
+        return this.dayMenu(
+          account,
+          service,
+          {
+            clientId: sessionData.clientId,
+            clientName: sessionData.clientName,
+            serviceId: service.id,
+            employeeId: employee.id,
+          },
+          phone,
+        );
+      }
+
+      if (!service || !date || !time) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
           'Vamos recomeçar — qual serviço você quer agendar?',

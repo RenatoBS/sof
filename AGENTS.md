@@ -46,6 +46,11 @@ Ao terminar: atualize a documentação na **mesma** sessão de trabalho (não �
 |-----------|----------|
 | [`docs/architecture.md`](docs/architecture.md) | Monorepo, backend Nest, frontend Expo, dados, auth, tempo real |
 | [`docs/features.md`](docs/features.md) | Features de produto e mapa de telas/APIs |
+| [`docs/onboarding-cliente.md`](docs/onboarding-cliente.md) | Guia do cliente: plano/cupom → WhatsApp + cadastros (com prints) |
+| [`docs/planos-funcoes.md`](docs/planos-funcoes.md) | Funções por plano (Solo / Equipe / Rede) |
+| [`docs/guides/onboarding-cliente.html`](docs/guides/onboarding-cliente.html) | Onboarding HTML (fonte; sync → admin `public/guides`) |
+| [`docs/guides/bot-whatsapp.html`](docs/guides/bot-whatsapp.html) | Bot WA HTML (fonte; sync → admin) |
+| [`docs/guides/plano-*.html`](docs/guides/plano-solo.html) | Guias HTML por plano (Solo / Equipe / Rede) |
 | [`docs/local-development.md`](docs/local-development.md) | Como rodar local, seed, portas, troubleshooting |
 | [`docs/deployment.md`](docs/deployment.md) | Heroku, Supabase, envs de produção, deploys |
 | [`docs/decisions.md`](docs/decisions.md) | Log vivo de decisões (ADR leve) |

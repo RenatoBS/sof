@@ -43,7 +43,7 @@ export default function AboutScreen() {
             </View>
             <View style={{ flex: 1, gap: 18 }}>
               <Text style={styles.body}>
-                A gente cansou de ver salões e barbearias perdendo tempo com sistema
+                A gente cansou de ver negócios perdendo tempo com sistema
                 complicado, planilha solta e caderninho de horário. A tecnologia de
                 agendamento sempre existiu, mas quase nunca foi feita pensando em quem
                 atende o cliente de verdade.

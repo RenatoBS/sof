@@ -38,7 +38,7 @@ export const PLANS: MarketingPlan[] = [
   {
     name: 'Solo',
     price: 139,
-    desc: 'Sua barbearia agendando sozinha no WhatsApp.',
+    desc: 'Seu negócio agendando sozinho no WhatsApp.',
     featured: false,
     features: [
       'Bot no WhatsApp que agenda sozinho',

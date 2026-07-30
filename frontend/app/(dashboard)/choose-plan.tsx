@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -146,14 +145,11 @@ export default function ChoosePlanScreen() {
           {plans.map((plan) => {
             const on = selected === plan.name;
             return (
-              <Pressable
+              <View
                 key={plan.name}
                 style={[styles.planRow, on && styles.planRowOn]}
-                onPress={() => setSelected(plan.name)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
               >
-                <View style={{ flex: 1 }}>
+                <View style={styles.planInfo}>
                   <Text style={styles.planName}>{plan.name}</Text>
                   <Text style={styles.planMeta}>
                     R$ {plan.price}
@@ -168,7 +164,7 @@ export default function ChoosePlanScreen() {
                   disabled={busy}
                   onPress={() => subscribe(plan.name)}
                 />
-              </Pressable>
+              </View>
             );
           })}
         </View>
@@ -226,6 +222,7 @@ const styles = StyleSheet.create({
   planRowOn: {
     borderColor: d.accent,
   },
+  planInfo: { flex: 1 },
   planName: {
     fontFamily: d.fonts.displayBold,
     fontSize: 18,

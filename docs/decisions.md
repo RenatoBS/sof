@@ -17,6 +17,119 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Guias HTML por plano (Solo / Equipe / Rede)
+
+- **Contexto:** Onboarding citava os planos sem detalhar funções; cliente e vendas precisavam de material compartilhavel por plano.
+- **Decisão:** Um HTML por plano (`plano-solo|equipe|rede.html`) + `docs/planos-funcoes.md`; hub `/guides` lista os três; sync-guides copia os HTMLs; nav cruzada nos guias existentes.
+- **Consequências:** Conteúdo alinhado a `PLAN_ENTITLEMENT_DEFAULTS` / marketing de `plans.ts`; admin pode divergir via matriz — doc avisa.
+- **Alternativas descartadas:** Um único PDF; só tabela no pricing sem guia dedicado.
+
+## 2026-07-29 — Alterar plano na Conta via modal
+
+- **Contexto:** Conta já edita estabelecimento e horário em modal; “Alterar plano” navegava para tela cheia.
+- **Decisão:** CTA abre `ChoosePlanModal` (mesmo fluxo cupom/checkout); rota `choose-plan` fica só para gate de conta pausada/`needsPlanSelection`.
+- **Consequências:** troca de plano sem sair da Conta; após cupom/demo o modal fecha e o banner de Assinatura atualiza.
+- **Alternativas descartadas:** manter navegação para `choose-plan` também no caso de conta ativa.
+
+---
+
+---
+
+---
+
+---
+
+---
+
+## 2026-07-29 — Domínio custom do painel admin
+
+- **Contexto:** Admin web só em `*.herokuapp.com`; produto já usa `*.sof.solutions` (Hostinger → Heroku DNS).
+- **Decisão:** `painel-admin.sof.solutions` → `sof-agendamento-admin-web`; `PUBLIC_URL`/`CORS_ORIGIN` da admin-api apontam para o novo host (mantém URL Heroku no CORS na transição). API admin permanece no host Heroku por enquanto.
+- **Consequências:** CNAME na Hostinger + ACM; SSL só após DNS propagar.
+- **Alternativas descartadas:** `admin.sof.solutions` (menos descritivo); domínio só na API admin.
+
+## 2026-07-29 — Conta: colunas explícitas + sem card Sair
+
+- **Contexto:** `flexWrap` deixava gap enorme sob Assinatura quando WhatsApp era mais alto; card “Sair da conta” duplicava o logout do header.
+- **Decisão:** layout wide em duas colunas com gap uniforme; logout só no shell do painel.
+- **Consequências:** espaçamento previsível; menos ruído na Conta.
+- **Alternativas descartadas:** masonry CSS / manter wrap com alinhamento artificial.
+
+## 2026-07-29 — Bot Solo: awaiting_employee sem horário (loop)
+
+- **Contexto:** Planos sem `bookingPathChoice` (Solo) gravavam `awaiting_employee` só com `serviceId`. O handler de `awaiting_employee` exigia `date`+`time` e caía em `pathMenu` de novo → cliente recebia “Não entendi” / menu repetido ao escolher profissional.
+- **Decisão:** Pré-horário sempre usa step `awaiting_path`; sessões legadas sem slot no `awaiting_employee` resolvem profissional e seguem para `dayMenu`.
+- **Consequências:** Agendamento Solo volta a avançar após escolher o profissional.
+- **Alternativas descartadas:** Manter dois steps distintos com handlers separados só para Solo.
+
+## 2026-07-29 — Guias admin: prints Conta/modais atualizados
+
+- **Contexto:** Prints do onboarding no admin-web mostravam Conta antiga (formulário inline, botão Escanear QR) e CRUD sem modal.
+- **Decisão:** Recapturar `07-conta`, `07b`, `07c`, serviços e profissionais; alinhar copy do MD/HTML; `sync-guides` → `admin-frontend/public/guides`.
+- **Consequências:** Material público `/guides` reflete grade 2 colunas, QR automático e modais.
+- **Alternativas descartadas:** Manter prints antigos com nota de “UI em mudança”.
+
+## 2026-07-29 — Conta: QR WhatsApp aberto e auto-refresh
+
+- **Contexto:** O pareamento exigia clicar em “Escanear QR”; o código expirava sem renovação clara.
+- **Decisão:** Com pairing disponível e dispositivo desconectado, chamar `connect` automaticamente e exibir o QR; poll de status atualiza a imagem e, se o QR sumir ou passar ~45s, regenera em silêncio. “Usar código” continua opcional.
+- **Consequências:** Menos fricção no onboarding; mais chamadas a `POST /account/whatsapp/connect` enquanto a aba Conta estiver aberta sem parear.
+- **Alternativas descartadas:** Manter botão manual; só confiar no QR do `GET /status` sem reconnect.
+
+## 2026-07-29 — Conta: grade 2 colunas + modais de edição
+
+- **Contexto:** A tela Conta empilhava formulários longos (logo, contato, horário expandível) e desperdiçava largura em monitores grandes.  
+- **Decisão:** Em ≥ 900px, conteúdo centralizado (`maxWidth` ~1040) com grid de até 2 cards/linha (Estabelecimento|Horário, Assinatura|WhatsApp, Lembretes|Ajuda). Edição de estabelecimento e horário sai da página para `EstablishmentModal` / `OpeningHoursModal`; cards ficam resumo + `SofIconAction` edit.  
+- **Consequências:** Página mais escaneável no desktop; WhatsApp/lembretes/pausa/logout intactos na página.  
+- **Alternativas descartadas:** Manter formulários inline; três colunas; accordion de horário na página.
+
+---
+
+## 2026-07-29 — CRUD serviço/prof/cliente em modal (padrão agenda)
+
+- **Contexto:** Formulários inline na página duplicavam Cancelar e quebravam o padrão visual da agenda.  
+- **Decisão:** `EntityFormModal` + `ServiceFormModal` / `EmployeeFormModal` / `ClientFormModal` no mesmo shell do `AppointmentModal` (overlay, Salvar/Fechar).  
+- **Consequências:** Lista fica só cards; header só com “Adicionar …”.  
+- **Alternativas descartadas:** Manter form inline com X no header.
+
+---
+
+## 2026-07-29 — Home: preço “a partir” dinâmico e copy “negócio”
+
+- **Contexto:** Hero da home ainda dizia “A partir de R$ 99” (catálogo antigo) e falava em “salão”.  
+- **Decisão:** Nota de preço lê o menor `Plan.price` via `GET /api/plans` (fallback Solo R$ 139); copy marketing usa “negócio” no lugar de “salão”.  
+- **Consequências:** Preço da home acompanha o catálogo admin/Stripe.  
+- **Alternativas descartadas:** Hardcode do novo valor sem API.
+
+---
+
+## 2026-07-29 — Guias do cliente públicos no admin-web
+
+- **Contexto:** HTML de onboarding/bot existia só em `docs/guides/`; precisava de URL estável sem login para enviar ao cliente.  
+- **Decisão:** Publicar em `admin-frontend/public/guides/` (sync no `export:web`); rotas Expo públicas `/guides`, `/guides/onboarding`, `/guides/bot` (fora do `(shell)`); hub lista os links; nav **Guias** abre em nova aba.  
+- **Consequências:** URLs no admin Heroku (ex. `…/guides/onboarding`); fonte continua em `docs/` + `npm run sync-guides`. No Heroku o monorepo só envia `admin-frontend/` — o sync no-op e usa `public/guides` commitado.  
+- **Alternativas descartadas:** Hospedar no front de produto; exigir login admin para ler o guia; buildpack que copie `docs/` para o slug.
+
+---
+
+## 2026-07-29 — Guias HTML para o cliente (onboarding + bot)
+
+- **Contexto:** O markdown de onboarding serve bem no repo, mas o cliente precisa de páginas HTML compartilháveis; faltava material do bot (fluxo cliente vs profissional).  
+- **Decisão:** `docs/guides/onboarding-cliente.html` + `docs/guides/bot-whatsapp.html` + CSS compartilhado (`sof-guides.css`); tipografia Literata (títulos) + Hanken Grotesk (corpo); prints em `assets/onboarding/`.  
+- **Consequências:** Abrir os HTML a partir de `docs/guides/` (paths relativos das imagens). Markdown permanece como fonte espelhada.  
+- **Alternativas descartadas:** PDF gerado; hospedar só no site marketing nesta entrega.
+
+---
+
+## 2026-07-29 — Guia de onboarding do cliente com prints
+
+- **Contexto:** Faltava material único (plano/cupom → cadastros → WhatsApp) para entregar ao cliente, com referência visual das telas reais.  
+- **Decisão:** Criar [`docs/onboarding-cliente.md`](onboarding-cliente.md) + prints em `docs/assets/onboarding/` capturados do produto em produção; indexar em `AGENTS.md` e referenciar em `features.md`.  
+- **Consequências:** Onboarding versionado no repo; atualizar prints quando a UI mudar de forma relevante.  
+- **Alternativas descartadas:** Só Notion/PDF fora do repo; canvas interno sem assets versionados.
+
+---
+
 ## 2026-07-29 — Admin: contas por cupom e por plano
 
 - **Contexto:** Admin só mostrava `usedCount` do cupom e o plano na linha da conta — sem lista de quem resgatou nem filtro/contagem por plano.  

@@ -80,4 +80,4 @@ fi
 echo ""
 echo "OK — admin deploy concluído."
 echo "  API: https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com"
-echo "  Web: https://sof-agendamento-admin-web-234d632f6b1f.herokuapp.com"
+echo "  Web: https://painel-admin.sof.solutions"

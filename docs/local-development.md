@@ -96,6 +96,8 @@ Na raiz: `npm run admin-backend:dev` / `npm run admin-frontend:web`.
 Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan` (Solo / Equipe / Rede com entitlements) e **uma conta demo por plano**.  
 Login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@sof.com` / `admin123`).
 
+Guias públicos (sem login): `http://localhost:8091/guides` — HTML sincronizado de `docs/guides/` via `npm run sync-guides` (também no `export:web`).
+
 ## Contas de teste (após seed / reset-seed)
 
 Senha padrão de todas: `SEED_DEMO_PASSWORD` (default `demo123`).

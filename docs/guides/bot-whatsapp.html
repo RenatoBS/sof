@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sof — Bot WhatsApp (cliente e profissional)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Literata:opsz,wght@7..72,500;7..72,600;7..72,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="sof-guides.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="wordmark" href="https://www.sof.solutions">sof</a>
+        <nav class="nav-links" aria-label="Guias">
+          <a href="onboarding-cliente.html">Onboarding</a>
+          <a href="bot-whatsapp.html" aria-current="page">Bot WhatsApp</a>
+          <a href="plano-solo.html">Solo</a>
+          <a href="plano-equipe.html">Equipe</a>
+          <a href="plano-rede.html">Rede</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <header class="hero">
+        <span class="kicker">Guia do bot</span>
+        <h1>WhatsApp: cliente e profissional</h1>
+        <p class="lede">
+          Como a Sof conversa no número do estabelecimento — o fluxo do
+          <strong>cliente</strong> que agenda e o do <strong>profissional</strong>
+          que opera a agenda pelo celular.
+        </p>
+        <p class="muted" style="margin-top: 10px">
+          Antes: conecte o WhatsApp em Conta (veja o
+          <a href="onboarding-cliente.html#whatsapp">onboarding</a>).
+        </p>
+        <div class="pill-row">
+          <span class="badge wa">Mesmo número WA</span>
+          <span class="badge">Cliente = telefone novo</span>
+          <span class="badge copper">Prof = telefone cadastrado</span>
+        </div>
+      </header>
+
+      <nav class="toc" aria-label="Sumário">
+        <h2>Neste guia</h2>
+        <ol>
+          <li><a href="#quem">Quem é quem</a></li>
+          <li><a href="#cliente">Fluxo do cliente</a></li>
+          <li><a href="#prof">Fluxo do profissional</a></li>
+          <li><a href="#extras">Extras úteis</a></li>
+          <li><a href="#dica">Dicas para o salão</a></li>
+        </ol>
+      </nav>
+
+      <section id="quem">
+        <h2>Quem é quem</h2>
+        <div class="grid-2">
+          <article class="card">
+            <span class="badge wa">Cliente</span>
+            <h3>Agenda pelo WhatsApp</h3>
+            <p class="muted">
+              Qualquer número que <strong>não</strong> seja de um profissional
+              cadastrado. No 1º contato a Sof pede nome e sobrenome.
+            </p>
+          </article>
+          <article class="card">
+            <span class="badge copper">Profissional</span>
+            <h3>Opera a agenda</h3>
+            <p class="muted">
+              Número cadastrado em <strong>Profissionais</strong> (com ou sem
+              DDI 55). A Sof abre o menu operacional — não o cardápio de cliente.
+            </p>
+          </article>
+        </div>
+        <p class="callout warn" style="margin-top: 16px">
+          O telefone do profissional precisa estar certo. Se estiver errado, ele
+          cai no fluxo de cliente.
+        </p>
+      </section>
+
+      <section id="cliente">
+        <h2>Fluxo do cliente</h2>
+
+        <div class="flow" aria-hidden="true">
+          <span class="node">Serviço</span>
+          <span class="arrow">→</span>
+          <span class="node">Profissional ou horário</span>
+          <span class="arrow">→</span>
+          <span class="node">Dia</span>
+          <span class="arrow">→</span>
+          <span class="node">Horário</span>
+          <span class="arrow">→</span>
+          <span class="node">Confirma</span>
+        </div>
+
+        <h3>1º contato</h3>
+        <p>
+          Se o telefone ainda não é cliente, a Sof pede
+          <strong>nome e sobrenome</strong> (mín. 2 palavras) antes do menu.
+        </p>
+        <div class="chat" aria-label="Exemplo 1º contato">
+          <div class="bubble user">Oi<span class="meta">cliente</span></div>
+          <div class="bubble bot">
+            Olá! Sou a Sof, assistente da barbearia.
+            Para começar, me diga seu nome e sobrenome 🙂
+            <span class="meta">sof</span>
+          </div>
+          <div class="bubble user">Ana Souza<span class="meta">cliente</span></div>
+          <div class="bubble bot">
+            Prazer, Ana! O que você quer marcar?
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>Corte · R$ 60</span>
+            <span>Barba · R$ 40</span>
+            <span>Corte + Barba · R$ 90</span>
+          </div>
+        </div>
+
+        <h3>Marcar horário</h3>
+        <ol class="steps">
+          <li>Escolhe o <strong>serviço</strong> (com preço).</li>
+          <li>
+            Escolhe um <strong>profissional</strong> que faz aquele serviço
+            <strong>ou</strong> “Escolher horário” primeiro.
+          </li>
+          <li>Escolhe o <strong>dia</strong>: Hoje / Amanhã / Outra data (dd/mm).</li>
+          <li>
+            Escolhe o <strong>horário</strong> (até 5 opções do dia ou “Outro
+            horário”).
+          </li>
+          <li>
+            Se escolheu horário primeiro: quem está livre + opção
+            <strong>“Deixa a Sof escolher”</strong>.
+          </li>
+          <li>Confirma (Sim / Não) → entra na agenda.</li>
+        </ol>
+
+        <div class="chat" aria-label="Exemplo marcar">
+          <div class="bubble user">1<span class="meta">escolhe Corte</span></div>
+          <div class="bubble bot">
+            Com quem você prefere?
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>Marcelo</span>
+            <span>Bruno</span>
+            <span>Escolher horário</span>
+          </div>
+          <div class="bubble user">Marcelo<span class="meta">cliente</span></div>
+          <div class="bubble bot">
+            Qual dia?
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>Hoje</span>
+            <span>Amanhã</span>
+            <span>Outra data</span>
+          </div>
+          <div class="bubble bot">
+            Horários livres amanhã com Marcelo:
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>10:00</span>
+            <span>11:30</span>
+            <span>15:00</span>
+            <span>Outro horário</span>
+          </div>
+          <div class="bubble bot">
+            Confirma: Corte com Marcelo amanhã às 10:00?
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>Sim</span>
+            <span>Não</span>
+          </div>
+        </div>
+
+        <h3>Já tem horário marcado</h3>
+        <p>
+          Se existir agendamento futuro, o menu também mostra
+          <strong>Ver agendamentos</strong> e <strong>Cancelar horário</strong>
+          (com confirmação Sim/Não).
+        </p>
+
+        <h3>Frase livre e áudio</h3>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Texto corrido</h3>
+            <p class="muted">
+              Ex.: “quero marcar um corte amanhã ao meio-dia” — a Sof tenta pular
+              direto para a confirmação. Se não entender, volta ao menu guiado.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Áudio</h3>
+            <p class="muted">
+              Mensagens de voz são convertidas em texto (planos com esse recurso).
+              Se falhar, a Sof pede para escrever ou usar os botões.
+            </p>
+          </article>
+        </div>
+
+        <h3>Outros atalhos do cliente</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>O que digita</th>
+                <th>O que acontece</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>reset</code> / <code>/reset</code> / cancelar</td>
+                <td>Reinicia a conversa</td>
+              </tr>
+              <tr>
+                <td>“onde fica”, “endereço”, “como chegar”</td>
+                <td>Responde com o endereço cadastrado em Conta</td>
+              </tr>
+              <tr>
+                <td>“falar com atendente”, “humano”…</td>
+                <td>Abre alerta em <strong>Atendimentos</strong> no painel</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="callout ok">
+          Ao confirmar, o horário aparece na Agenda do painel. O profissional
+          recebe aviso no WhatsApp (se o telefone dele estiver ok e o WA
+          conectado).
+        </p>
+      </section>
+
+      <section id="prof">
+        <h2>Fluxo do profissional</h2>
+        <p>
+          O profissional manda mensagem
+          <strong>para o mesmo WhatsApp do salão</strong>, com o telefone
+          cadastrado em Profissionais.
+        </p>
+
+        <h3>Menu principal</h3>
+        <div class="chat" aria-label="Menu do profissional">
+          <div class="bubble user">Oi<span class="meta">profissional</span></div>
+          <div class="bubble bot">
+            Olá, Marcelo! O que você precisa?
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>Concluir agendamento</span>
+            <span>Agenda de hoje</span>
+            <span>Agenda de outro dia</span>
+            <span>Novo na agenda</span>
+            <span>Cancelar horário</span>
+            <span>Falar com estabelecimento</span>
+            <span>Redefinir senha</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Opção</th>
+                <th>Para quê</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Concluir agendamento</strong></td>
+                <td>
+                  Só aparece se ele estiver <em>dentro</em> da janela de um
+                  atendimento. Libera o restante do horário.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Agenda de hoje / outro dia</strong></td>
+                <td>Lista os horários daquele profissional.</td>
+              </tr>
+              <tr>
+                <td><strong>Novo na agenda</strong></td>
+                <td>
+                  Agendar cliente (serviço → dia → horário → nome/telefone) ou
+                  criar <strong>evento/bloqueio</strong> (almoço, médico…).
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Cancelar horário</strong></td>
+                <td>Lista próximos agendamentos e pede confirmação.</td>
+              </tr>
+              <tr>
+                <td><strong>Falar com estabelecimento</strong></td>
+                <td>Abre alerta na aba Atendimentos do painel.</td>
+              </tr>
+              <tr>
+                <td><strong>Redefinir senha</strong></td>
+                <td>Envia link de uso único (2h) para o portal do profissional.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Novo agendamento pelo profissional</h3>
+        <div class="flow" aria-hidden="true">
+          <span class="node">Serviço</span>
+          <span class="arrow">→</span>
+          <span class="node">Dia</span>
+          <span class="arrow">→</span>
+          <span class="node">Horário livre</span>
+          <span class="arrow">→</span>
+          <span class="node">Nome + telefone do cliente</span>
+          <span class="arrow">→</span>
+          <span class="node">Confirma</span>
+        </div>
+
+        <h3>Evento / bloqueio</h3>
+        <div class="flow" aria-hidden="true">
+          <span class="node">Título</span>
+          <span class="arrow">→</span>
+          <span class="node">Duração 30/60/90/120</span>
+          <span class="arrow">→</span>
+          <span class="node">Dia</span>
+          <span class="arrow">→</span>
+          <span class="node">Horário</span>
+          <span class="arrow">→</span>
+          <span class="node">Confirma</span>
+        </div>
+        <p class="muted">
+          Eventos ocupam a agenda (conflito), mas não entram no faturamento.
+        </p>
+
+        <h3>Exemplo — concluir</h3>
+        <div class="chat" aria-label="Exemplo concluir">
+          <div class="bubble user">Concluir<span class="meta">profissional</span></div>
+          <div class="bubble bot">
+            Qual atendimento concluir agora?
+            <span class="meta">sof</span>
+          </div>
+          <div class="menu-opts">
+            <span>Ana Souza · Corte · 10:00</span>
+          </div>
+          <div class="bubble user">1<span class="meta">profissional</span></div>
+          <div class="bubble bot">
+            Pronto — atendimento marcado como concluído.
+            <span class="meta">sof</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="extras">
+        <h2>Extras úteis</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Lembrete ao cliente</h3>
+            <p class="muted">
+              Em Conta (com WhatsApp conectado), configure a antecedência (1h,
+              2h, 24h…). A Sof avisa 1× por agendamento.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Pausar o bot</h3>
+            <p class="muted">
+              Conta: silencia para <strong>todos os clientes</strong>. Na aba
+              Clientes: pausa só aquele cliente. Profissionais continuam no menu
+              operacional.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Atendimentos (humano)</h3>
+            <p class="muted">
+              Pedido de atendente ou várias respostas “não entendi” abrem alerta
+              no painel. Se alguém responder pelo WhatsApp Web/celular, o bot
+              pausa 1h para aquele cliente.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Simulador</h3>
+            <p class="muted">
+              Na Agenda do painel: telefone + mensagem. Use o telefone do
+              profissional para testar o menu operacional.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="dica">
+        <h2>Dicas para o salão</h2>
+        <ul class="checklist">
+          <li>Cadastre o telefone do profissional exatamente como ele usa no WhatsApp</li>
+          <li>Vincule cada profissional aos serviços que ele realmente faz</li>
+          <li>Mantenha endereço e horário atualizados em Conta</li>
+          <li>Teste uma vez como cliente e uma vez como profissional no simulador</li>
+          <li>Avise a equipe: o bot do salão também é a ferramenta deles no celular</li>
+        </ul>
+        <p style="margin-top: 20px">
+          Setup completo do painel:
+          <a href="onboarding-cliente.html">guia de onboarding</a>.
+        </p>
+      </section>
+
+      <footer class="footer">
+        <p>
+          Sof · Guia do bot WhatsApp ·
+          <a href="onboarding-cliente.html">Onboarding</a> ·
+          <a href="plano-solo.html">Solo</a> ·
+          <a href="plano-equipe.html">Equipe</a> ·
+          <a href="plano-rede.html">Rede</a> ·
+          <a href="https://www.sof.solutions" target="_blank" rel="noopener">www.sof.solutions</a>
+        </p>
+        <p>Material para o cliente final — sem jargão de API.</p>
+      </footer>
+    </main>
+  </body>
+</html>

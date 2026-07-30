@@ -5,18 +5,22 @@ Documento vivo. Atualize quando alterar comportamento de produto ou contratos de
 
 ## Produto (visão)
 
-Sof ajuda salões/barbearias a:
+Sof ajuda negócios a:
 
 1. Receber agendamentos pelo **WhatsApp** (conversa guiada).  
 2. Ver a **semana** de todos os profissionais num painel.  
 3. Gerir **equipe**, **cardápio de serviços** e **faturamento**.  
 4. Assinar planos via **Stripe** (ou fluxo demo).
 
+**Onboarding do cliente (com prints):** [`onboarding-cliente.md`](onboarding-cliente.md) · HTML: [`guides/onboarding-cliente.html`](guides/onboarding-cliente.html).  
+**Bot WhatsApp (cliente + profissional):** [`guides/bot-whatsapp.html`](guides/bot-whatsapp.html).  
+**Funções por plano:** [`planos-funcoes.md`](planos-funcoes.md) · [`plano-solo.html`](guides/plano-solo.html) · [`plano-equipe.html`](guides/plano-equipe.html) · [`plano-rede.html`](guides/plano-rede.html).
+
 ## Site institucional (marketing)
 
 | Feature | Tela | Notas |
 |---------|------|--------|
-| Landing | `/` | Hero, chat mock Sof, features com ícones SVG, passos |
+| Landing | `/` | Hero (“negócio”), chat mock Sof; “A partir de R$ …” = menor preço de `GET /api/plans` (fallback Solo) |
 | Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
@@ -51,7 +55,7 @@ A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `
 | Aplicar outro cupom (conta logada) | choose-plan | `POST /api/billing/redeem-coupon` |
 | Expiração | job 15 min + lazy no login/`me` | `Account.status = paused` |
 | Tela obrigatória pós-expiração | redirect no shell do dashboard | `account.needsPlanSelection` |
-| Alterar plano (conta ativa) | Conta → “Alterar plano” | mesma tela `choose-plan` |
+| Alterar plano (conta ativa) | Conta → “Alterar plano” → `ChoosePlanModal` | mesma API de `choose-plan` |
 
 Cupom amarra um **plano** e N dias grátis; `maxUses` é o teto global; cada conta só pode resgatar o mesmo código uma vez. Conta promo: `billingSource=promo`, `promoExpiresAt`. Ao vencer → `paused` e UI de escolha de plano (Stripe ou novo cupom). Pagamento Stripe em conta existente limpa promo e seta `billingSource=paid`.
 
@@ -80,6 +84,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Sincronizar plano com Stripe (Price + Payment Link = preço Sof) | botão em `/edit-plan` | `POST /api/plans/:id/sync-stripe` |
 | Cupons promocionais (7/30/60 dias) | `/coupons`, `/new-coupon`, `/edit-coupon` | `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id` |
 | Contas que usaram um cupom | `/edit-coupon` (seção Usos) | `GET /api/coupons/:id` (`redemptions`) |
+| Guias públicos (onboarding + bot WA + planos) | `/guides` (+ HTML em `public/guides/`) | sem auth |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 
@@ -112,6 +117,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 
 - Listagem em cards (cor de identificação; telefone com máscara na UI).  
 - CRUD: adicionar / **editar** / remover.  
+- Criação e edição abrem em **modal** (mesmo padrão da agenda: overlay + Salvar / Fechar).  
 - Form front: máscara de telefone `(11) 99999-8888` + validação por campo (nome, telefone 10–15 dígitos, e-mail, ≥1 serviço) antes do POST/PUT.  
 - Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`) e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
@@ -136,12 +142,14 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 
 - Cardápio (nome, duração, preço).  
 - CRUD: adicionar / **editar** / remover (`PUT /api/services/:id`).  
+- Criação e edição em **modal** (padrão agenda).  
 - Copy: “Configure seu cardápio de serviços”.
 
 ### Clientes
 
 - Listagem em cards (nome + telefone formatado).  
 - CRUD: adicionar / editar / remover.  
+- Criação e edição em **modal** (padrão agenda).  
 - Form front (aba Clientes e cadastro rápido no `ClientPicker` da agenda): máscara `(11) 99999-0000` + validação por campo (nome, telefone 10–15 dígitos).  
 - Na **edição**: pausar o bot WhatsApp para aquele cliente — **Bot ativo**, timer (1 h / 8 h / 24 h / 7 dias) ou **Permanente**.  
 - Badge na lista: **Bot off** (permanente) ou **Bot pausado até …** (temporário).  
@@ -166,16 +174,15 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 
 ### Conta
 
-UI em seções sem repetir dados: **Assinatura** (plano/preço/desde) → **Estabelecimento** (logo + nome + responsável + contato + horário num único card) → **WhatsApp** / **Lembretes** / **Ajuda**. E-mail fica só no header do painel; status do WhatsApp só na seção WhatsApp.
+Layout em duas colunas em telas ≥ 900px (`maxWidth` ~1040, gap uniforme por coluna): **esquerda** Estabelecimento → Assinatura → Lembretes (se entitlement) → Ajuda; **direita** Horário → WhatsApp. Em mobile, uma coluna na mesma ordem visual (Estabelecimento, Horário, Assinatura, WhatsApp…). E-mail fica só no header do painel; status do WhatsApp só no card WhatsApp. Logout só no header do painel (não há card “Sair da conta” nesta tela).
 
-- **Assinatura:** plano + preço + desde (+ promo se houver); CTA alterar plano.
-- **Logo do estabelecimento:** upload na Conta (web); `Account.logoBase64` (data URL); máx. 5 MB — front comprime se maior. Aparece no header do painel e do portal profissional (antes do nome). `PUT /api/account` com `logoBase64` (`""` remove).
-- **Contato, endereço e horário** (mesmo card Estabelecimento): telefone com máscara + endereço (Salvar contato); horário com preview Dom–Sáb + edição expandível (`HH:mm`); `PUT /api/account` com `phone`/`address` ou `openingHours`. O bot informa o endereço na conversa.
-- **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo; pareamento QR ou código (`POST /api/account/whatsapp/connect`, poll `GET …/status`, `POST …/disconnect`). Token da instância fica só no servidor.
+- **Estabelecimento (resumo):** logo + nome + responsável + telefone + endereço (somente leitura) + `SofIconAction` editar → `EstablishmentModal` (logo upload/remoção web, telefone, endereço). `PUT /api/account` com `logoBase64` / `phone` / `address`. Logo: data URL, máx. 5 MB (front comprime); aparece no header do painel e do portal profissional.
+- **Horário:** pills Dom–Sáb + preview `formatHoursSummary` + editar → `OpeningHoursModal` (`HH:mm` por dia). `PUT /api/account` com `openingHours`. Sem editor inline na página.
+- **Assinatura:** plano + preço + desde (+ promo se houver); CTA “Alterar plano” abre `ChoosePlanModal` (cupom + catálogo / checkout Stripe). A rota `/(dashboard)/choose-plan` permanece para conta pausada / `needsPlanSelection`.
+- **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo. Se o dispositivo não estiver pareado, o **QR abre sozinho** (sem botão “Escanear”) e **renova automaticamente** (~45s ou quando o status deixa de trazer QR). Alternativa: “Usar código” com telefone. Poll `GET …/status` detecta conexão; `POST …/disconnect` despareia. Token da instância fica só no servidor.
 - **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
 - **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
 - **Suporte:** botão “Abrir suporte” (seção Ajuda) → `/(dashboard)/support`.
-- **Sessão:** zona de saída (logout) no rodapé da tela.
 
 ### Suporte
 

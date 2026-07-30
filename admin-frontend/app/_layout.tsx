@@ -43,6 +43,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="guides" />
         <Stack.Screen name="(shell)" />
       </Stack>
     </AdminAuthProvider>

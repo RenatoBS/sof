@@ -12,7 +12,7 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 | `sof-agendamento-api` | `backend` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
 | `sof-agendamento-web` | `frontend` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
 | `sof-agendamento-admin-api` | `admin-backend` | https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com |
-| `sof-agendamento-admin-web` | `admin-frontend` | https://sof-agendamento-admin-web-234d632f6b1f.herokuapp.com |
+| `sof-agendamento-admin-web` | `admin-frontend` | https://painel-admin.sof.solutions (Heroku: `…-234d632f6b1f.herokuapp.com`) |
 
 Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api`. O `admin-backend` carrega uma cópia do schema em `admin-backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
 
@@ -119,6 +119,8 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 | `EXPO_PUBLIC_API_URL` | URL HTTPS da admin-api (antes do build) |
 | `NODE_ENV` | `production` |
 
+Guias HTML públicos (sem auth): `/guides`, `/guides/onboarding`, `/guides/bot` e estáticos `/guides/*.html` (onboarding, bot, `plano-solo|equipe|rede`) — gerados no build com `npm run sync-guides` a partir de `docs/guides/` + `docs/assets/onboarding/` (no Heroku usa o `public/guides` commitado). `serve.json` desliga `cleanUrls` para o `.html` não virar SPA.
+
 ### Deploy
 
 Na raiz do monorepo ([`package.json`](../package.json)):
@@ -172,8 +174,15 @@ Registrar na Hostinger; DNS aponta para targets `*.herokudns.com`. Apps:
 | `sof.solutions` | `sof-agendamento-web` | ALIAS/ANAME (ou redirect → `www`) |
 | `www.sof.solutions` | `sof-agendamento-web` | CNAME |
 | `api.sof.solutions` | `sof-agendamento-api` | CNAME |
+| `painel-admin.sof.solutions` | `sof-agendamento-admin-web` | CNAME |
 
-Targets atuais: `heroku domains -a sof-agendamento-web` / `-a sof-agendamento-api`. SSL: `heroku certs:auto` (ACM).
+Targets atuais: `heroku domains -a sof-agendamento-web` / `-a sof-agendamento-api` / `-a sof-agendamento-admin-web`. SSL: `heroku certs:auto` (ACM).
+
+DNS Hostinger para o painel admin:
+
+| Tipo | Nome | Destino |
+|------|------|---------|
+| CNAME | `painel-admin` | `darwinian-falls-v0ckxy5sdvju0hfc1v4udihb.herokudns.com` |
 
 Após DNS + certificado OK, atualizar envs:
 
@@ -181,8 +190,9 @@ Após DNS + certificado OK, atualizar envs:
 |-----|------|
 | `sof-agendamento-web` | `EXPO_PUBLIC_API_URL=https://api.sof.solutions` (+ **rebuild**/redeploy) |
 | `sof-agendamento-api` | `PUBLIC_URL=https://www.sof.solutions`, `CORS_ORIGIN=https://www.sof.solutions,https://sof.solutions`, `API_PUBLIC_URL=https://api.sof.solutions` |
+| `sof-agendamento-admin-api` | `PUBLIC_URL=https://painel-admin.sof.solutions`, `CORS_ORIGIN=https://painel-admin.sof.solutions` (+ opcional URL Heroku legada) |
 
-Admin continua nos `*.herokuapp.com` até ter subdomínios próprios (ex. `admin.sof.solutions`).
+Admin API segue em `*.herokuapp.com` até ter subdomínio próprio (ex. `api-admin.sof.solutions`).
 
 ## Alternativa: Render
 

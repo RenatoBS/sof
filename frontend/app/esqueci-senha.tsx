@@ -69,7 +69,7 @@ export default function EsqueciSenhaScreen() {
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
-                placeholder="voce@salao.com"
+                placeholder="voce@negocio.com"
                 autoCapitalize="none"
               />
               <SofButton

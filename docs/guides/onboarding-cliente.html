@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sof — Guia de onboarding</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Literata:opsz,wght@7..72,500;7..72,600;7..72,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="sof-guides.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="wordmark" href="https://www.sof.solutions">sof</a>
+        <nav class="nav-links" aria-label="Guias">
+          <a href="onboarding-cliente.html" aria-current="page">Onboarding</a>
+          <a href="bot-whatsapp.html">Bot WhatsApp</a>
+          <a href="plano-solo.html">Solo</a>
+          <a href="plano-equipe.html">Equipe</a>
+          <a href="plano-rede.html">Rede</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <header class="hero">
+        <span class="kicker">Guia do cliente</span>
+        <h1>Do plano à Sof funcionando</h1>
+        <p class="lede">
+          Passo a passo com prints reais: escolher plano ou cupom, configurar a
+          conta, conectar o WhatsApp e cadastrar serviços e profissionais.
+        </p>
+        <p class="muted" style="margin-top: 10px">
+          Site:
+          <a href="https://www.sof.solutions" target="_blank" rel="noopener">www.sof.solutions</a>
+          · Funções por plano:
+          <a href="plano-solo.html">Solo</a>,
+          <a href="plano-equipe.html">Equipe</a>,
+          <a href="plano-rede.html">Rede</a>
+          ·
+          <a href="bot-whatsapp.html">guia do bot</a>.
+        </p>
+      </header>
+
+      <nav class="toc" aria-label="Sumário">
+        <h2>Neste guia</h2>
+        <ol>
+          <li><a href="#pronto">O que precisa ficar pronto</a></li>
+          <li><a href="#plano">Escolher o plano</a></li>
+          <li><a href="#checkout">Cadastro e pagamento (ou cupom)</a></li>
+          <li><a href="#entrar">Entrar no painel</a></li>
+          <li><a href="#conta">Conta: contato e horário</a></li>
+          <li><a href="#whatsapp">Conectar o WhatsApp</a></li>
+          <li><a href="#servicos">Serviços</a></li>
+          <li><a href="#profissionais">Profissionais</a></li>
+          <li><a href="#clientes">Clientes</a></li>
+          <li><a href="#agenda">Conferir a agenda</a></li>
+          <li><a href="#alterar">Alterar plano depois</a></li>
+          <li><a href="#checklist">Checklist</a></li>
+        </ol>
+      </nav>
+
+      <section id="pronto">
+        <h2>O que precisa ficar pronto</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>O quê</th>
+                <th>Por quê</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Conta criada (plano pago <strong>ou</strong> cupom)</td>
+                <td>Acesso ao painel</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Contato + endereço + horário</td>
+                <td>Bot responde “onde fica” e só agenda no expediente</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>WhatsApp conectado (QR ou código)</td>
+                <td>Clientes marcam de verdade no WhatsApp</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>Pelo menos <strong>1 serviço</strong></td>
+                <td>Cardápio do bot e da agenda</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>Pelo menos <strong>1 profissional</strong> ligado a serviço(s)</td>
+                <td>Agenda e fluxo WhatsApp</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>Clientes (opcional)</td>
+                <td>Podem nascer sozinhos no 1º contato no WhatsApp</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="callout warn">
+          Sem profissionais, a agenda fica vazia. Sem WhatsApp conectado, use só
+          o simulador na Agenda (demo).
+        </p>
+      </section>
+
+      <section id="plano">
+        <h2>1. Escolher o plano</h2>
+        <ol class="steps">
+          <li>Abra <strong>Planos</strong> no site (<code>/pricing</code>).</li>
+          <li>
+            Compare
+            <a href="plano-solo.html">Solo</a>,
+            <a href="plano-equipe.html">Equipe</a>
+            e
+            <a href="plano-rede.html">Rede</a>
+            (cada um tem um guia com as funções).
+          </li>
+          <li>Clique em <strong>Assinar …</strong> no plano desejado.</li>
+        </ol>
+        <figure class="shot">
+          <img src="../assets/onboarding/01-planos.png" alt="Tela de planos Solo, Equipe e Rede" />
+          <figcaption class="caption">Planos — Solo, Equipe e Rede</figcaption>
+        </figure>
+        <p class="callout">
+          Não sabe qual escolher? Abra o guia do plano:
+          <a href="plano-solo.html">Solo</a>
+          (essencial) ·
+          <a href="plano-equipe.html">Equipe</a>
+          (lembretes, faturamento, handoffs) ·
+          <a href="plano-rede.html">Rede</a>
+          (áudio + profissionais ilimitados).
+        </p>
+      </section>
+
+      <section id="checkout">
+        <h2>2. Cadastro e pagamento (ou cupom)</h2>
+        <p>O modal <strong>Finalizar assinatura</strong> pede:</p>
+        <ul class="steps">
+          <li>Nome completo</li>
+          <li>Telefone (com DDD)</li>
+          <li>E-mail (login do painel)</li>
+          <li>Senha (mín. 8 caracteres)</li>
+          <li>Cupom promocional (opcional)</li>
+        </ul>
+
+        <h3>Sem cupom → Stripe</h3>
+        <p>
+          Preencha os dados e clique em <strong>Continuar para o pagamento</strong>.
+          Você vai ao Stripe; depois entra direto na agenda.
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/02-checkout.png"
+            alt="Checkout sem cupom — Continuar para o pagamento"
+          />
+          <figcaption class="caption">Checkout com cobrança mensal</figcaption>
+        </figure>
+
+        <h3>Com cupom → conta na hora</h3>
+        <p>
+          Digite o código em <strong>Cupom promocional</strong>. O total vira
+          <strong>R$&nbsp;0,00</strong>, o botão muda para
+          <strong>Ativar com cupom</strong> e a conta é criada
+          <strong>sem Stripe</strong> (o plano do cupom prevalece).
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/02b-checkout-cupom.png"
+            alt="Checkout com cupom — Ativar com cupom"
+          />
+          <figcaption class="caption">Checkout com cupom promocional</figcaption>
+        </figure>
+        <p class="callout">
+          Cupom = plano + período grátis (ex.: 7 / 30 / 60 dias). Ao vencer, a
+          conta pede plano de novo (Stripe ou outro cupom).
+        </p>
+      </section>
+
+      <section id="entrar">
+        <h2>3. Entrar no painel</h2>
+        <p>
+          Se já tiver conta: <strong>Entrar</strong> (<code>/login</code>) com
+          e-mail e senha.
+        </p>
+        <figure class="shot">
+          <img src="../assets/onboarding/03-login.png" alt="Tela Entrar" />
+          <figcaption class="caption">Login do estabelecimento ou do profissional</figcaption>
+        </figure>
+        <p>
+          Depois do checkout, o login costuma ser automático e você cai na
+          <strong>Agenda</strong>.
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/04-agenda.png"
+            alt="Agenda após o cadastro, ainda sem profissionais"
+          />
+          <figcaption class="caption">
+            Agenda vazia — cadastre profissionais para a grade aparecer
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="conta">
+        <h2>4. Conta: identidade, contato e horário</h2>
+        <p>
+          Aba <strong>Conta</strong>. Em telas largas, os cards ficam em
+          <strong>duas colunas</strong>.
+        </p>
+        <ul class="steps">
+          <li>Confira o plano em <strong>Assinatura</strong> (ou <strong>Alterar plano</strong>).</li>
+          <li>
+            No card <strong>Estabelecimento</strong>, ícone de
+            <strong>editar</strong> → modal com logo, telefone e endereço →
+            <strong>Salvar</strong>.
+          </li>
+        </ul>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/07-conta.png"
+            alt="Conta — grade com estabelecimento, horário, plano e WhatsApp"
+          />
+          <figcaption class="caption">
+            Estabelecimento, horário, assinatura e WhatsApp
+          </figcaption>
+        </figure>
+
+        <h3>Horário de funcionamento</h3>
+        <p>
+          No card <strong>Horário</strong>, ícone de <strong>editar</strong> →
+          marque dias e horários → <strong>Salvar</strong>. O bot só oferece
+          horários dentro desse expediente.
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/07c-horarios.png"
+            alt="Modal Horário de funcionamento"
+          />
+          <figcaption class="caption">Modal de horário Dom–Sáb</figcaption>
+        </figure>
+      </section>
+
+      <section id="whatsapp">
+        <h2>5. Conectar o WhatsApp</h2>
+        <p>
+          Na aba <strong>Conta</strong>, card <strong>WhatsApp</strong> (ao lado
+          do plano no desktop):
+        </p>
+        <ol class="steps">
+          <li>Confirme <strong>Servidor = Pronto</strong>.</li>
+          <li>
+            O <strong>QR já aparece aberto</strong> — escaneie no WhatsApp
+            (Aparelhos conectados). O código <strong>renova sozinho</strong>.
+          </li>
+          <li>Ou use <strong>Usar código</strong> com o número do aparelho.</li>
+          <li>Aguarde <strong>Dispositivo = Conectado</strong>.</li>
+        </ol>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/07b-conta-whatsapp.png"
+            alt="Pareamento WhatsApp — QR aberto automaticamente"
+          />
+          <figcaption class="caption">Bot e conexão — QR automático</figcaption>
+        </figure>
+        <p class="callout ok">
+          Com WhatsApp conectado (e no plano certo), aparecem também
+          <strong>lembretes</strong> e <strong>pausa do bot</strong>.
+        </p>
+      </section>
+
+      <section id="servicos">
+        <h2>6. Serviços (cardápio)</h2>
+        <p>
+          Aba <strong>Serviços</strong> → <strong>Adicionar serviço</strong>
+          (abre um <strong>modal</strong>). Informe nome, duração (min) e preço
+          (R$) → <strong>Salvar</strong>. Esse cardápio aparece no WhatsApp e na
+          agenda.
+        </p>
+        <figure class="shot">
+          <img src="../assets/onboarding/05-servicos.png" alt="Lista de serviços" />
+          <figcaption class="caption">Lista de serviços</figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/05b-novo-servico.png"
+            alt="Modal Novo serviço"
+          />
+          <figcaption class="caption">Modal Novo serviço</figcaption>
+        </figure>
+      </section>
+
+      <section id="profissionais">
+        <h2>7. Profissionais</h2>
+        <p>
+          Aba <strong>Profissionais</strong> →
+          <strong>Adicionar profissional</strong> (abre um
+          <strong>modal</strong>):
+        </p>
+        <ul class="steps">
+          <li>Nome, telefone, e-mail de acesso</li>
+          <li>Cor na agenda</li>
+          <li><strong>Serviços que realiza</strong> (obrigatório ≥ 1)</li>
+        </ul>
+        <p>
+          Ao salvar, a Sof gera um <strong>link de uso único (2h)</strong> para o
+          profissional definir a senha. Depois você pode enviar de novo por
+          <strong>Senha no WhatsApp</strong>.
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/06-novo-profissional.png"
+            alt="Modal Novo profissional"
+          />
+          <figcaption class="caption">Cadastro de profissional</figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/06b-profissionais-lista.png"
+            alt="Lista de profissionais"
+          />
+          <figcaption class="caption">Equipe cadastrada</figcaption>
+        </figure>
+        <p class="callout warn">
+          Sem serviço cadastrado, “Adicionar profissional” leva você primeiro
+          para Serviços.
+        </p>
+      </section>
+
+      <section id="clientes">
+        <h2>8. Clientes (opcional)</h2>
+        <p>
+          Aba <strong>Clientes</strong>. Pode cadastrar na mão
+          <strong>ou</strong> deixar o WhatsApp criar no 1º contato (nome e
+          sobrenome).
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/08-clientes-vazio.png"
+            alt="Clientes — lista vazia"
+          />
+          <figcaption class="caption">Começo sem clientes</figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/08b-clientes-lista.png"
+            alt="Clientes cadastrados"
+          />
+          <figcaption class="caption">Lista de clientes</figcaption>
+        </figure>
+      </section>
+
+      <section id="agenda">
+        <h2>9. Conferir a agenda</h2>
+        <p>
+          Com serviços + profissionais, a <strong>Agenda Semanal</strong> mostra
+          a grade. Clique numa célula para agendar ou num horário para editar.
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/04b-agenda-pronta.png"
+            alt="Agenda com equipe e horários"
+          />
+          <figcaption class="caption">Agenda com equipe</figcaption>
+        </figure>
+        <p>
+          Teste rápido: na Agenda, bloco
+          <strong>Bot do WhatsApp — simulador</strong>. Em produção, a conversa
+          no número conectado cai na agenda na hora.
+        </p>
+        <p>
+          Detalhes da conversa:
+          <a href="bot-whatsapp.html">guia do bot (cliente e profissional)</a>.
+        </p>
+      </section>
+
+      <section id="alterar">
+        <h2>Alterar plano ou usar outro cupom</h2>
+        <p>
+          <strong>Conta → Alterar plano</strong>: cupom promocional ou assinar
+          um plano (Stripe).
+        </p>
+        <figure class="shot">
+          <img
+            src="../assets/onboarding/09-alterar-plano.png"
+            alt="Alterar plano / aplicar cupom"
+          />
+          <figcaption class="caption">Alterar plano</figcaption>
+        </figure>
+      </section>
+
+      <section id="checklist">
+        <h2>Checklist — Sof pronta</h2>
+        <ul class="checklist">
+          <li>Conta ativa (pago ou cupom)</li>
+          <li>Telefone e endereço salvos</li>
+          <li>Horário de funcionamento correto</li>
+          <li>WhatsApp <strong>conectado</strong></li>
+          <li>≥ 1 serviço</li>
+          <li>≥ 1 profissional com serviço(s)</li>
+          <li>Profissional definiu senha (link / WhatsApp)</li>
+          <li>Teste: “oi” no WhatsApp da barbearia → bot responde e agenda</li>
+        </ul>
+        <p style="margin-top: 20px">
+          Precisa de ajuda? <strong>Conta → Abrir suporte</strong>.
+        </p>
+      </section>
+
+      <footer class="footer">
+        <p>
+          Sof · Guia de onboarding ·
+          <a href="bot-whatsapp.html">Bot WhatsApp</a> ·
+          <a href="plano-solo.html">Solo</a> ·
+          <a href="plano-equipe.html">Equipe</a> ·
+          <a href="plano-rede.html">Rede</a> ·
+          <a href="https://www.sof.solutions" target="_blank" rel="noopener">www.sof.solutions</a>
+        </p>
+        <p>
+          Prints do produto (jul/2026). Abra este arquivo a partir de
+          <code>docs/guides/</code> para as imagens carregarem.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
