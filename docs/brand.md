@@ -51,7 +51,7 @@ Nesta sessão de marca, a voz do bot incorpora também **calma** e **sofisticaç
 |----------|----------|--------|
 | Confirmação de agendamento | `Marcado.` / `Pronto.` | `Marcado!`, `Show!`, `Fechou!!` |
 | Avanço de fluxo | `Certo:` | `Combinado:` (tom mais solto) |
-| Não compreendeu | `Não peguei isso.` + próxima ação | Só `Não entendi.` sem caminho |
+| Não compreendeu | `Não entendi.` + próxima ação | Só `Não entendi.` sem caminho |
 | Handoff humano | `Vou chamar a equipe para continuar por aqui.` | Emoji; “já já alguém te atende!!” |
 | Encerramento | `Até lá.` / `Quando quiser, é só chamar.` | `Até lá!!` |
 | Endereço / negócio | nome da conta, “estabelecimento”, “negócio” | “salão” genérico |
@@ -68,7 +68,7 @@ Nesta sessão de marca, a voz do bot incorpora também **calma** e **sofisticaç
 
 ### Cliente — conhecido
 
-> Oi, Ana. Aqui é a Sof, do Santa Madalena. Nosso endereço: Rua A, 1.
+> Oi, Ana. Aqui é a Sof, do Santa Madalena.
 
 ### Cliente — confirmado
 
@@ -109,3 +109,5 @@ Nesta sessão de marca, a voz do bot incorpora também **calma** e **sofisticaç
 | Demo marketing | `saas/frontend/src/components/SofChatCard.tsx` |
 
 Persona **global** (não customizável por tenant neste momento). O NLU só extrai intenção (JSON); não gera copy com voz.
+
+Inventário completo das strings enviadas: [`bot-messages.md`](bot-messages.md).

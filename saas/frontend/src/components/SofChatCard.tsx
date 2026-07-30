@@ -28,10 +28,10 @@ export function SofChatCard() {
           <Text style={[styles.msgText, styles.meText]}>Corte + barba</Text>
         </View>
         <View style={[styles.msg, styles.them]}>
-          <Text style={styles.msgText}>Com o Marcelo, quinta às 15:00. Fecha?</Text>
+          <Text style={styles.msgText}>Com o Marcelo, quinta às 15:00. Marca?</Text>
         </View>
         <View style={[styles.msg, styles.me]}>
-          <Text style={[styles.msgText, styles.meText]}>Fecha</Text>
+          <Text style={[styles.msgText, styles.meText]}>Marca</Text>
         </View>
         <View style={[styles.msg, styles.them]}>
           <Text style={styles.msgText}>

@@ -65,7 +65,7 @@ export type WhatsappBotResult = {
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
 const DATE_ONLY_RE = /^(\d{1,2})[\/\-](\d{1,2})$/;
 const TIME_ONLY_RE = /^(\d{1,2}):(\d{2})$/;
-const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'fecha', 'fechado'];
+const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'marca', 'marcar', 'fecha', 'fechado'];
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
 const CUSTOM_TIME_RE = /^(outro|outra|custom|time:custom|slot:custom)$/i;
 const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;
@@ -1091,7 +1091,7 @@ export class WhatsappBotService {
           data: { ...baseData, employeeId: preferred.id },
         });
         return this.confirmMenu(
-          `Fechar ${service.name} com ${preferred.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+          `Marcar ${service.name} com ${preferred.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
         );
       }
 
@@ -1106,7 +1106,7 @@ export class WhatsappBotService {
           data: { ...baseData, employeeId: free[0].id },
         });
         return this.confirmMenu(
-          `${free[0].name} está livre nesse horário. Fechar ${service.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+          `${free[0].name} está livre nesse horário. Marcar ${service.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
         );
       }
       {
@@ -1126,7 +1126,7 @@ export class WhatsappBotService {
         data: { ...baseData, employeeId: free[0].id },
       });
       return this.confirmMenu(
-        `Fechar ${service.name} com ${free[0].name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+        `Marcar ${service.name} com ${free[0].name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
       );
     }
 
@@ -1194,11 +1194,7 @@ export class WhatsappBotService {
       client,
       services,
       customerPhone,
-      botCopy.greetKnownClient(
-        client.name,
-        account.businessName,
-        accountAddress(account),
-      ),
+      botCopy.greetKnownClient(client.name, account.businessName),
     );
   }
 
@@ -2156,7 +2152,7 @@ export class WhatsappBotService {
           data: { ...sessionData, employeeId: employee.id },
         });
         return this.confirmMenu(
-          `Fechar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
+          `Marcar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
         );
       }
 
@@ -2185,7 +2181,7 @@ export class WhatsappBotService {
         data: { ...sessionData, employeeId: employee.id },
       });
       return this.confirmMenu(
-        `Fechar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
+        `Marcar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
       );
     }
 

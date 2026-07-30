@@ -47,7 +47,7 @@ type EmpSessionData = {
 
 const DATE_ONLY_RE = /^(\d{1,2})[\/\-](\d{1,2})$/;
 const TIME_ONLY_RE = /^(\d{1,2}):(\d{2})$/;
-const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'fecha', 'fechado'];
+const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'marca', 'marcar', 'fecha', 'fechado'];
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
 const CUSTOM_TIME_RE = /^(outro|outra|custom|time:custom)$/i;
 const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;

@@ -205,8 +205,9 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 ### Voz / persona
 - A Sof fala com a persona definida em [`docs/brand.md`](brand.md): leve, confiante, calma e sofisticada (sem emoji, poucas exclamações).  
 - Copy canônica em `saas/backend/src/whatsapp/bot-copy.ts` (cliente, profissional, lembrete, aviso ao prof, fallbacks de áudio/handoff).  
-- Apresentação: “Aqui é a Sof, do {businessName}.” Confirmação: “Marcado.” Avanço: “Certo: …”. Mal-entendido: “Não peguei isso.” + próxima ação.  
-- Gates de plano **não** aparecem na copy do WhatsApp (nem “não incluso no plano”); a Sof só redireciona (“prefiro texto”, “use o painel ou o portal”).
+- Apresentação: “Aqui é a Sof, do {businessName}.” Confirmação: “Marcado.” Avanço: “Certo: …”. Mal-entendido: “Não entendi.” + próxima ação.  
+- Gates de plano **não** aparecem na copy do WhatsApp (nem “não incluso no plano”); a Sof só redireciona (“prefiro texto”, “use o painel ou o portal”).  
+- Inventário de strings: [`bot-messages.md`](bot-messages.md).
 
 ### Fluxo do cliente
 - Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
@@ -218,7 +219,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Comandos:** `/reset` ou `reset` (e `cancelar`) reinicia a sessão; perguntas de **endereço** / “onde fica” / “como chegar” devolvem `Account.address` (se cadastrado).  
 - **Áudio (Uazapi):** mensagens de voz (`audio` / `ptt`) são transcritas via `POST /message/download` (`transcribe: true`) e tratadas como texto no mesmo fluxo. Exige `OPENAI_API_KEY` no servidor (Whisper via Uazapi); sem chave ou se a transcrição falhar, o bot pede para escrever ou usar os botões.  
 - **Frases livres (NLU):** com `OPENAI_API_KEY`, frases corridas (≥ 3 palavras) no início da conversa ou na escolha de serviço passam por um extrator LLM (`gpt-4o-mini`, JSON) que identifica intenção (marcar/cancelar/ver), serviço, data e hora — ex. "quero marcar um corte amanhã ao meio-dia" pula direto para a confirmação. Falha ou frase vaga caem no fluxo guiado normal (`whatsapp/booking-nlu.service.ts`).  
-- **Endereço:** se cadastrado em Conta, aparece no cumprimento e na confirmação do agendamento.  
+- **Endereço:** se cadastrado em Conta, o bot responde a perguntas (“onde fica” / endereço) e inclui na **confirmação** do agendamento (e no lembrete). **Não** entra na saudação.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
 - **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para **clientes** até a data ou até reativar (profissionais cadastrados continuam no fluxo operacional).  
 - **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e resolve o alerta (ver seção Atendimentos acima).  

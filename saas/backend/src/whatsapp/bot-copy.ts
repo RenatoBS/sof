@@ -1,6 +1,7 @@
 /**
  * Copy canônica do bot WhatsApp — voz da Sof.
  * Fonte de verdade da persona: docs/brand.md
+ * Inventário vivo de todas as mensagens: docs/bot-messages.md
  *
  * Leve, confiante, calma, sofisticada. Sem emoji, sem exclamação em excesso.
  */
@@ -9,7 +10,7 @@
 export const ACK = 'Certo';
 
 /** Quando a Sof não compreende a mensagem. */
-export const DID_NOT_CATCH = 'Não peguei isso.';
+export const DID_NOT_CATCH = 'Não entendi.';
 
 export function greetNewClient(businessName: string): string {
   return `Oi. Aqui é a Sof, do ${businessName}. Qual é o seu nome e sobrenome?`;
@@ -22,12 +23,8 @@ export function askFullNameAgain(): string {
 export function greetKnownClient(
   clientName: string,
   businessName: string,
-  address?: string | null,
 ): string {
-  const addressBit = (address || '').trim()
-    ? ` Nosso endereço: ${address!.trim()}.`
-    : '';
-  return `Oi, ${clientName}. Aqui é a Sof, do ${businessName}.${addressBit}`;
+  return `Oi, ${clientName}. Aqui é a Sof, do ${businessName}.`;
 }
 
 export function formatAddressReply(opts: {

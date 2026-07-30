@@ -27,7 +27,7 @@ Formato sugerido:
 ## 2026-07-30 — Persona verbal Sof no bot WhatsApp
 
 - **Contexto:** Mensagens do bot estavam espalhadas e com tom inconsistente (exclamações, emoji no áudio, “Combinado”, “salão”); sof.solutions pede leveza com calma e sofisticação.
-- **Decisão:** Documentar persona em `docs/brand.md` (pilares Leveza / Confiança / Proximidade + calma e sofisticação) e centralizar copy em `saas/backend/src/whatsapp/bot-copy.ts`, usada pelo fluxo cliente/profissional, controller, lembretes, notify e reset de senha. Léxico: “Certo”, “Marcado.”, “Não peguei isso.”, sem emoji.
+- **Decisão:** Documentar persona em `docs/brand.md` (pilares Leveza / Confiança / Proximidade + calma e sofisticação) e centralizar copy em `saas/backend/src/whatsapp/bot-copy.ts`, usada pelo fluxo cliente/profissional, controller, lembretes, notify e reset de senha. Léxico: “Certo”, “Marcado.”, “Não entendi.”, sem emoji.
 - **Consequências:** Uma fonte de verdade para voz; NLU continua só extração JSON (não gera copy). Persona global, não por tenant.
 - **Alternativas descartadas:** LLM gerando respostas com system prompt de persona; CMS/i18n; persona custom por conta.
 
