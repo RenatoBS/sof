@@ -41,7 +41,7 @@ export class EmployeePasswordTokenService {
     const publicUrl = (
       this.config.get<string>('publicUrl') || 'http://localhost:8081'
     ).replace(/\/+$/, '');
-    const resetLink = `${publicUrl}/profissional/definir-senha?token=${encodeURIComponent(rawToken)}`;
+    const resetLink = `${publicUrl}/employee/set-password?token=${encodeURIComponent(rawToken)}`;
 
     return { resetLink, expiresAt };
   }

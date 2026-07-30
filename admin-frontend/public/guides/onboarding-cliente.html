@@ -111,7 +111,7 @@
         </div>
         <p class="callout warn">
           Sem profissionais, a agenda fica vazia. Sem WhatsApp conectado, use só
-          o simulador na Agenda (demo).
+          o <strong>Simulador WhatsApp</strong> em <code>/simulator</code> (demo).
         </p>
       </section>
 
@@ -375,9 +375,11 @@
           <figcaption class="caption">Agenda com equipe</figcaption>
         </figure>
         <p>
-          Teste rápido: na Agenda, bloco
-          <strong>Bot do WhatsApp — simulador</strong>. Em produção, a conversa
-          no número conectado cai na agenda na hora.
+          Teste rápido (sem número real): em <strong>Conta → WhatsApp</strong>,
+          botão <strong>Simulador WhatsApp</strong> →
+          <code>/simulator</code> (some após conectar o aparelho; a URL
+          continua acessível). Em produção, a conversa no número conectado cai
+          na agenda na hora.
         </p>
         <p>
           Detalhes da conversa:
@@ -388,8 +390,10 @@
       <section id="alterar">
         <h2>Alterar plano ou usar outro cupom</h2>
         <p>
-          <strong>Conta → Alterar plano</strong>: cupom promocional ou assinar
-          um plano (Stripe).
+          <strong>Conta → Alterar plano</strong> abre um
+          <strong>modal</strong> (cupom promocional ou assinar na Stripe), sem
+          sair da Conta. A tela cheia <code>/choose-plan</code> só aparece se a
+          conta estiver pausada / precisar escolher plano de novo.
         </p>
         <figure class="shot">
           <img
@@ -411,6 +415,11 @@
           <li>≥ 1 profissional com serviço(s)</li>
           <li>Profissional definiu senha (link / WhatsApp)</li>
           <li>Teste: “oi” no WhatsApp da barbearia → bot responde e agenda</li>
+          <li>
+            (Opcional) Teste no <strong>Simulador WhatsApp</strong>
+            (Conta → WhatsApp, se ainda não conectado; ou
+            <code>/simulator</code>)
+          </li>
         </ul>
         <p style="margin-top: 20px">
           Precisa de ajuda? <strong>Conta → Abrir suporte</strong>.

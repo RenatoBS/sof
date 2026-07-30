@@ -32,7 +32,7 @@ export class AccountPasswordTokenService {
     const publicUrl = (
       this.config.get<string>('publicUrl') || 'http://localhost:8081'
     ).replace(/\/+$/, '');
-    const resetLink = `${publicUrl}/definir-senha?token=${encodeURIComponent(rawToken)}`;
+    const resetLink = `${publicUrl}/set-password?token=${encodeURIComponent(rawToken)}`;
 
     return { resetLink, expiresAt };
   }

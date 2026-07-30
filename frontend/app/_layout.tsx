@@ -51,11 +51,11 @@ export default function RootLayout() {
             <Stack.Screen name="pricing" />
             <Stack.Screen name="about" />
             <Stack.Screen name="login" />
-            <Stack.Screen name="profissional/login" />
-            <Stack.Screen name="profissional/definir-senha" />
+            <Stack.Screen name="employee/login" />
+            <Stack.Screen name="employee/set-password" />
             <Stack.Screen name="checkout-return" />
             <Stack.Screen name="(dashboard)" />
-            <Stack.Screen name="(profissional)" />
+            <Stack.Screen name="(employee)" />
           </Stack>
           <ToastBanner />
         </ToastProvider>

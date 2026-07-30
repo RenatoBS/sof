@@ -24,7 +24,7 @@ Site: [www.sof.solutions](https://www.sof.solutions) · Planos: [www.sof.solutio
 | 5 | Pelo menos **1 profissional** ligado a serviço(s) | Agenda e fluxo WhatsApp |
 | 6 | (Opcional) Clientes | Podem nascer sozinhos no 1º contato no WhatsApp |
 
-Sem profissionais, a agenda fica vazia. Sem WhatsApp conectado, use só o simulador (demo).
+Sem profissionais, a agenda fica vazia. Sem WhatsApp conectado, use só o simulador em **Simulador WhatsApp** (`/simulator`, demo).
 
 ---
 
@@ -159,16 +159,18 @@ Com serviços + profissionais, a **Agenda Semanal** mostra a grade. Clique numa 
 
 ![Agenda com equipe e horários](assets/onboarding/04b-agenda-pronta.png)
 
-Teste rápido: na Agenda, bloco **Bot do WhatsApp — simulador** (útil antes ou sem número real). Em produção, a conversa real no número conectado cai na agenda na hora.
+Teste rápido: Conta → WhatsApp → **Simulador WhatsApp** (`/simulator`; o botão some depois de conectar o aparelho). Em produção, a conversa real no número conectado cai na agenda na hora.
 
 ---
 
 ## Alterar plano ou usar outro cupom depois
 
-**Conta → Alterar plano** (`/choose-plan`):
+**Conta → Alterar plano** abre um **modal** (sem sair da Conta):
 
 - Campo **Cupom promocional** → **Aplicar cupom**  
 - Ou **Assinar** um plano (Stripe)
+
+A rota `/choose-plan` só aparece quando a conta está pausada / precisa escolher plano de novo.
 
 ![Alterar plano / aplicar cupom](assets/onboarding/09-alterar-plano.png)
 
@@ -184,6 +186,7 @@ Teste rápido: na Agenda, bloco **Bot do WhatsApp — simulador** (útil antes o
 - [ ] ≥ 1 profissional com serviço(s)  
 - [ ] Profissional definiu senha (link / WhatsApp)  
 - [ ] Teste: mensagem “oi” no WhatsApp da barbearia → bot responde e agenda  
+- [ ] (Opcional) Teste no **Simulador WhatsApp** (Conta → WhatsApp, se ainda não conectado; ou `/simulator`)  
 
 ---
 

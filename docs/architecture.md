@@ -124,7 +124,7 @@ Datasource usa:
 | Integração | Sem credencial | Com credencial |
 |------------|----------------|----------------|
 | Stripe | Checkout demo (aprova em fluxo mock) | Checkout Session + webhook real |
-| WhatsApp (Uazapi, default) | Bot off; simulador na Agenda | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta; menus via `/send/menu`; áudio transcrito via `/message/download` + `OPENAI_API_KEY`; se o telefone for de um `Employee`, FSM em `whatsapp-employee-bot.service.ts` (agenda / marcar / evento / concluir / cancelar / falar com estabelecimento + NLU próprio) |
+| WhatsApp (Uazapi, default) | Bot off; simulador em `/simulator` | `WHATSAPP_BASE_URL` + admin token (multi-conta) ou token de instância; QR/código na Conta; menus via `/send/menu`; áudio transcrito via `/message/download` + `OPENAI_API_KEY`; se o telefone for de um `Employee`, FSM em `whatsapp-employee-bot.service.ts` (agenda / marcar / evento / concluir / cancelar / falar com estabelecimento + NLU próprio) |
 | OpenAI (NLU do bot) | Frases livres caem no fluxo guiado | `OPENAI_API_KEY`: transcrição de áudio (via Uazapi) + extração de intenção/serviço/data/hora com `gpt-4o-mini` (`whatsapp/booking-nlu.service.ts`) |
 | WhatsApp Cloud (Meta) | Bot off; simulador | `WHATSAPP_PROVIDER=meta` + token + Phone Number ID (sem QR no painel); menus `interactive` |
 
@@ -156,21 +156,25 @@ URLs:
 | `/(dashboard)/choose-plan` | Escolher/alterar plano ou aplicar cupom (obrigatório se `paused`) |
 | `/about` | Quem somos |
 | `/login` | Entrar (conta ou profissional) |
+| `/forgot-password` | Esqueci senha (conta ou profissional) |
+| `/set-password` | Definir senha da conta (`?token=`) |
+| `/employee/set-password` | Definir senha do profissional (`?token=`) |
 | `/checkout-return` | Retorno Stripe → auto-login agenda |
-| `/(dashboard)/agenda` | Agenda semanal + simulador WA |
+| `/(dashboard)/agenda` | Agenda semanal |
+| `/(dashboard)/simulator` | Simulador WhatsApp (`noindex`; fora das tabs) |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
 | `/(dashboard)/handoffs` | Atendimentos (alertas de escalonamento + config) |
 | `/(dashboard)/support` | Tickets de suporte Sof |
 | `/(dashboard)/billing` | Faturamento |
 | `/(dashboard)/account` | Conta / horários / integrações |
-| `/profissional/login` | Redirect → `/login` |
-| `/(profissional)/agenda` | Agenda do profissional |
-| `/(profissional)/support` | Tickets da conta (comentar / status) |
-| `/(profissional)/trocar-senha` | Troca de senha (obrigatória no 1º acesso) |
+| `/employee/login` | Redirect → `/login` |
+| `/(employee)/agenda` | Agenda do profissional |
+| `/(employee)/support` | Tickets da conta (comentar / status) |
+| `/(employee)/change-password` | Troca de senha (obrigatória no 1º acesso) |
 
 Gate do dashboard: sem `account` → redirect `/login`; com `needsPlanSelection` (`status=paused`) → `/(dashboard)/choose-plan` (abas ocultas).  
-Gate do portal profissional: sem sessão employee → `/login`; com `mustChangePassword` → `trocar-senha`.
+Gate do portal profissional: sem sessão employee → `/login`; com `mustChangePassword` → `change-password`.
 
 ### Estado
 

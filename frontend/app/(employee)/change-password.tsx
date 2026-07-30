@@ -33,7 +33,7 @@ export default function TrocarSenhaScreen() {
         newPassword,
       );
       await setEmployeeSession(updated);
-      router.replace('/(profissional)/agenda');
+      router.replace('/(employee)/agenda');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível trocar');
     } finally {

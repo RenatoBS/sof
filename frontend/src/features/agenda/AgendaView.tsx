@@ -4,12 +4,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 import type { Appointment } from '@/src/api/types';
-import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
 import { SofButton } from '@/src/components/ui';
 import { d } from '@/src/theme/dashboard';
@@ -66,7 +64,7 @@ export function AgendaView({
   const { width } = useWindowDimensions();
   const isCompact = width < COMPACT_BREAKPOINT;
   const colW = Math.max(110, Math.min(140, (width - 220) / 7));
-  const { employees, appointments, getService, loadAll } = useDashboard();
+  const { employees, appointments, getService } = useDashboard();
   const [weekOffset, setWeekOffset] = useState(0);
   const [viewMode, setViewMode] = useState<AgendaViewMode>(readStoredViewMode);
   /** IDs de profissionais com a linha recolhida (só 1º horário por dia). */
@@ -76,13 +74,6 @@ export function AgendaView({
   const [selectedDate, setSelectedDate] = useState(() =>
     localDateStr(new Date()),
   );
-  const [waPhone, setWaPhone] = useState('5511999990000');
-  const [waMessage, setWaMessage] = useState('');
-  const [waLog, setWaLog] = useState<{ dir: 'in' | 'out'; text: string }[]>(
-    [],
-  );
-  const [waLoading, setWaLoading] = useState(false);
-  const [waOn, setWaOn] = useState(false);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const todayStr = localDateStr(new Date());
@@ -115,30 +106,6 @@ export function AgendaView({
       else next.add(employeeId);
       return next;
     });
-  };
-
-  useEffect(() => {
-    dashboardApi
-      .integrations()
-      .then((data) => setWaOn(data.whatsapp.configured))
-      .catch(() => undefined);
-  }, []);
-
-  const simulateWa = async () => {
-    if (!waMessage.trim()) return;
-    setWaLog((l) => [...l, { dir: 'out', text: waMessage }]);
-    setWaLoading(true);
-    try {
-      const data = await dashboardApi.simulateWhatsapp(waMessage, waPhone);
-      setWaLog((l) => [
-        ...l,
-        ...data.replies.map((text) => ({ dir: 'in' as const, text })),
-      ]);
-      if (data.appointment) await loadAll();
-      setWaMessage('');
-    } finally {
-      setWaLoading(false);
-    }
   };
 
   const dayApptsFor = (employeeId: string, dateStr: string) =>
@@ -637,57 +604,6 @@ export function AgendaView({
           </View>
         </ScrollView>
       )}
-
-      <View style={[styles.card, isCompact && styles.cardCompact]}>
-        <Text style={styles.cardTitle}>Bot do WhatsApp — simulador</Text>
-        <Text style={styles.cardDesc}>
-          Em produção, os agendamentos chegam de verdade pelo WhatsApp do
-          cliente e caem aqui na hora.{' '}
-          <Text style={[styles.waStatus, waOn ? styles.waOn : styles.waOff]}>
-            {waOn ? 'conectado' : 'modo demo'}
-          </Text>
-        </Text>
-        <ScrollView
-          style={styles.waLog}
-          contentContainerStyle={styles.waLogInner}
-        >
-          {waLog.map((b, i) => (
-            <View
-              key={i}
-              style={[
-                styles.bubble,
-                b.dir === 'out' ? styles.bubbleOut : styles.bubbleIn,
-              ]}
-            >
-              <Text style={styles.bubbleText}>{b.text}</Text>
-            </View>
-          ))}
-        </ScrollView>
-        <View style={[styles.waForm, isCompact && styles.waFormCompact]}>
-          <TextInput
-            style={[styles.waInput, isCompact && styles.waInputCompact]}
-            value={waPhone}
-            onChangeText={setWaPhone}
-            placeholder="Telefone do cliente"
-          />
-          <TextInput
-            style={[
-              styles.waInput,
-              { flex: 1 },
-              isCompact && styles.waInputCompact,
-            ]}
-            value={waMessage}
-            onChangeText={setWaMessage}
-            placeholder="Mensagem (ex.: oi)"
-          />
-          <SofButton
-            title={waLoading ? '…' : 'Enviar'}
-            variant="dark"
-            theme="dashboard"
-            onPress={simulateWa}
-          />
-        </View>
-      </View>
     </View>
   );
 }
@@ -947,79 +863,5 @@ const styles = StyleSheet.create({
     color: '#15803d',
     fontWeight: '700',
     marginTop: 4,
-  },
-  card: {
-    backgroundColor: d.surface,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.line,
-    padding: 32,
-    gap: 12,
-  },
-  cardCompact: {
-    padding: 16,
-  },
-  cardTitle: { fontWeight: '600', fontSize: 16, marginBottom: 4 },
-  cardDesc: { color: d.muted, fontSize: 14, marginBottom: 8 },
-  waStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  waOn: { color: d.waGreenText, backgroundColor: '#e7f9ef' },
-  waOff: { color: '#94a3b8', backgroundColor: '#f1f5f9' },
-  waLog: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: d.line,
-    borderRadius: d.radiusSm,
-    minHeight: 120,
-    maxHeight: 280,
-  },
-  waLogInner: {
-    padding: 16,
-    gap: 8,
-  },
-  bubble: {
-    maxWidth: '80%',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  bubbleText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: d.ink,
-  },
-  bubbleOut: { backgroundColor: '#dcf8c6', alignSelf: 'flex-end' },
-  bubbleIn: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: d.line,
-    alignSelf: 'flex-start',
-  },
-  waForm: {
-    flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  waFormCompact: { flexDirection: 'column', alignItems: 'stretch' },
-  waInput: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: d.radiusSm,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    minWidth: 160,
-    backgroundColor: '#fff',
-  },
-  waInputCompact: {
-    minWidth: 0,
-    width: '100%',
   },
 });

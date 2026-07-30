@@ -562,7 +562,7 @@ export default function AccountScreen() {
               <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
               <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
               <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma
-              instância). Enquanto isso, use o simulador na Agenda.
+              instância).
             </Text>
           </View>
         ) : waLinked ? (
@@ -680,6 +680,21 @@ export default function AccountScreen() {
             )}
           </>
         )}
+
+        {!waLinked ? (
+          <View style={styles.simBlock}>
+            <Text style={styles.help}>
+              Sem número pareado, teste o bot no simulador (telefone +
+              mensagem).
+            </Text>
+            <SofButton
+              title="Simulador WhatsApp"
+              variant="light"
+              theme="dashboard"
+              onPress={() => router.push('/(dashboard)/simulator')}
+            />
+          </View>
+        ) : null}
 
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
 
@@ -1231,6 +1246,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: d.ink,
     backgroundColor: '#f1f5f9',
+  },
+  simBlock: {
+    marginTop: 4,
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: d.line,
   },
   saved: { color: d.waGreenText, fontWeight: '600' },
   error: { color: d.danger, fontWeight: '600' },
