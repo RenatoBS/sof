@@ -26,6 +26,7 @@ Qualquer mudança em:
 2. Registrar a decisão em [`docs/decisions.md`](docs/decisions.md) (nova entrada no topo, data ISO).
 3. Se a mudança afeta o “mapa mental” do repo, atualizar **este** `AGENTS.md` (índice, resumo ou links).
 4. Manter [`README.md`](README.md) só como quickstart curto — detalhe fica em `docs/`.
+5. Após alterar qualquer `docs/*.md`, em `admin/frontend` rodar `npm run sync-docs` e **commitar** `public/internal-docs/` (visível no painel em `/docs`, área logada).
 
 ### O que nunca fazer
 
@@ -89,7 +90,7 @@ Browser / Expo Go                         Admin (web)
 - **API produto:** NestJS + Prisma, prefixo `/api/*`, health em `/api/health`.
 - **Front produto:** Expo SDK ~57 + expo-router; marketing + dashboard.
 - **API admin:** NestJS separado (`admin/backend/`, porta local 3011); gerencia contas e catálogo de planos Stripe.
-- **Front admin:** Expo web (`admin/frontend/`, porta 8091).
+- **Front admin:** Expo web (`admin/frontend`, porta 8091). Docs internos autenticados em `/docs` (sync de `docs/*.md` → `public/internal-docs/`). Guias HTML do cliente em `/guides` (públicos).
 - **Pagamentos:** Stripe Checkout (ou modo demo sem `STRIPE_SECRET_KEY`); catálogo em tabela `Plan` com entitlements de gate.
 - **Gate por plano:** keys no código; valores no admin; enforcement no backend; front via `account.entitlements`.
 - **WhatsApp:** Uazapi (default) com pareamento QR/código na Conta; Meta Cloud API opcional; simulador se desligado.
@@ -168,3 +169,4 @@ Sof/
 - [ ] Deploy/env alterados → [`docs/deployment.md`](docs/deployment.md)
 - [ ] Flow local alterado → [`docs/local-development.md`](docs/local-development.md)
 - [ ] Índice / resumo deste `AGENTS.md` ainda correto
+- [ ] Se `docs/*.md` mudou → `npm run sync-docs` em `admin/frontend` + `public/internal-docs/` commitado
