@@ -691,7 +691,7 @@ export default function AccountScreen() {
               title="Simulador WhatsApp"
               variant="light"
               theme="dashboard"
-              onPress={() => router.push('/(dashboard)/simulador')}
+              onPress={() => router.push('/(dashboard)/simulator')}
             />
           </View>
         ) : null}

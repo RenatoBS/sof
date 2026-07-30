@@ -24,9 +24,9 @@ Sof ajuda negócios a:
 | Planos | `/pricing` | Solo / Equipe / Rede; CTA abre checkout |
 | Quem somos | `/about` | Valores Leveza / Confiança / Proximidade |
 | Entrar | `/login` | Conta ou profissional (mesmo formulário) → painel / agenda |
-| Esqueci senha | `/esqueci-senha` | Conta ou profissional; e-mail + WhatsApp (se disponível); link 2h |
-| Definir senha (conta) | `/definir-senha?token=` | Reset da conta dona |
-| Definir senha (prof) | `/profissional/definir-senha?token=` | Convite/reset do profissional |
+| Esqueci senha | `/forgot-password` | Conta ou profissional; e-mail + WhatsApp (se disponível); link 2h |
+| Definir senha (conta) | `/set-password?token=` | Reset da conta dona |
+| Definir senha (prof) | `/employee/set-password?token=` | Convite/reset do profissional |
 | Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
 
 Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`. Tabbar do painel: ícone + label por aba (`DashboardTabIcon`).
@@ -108,7 +108,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
   - **Evento / bloqueio** — título livre (almoço, médico, etc.), duração e horário livres; sem cliente/serviço; ocupa a agenda do profissional (conflito).
 - **Recorrência** na criação (serviço ou evento): diário / semanal / mensal até uma data (máx. 52 ocorrências); editar altera só a ocorrência; excluir pode ser “só esta” ou “série inteira” (`?scope=series`).  
 - Empty state se não houver profissionais.  
-- Página **Simulador WhatsApp** em `/(dashboard)/simulador` (`noindex`, fora das tabs) — telefone + mensagem → `POST /api/whatsapp/simulate`. Botão na Conta (seção WhatsApp) só se o dispositivo ainda não estiver conectado; a rota continua acessível pela URL.  
+- Página **Simulador WhatsApp** em `/(dashboard)/simulator` (`noindex`, fora das tabs) — telefone + mensagem → `POST /api/whatsapp/simulate`. Botão na Conta (seção WhatsApp) só se o dispositivo ainda não estiver conectado; a rota continua acessível pela URL.  
 - Toast + grade atualizam em tempo real via SSE.
 - Faturamento ignora eventos `kind=block` (preço 0).
 - **Status:** `scheduled` (ocupa slot) → `completed` (libera slot; badge “Concluído”) ou `cancelled`. Auto-conclusão quando a hora de fim chega (job a cada 5 min). Conta pode marcar concluído a qualquer momento (`POST /api/appointments/:id/complete`); profissional só na janela do atendimento.
@@ -121,7 +121,7 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 - Form front: máscara de telefone `(11) 99999-8888` + validação por campo (nome, telefone 10–15 dígitos, e-mail, ≥1 serviço) antes do POST/PUT.  
 - Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`) e **um ou mais serviços** do cardápio (obrigatório).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
-- Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/profissional/definir-senha?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
+- Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/employee/set-password?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
 - **Enviar no WhatsApp:** `POST /api/employees/:id/send-password-link` gera (ou regenera) o link, invalida a senha atual e envia **somente pelo WhatsApp** da conta (não por e-mail). Exige telefone do profissional e WhatsApp conectado.  
 - **Self-service:** o profissional também pode pedir o link — ver área do profissional e bot WhatsApp.
 - `PUT /api/employees/:id` substitui nome, e-mail, telefone, cor e a lista de serviços (`resetPassword` opcional → novo link).  
@@ -130,13 +130,13 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 ### Área do profissional
 
 - Login unificado em `/login` (`POST /api/auth/login` ou `/api/employee-auth/login` conforme o e-mail).  
-- **Esqueci a senha:** `/esqueci-senha` (link em `/login`) → `POST /api/auth/request-password-reset` (público, throttle). Resolve conta ou profissional pelo e-mail; envia link por **e-mail** e/ou **WhatsApp** (best-effort). Conta: `/definir-senha?token=`; profissional: mesmo fluxo legado em `/profissional/definir-senha` (ou via endpoint employee). Resposta sempre genérica.
-- **Definir senha (convite/reset profissional):** `/profissional/definir-senha?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).
-- **Definir senha (conta):** `/definir-senha?token=` — `GET/POST /api/auth/password-setup`.
-- Portal `/(profissional)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.
+- **Esqueci a senha:** `/forgot-password` (link em `/login`) → `POST /api/auth/request-password-reset` (público, throttle). Resolve conta ou profissional pelo e-mail; envia link por **e-mail** e/ou **WhatsApp** (best-effort). Conta: `/set-password?token=`; profissional: mesmo fluxo legado em `/employee/set-password` (ou via endpoint employee). Resposta sempre genérica.
+- **Definir senha (convite/reset profissional):** `/employee/set-password?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).
+- **Definir senha (conta):** `/set-password?token=` — `GET/POST /api/auth/password-setup`.
+- Portal `/(employee)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.
 - Pode **marcar como concluído** (`POST /api/employee/appointments/:id/complete`) **somente dentro da janela** [início, fim] do atendimento; conclusão antecipada libera o restante do slot.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
-- Se `mustChangePassword` (legado), redireciona para `/(profissional)/trocar-senha` (exige senha atual).
+- Se `mustChangePassword` (legado), redireciona para `/(employee)/change-password` (exige senha atual).
 
 ### Serviços
 

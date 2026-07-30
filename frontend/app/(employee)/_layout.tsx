@@ -9,7 +9,7 @@ import { d } from '@/src/theme/dashboard';
 function EmployeeChrome({ children }: { children: React.ReactNode }) {
   const { employee, loading, logout } = useEmployeeAuth();
   const pathname = usePathname();
-  const onChangePassword = pathname.includes('trocar-senha');
+  const onChangePassword = pathname.includes('change-password');
   const onSupport = pathname.includes('support');
 
   if (loading) {
@@ -19,11 +19,11 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   if (!employee) return <Redirect href="/login" />;
 
   if (employee.mustChangePassword && !onChangePassword) {
-    return <Redirect href="/(profissional)/trocar-senha" />;
+    return <Redirect href="/(employee)/change-password" />;
   }
 
   if (!employee.mustChangePassword && onChangePassword) {
-    return <Redirect href="/(profissional)/agenda" />;
+    return <Redirect href="/(employee)/agenda" />;
   }
 
   return (
@@ -51,7 +51,7 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
                 title="Suporte"
                 variant="light"
                 theme="dashboard"
-                onPress={() => router.push('/(profissional)/support')}
+                onPress={() => router.push('/(employee)/support')}
               />
             ) : null}
             {!onChangePassword && onSupport ? (
@@ -59,7 +59,7 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
                 title="Agenda"
                 variant="light"
                 theme="dashboard"
-                onPress={() => router.push('/(profissional)/agenda')}
+                onPress={() => router.push('/(employee)/agenda')}
               />
             ) : null}
             <SofButton
@@ -79,7 +79,7 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function ProfissionalLayout() {
+export default function EmployeeLayout() {
   return (
     <EmployeeChrome>
       <Slot />

@@ -3,10 +3,10 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { WhatsappSimulatorPanel } from '@/src/features/whatsapp/WhatsappSimulatorPanel';
 
 /**
- * Simulador do bot — fora das tabs e com noindex (não deve aparecer em buscas).
- * URL: /(dashboard)/simulador → /simulador
+ * WhatsApp bot simulator — outside tabs, noindex.
+ * URL: /(dashboard)/simulator → /simulator
  */
-export default function SimuladorScreen() {
+export default function SimulatorScreen() {
   return (
     <>
       <Head>

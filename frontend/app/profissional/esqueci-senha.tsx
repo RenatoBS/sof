@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 
-/** Compat: redireciona para o fluxo unificado conta/profissional. */
-export default function EsqueciSenhaProfissionalRedirect() {
-  return <Redirect href="/esqueci-senha" />;
+/** Compat: `/forgot-password` → `/forgot-password`. */
+export default function ProfissionalEsqueciSenhaRedirect() {
+  return <Redirect href="/forgot-password" />;
 }

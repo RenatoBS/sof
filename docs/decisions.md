@@ -17,11 +17,18 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Rotas do frontend em inglês
+
+- **Contexto:** Mix de paths PT (`/simulador`, `/esqueci-senha`, `/profissional/…`) e EN (`/account`, `/employees`) no export estático.
+- **Decisão:** Paths canônicos em inglês (`/simulator`, `/forgot-password`, `/set-password`, `/employee/*`, `/(employee)/change-password`); stubs de redirect nas URLs antigas; e-mails de reset usam as novas URLs.
+- **Consequências:** Sitemap/export coerente; links antigos em e-mail/WhatsApp ainda resolvem via redirect.
+- **Alternativas descartadas:** Manter PT só no portal do profissional; quebrar links antigos sem redirect.
+
 ## 2026-07-29 — Simulador WhatsApp fora da Agenda (`noindex`)
 
 - **Contexto:** O bloco do simulador pesava a Agenda (superfície principal) e não precisava de discoverability em busca/nav.
-- **Decisão:** Página `/(dashboard)/simulador` com `robots: noindex,nofollow`, fora das tabs; botão só na Conta (seção WhatsApp) enquanto `!waLinked`; rota aberta se acessada direto.
-- **Consequências:** Demo/teste do bot continua via auth; URL direta `/simulador`.
+- **Decisão:** Página `/(dashboard)/simulator` com `robots: noindex,nofollow`, fora das tabs; botão só na Conta (seção WhatsApp) enquanto `!waLinked`; rota aberta se acessada direto.
+- **Consequências:** Demo/teste do bot continua via auth; URL direta `/simulator`.
 - **Alternativas descartadas:** Manter embutido na Agenda; tab dedicada na nav; esconder a rota quando conectado.
 
 ## 2026-07-29 — Guias HTML por plano (Solo / Equipe / Rede)
@@ -150,7 +157,7 @@ Formato sugerido:
 
 - **Contexto:** Sem canal de e-mail; reset só WhatsApp (profissional); conta dona sem “esqueci senha”; pós-checkout sem boas-vindas.  
 - **Decisão:** `MailModule` (nodemailer + `SMTP_*`/`MAIL_FROM`); esqueci senha unificado (conta/prof) via e-mail + WhatsApp; link do profissional pelo painel continua **só WhatsApp**; tickets sem e-mail; boas-vindas no `provisionAccount` (nova conta).  
-- **Consequências:** `AccountPasswordToken`; páginas `/esqueci-senha` e `/definir-senha`; Gmail App Password ok para MVP (limites de volume).  
+- **Consequências:** `AccountPasswordToken`; páginas `/forgot-password` e `/set-password`; Gmail App Password ok para MVP (limites de volume).  
 - **Alternativas descartadas:** Resend/SendGrid já no MVP; e-mail no convite do profissional pelo painel.
 
 ---
@@ -411,7 +418,7 @@ Formato sugerido:
 ## 2026-07-23 — Reset de senha do profissional (web + bot)
 
 - **Contexto:** Reset só existia pelo painel da conta; o profissional ficava dependente do responsável.  
-- **Decisão:** `EmployeePasswordResetService` (issue + CTA WhatsApp) compartilhado entre painel, `POST /api/employee-auth/request-password-reset` (público, resposta genérica) e opção **Redefinir senha** no menu/NLU do bot. UI: `/profissional/esqueci-senha` + link em `/login`.  
+- **Decisão:** `EmployeePasswordResetService` (issue + CTA WhatsApp) compartilhado entre painel, `POST /api/employee-auth/request-password-reset` (público, resposta genérica) e opção **Redefinir senha** no menu/NLU do bot. UI: `/forgot-password` + link em `/login`.  
 - **Consequências:** Sempre invalida a senha atual ao emitir o link; exige telefone do prof + WhatsApp da conta conectado.  
 - **Alternativas descartadas:** E-mail SMTP; reset só por token na web sem WhatsApp; exigir senha atual no forgot.
 
@@ -465,7 +472,7 @@ Formato sugerido:
 ## 2026-07-22 — Link de uso único para senha do profissional (2h)
 
 - **Contexto:** Reset gerava senha temporária para a conta copiar; o profissional ainda precisava da “senha antiga” no 1º acesso.  
-- **Decisão:** `EmployeePasswordToken` + endpoints públicos `GET/POST /api/employee-auth/password-setup`. Criar profissional ou `resetPassword` emite link `${PUBLIC_URL}/profissional/definir-senha?token=…` (uso único, 2h). A página mostra o e-mail de login; ao definir senha, marca o token usado, limpa `mustChangePassword` e devolve JWT (login automático). Reset invalida senha anterior (`passwordHash=null`).  
+- **Decisão:** `EmployeePasswordToken` + endpoints públicos `GET/POST /api/employee-auth/password-setup`. Criar profissional ou `resetPassword` emite link `${PUBLIC_URL}/employee/set-password?token=…` (uso único, 2h). A página mostra o e-mail de login; ao definir senha, marca o token usado, limpa `mustChangePassword` e devolve JWT (login automático). Reset invalida senha anterior (`passwordHash=null`).  
 - **Consequências:** Conta só compartilha URL; seed demo continua com senha conhecida. `trocar-senha` autenticado permanece para troca voluntária / legado.  
 - **Alternativas descartadas:** Manter senha temporária + troca forçada; magic link sem senha (fora do escopo).
 
@@ -632,14 +639,14 @@ Formato sugerido:
 ## 2026-07-16 — Login unificado conta + profissional
 
 - **Contexto:** Duas telas de login confundiam o fluxo.  
-- **Decisão:** Um único `/login`; tenta `POST /api/auth/login` e, se o e-mail não existir na conta, tenta `POST /api/employee-auth/login`; redireciona ao painel ou à agenda do profissional. `/profissional/login` vira redirect.  
+- **Decisão:** Um único `/login`; tenta `POST /api/auth/login` e, se o e-mail não existir na conta, tenta `POST /api/employee-auth/login`; redireciona ao painel ou à agenda do profissional. `/employee/login` vira redirect.  
 - **Consequências:** Copy e gates apontam só para `/login`.  
 - **Alternativas descartadas:** Toggle Empresa/Profissional; manter duas URLs.
 
 ## 2026-07-16 — Login do profissional (agenda própria)
 
 - **Contexto:** Só o dono da conta tinha acesso; profissionais precisavam ver a própria agenda e cancelar horários.  
-- **Decisão:** `Employee.email` (único), `passwordHash`, `mustChangePassword`; JWT com `role: employee` + cookie `sof_employee_session`; portal `/(profissional)/*`; create gera senha temporária; 1º acesso força troca de senha; cancelamento do profissional marca `status=cancelled` (libera slot). Login unificado em `/login` (tenta conta, depois profissional se o e-mail não existir na conta).  
+- **Decisão:** `Employee.email` (único), `passwordHash`, `mustChangePassword`; JWT com `role: employee` + cookie `sof_employee_session`; portal `/(employee)/*`; create gera senha temporária; 1º acesso força troca de senha; cancelamento do profissional marca `status=cancelled` (libera slot). Login unificado em `/login` (tenta conta, depois profissional se o e-mail não existir na conta).  
 - **Consequências:** Cadastro de profissional exige e-mail; painel mostra senha gerada uma vez; endpoints `/api/employee-auth/*` e `/api/employee/appointments`.  
 - **Alternativas descartadas:** Telas de login separadas; mesmo login da conta com role; hard delete no cancelamento do profissional; senha escolhida pelo dono sem geração automática.
 

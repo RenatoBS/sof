@@ -42,9 +42,9 @@ export default function LoginScreen() {
       await logoutAccount().catch(() => undefined);
       const emp = await loginEmployee(normalizedEmail, password);
       if (emp.mustChangePassword) {
-        router.replace('/(profissional)/trocar-senha');
+        router.replace('/(employee)/change-password');
       } else {
-        router.replace('/(profissional)/agenda');
+        router.replace('/(employee)/agenda');
       }
     } catch (err) {
       const message =
@@ -90,7 +90,7 @@ export default function LoginScreen() {
           />
           <Text
             style={styles.forgot}
-            onPress={() => router.push('/esqueci-senha')}
+            onPress={() => router.push('/forgot-password')}
           >
             Esqueci minha senha
           </Text>
