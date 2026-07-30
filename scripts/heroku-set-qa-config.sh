@@ -18,6 +18,11 @@ fi
 API_URL="$(heroku apps:info -a "$API_APP" -s 2>/dev/null | sed -n 's/^web_url=//p' | sed 's:/*$::')"
 WEB_URL="$(heroku apps:info -a "$WEB_APP" -s 2>/dev/null | sed -n 's/^web_url=//p' | sed 's:/*$::')"
 
+# Prefer custom domain qa.sof.solutions when attached to the web app
+if heroku domains -a "$WEB_APP" 2>/dev/null | grep -q 'qa.sof.solutions'; then
+  WEB_URL="https://qa.sof.solutions"
+fi
+
 if [[ -z "$API_URL" || -z "$WEB_URL" ]]; then
   echo "Nao foi possivel obter web_url dos apps $API_APP / $WEB_APP" >&2
   exit 1

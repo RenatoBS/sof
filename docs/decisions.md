@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-30 — Domínio QA `qa.sof.solutions`
+
+- **Contexto:** Web QA só em `*.herokuapp.com`.
+- **Decisão:** Custom domain no `sof-agendamento-web-qa`; CNAME Hostinger `qa` → target Heroku DNS; API QA usa `PUBLIC_URL`/`CORS_ORIGIN` = `https://qa.sof.solutions`. API continua no hostname Heroku até haver subdomínio dedicado.
+- **Consequências:** Certificado ACM após DNS propagar; `heroku:qa:config` prefere o domínio custom.
+- **Alternativas descartadas:** `www-qa`; apontar API e web no mesmo host.
+
 ## 2026-07-30 — Ambiente QA SaaS (Heroku + Supabase staging)
 
 - **Contexto:** Precisávamos de um ambiente isolado do produto (sem admin) para validar com banco/Stripe/Uazapi de staging.

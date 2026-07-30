@@ -19,7 +19,15 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 | App Heroku | `APP_BASE` | URL |
 |------------|------------|-----|
 | `sof-agendamento-api-qa` | `saas/backend` | https://sof-agendamento-api-qa-8b73b9b8bd8b.herokuapp.com |
-| `sof-agendamento-web-qa` | `saas/frontend` | https://sof-agendamento-web-qa-caeea22b3c6d.herokuapp.com |
+| `sof-agendamento-web-qa` | `saas/frontend` | https://qa.sof.solutions (Heroku: `…-caeea22b3c6d.herokuapp.com`) |
+
+DNS Hostinger (web QA):
+
+| Tipo | Host | Destino |
+|------|------|---------|
+| CNAME | `qa` | `tranquil-mammal-85ehpepda34n6p7y1y62v588.herokudns.com` |
+
+Após o CNAME propagar, ACM emite o certificado (`heroku certs:auto -a sof-agendamento-web-qa`). `PUBLIC_URL` / `CORS_ORIGIN` da API QA apontam para `https://qa.sof.solutions`.
 
 Fonte local das envs da API QA: `saas/backend/.env.qa` (não commitado; template em `.env.qa.example`). Aplicar/atualizar no Heroku:
 
