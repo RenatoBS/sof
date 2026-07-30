@@ -366,6 +366,149 @@ tr:last-child td {
   color: var(--copper-ink);
 }
 
+.badge.ok {
+  background: #eef6f1;
+  color: var(--ok);
+}
+
+.badge.off {
+  background: #f3f3f3;
+  color: var(--muted);
+}
+
+.plan-price {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--accent-ink);
+}
+
+.plan-price span {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.plan-switcher {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 8px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .plan-switcher {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.plan-switcher a {
+  display: block;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.plan-switcher a:hover {
+  border-color: var(--copper);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.plan-switcher a[aria-current="page"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.plan-switcher strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+.plan-switcher span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.feature-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.feature-list li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 11px 12px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.feature-list li .mark {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.feature-list li.on .mark {
+  background: #eef6f1;
+  color: var(--ok);
+}
+
+.feature-list li.off .mark {
+  background: #f3f3f3;
+  color: var(--muted);
+}
+
+.feature-list li .label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.feature-list li .hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.cmp th.plan-col,
+.cmp td.plan-col {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cmp .yes {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.cmp .no {
+  color: var(--muted);
+}
+
 /* Chat mock for bot guide */
 .chat {
   margin: 16px 0;

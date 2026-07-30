@@ -13,6 +13,21 @@ const GUIDES = [
     body: 'Fluxo do cliente (agendar) e do profissional (operar a agenda no celular).',
     path: '/guides/bot-whatsapp.html',
   },
+  {
+    title: 'Plano Solo',
+    body: 'Funções do Solo (R$ 139): bot, agenda e cadastros · até 3 profissionais.',
+    path: '/guides/plano-solo.html',
+  },
+  {
+    title: 'Plano Equipe',
+    body: 'Funções do Equipe (R$ 199): lembretes, faturamento, handoffs, NLU · até 8 profissionais.',
+    path: '/guides/plano-equipe.html',
+  },
+  {
+    title: 'Plano Rede',
+    body: 'Funções do Rede (R$ 259): áudio, suporte prioritário · profissionais ilimitados.',
+    path: '/guides/plano-rede.html',
+  },
 ] as const;
 
 function openGuide(path: string) {

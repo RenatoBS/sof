@@ -15,6 +15,7 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { useEntitlements } from '@/src/entitlements/useEntitlements';
 import { BusinessLogo } from '@/src/components/BusinessLogo';
 import { SofButton, SofCard, SofIconAction, SofInput } from '@/src/components/ui';
+import { ChoosePlanModal } from '@/src/features/account/ChoosePlanModal';
 import {
   EstablishmentModal,
 } from '@/src/features/account/EstablishmentModal';
@@ -157,6 +158,7 @@ export default function AccountScreen() {
   );
   const [establishmentOpen, setEstablishmentOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const [integrations, setIntegrations] = useState({
     wa: false,
     pairingAvailable: false,
@@ -500,7 +502,7 @@ export default function AccountScreen() {
             title="Alterar plano"
             variant="light"
             theme="dashboard"
-            onPress={() => router.push('/(dashboard)/choose-plan')}
+            onPress={() => setPlanOpen(true)}
           />
         </View>
       </SofCard>
@@ -960,6 +962,10 @@ export default function AccountScreen() {
           void setSession({ ...account, openingHours: saved });
         }}
       />
+      <ChoosePlanModal
+        visible={planOpen}
+        onClose={() => setPlanOpen(false)}
+      />
     </View>
   );
 }
@@ -970,24 +976,25 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxWidth: 1040,
   },
-  grid: {
+  stack: {
     gap: 18,
   },
-  gridWide: {
+  columns: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 24,
   },
-  gridItem: {
+  column: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    maxWidth: '48%',
+    gap: 18,
+  },
+  section: {
     width: '100%',
     gap: 8,
-  },
-  gridItemWide: {
-    flexBasis: '48%',
-    flexGrow: 0,
-    flexShrink: 0,
-    maxWidth: '48%',
   },
   cardHead: {
     flexDirection: 'row',
@@ -1261,19 +1268,4 @@ const styles = StyleSheet.create({
     color: d.ink,
     fontFamily: 'monospace',
   },
-  dangerZone: {
-    marginTop: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-    borderRadius: d.radius,
-    borderWidth: 1,
-    borderColor: d.dangerSoft,
-    backgroundColor: '#fffafa',
-    padding: 20,
-  },
-  dangerText: { flex: 1, gap: 4, minWidth: 180 },
-  dangerTitle: { fontSize: 15, fontWeight: '700', color: d.ink },
 });

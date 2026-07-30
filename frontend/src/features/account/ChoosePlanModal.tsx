@@ -7,21 +7,20 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
 import { billingApi, plansApi } from '@/src/api/endpoints';
 import { useAuth } from '@/src/auth/AuthProvider';
-import {
-  SofButton,
-  SofCard,
-  SofErrorBanner,
-  SofInput,
-  SofPageHeader,
-} from '@/src/components/ui';
+import { SofButton, SofErrorBanner, SofInput } from '@/src/components/ui';
+import { EntityFormModal } from '@/src/features/dashboard/EntityFormModal';
 import { d } from '@/src/theme/dashboard';
 
 type PlanOption = { name: string; price: number; features: string[] };
 
-export default function ChoosePlanScreen() {
+type ChoosePlanModalProps = {
+  visible: boolean;
+  onClose: () => void;
+};
+
+export function ChoosePlanModal({ visible, onClose }: ChoosePlanModalProps) {
   const { account, setSession, refreshMe } = useAuth();
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +29,12 @@ export default function ChoosePlanScreen() {
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
 
-  const expired = Boolean(account?.needsPlanSelection);
-
   useEffect(() => {
+    if (!visible) return;
+    setCouponCode('');
+    setError('');
+    setBusy(false);
+    setLoading(true);
     let cancelled = false;
     plansApi
       .list()
@@ -49,7 +51,7 @@ export default function ChoosePlanScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [visible]);
 
   const applyCoupon = async () => {
     setError('');
@@ -62,7 +64,7 @@ export default function ChoosePlanScreen() {
     try {
       const res = await billingApi.redeemCoupon(code);
       await setSession(res.account);
-      router.replace('/(dashboard)/agenda');
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Cupom inválido.');
     } finally {
@@ -86,27 +88,30 @@ export default function ChoosePlanScreen() {
       } else {
         await refreshMe();
       }
-      router.replace('/(dashboard)/agenda');
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha no pagamento.');
+    } finally {
       setBusy(false);
     }
   };
 
-  if (!account) return null;
-
   return (
-    <View style={styles.page}>
-      <SofPageHeader
-        title={expired ? 'Seu período grátis acabou' : 'Alterar plano'}
-        subtitle={
-          expired
-            ? 'Escolha um plano para continuar usando a Sof, ou aplique um novo cupom promocional.'
-            : 'Selecione o novo plano. Você será direcionado ao pagamento seguro do Stripe.'
-        }
-      />
-
-      {account.plan ? (
+    <EntityFormModal
+      visible={visible}
+      title="Alterar plano"
+      hint="Selecione o novo plano ou aplique um cupom. Pagamentos seguem para o Stripe."
+      actions={
+        <SofButton
+          title="Cancelar"
+          variant="light"
+          theme="dashboard"
+          disabled={busy}
+          onPress={onClose}
+        />
+      }
+    >
+      {account?.plan ? (
         <Text style={styles.current}>
           Plano atual: {account.plan}
           {account.billingSource === 'promo' && account.promoExpiresAt
@@ -117,7 +122,7 @@ export default function ChoosePlanScreen() {
 
       {error ? <SofErrorBanner message={error} /> : null}
 
-      <SofCard>
+      <View style={styles.block}>
         <Text style={styles.cardTitle}>Cupom promocional</Text>
         <SofInput
           label="Código"
@@ -135,7 +140,7 @@ export default function ChoosePlanScreen() {
           disabled={busy}
           onPress={applyCoupon}
         />
-      </SofCard>
+      </View>
 
       <Text style={styles.sectionTitle}>Ou assinar um plano</Text>
       {loading ? (
@@ -169,43 +174,28 @@ export default function ChoosePlanScreen() {
           })}
         </View>
       )}
-
-      {!expired ? (
-        <SofButton
-          title="Cancelar"
-          variant="light"
-          theme="dashboard"
-          onPress={() => router.back()}
-        />
-      ) : null}
-    </View>
+    </EntityFormModal>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
-    padding: 24,
-    gap: 16,
-    maxWidth: 640,
-    width: '100%',
-    alignSelf: 'center',
-    paddingBottom: 48,
-  },
   current: {
     fontFamily: d.fonts.bodyMedium,
     color: d.ink,
     fontSize: 14,
+    marginBottom: 4,
   },
+  block: { gap: 10 },
   cardTitle: {
     fontFamily: d.fonts.displayBold,
     fontSize: 16,
     color: d.ink,
-    marginBottom: 4,
   },
   sectionTitle: {
     fontFamily: d.fonts.displayBold,
     fontSize: 16,
     color: d.ink,
+    marginTop: 8,
   },
   plans: { gap: 12 },
   planRow: {
@@ -217,15 +207,14 @@ const styles = StyleSheet.create({
     borderColor: d.line,
     borderRadius: d.radius,
     padding: 16,
-    ...d.shadow.soft,
   },
   planRowOn: {
     borderColor: d.accent,
   },
-  planInfo: { flex: 1 },
+  planInfo: { flex: 1, minWidth: 0 },
   planName: {
     fontFamily: d.fonts.displayBold,
-    fontSize: 18,
+    fontSize: 17,
     color: d.ink,
   },
   planMeta: {

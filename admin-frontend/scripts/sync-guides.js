@@ -44,7 +44,13 @@ copyFile(
   path.join(dest, 'sof-guides.css'),
 );
 
-for (const name of ['onboarding-cliente.html', 'bot-whatsapp.html']) {
+for (const name of [
+  'onboarding-cliente.html',
+  'bot-whatsapp.html',
+  'plano-solo.html',
+  'plano-equipe.html',
+  'plano-rede.html',
+]) {
   let html = fs.readFileSync(path.join(srcGuides, name), 'utf8');
   html = html.replaceAll('../assets/onboarding/', 'assets/');
   html = html.replace(

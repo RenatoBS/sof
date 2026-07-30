@@ -17,11 +17,43 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Guias HTML por plano (Solo / Equipe / Rede)
+
+- **Contexto:** Onboarding citava os planos sem detalhar funções; cliente e vendas precisavam de material compartilhavel por plano.
+- **Decisão:** Um HTML por plano (`plano-solo|equipe|rede.html`) + `docs/planos-funcoes.md`; hub `/guides` lista os três; sync-guides copia os HTMLs; nav cruzada nos guias existentes.
+- **Consequências:** Conteúdo alinhado a `PLAN_ENTITLEMENT_DEFAULTS` / marketing de `plans.ts`; admin pode divergir via matriz — doc avisa.
+- **Alternativas descartadas:** Um único PDF; só tabela no pricing sem guia dedicado.
+
+## 2026-07-29 — Alterar plano na Conta via modal
+
+- **Contexto:** Conta já edita estabelecimento e horário em modal; “Alterar plano” navegava para tela cheia.
+- **Decisão:** CTA abre `ChoosePlanModal` (mesmo fluxo cupom/checkout); rota `choose-plan` fica só para gate de conta pausada/`needsPlanSelection`.
+- **Consequências:** troca de plano sem sair da Conta; após cupom/demo o modal fecha e o banner de Assinatura atualiza.
+- **Alternativas descartadas:** manter navegação para `choose-plan` também no caso de conta ativa.
+
+---
+
 ---
 
 ---
 
 ---
+
+---
+
+## 2026-07-29 — Domínio custom do painel admin
+
+- **Contexto:** Admin web só em `*.herokuapp.com`; produto já usa `*.sof.solutions` (Hostinger → Heroku DNS).
+- **Decisão:** `painel-admin.sof.solutions` → `sof-agendamento-admin-web`; `PUBLIC_URL`/`CORS_ORIGIN` da admin-api apontam para o novo host (mantém URL Heroku no CORS na transição). API admin permanece no host Heroku por enquanto.
+- **Consequências:** CNAME na Hostinger + ACM; SSL só após DNS propagar.
+- **Alternativas descartadas:** `admin.sof.solutions` (menos descritivo); domínio só na API admin.
+
+## 2026-07-29 — Conta: colunas explícitas + sem card Sair
+
+- **Contexto:** `flexWrap` deixava gap enorme sob Assinatura quando WhatsApp era mais alto; card “Sair da conta” duplicava o logout do header.
+- **Decisão:** layout wide em duas colunas com gap uniforme; logout só no shell do painel.
+- **Consequências:** espaçamento previsível; menos ruído na Conta.
+- **Alternativas descartadas:** masonry CSS / manter wrap com alinhamento artificial.
 
 ## 2026-07-29 — Bot Solo: awaiting_employee sem horário (loop)
 

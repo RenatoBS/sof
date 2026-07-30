@@ -3,10 +3,11 @@
 Material para o cliente: do **plano/cupom** até a Sof funcionar de ponta a ponta (WhatsApp + agenda).
 
 **Versão HTML (recomendada para enviar ao cliente):** [`guides/onboarding-cliente.html`](guides/onboarding-cliente.html)  
-**Bot WhatsApp (cliente + profissional):** [`guides/bot-whatsapp.html`](guides/bot-whatsapp.html)
+**Bot WhatsApp (cliente + profissional):** [`guides/bot-whatsapp.html`](guides/bot-whatsapp.html)  
+**Funções por plano:** [`planos-funcoes.md`](planos-funcoes.md) · HTML [`plano-solo.html`](guides/plano-solo.html) · [`plano-equipe.html`](guides/plano-equipe.html) · [`plano-rede.html`](guides/plano-rede.html)
 
-**Publicado no admin (sem login):** `/guides` · `/guides/onboarding` · `/guides/bot`  
-(ex. produção: `https://sof-agendamento-admin-web-234d632f6b1f.herokuapp.com/guides`)
+**Publicado no admin (sem login):** `/guides` · `/guides/onboarding` · `/guides/bot` · HTMLs `plano-*.html`  
+(ex. produção: `https://painel-admin.sof.solutions/guides`)
 
 Site: [www.sof.solutions](https://www.sof.solutions) · Planos: [www.sof.solutions/pricing](https://www.sof.solutions/pricing)
 
@@ -30,7 +31,7 @@ Sem profissionais, a agenda fica vazia. Sem WhatsApp conectado, use só o simula
 ## Passo 1 — Escolher o plano
 
 1. Abra **Planos** no site (`/pricing`).
-2. Compare **Solo**, **Equipe** e **Rede**.
+2. Compare **Solo**, **Equipe** e **Rede** — veja o guia de cada um: [Solo](guides/plano-solo.html), [Equipe](guides/plano-equipe.html), [Rede](guides/plano-rede.html).
 3. Clique em **Assinar …** no plano desejado.
 
 ![Tela de planos Solo, Equipe e Rede](assets/onboarding/01-planos.png)
