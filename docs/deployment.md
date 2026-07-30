@@ -18,16 +18,17 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 
 | App Heroku | `APP_BASE` | URL |
 |------------|------------|-----|
-| `sof-solutions-api-qa` | `saas/backend` | https://sof-solutions-api-qa-1c7586e166db.herokuapp.com |
-| `sof-solutions-web-qa` | `saas/frontend` | https://qa.sof.solutions (Heroku: `…-caeea22b3c6d.herokuapp.com`) |
+| `sof-solutions-api-qa` | `saas/backend` | https://qa-api.sof.solutions (Heroku: `…-1c7586e166db.herokuapp.com`) |
+| `sof-solutions-web-qa` | `saas/frontend` | https://qa.sof.solutions (Heroku: `…-b047fcba11fd.herokuapp.com`) |
 
-DNS Hostinger (web QA):
+DNS Hostinger (QA):
 
 | Tipo | Host | Destino |
 |------|------|---------|
 | CNAME | `qa` | `tranquil-mammal-85ehpepda34n6p7y1y62v588.herokudns.com` |
+| CNAME | `qa-api` | `tranquil-citipati-b86m1v90bpfhw2e1n6qrjt6c.herokudns.com` |
 
-Após o CNAME propagar, ACM emite o certificado (`heroku certs:auto -a sof-solutions-web-qa`). `PUBLIC_URL` / `CORS_ORIGIN` da API QA apontam para `https://qa.sof.solutions`.
+Após os CNAMEs propagarem, ACM emite os certificados. Envs da API QA: `PUBLIC_URL`/`CORS_ORIGIN` → `https://qa.sof.solutions`; `API_PUBLIC_URL` → `https://qa-api.sof.solutions`. Web QA: `EXPO_PUBLIC_API_URL=https://qa-api.sof.solutions` (rebuild obrigatório).
 
 Fonte local das envs da API QA: `saas/backend/.env.qa` (não commitado; template em `.env.qa.example`). Aplicar/atualizar no Heroku:
 

@@ -24,6 +24,13 @@ Formato sugerido:
 - **Consequências:** Remotes git e docs/scripts atualizados; URLs Heroku antigas deixam de ser canônicas.
 - **Alternativas descartadas:** Manter nomes antigos; renomear só QA.
 
+## 2026-07-30 — Domínio QA API `qa-api.sof.solutions`
+
+- **Contexto:** API QA só no hostname Heroku; rename de apps quebrava `EXPO_PUBLIC_API_URL` embutido no front.
+- **Decisão:** Custom domain no `sof-solutions-api-qa`; CNAME `qa-api` → target Heroku; `API_PUBLIC_URL` + `EXPO_PUBLIC_API_URL` = `https://qa-api.sof.solutions` (redeploy do web QA).
+- **Consequências:** Webhooks e front QA estáveis independentemente do slug Heroku.
+- **Alternativas descartadas:** Manter só `*.herokuapp.com`; path no mesmo host `qa`.
+
 ## 2026-07-30 — Domínio QA `qa.sof.solutions`
 
 - **Contexto:** Web QA só em `*.herokuapp.com`.
