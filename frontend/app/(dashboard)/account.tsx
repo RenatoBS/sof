@@ -151,7 +151,7 @@ export default function AccountScreen() {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
 
-  const { account, logout, setSession } = useAuth();
+  const { account, setSession } = useAuth();
   const [hours, setHours] = useState<OpeningHours>(() =>
     normalizeOpeningHours(null),
   );
