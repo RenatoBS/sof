@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sof-agendamento-api
+    name: sof-solutions-api
     runtime: node
     plan: starter
     rootDir: saas/backend

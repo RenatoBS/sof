@@ -72,8 +72,8 @@ echo ""
 
 if [[ "$API_OK" -eq 1 && "$WEB_OK" -eq 1 ]]; then
   echo "OK — API e front publicados juntos."
-  echo "  API: https://sof-agendamento-api-105cf5acdd23.herokuapp.com"
-  echo "  Web: https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com"
+  echo "  API: https://sof-solutions-api-20faec08383c.herokuapp.com"
+  echo "  Web: https://sof-solutions-web-c45a36088329.herokuapp.com"
   exit 0
 fi
 

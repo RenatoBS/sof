@@ -98,8 +98,8 @@ Dois apps no monorepo:
 
 | App | Base | URL |
 |-----|------|-----|
-| `sof-agendamento-api` | `saas/backend/` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
-| `sof-agendamento-web` | `saas/frontend/` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
+| `sof-solutions-api` | `saas/backend/` | https://sof-solutions-api-20faec08383c.herokuapp.com |
+| `sof-solutions-web` | `saas/frontend/` | https://sof-solutions-web-c45a36088329.herokuapp.com |
 
 Buildpacks (nessa ordem): monorepo (`APP_BASE`) + `heroku/nodejs`.
 
@@ -116,7 +116,7 @@ npm run deploy       # API depois front (sequencial)
 npm run deploy:together  # API + front em paralelo
 
 # seed opcional
-heroku run -a sof-agendamento-api npx prisma db seed
+heroku run -a sof-solutions-api npx prisma db seed
 ```
 
 Variáveis críticas no API: `JWT_SECRET`, `PUBLIC_URL`, `CORS_ORIGIN`, `API_PUBLIC_URL`, `DATABASE_URL`, `DIRECT_URL`.  

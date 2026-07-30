@@ -29,8 +29,8 @@ git push heroku-api-qa HEAD:main
 echo "==> Push heroku-web-qa"
 git push heroku-web-qa HEAD:main
 
-API_URL="$(heroku apps:info -a sof-agendamento-api-qa -s | sed -n 's/^web_url=//p' | sed 's:/*$::')"
-WEB_URL="$(heroku apps:info -a sof-agendamento-web-qa -s | sed -n 's/^web_url=//p' | sed 's:/*$::')"
+API_URL="$(heroku apps:info -a sof-solutions-api-qa -s | sed -n 's/^web_url=//p' | sed 's:/*$::')"
+WEB_URL="$(heroku apps:info -a sof-solutions-web-qa -s | sed -n 's/^web_url=//p' | sed 's:/*$::')"
 
 echo ""
 echo "OK — SaaS QA publicado."

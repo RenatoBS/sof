@@ -202,7 +202,7 @@ Toast dismissível no root layout. Shell do dashboard usa tabs com accent Sof, `
 | Ambiente | Banco | API | Front |
 |----------|-------|-----|--------|
 | Local | Docker `sof-postgres` :5433 | :3001 (+ admin :3011) | Expo web :8081 (+ admin :8091) |
-| Staging/prod | Supabase (pooler + direct) | Heroku `sof-agendamento-api` (+ `sof-agendamento-admin-api`) | Heroku `sof-agendamento-web` (+ `sof-agendamento-admin-web`) |
+| Staging/prod | Supabase (pooler + direct) | Heroku `sof-solutions-api` (+ `sof-solutions-admin-api`) | Heroku `sof-solutions-web` (+ `sof-solutions-admin-web`) |
 
 Heroku monorepo: buildpack subdirectory (`APP_BASE`) + Node.  
 Procfiles: `saas/backend/Procfile` (release migrate + web), `saas/frontend/Procfile` / `admin/frontend/Procfile` (serve static export), `admin/backend/Procfile` (web; sem release migrate).
@@ -212,7 +212,7 @@ Alternativa documentada: `render.yaml` (API only).
 ## Diagrama de autenticação (produção)
 
 ```text
-[sof-agendamento-web]                     [sof-agendamento-api]
+[sof-solutions-web]                     [sof-solutions-api]
         │                                          │
         │  POST /api/auth/login                    │
         │ ───────────────────────────────────────► │

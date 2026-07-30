@@ -7,8 +7,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${1:-$ROOT/saas/backend/.env.qa}"
-API_APP="${HEROKU_QA_API_APP:-sof-agendamento-api-qa}"
-WEB_APP="${HEROKU_QA_WEB_APP:-sof-agendamento-web-qa}"
+API_APP="${HEROKU_QA_API_APP:-sof-solutions-api-qa}"
+WEB_APP="${HEROKU_QA_WEB_APP:-sof-solutions-web-qa}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Arquivo nao encontrado: $ENV_FILE" >&2

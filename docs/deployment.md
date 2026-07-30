@@ -9,17 +9,17 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 
 | App Heroku | `APP_BASE` | URL pública documentada |
 |------------|------------|-------------------------|
-| `sof-agendamento-api` | `saas/backend` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
-| `sof-agendamento-web` | `saas/frontend` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
-| `sof-agendamento-admin-api` | `admin/backend` | https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com |
-| `sof-agendamento-admin-web` | `admin/frontend` | https://painel-admin.sof.solutions (Heroku: `…-234d632f6b1f.herokuapp.com`) |
+| `sof-solutions-api` | `saas/backend` | https://sof-solutions-api-20faec08383c.herokuapp.com |
+| `sof-solutions-web` | `saas/frontend` | https://sof-solutions-web-c45a36088329.herokuapp.com |
+| `sof-solutions-admin-api` | `admin/backend` | https://sof-solutions-admin-api-28e60756b423.herokuapp.com |
+| `sof-solutions-admin-web` | `admin/frontend` | https://painel-admin.sof.solutions (Heroku: `…-234d632f6b1f.herokuapp.com`) |
 
 ### Apps — QA (SaaS apenas)
 
 | App Heroku | `APP_BASE` | URL |
 |------------|------------|-----|
-| `sof-agendamento-api-qa` | `saas/backend` | https://sof-agendamento-api-qa-8b73b9b8bd8b.herokuapp.com |
-| `sof-agendamento-web-qa` | `saas/frontend` | https://qa.sof.solutions (Heroku: `…-caeea22b3c6d.herokuapp.com`) |
+| `sof-solutions-api-qa` | `saas/backend` | https://sof-solutions-api-qa-1c7586e166db.herokuapp.com |
+| `sof-solutions-web-qa` | `saas/frontend` | https://qa.sof.solutions (Heroku: `…-caeea22b3c6d.herokuapp.com`) |
 
 DNS Hostinger (web QA):
 
@@ -27,19 +27,19 @@ DNS Hostinger (web QA):
 |------|------|---------|
 | CNAME | `qa` | `tranquil-mammal-85ehpepda34n6p7y1y62v588.herokudns.com` |
 
-Após o CNAME propagar, ACM emite o certificado (`heroku certs:auto -a sof-agendamento-web-qa`). `PUBLIC_URL` / `CORS_ORIGIN` da API QA apontam para `https://qa.sof.solutions`.
+Após o CNAME propagar, ACM emite o certificado (`heroku certs:auto -a sof-solutions-web-qa`). `PUBLIC_URL` / `CORS_ORIGIN` da API QA apontam para `https://qa.sof.solutions`.
 
 Fonte local das envs da API QA: `saas/backend/.env.qa` (não commitado; template em `.env.qa.example`). Aplicar/atualizar no Heroku:
 
 ```bash
 npm run heroku:qa:config   # lê .env.qa; sobrescreve PUBLIC_URL/CORS/API_PUBLIC_URL/NODE_ENV para as URLs Heroku
 npm run deploy:qa          # push API + web QA
-# opcional: heroku run -a sof-agendamento-api-qa npx prisma db seed
+# opcional: heroku run -a sof-solutions-api-qa npx prisma db seed
 ```
 
 Remotes: `heroku-api-qa`, `heroku-web-qa` (`npm run heroku:remotes:qa`). Banco: Supabase **staging** (não o de produção). Admin Sof **não** tem apps QA neste momento.
 
-Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api` (prod) ou `sof-agendamento-api-qa` (QA). O `admin/backend` carrega uma cópia do schema em `admin/backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
+Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-solutions-api` (prod) ou `sof-solutions-api-qa` (QA). O `admin/backend` carrega uma cópia do schema em `admin/backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
 
 Git remotes locais típicos:
 
@@ -113,7 +113,7 @@ Webhook Uazapi: configurado com `action: replace` (sem excluir `fromMe` — nece
 
 Lembretes WhatsApp: o job roda **no dyno web** (`@nestjs/schedule`, a cada 30 min + tick no boot). Não há worker separado no Procfile. Com vários dynos web, o claim SQL em `Appointment.reminderClaimedAt` evita double-send. Antecedência e fuso são por conta (`whatsappReminderMinutes`, `timezone`).
 
-Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` local do Node (hoje/amanhã no bot WhatsApp) bater com o Brasil. Contas com outro `Account.timezone` ainda devem ser respeitadas no código; o `TZ` do Heroku é o default do processo, não substitui fuso por conta.
+Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-solutions-api`) para `Date` local do Node (hoje/amanhã no bot WhatsApp) bater com o Brasil. Contas com outro `Account.timezone` ainda devem ser respeitadas no código; o `TZ` do Heroku é o default do processo, não substitui fuso por conta.
 
 ### Variáveis Web
 
@@ -122,7 +122,7 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 | `EXPO_PUBLIC_API_URL` | URL HTTPS da API |
 | `NODE_ENV` | `production` |
 
-### Variáveis Admin API (`sof-agendamento-admin-api`)
+### Variáveis Admin API (`sof-solutions-admin-api`)
 
 | Var | Notas |
 |-----|--------|
@@ -139,7 +139,7 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 | `API_PUBLIC_URL` | URL HTTPS da **API produto** (webhook Uazapi) |
 | `SEED_ADMIN_*` | só para seed no app produto |
 
-### Variáveis Admin Web (`sof-agendamento-admin-web`)
+### Variáveis Admin Web (`sof-solutions-admin-web`)
 
 | Var | Notas |
 |-----|--------|
@@ -180,7 +180,7 @@ npm run deploy:together
 npm run deploy:all
 
 # seed opcional (cria admin + planos + demo)
-heroku run -a sof-agendamento-api npx prisma db seed
+heroku run -a sof-solutions-api npx prisma db seed
 ```
 
 Equivalente manual: `git push heroku-api HEAD:main` (e remotes `heroku-web`, `heroku-admin-api`, `heroku-admin-web`).
@@ -188,8 +188,8 @@ Equivalente manual: `git push heroku-api HEAD:main` (e remotes `heroku-web`, `he
 Smoke:
 
 ```bash
-curl -sS https://sof-agendamento-api-105cf5acdd23.herokuapp.com/api/health
-curl -sS https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com/api/health
+curl -sS https://sof-solutions-api-20faec08383c.herokuapp.com/api/health
+curl -sS https://sof-solutions-admin-api-28e60756b423.herokuapp.com/api/health
 # abrir webs produto e admin
 ```
 
@@ -203,12 +203,12 @@ Registrar na Hostinger; DNS aponta para targets `*.herokudns.com`. Apps:
 
 | Hostname | App Heroku | Tipo DNS |
 |----------|------------|----------|
-| `sof.solutions` | `sof-agendamento-web` | ALIAS/ANAME (ou redirect → `www`) |
-| `www.sof.solutions` | `sof-agendamento-web` | CNAME |
-| `api.sof.solutions` | `sof-agendamento-api` | CNAME |
-| `painel-admin.sof.solutions` | `sof-agendamento-admin-web` | CNAME |
+| `sof.solutions` | `sof-solutions-web` | ALIAS/ANAME (ou redirect → `www`) |
+| `www.sof.solutions` | `sof-solutions-web` | CNAME |
+| `api.sof.solutions` | `sof-solutions-api` | CNAME |
+| `painel-admin.sof.solutions` | `sof-solutions-admin-web` | CNAME |
 
-Targets atuais: `heroku domains -a sof-agendamento-web` / `-a sof-agendamento-api` / `-a sof-agendamento-admin-web`. SSL: `heroku certs:auto` (ACM).
+Targets atuais: `heroku domains -a sof-solutions-web` / `-a sof-solutions-api` / `-a sof-solutions-admin-web`. SSL: `heroku certs:auto` (ACM).
 
 DNS Hostinger para o painel admin:
 
@@ -220,15 +220,15 @@ Após DNS + certificado OK, atualizar envs:
 
 | App | Vars |
 |-----|------|
-| `sof-agendamento-web` | `EXPO_PUBLIC_API_URL=https://api.sof.solutions` (+ **rebuild**/redeploy) |
-| `sof-agendamento-api` | `PUBLIC_URL=https://www.sof.solutions`, `CORS_ORIGIN=https://www.sof.solutions,https://sof.solutions`, `API_PUBLIC_URL=https://api.sof.solutions` |
-| `sof-agendamento-admin-api` | `PUBLIC_URL=https://painel-admin.sof.solutions`, `CORS_ORIGIN=https://painel-admin.sof.solutions` (+ opcional URL Heroku legada) |
+| `sof-solutions-web` | `EXPO_PUBLIC_API_URL=https://api.sof.solutions` (+ **rebuild**/redeploy) |
+| `sof-solutions-api` | `PUBLIC_URL=https://www.sof.solutions`, `CORS_ORIGIN=https://www.sof.solutions,https://sof.solutions`, `API_PUBLIC_URL=https://api.sof.solutions` |
+| `sof-solutions-admin-api` | `PUBLIC_URL=https://painel-admin.sof.solutions`, `CORS_ORIGIN=https://painel-admin.sof.solutions` (+ opcional URL Heroku legada) |
 
 Admin API segue em `*.herokuapp.com` até ter subdomínio próprio (ex. `api-admin.sof.solutions`).
 
 ## Alternativa: Render
 
-Arquivo: `render.yaml` — serviço Node `sof-agendamento-api`, health `/api/health`.  
+Arquivo: `render.yaml` — serviço Node `sof-solutions-api`, health `/api/health`.  
 Usar se o destino de deploy mudar; manter este doc sincronizado.
 
 ## Docker (apenas local)
