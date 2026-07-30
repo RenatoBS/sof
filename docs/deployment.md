@@ -9,12 +9,12 @@ Documento vivo. Atualize ao criar apps, mudar envs ou provedores.
 
 | App Heroku | `APP_BASE` | URL pública documentada |
 |------------|------------|-------------------------|
-| `sof-agendamento-api` | `backend` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
-| `sof-agendamento-web` | `frontend` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
-| `sof-agendamento-admin-api` | `admin-backend` | https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com |
-| `sof-agendamento-admin-web` | `admin-frontend` | https://painel-admin.sof.solutions (Heroku: `…-234d632f6b1f.herokuapp.com`) |
+| `sof-agendamento-api` | `saas/backend` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
+| `sof-agendamento-web` | `saas/frontend` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
+| `sof-agendamento-admin-api` | `admin/backend` | https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com |
+| `sof-agendamento-admin-web` | `admin/frontend` | https://painel-admin.sof.solutions (Heroku: `…-234d632f6b1f.herokuapp.com`) |
 
-Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api`. O `admin-backend` carrega uma cópia do schema em `admin-backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
+Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-agendamento-api`. O `admin/backend` carrega uma cópia do schema em `admin/backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).
 
 Git remotes locais típicos:
 
@@ -28,11 +28,11 @@ Git remotes locais típicos:
 1. `https://github.com/lstoll/heroku-buildpack-monorepo`  
 2. `heroku/nodejs`  
 
-Config: `APP_BASE=backend|frontend|admin-backend|admin-frontend`.
+Config: `APP_BASE=saas/backend|saas/frontend|admin/backend|admin/frontend`.
 
 ### Processos
 
-**API** (`backend/Procfile`):
+**API** (`saas/backend/Procfile`):
 
 ```text
 release: npx prisma migrate deploy
@@ -42,7 +42,7 @@ web: npm run start:prod
 `heroku-postbuild`: `npx prisma generate && npm run build`  
 `prisma` e `tsx` ficam em **dependencies** (release após prune).
 
-**Web** (`frontend/Procfile`):
+**Web** (`saas/frontend/Procfile`):
 
 ```text
 web: npm run start:web
@@ -102,7 +102,7 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 
 | Var | Notas |
 |-----|--------|
-| `APP_BASE` | `admin-backend` |
+| `APP_BASE` | `admin/backend` |
 | `NODE_ENV` | `production` |
 | `ADMIN_JWT_SECRET` | forte, obrigatório |
 | `PUBLIC_URL` | URL do admin-web |
@@ -119,7 +119,7 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 
 | Var | Notas |
 |-----|--------|
-| `APP_BASE` | `admin-frontend` |
+| `APP_BASE` | `admin/frontend` |
 | `EXPO_PUBLIC_API_URL` | URL HTTPS da admin-api (antes do build) |
 | `NODE_ENV` | `production` |
 

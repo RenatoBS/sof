@@ -3,7 +3,7 @@ services:
     name: sof-agendamento-api
     runtime: node
     plan: starter
-    rootDir: backend
+    rootDir: saas/backend
     buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npx prisma migrate deploy && npm run start:prod
     autoDeploy: true

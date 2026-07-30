@@ -35,7 +35,7 @@ DIRECT_URL=postgresql://sof:sof@localhost:5433/sof?schema=public
 ## Backend
 
 ```bash
-cd backend
+cd saas/backend
 cp .env.example .env   # se necessário
 npm install
 npx prisma migrate dev
@@ -65,7 +65,7 @@ Não usa `migrate reset` (não dropa o schema / migrations).
 ## Frontend
 
 ```bash
-cd frontend
+cd saas/frontend
 cp .env.example .env
 # EXPO_PUBLIC_API_URL=http://localhost:3001
 npm install
@@ -86,13 +86,13 @@ Para testar Stripe de verdade em local:
 
 ```bash
 # API admin (porta 3011)
-cd admin-backend && cp .env.example .env && npm install && npm run start:dev
+cd admin/backend && cp .env.example .env && npm install && npm run start:dev
 
 # UI admin (porta 8091)
-cd admin-frontend && cp .env.example .env && npm install && npm run web
+cd admin/frontend && cp .env.example .env && npm install && npm run web
 ```
 
-Na raiz: `npm run admin-backend:dev` / `npm run admin-frontend:web`.  
+Na raiz: `npm run admin/backend:dev` / `npm run admin/frontend:web`.  
 Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan` (Solo / Equipe / Rede com entitlements) e **uma conta demo por plano**.  
 Login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@sof.com` / `admin123`).
 
@@ -115,7 +115,7 @@ Não commitar `.env`.
 
 ## Variáveis locais importantes
 
-Ver lista completa em `backend/.env.example`, `frontend/.env.example`, `admin-backend/.env.example`, `admin-frontend/.env.example`.
+Ver lista completa em `saas/backend/.env.example`, `saas/frontend/.env.example`, `admin/backend/.env.example`, `admin/frontend/.env.example`.
 
 | Variável | Uso local típico |
 |----------|------------------|
@@ -123,8 +123,8 @@ Ver lista completa em `backend/.env.example`, `frontend/.env.example`, `admin-ba
 | `PUBLIC_URL` | `http://localhost:8081` |
 | `API_PUBLIC_URL` | URL pública da API (webhook WA); local pode ficar vazio → `http://localhost:3001` |
 | `JWT_SECRET` | qualquer string longa em dev |
-| `ADMIN_JWT_SECRET` | segredo do painel admin (admin-backend) |
-| `EXPO_PUBLIC_API_URL` | produto → `:3001`; admin-frontend → `:3011` |
+| `ADMIN_JWT_SECRET` | segredo do painel admin (admin/backend) |
+| `EXPO_PUBLIC_API_URL` | produto → `:3001`; admin/frontend → `:3011` |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | operador do painel admin |
 | `WHATSAPP_PROVIDER` | default `uazapi` (ou `meta`) |
 | `WHATSAPP_BASE_URL` | URL do servidor Uazapi |
@@ -138,7 +138,7 @@ Ver lista completa em `backend/.env.example`, `frontend/.env.example`, `admin-ba
 2. O Admin Token é distinto do token da instância — copie o admin no painel Uazapi.  
 3. Para webhook real, use túnel HTTPS (ex. ngrok) em `API_PUBLIC_URL`.  
 4. No painel Conta → Bot do WhatsApp → Escanear QR ou Usar código.  
-5. Ops no admin Sof (`:8091` → detalhe da conta): mesmos `WHATSAPP_*` + `API_PUBLIC_URL` no `admin-backend/.env` para status/conectar/recriar sem abrir o Uazapi.  
+5. Ops no admin Sof (`:8091` → detalhe da conta): mesmos `WHATSAPP_*` + `API_PUBLIC_URL` no `admin/backend/.env` para status/conectar/recriar sem abrir o Uazapi.  
 5. Sem essas envs, o simulador em `/simulator` continua disponível.  
 6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).  
 7. Lembretes: com a API no ar (`backend:dev`), o job roda no boot e a cada 30 min. Configure antecedência/fuso em Conta → Lembrete WhatsApp (default 2h, `America/Sao_Paulo`). Precisa de instância conectada para enviar de verdade.
@@ -176,6 +176,6 @@ npm run db:up
 npm run db:down
 npm run backend:dev
 npm run frontend:web
-npm run admin-backend:dev
-npm run admin-frontend:web
+npm run admin/backend:dev
+npm run admin/frontend:web
 ```

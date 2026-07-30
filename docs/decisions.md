@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-30 — Monorepo em `saas/` + `admin/`
+
+- **Contexto:** Quatro apps na raiz (`backend`, `frontend`, `admin-backend`, `admin-frontend`) misturavam produto e painel interno.
+- **Decisão:** Produto em `saas/backend` + `saas/frontend`; painel em `admin/backend` + `admin/frontend` (sem prefixo `admin-` nos nomes das pastas). Scripts npm da raiz mantêm aliases (`backend:dev`, `admin-backend:dev`) com `--prefix` novo. Heroku `APP_BASE` aponta para os subpaths.
+- **Consequências:** Prisma `adminClient` output em `admin/backend/...`; `sync-guides` sobe dois níveis até a raiz; docs/AGENTS atualizados.
+- **Alternativas descartadas:** Manter pastas planas; `packages/*` estilo turborepo (overkill agora).
+
 ## 2026-07-29 — Ops WhatsApp (Uazapi) no painel admin
 
 - **Contexto:** Suporte precisava desconectar/reconectar/recriar instâncias sem entrar no console Uazapi nem no painel do tenant.

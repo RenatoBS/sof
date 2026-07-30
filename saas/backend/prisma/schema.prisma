@@ -2,10 +2,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/// Client para o admin-backend (mesmo schema, output separado)
+/// Client para o admin/backend (mesmo schema, output separado)
 generator adminClient {
   provider = "prisma-client-js"
-  output   = "../../admin-backend/node_modules/.prisma/client"
+  output   = "../../../admin/backend/node_modules/.prisma/client"
 }
 
 datasource db {

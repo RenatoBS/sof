@@ -63,7 +63,7 @@ SHA="$(git rev-parse --short HEAD)"
 echo "==> Deploy admin a partir de $BRANCH ($SHA)"
 
 if [[ "$SKIP_SYNC" -eq 0 && "$WEB_ONLY" -eq 0 ]]; then
-  echo "==> Sincronizando schema Prisma → admin-backend/"
+  echo "==> Sincronizando schema Prisma → admin/backend/"
   npm run admin:sync-schema
 fi
 

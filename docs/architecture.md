@@ -7,14 +7,14 @@ Documento vivo. Atualize junto com mudanças estruturais.
 
 Sof é um monorepo com:
 
-1. **backend/** — API HTTP NestJS (`/api/*`) + Prisma + PostgreSQL (produto)  
-2. **frontend/** — Expo (Web, iOS, Android) com expo-router (produto)  
-3. **admin-backend/** — API NestJS do painel interno Sof (mesmo Postgres)  
-4. **admin-frontend/** — Expo Web do painel interno  
+1. **saas/backend/** — API HTTP NestJS (`/api/*`) + Prisma + PostgreSQL (produto)  
+2. **saas/frontend/** — Expo (Web, iOS, Android) com expo-router (produto)  
+3. **admin/backend/** — API NestJS do painel interno Sof (mesmo Postgres)  
+4. **admin/frontend/** — Expo Web do painel interno  
 
 Fluxo principal: cliente agenda pelo WhatsApp (ou simulador) → API persiste `Appointment` → painel recebe via SSE e lista na agenda semanal.
 
-## Backend (`backend/`)
+## Backend (`saas/backend/`)
 
 ### Stack
 
@@ -26,7 +26,7 @@ Fluxo principal: cliente agenda pelo WhatsApp (ou simulador) → API persiste `A
 
 ### Bootstrap
 
-Arquivo: `backend/src/main.ts`
+Arquivo: `saas/backend/src/main.ts`
 
 - CORS com allowlist (`CORS_ORIGIN`) e `credentials: true`  
 - `trust proxy` (Heroku)  
@@ -35,7 +35,7 @@ Arquivo: `backend/src/main.ts`
 
 ### Módulos
 
-Registrados em `backend/src/app.module.ts`:
+Registrados em `saas/backend/src/app.module.ts`:
 
 | Módulo | Responsabilidade |
 |--------|------------------|
@@ -67,7 +67,7 @@ Registrados em `backend/src/app.module.ts`:
 
 ### Modelo de dados (Prisma)
 
-Arquivo: `backend/prisma/schema.prisma`
+Arquivo: `saas/backend/prisma/schema.prisma`
 
 ```text
 Account  (plan / planPrice snapshot + planId → Plan)
@@ -92,9 +92,9 @@ Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; 
 
 `PromoCoupon`: código único, `planId`, `freeDays` (7|30|60), `maxUses` / `usedCount`, `active`. `PromoCouponRedemption` registra uso por conta (`@@unique([couponId, accountId])`) e `expiresAt`.
 
-`Account.planId` referencia o catálogo para resolução de entitlements; `plan`/`planPrice` permanecem como snapshot de display. Resolução: `Plan.entitlements` mergeado com defaults do slug; sem `planId`, aliases de nome (Essencial→Solo, Estúdio→Equipe) ou defaults Solo. Enforcement no backend (`assertFeature` / `assertLimit`); front consome `account.entitlements` em login/`GET /api/auth/me`. Catálogo de keys: `backend/src/entitlements/feature-catalog.ts` (espelho no admin-backend).
+`Account.planId` referencia o catálogo para resolução de entitlements; `plan`/`planPrice` permanecem como snapshot de display. Resolução: `Plan.entitlements` mergeado com defaults do slug; sem `planId`, aliases de nome (Essencial→Solo, Estúdio→Equipe) ou defaults Solo. Enforcement no backend (`assertFeature` / `assertLimit`); front consome `account.entitlements` em login/`GET /api/auth/me`. Catálogo de keys: `saas/backend/src/entitlements/feature-catalog.ts` (espelho no admin/backend).
 
-`AdminUser`: email/senha dos operadores do `admin-backend`.
+`AdminUser`: email/senha dos operadores do `admin/backend`.
 
 `Employee`: além de nome/cor/serviços/`phone`, tem `email` único, `passwordHash` (null até o profissional definir via link) e `mustChangePassword`. Convites/resets usam `EmployeePasswordToken` (hash SHA-256 do token, `expiresAt` 2h, `usedAt`). JWT distingue `role: account | employee`.
 
@@ -136,9 +136,9 @@ URLs:
 
 ### Tempo real
 
-`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted` e `whatsapp-handoff:opened|updated|resolved`.
+`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`saas/frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted` e `whatsapp-handoff:opened|updated|resolved`.
 
-## Frontend (`frontend/`)
+## Frontend (`saas/frontend/`)
 
 ### Stack
 
@@ -185,7 +185,7 @@ Gate do portal profissional: sem sessão employee → `/login`; com `mustChangeP
 
 ### API client
 
-`frontend/src/api/client.ts`: base `EXPO_PUBLIC_API_URL`, path `/api…`, Bearer + `credentials: 'include'`.
+`saas/frontend/src/api/client.ts`: base `EXPO_PUBLIC_API_URL`, path `/api…`, Bearer + `credentials: 'include'`.
 
 Token storage: web `localStorage` chave `sof_token`; native SecureStore.
 
@@ -205,7 +205,7 @@ Toast dismissível no root layout. Shell do dashboard usa tabs com accent Sof, `
 | Staging/prod | Supabase (pooler + direct) | Heroku `sof-agendamento-api` (+ `sof-agendamento-admin-api`) | Heroku `sof-agendamento-web` (+ `sof-agendamento-admin-web`) |
 
 Heroku monorepo: buildpack subdirectory (`APP_BASE`) + Node.  
-Procfiles: `backend/Procfile` (release migrate + web), `frontend/Procfile` / `admin-frontend/Procfile` (serve static export), `admin-backend/Procfile` (web; sem release migrate).
+Procfiles: `saas/backend/Procfile` (release migrate + web), `saas/frontend/Procfile` / `admin/frontend/Procfile` (serve static export), `admin/backend/Procfile` (web; sem release migrate).
 
 Alternativa documentada: `render.yaml` (API only).
 
@@ -227,11 +227,11 @@ Alternativa documentada: `render.yaml` (API only).
 
 Hosts diferentes ⇒ Bearer é a fonte confiável; cookie auxiliar com `SameSite=None`.
 
-## Painel admin (`admin-backend/` + `admin-frontend/`)
+## Painel admin (`admin/backend/` + `admin/frontend/`)
 
-Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `backend/prisma/`; o generator `adminClient` emite o client Prisma em `admin-backend/node_modules/.prisma/client`.
+Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `saas/backend/prisma/`; o generator `adminClient` emite o client Prisma em `admin/backend/node_modules/.prisma/client`.
 
-### admin-backend
+### admin/backend
 
 - Porta local **3011**; prefixo `/api/*`; health `GET /api/health`.
 - Auth: `POST /api/auth/login|logout`, `GET /api/auth/me` — JWT `role: admin`, cookie `sof_admin_session`, segredo `ADMIN_JWT_SECRET`.
@@ -240,11 +240,11 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `b
 - Planos: `GET/POST /api/plans`, `GET/PUT /api/plans/:id` — com `STRIPE_SECRET_KEY`, cria/atualiza Product e Price (preço novo = Price novo; anterior arquivado). Body aceita `entitlements`. `GET /api/feature-catalog` lista keys gateáveis. `POST /api/plans/:id/sync-stripe` força Product+Price+Payment Link alinhados ao preço do Sof (também corrige planos `seed_*`).
 - Cupons: `GET/POST /api/coupons`, `GET/PUT/DELETE /api/coupons/:id` — plano + 7/30/60 dias + máx. usos.
 - Tickets: `GET /api/tickets`, `GET/POST/PATCH /api/tickets/:id…` (comentários e status).
-- Envs: ver `admin-backend/.env.example`.
+- Envs: ver `admin/backend/.env.example`.
 
-### admin-frontend
+### admin/frontend
 
 - Expo Web porta **8091**; `EXPO_PUBLIC_API_URL` → admin API.
 - Rotas autenticadas: `/login`, `/accounts`, `/new-account`, `/edit-account`, `/tickets`, `/edit-ticket`, `/plans`, `/new-plan`, `/edit-plan`, `/coupons`, `/new-coupon`, `/edit-coupon`.
 - **Rotas públicas (sem login):** `/guides` (hub), `/guides/onboarding`, `/guides/bot` + HTMLs estáticos (`onboarding-cliente`, `bot-whatsapp`, `plano-solo|equipe|rede`) em `public/guides/` (sync via `npm run sync-guides` no build). Nav **Guias** no shell abre `/guides` em nova aba.
-- UI kit próprio (não compartilha código com `frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter e mesma cromia Sof: verde floresta + cobre) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.
+- UI kit próprio (não compartilha código com `saas/frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter e mesma cromia Sof: verde floresta + cobre) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.

@@ -55,8 +55,8 @@ Ao terminar: atualize a documentação na **mesma** sessão de trabalho (não �
 | [`docs/deployment.md`](docs/deployment.md) | Heroku, Supabase, envs de produção, deploys |
 | [`docs/decisions.md`](docs/decisions.md) | Log vivo de decisões (ADR leve) |
 | [`README.md`](README.md) | Quickstart humano |
-| [`backend/README.md`](backend/README.md) | Notas da API |
-| [`frontend/AGENTS.md`](frontend/AGENTS.md) | Nota Expo SDK 57 (ler docs oficiais da versão) |
+| [`saas/backend/README.md`](saas/backend/README.md) | Notas da API |
+| [`saas/frontend/AGENTS.md`](saas/frontend/AGENTS.md) | Nota Expo SDK 57 (ler docs oficiais da versão) |
 
 ---
 
@@ -67,13 +67,13 @@ Browser / Expo Go                         Admin (web)
        │                                       │
        ▼                                       ▼
 ┌──────────────────┐  EXPO_PUBLIC_API_URL  ┌──────────────────┐
-│  frontend/       │ ────────────────────► │  backend/        │
+│  saas/frontend/  │ ────────────────────► │  saas/backend/   │
 │  Expo Router     │   Bearer + cookie     │  NestJS /api/*   │
 │  Web + iOS/And.  │ ◄── SSE appointments ─│  Prisma          │
 └──────────────────┘                       └────────┬─────────┘
                                                     │
 ┌──────────────────┐  EXPO_PUBLIC_API_URL  ┌────────┴─────────┐
-│  admin-frontend/ │ ────────────────────► │  admin-backend/  │
+│  admin/frontend/ │ ────────────────────► │  admin/backend/  │
 │  Expo (web)      │   Bearer admin JWT    │  NestJS /api/*   │
 └──────────────────┘                       └────────┬─────────┘
                                                     │
@@ -86,12 +86,12 @@ Browser / Expo Go                         Admin (web)
 
 - **API produto:** NestJS + Prisma, prefixo `/api/*`, health em `/api/health`.
 - **Front produto:** Expo SDK ~57 + expo-router; marketing + dashboard.
-- **API admin:** NestJS separado (`admin-backend/`, porta local 3011); gerencia contas e catálogo de planos Stripe.
-- **Front admin:** Expo web (`admin-frontend/`, porta 8091).
+- **API admin:** NestJS separado (`admin/backend/`, porta local 3011); gerencia contas e catálogo de planos Stripe.
+- **Front admin:** Expo web (`admin/frontend/`, porta 8091).
 - **Pagamentos:** Stripe Checkout (ou modo demo sem `STRIPE_SECRET_KEY`); catálogo em tabela `Plan` com entitlements de gate.
 - **Gate por plano:** keys no código; valores no admin; enforcement no backend; front via `account.entitlements`.
 - **WhatsApp:** Uazapi (default) com pareamento QR/código na Conta; Meta Cloud API opcional; simulador se desligado.
-- **Deploy atual:** quatro apps Heroku (`APP_BASE=backend|frontend|admin-backend|admin-frontend`) + Postgres Supabase.
+- **Deploy atual:** quatro apps Heroku (`APP_BASE=saas/backend|saas/frontend|admin/backend|admin/frontend`) + Postgres Supabase.
 
 ---
 
@@ -105,13 +105,15 @@ Sof/
 ├── package.json              ← scripts do monorepo
 ├── docker-compose.yml        ← Postgres local sof/sof/sof :5433
 ├── render.yaml               ← alternativa Render (API)
-├── backend/                  ← NestJS + Prisma (produto)
-│   ├── Procfile
-│   ├── prisma/               ← schema + migrations (fonte única)
-│   └── src/
-├── frontend/                 ← Expo + expo-router (produto)
-├── admin-backend/            ← NestJS (painel admin Sof)
-└── admin-frontend/           ← Expo web (painel admin Sof)
+├── saas/
+│   ├── backend/              ← NestJS + Prisma (produto)
+│   │   ├── Procfile
+│   │   ├── prisma/           ← schema + migrations (fonte única)
+│   │   └── src/
+│   └── frontend/             ← Expo + expo-router (produto)
+└── admin/
+    ├── backend/              ← NestJS (painel admin Sof)
+    └── frontend/             ← Expo web (painel admin Sof)
 ```
 
 ---
@@ -126,7 +128,7 @@ Sof/
 | Cookie prod | `secure` + `sameSite: 'none'` (front e API em hosts diferentes). |
 | CORS | Whitelist `CORS_ORIGIN` (CSV); `credentials: true`. |
 | URLs | `PUBLIC_URL` = front; `API_PUBLIC_URL` = API (webhooks); front usa `EXPO_PUBLIC_API_URL`. |
-| Prisma | `DATABASE_URL` (pode ser pooler) + `DIRECT_URL` (migrations / conexão direta). Schema só em `backend/prisma/`; admin gera client via generator `adminClient`. |
+| Prisma | `DATABASE_URL` (pode ser pooler) + `DIRECT_URL` (migrations / conexão direta). Schema só em `saas/backend/prisma/`; admin gera client via generator `adminClient`. |
 | Senhas em URL | Caracteres especiais (`&`, `+`, `/`) devem ser **URL-encoded** em env de deploy. |
 | Demo | Email padrão `demo@sof.com`; senha só via `SEED_DEMO_PASSWORD`. |
 | Admin seed | `admin@sof.com` via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`. |
@@ -138,20 +140,20 @@ Sof/
 
 | Precisa de… | Onde olhar |
 |-------------|------------|
-| Módulos Nest (produto) | `backend/src/app.module.ts` |
-| Módulos Nest (admin) | `admin-backend/src/app.module.ts` |
-| Config / env | `backend/src/config/configuration.ts`, `backend/.env.example` |
-| Schema DB | `backend/prisma/schema.prisma` |
-| Auth token/cookie | `backend/src/common/token.ts`, `auth-request.ts` |
-| Auth admin | `admin-backend/src/common/token.ts`, `auth/` |
-| Catálogo planos | `Plan` no Prisma; `backend/src/plans/`; painel admin |
-| Entitlements / gate | `backend/src/entitlements/`; `Plan.entitlements` + `Account.planId`; admin matriz |
-| Cupons promocionais | `PromoCoupon` / `PromoCouponRedemption`; admin `/coupons`; checkout `couponCode`; `backend/src/promo-coupons/`, `billing/` |
-| Client HTTP front | `frontend/src/api/client.ts`, `endpoints.ts` |
-| Auth front | `frontend/src/auth/AuthProvider.tsx` |
-| Rotas UI | `frontend/app/` |
-| Rotas admin | `admin-frontend/app/` |
-| Tema marketing/dashboard | `frontend/src/theme/` |
+| Módulos Nest (produto) | `saas/backend/src/app.module.ts` |
+| Módulos Nest (admin) | `admin/backend/src/app.module.ts` |
+| Config / env | `saas/backend/src/config/configuration.ts`, `saas/backend/.env.example` |
+| Schema DB | `saas/backend/prisma/schema.prisma` |
+| Auth token/cookie | `saas/backend/src/common/token.ts`, `auth-request.ts` |
+| Auth admin | `admin/backend/src/common/token.ts`, `auth/` |
+| Catálogo planos | `Plan` no Prisma; `saas/backend/src/plans/`; painel admin |
+| Entitlements / gate | `saas/backend/src/entitlements/`; `Plan.entitlements` + `Account.planId`; admin matriz |
+| Cupons promocionais | `PromoCoupon` / `PromoCouponRedemption`; admin `/coupons`; checkout `couponCode`; `saas/backend/src/promo-coupons/`, `billing/` |
+| Client HTTP front | `saas/frontend/src/api/client.ts`, `endpoints.ts` |
+| Auth front | `saas/frontend/src/auth/AuthProvider.tsx` |
+| Rotas UI | `saas/frontend/app/` |
+| Rotas admin | `admin/frontend/app/` |
+| Tema marketing/dashboard | `saas/frontend/src/theme/` |
 
 ---
 
