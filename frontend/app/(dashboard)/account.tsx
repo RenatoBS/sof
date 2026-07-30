@@ -388,569 +388,563 @@ export default function AccountScreen() {
     Boolean(account.botPausedPermanent) ||
     Boolean(formatBotPauseUntil(account.botPausedUntil));
 
-  const gridItemStyle = [styles.gridItem, wide && styles.gridItemWide];
-
-  return (
-    <View style={[styles.page, wide && styles.pageWide]}>
-      <View style={[styles.grid, wide && styles.gridWide]}>
-        <View style={gridItemStyle}>
-          <Text style={styles.sectionLabel}>Estabelecimento</Text>
-          <SofCard>
-            <View style={styles.cardHead}>
-              <Text style={styles.cardTitle}>Dados do negócio</Text>
-              <SofIconAction
-                action="edit"
-                forceCompact
-                onPress={() => setEstablishmentOpen(true)}
-              />
-            </View>
-            <View style={styles.profileBody}>
-              <BusinessLogo
-                uri={account.logoBase64}
-                initials={initials}
-                size={64}
-              />
-              <View style={styles.profileCopy}>
-                <Text style={styles.h2} numberOfLines={2}>
-                  {account.businessName || 'Sua conta'}
-                </Text>
-                {account.ownerName ? (
-                  <Text style={styles.sub} numberOfLines={1}>
-                    Responsável: {account.ownerName}
-                  </Text>
-                ) : null}
-                <Text style={styles.metaLine} numberOfLines={1}>
-                  {phoneDisplay}
-                </Text>
-                <Text style={styles.metaLine} numberOfLines={3}>
-                  {addressDisplay}
-                </Text>
-              </View>
-            </View>
-          </SofCard>
+  const establishmentSection = (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>Estabelecimento</Text>
+      <SofCard>
+        <View style={styles.cardHead}>
+          <Text style={styles.cardTitle}>Dados do negócio</Text>
+          <SofIconAction
+            action="edit"
+            forceCompact
+            onPress={() => setEstablishmentOpen(true)}
+          />
         </View>
+        <View style={styles.profileBody}>
+          <BusinessLogo
+            uri={account.logoBase64}
+            initials={initials}
+            size={64}
+          />
+          <View style={styles.profileCopy}>
+            <Text style={styles.h2} numberOfLines={2}>
+              {account.businessName || 'Sua conta'}
+            </Text>
+            {account.ownerName ? (
+              <Text style={styles.sub} numberOfLines={1}>
+                Responsável: {account.ownerName}
+              </Text>
+            ) : null}
+            <Text style={styles.metaLine} numberOfLines={1}>
+              {phoneDisplay}
+            </Text>
+            <Text style={styles.metaLine} numberOfLines={3}>
+              {addressDisplay}
+            </Text>
+          </View>
+        </View>
+      </SofCard>
+    </View>
+  );
 
-        <View style={gridItemStyle}>
-          <Text style={styles.sectionLabel}>Horário</Text>
-          <SofCard>
-            <View style={styles.cardHead}>
-              <View style={styles.cardTitleBlock}>
-                <Text style={styles.cardTitle}>Horário de funcionamento</Text>
-                <Text style={styles.cardHint}>
-                  Quando clientes podem agendar pelo WhatsApp e pelo painel
+  const hoursSection = (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>Horário</Text>
+      <SofCard>
+        <View style={styles.cardHead}>
+          <View style={styles.cardTitleBlock}>
+            <Text style={styles.cardTitle}>Horário de funcionamento</Text>
+            <Text style={styles.cardHint}>
+              Quando clientes podem agendar pelo WhatsApp e pelo painel
+            </Text>
+          </View>
+          <SofIconAction
+            action="edit"
+            forceCompact
+            onPress={() => setHoursOpen(true)}
+          />
+        </View>
+        <View style={styles.hoursPreview}>
+          <View style={styles.dayPills}>
+            {hours.map((day, index) => (
+              <View
+                key={DAY_SHORT[index]}
+                style={[
+                  styles.dayPill,
+                  day.open ? styles.dayPillOpen : styles.dayPillClosed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dayPillText,
+                    day.open
+                      ? styles.dayPillTextOpen
+                      : styles.dayPillTextClosed,
+                  ]}
+                >
+                  {DAY_SHORT[index]}
                 </Text>
               </View>
-              <SofIconAction
-                action="edit"
-                forceCompact
-                onPress={() => setHoursOpen(true)}
-              />
-            </View>
-            <View style={styles.hoursPreview}>
-              <View style={styles.dayPills}>
-                {hours.map((day, index) => (
-                  <View
-                    key={DAY_SHORT[index]}
-                    style={[
-                      styles.dayPill,
-                      day.open ? styles.dayPillOpen : styles.dayPillClosed,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayPillText,
-                        day.open
-                          ? styles.dayPillTextOpen
-                          : styles.dayPillTextClosed,
-                      ]}
-                    >
-                      {DAY_SHORT[index]}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              <Text style={styles.hoursSummary}>
-                {formatHoursSummary(hours)}
+            ))}
+          </View>
+          <Text style={styles.hoursSummary}>{formatHoursSummary(hours)}</Text>
+        </View>
+      </SofCard>
+    </View>
+  );
+
+  const planSection = (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>Assinatura</Text>
+      <SofCard>
+        <View style={styles.planBanner}>
+          <View style={styles.planBannerText}>
+            <Text style={styles.planBannerName}>{account.plan}</Text>
+            <Text style={styles.planBannerPrice}>
+              {account.planPrice != null
+                ? `R$ ${account.planPrice}/mês`
+                : 'Plano ativo'}
+            </Text>
+            <Text style={styles.planBannerMeta}>
+              {[
+                `Desde ${since}`,
+                account.billingSource === 'promo' && account.promoExpiresAt
+                  ? `Promo até ${new Date(account.promoExpiresAt).toLocaleDateString('pt-BR')}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+          <SofButton
+            title="Alterar plano"
+            variant="light"
+            theme="dashboard"
+            onPress={() => router.push('/(dashboard)/choose-plan')}
+          />
+        </View>
+      </SofCard>
+    </View>
+  );
+
+  const whatsappSection = (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>WhatsApp</Text>
+      <SofCard>
+        <Text style={styles.cardTitle}>Bot e conexão</Text>
+
+        <View style={styles.statusRow}>
+          <View
+            style={[
+              styles.statusCard,
+              integrations.wa ? styles.statusCardOn : styles.statusCardMuted,
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDotLg,
+                integrations.wa ? styles.statusDotOn : styles.statusDotOff,
+              ]}
+            />
+            <View style={styles.statusCardText}>
+              <Text style={styles.statusCardLabel}>Servidor</Text>
+              <Text style={styles.statusCardValue}>
+                {integrations.wa ? 'Pronto' : 'Desligado'}
               </Text>
             </View>
-          </SofCard>
+          </View>
+          <View
+            style={[
+              styles.statusCard,
+              waLinked ? styles.statusCardOn : styles.statusCardMuted,
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDotLg,
+                waLinked ? styles.statusDotOn : styles.statusDotOff,
+              ]}
+            />
+            <View style={styles.statusCardText}>
+              <Text style={styles.statusCardLabel}>Dispositivo</Text>
+              <Text style={styles.statusCardValue}>{waDeviceLabel}</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={gridItemStyle}>
-          <Text style={styles.sectionLabel}>Assinatura</Text>
-          <SofCard>
-            <View style={styles.planBanner}>
-              <View style={styles.planBannerText}>
-                <Text style={styles.planBannerName}>{account.plan}</Text>
-                <Text style={styles.planBannerPrice}>
-                  {account.planPrice != null
-                    ? `R$ ${account.planPrice}/mês`
-                    : 'Plano ativo'}
-                </Text>
-                <Text style={styles.planBannerMeta}>
-                  {[
-                    `Desde ${since}`,
-                    account.billingSource === 'promo' && account.promoExpiresAt
-                      ? `Promo até ${new Date(account.promoExpiresAt).toLocaleDateString('pt-BR')}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </View>
-              <SofButton
-                title="Alterar plano"
-                variant="light"
-                theme="dashboard"
-                onPress={() => router.push('/(dashboard)/choose-plan')}
-              />
-            </View>
-          </SofCard>
-        </View>
-
-        <View style={gridItemStyle}>
-          <Text style={styles.sectionLabel}>WhatsApp</Text>
-          <SofCard>
-            <Text style={styles.cardTitle}>Bot e conexão</Text>
-
-            <View style={styles.statusRow}>
-              <View
-                style={[
-                  styles.statusCard,
-                  integrations.wa
-                    ? styles.statusCardOn
-                    : styles.statusCardMuted,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.statusDotLg,
-                    integrations.wa
-                      ? styles.statusDotOn
-                      : styles.statusDotOff,
-                  ]}
-                />
-                <View style={styles.statusCardText}>
-                  <Text style={styles.statusCardLabel}>Servidor</Text>
-                  <Text style={styles.statusCardValue}>
-                    {integrations.wa ? 'Pronto' : 'Desligado'}
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={[
-                  styles.statusCard,
-                  waLinked ? styles.statusCardOn : styles.statusCardMuted,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.statusDotLg,
-                    waLinked ? styles.statusDotOn : styles.statusDotOff,
-                  ]}
-                />
-                <View style={styles.statusCardText}>
-                  <Text style={styles.statusCardLabel}>Dispositivo</Text>
-                  <Text style={styles.statusCardValue}>{waDeviceLabel}</Text>
-                </View>
-              </View>
-            </View>
-
-            {!integrations.pairingAvailable ? (
-              <View style={styles.infoBox}>
+        {!integrations.pairingAvailable ? (
+          <View style={styles.infoBox}>
+            <Text style={styles.help}>
+              Para parear pelo painel, configure{' '}
+              <Text style={styles.code}>WHATSAPP_PROVIDER=uazapi</Text>,{' '}
+              <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
+              <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
+              <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma
+              instância). Enquanto isso, use o simulador na Agenda.
+            </Text>
+          </View>
+        ) : waLinked ? (
+          <View style={styles.connectedBox}>
+            <Text style={styles.connectedTitle}>WhatsApp pareado</Text>
+            {waInstanceId ? (
+              <Text style={styles.help}>
+                Instância: <Text style={styles.code}>{waInstanceId}</Text>
+              </Text>
+            ) : (
+              <Text style={styles.help}>
+                O bot está pronto para atender seus clientes.
+              </Text>
+            )}
+            <SofButton
+              title={waBusy ? 'Desconectando…' : 'Desconectar WhatsApp'}
+              variant="danger"
+              theme="dashboard"
+              disabled={waBusy}
+              onPress={disconnectWa}
+            />
+          </View>
+        ) : (
+          <>
+            {waMode === 'paircode' ? (
+              <View style={styles.pairBlock}>
                 <Text style={styles.help}>
-                  Para parear pelo painel, configure{' '}
-                  <Text style={styles.code}>WHATSAPP_PROVIDER=uazapi</Text>,{' '}
-                  <Text style={styles.code}>WHATSAPP_BASE_URL</Text> e{' '}
-                  <Text style={styles.code}>WHATSAPP_ADMIN_TOKEN</Text> (ou{' '}
-                  <Text style={styles.code}>WHATSAPP_TOKEN</Text> de uma
-                  instância). Enquanto isso, use o simulador na Agenda.
+                  Informe o telefone do WhatsApp para gerar um código de
+                  pareamento.
                 </Text>
-              </View>
-            ) : waLinked ? (
-              <View style={styles.connectedBox}>
-                <Text style={styles.connectedTitle}>WhatsApp pareado</Text>
-                {waInstanceId ? (
-                  <Text style={styles.help}>
-                    Instância: <Text style={styles.code}>{waInstanceId}</Text>
-                  </Text>
-                ) : (
-                  <Text style={styles.help}>
-                    O bot está pronto para atender seus clientes.
-                  </Text>
-                )}
-                <SofButton
-                  title={waBusy ? 'Desconectando…' : 'Desconectar WhatsApp'}
-                  variant="danger"
+                <SofInput
+                  label="Telefone do WhatsApp (DDI + número)"
+                  value={waPhone}
+                  onChangeText={setWaPhone}
                   theme="dashboard"
-                  disabled={waBusy}
-                  onPress={disconnectWa}
+                  placeholder="5511999998888"
+                  keyboardType="phone-pad"
                 />
+                <View style={styles.waActions}>
+                  <SofButton
+                    title={waBusy ? 'Gerando…' : 'Gerar código'}
+                    variant="dark"
+                    theme="dashboard"
+                    disabled={waBusy}
+                    onPress={connectPair}
+                  />
+                  <SofButton
+                    title="Voltar ao QR"
+                    variant="light"
+                    theme="dashboard"
+                    disabled={waBusy}
+                    onPress={() => {
+                      stopPolling();
+                      setWaPaircode(null);
+                      setWaError('');
+                      lastQrFetchAtRef.current = 0;
+                      setWaMode('qrcode');
+                    }}
+                  />
+                </View>
+                {waPaircode ? (
+                  <View style={styles.pairCodeWrap}>
+                    <Text style={styles.pairCodeLabel}>
+                      Código de pareamento
+                    </Text>
+                    <Text style={styles.pairCode}>{waPaircode}</Text>
+                    <Text style={styles.helpCenter}>
+                      No WhatsApp, escolha conectar com o número de telefone e
+                      digite este código.
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : (
               <>
-                {waMode === 'paircode' ? (
-                  <View style={styles.pairBlock}>
-                    <Text style={styles.help}>
-                      Informe o telefone do WhatsApp para gerar um código de
-                      pareamento.
-                    </Text>
-                    <SofInput
-                      label="Telefone do WhatsApp (DDI + número)"
-                      value={waPhone}
-                      onChangeText={setWaPhone}
-                      theme="dashboard"
-                      placeholder="5511999998888"
-                      keyboardType="phone-pad"
+                <Text style={styles.help}>
+                  Escaneie o QR no WhatsApp (Aparelhos conectados). O código
+                  renova sozinho enquanto a conexão não for concluída.
+                </Text>
+                {waBusy && !waQrcode ? (
+                  <ActivityIndicator
+                    color={d.ink}
+                    style={{ marginTop: 8 }}
+                  />
+                ) : null}
+                {waQrcode ? (
+                  <View style={styles.qrWrap}>
+                    <Image
+                      source={{ uri: waQrcode }}
+                      style={styles.qrImage}
+                      accessibilityLabel="QR Code WhatsApp"
                     />
-                    <View style={styles.waActions}>
-                      <SofButton
-                        title={waBusy ? 'Gerando…' : 'Gerar código'}
-                        variant="dark"
-                        theme="dashboard"
-                        disabled={waBusy}
-                        onPress={connectPair}
-                      />
-                      <SofButton
-                        title="Voltar ao QR"
-                        variant="light"
-                        theme="dashboard"
-                        disabled={waBusy}
-                        onPress={() => {
-                          stopPolling();
-                          setWaPaircode(null);
-                          setWaError('');
-                          lastQrFetchAtRef.current = 0;
-                          setWaMode('qrcode');
-                        }}
-                      />
-                    </View>
-                    {waPaircode ? (
-                      <View style={styles.pairCodeWrap}>
-                        <Text style={styles.pairCodeLabel}>
-                          Código de pareamento
-                        </Text>
-                        <Text style={styles.pairCode}>{waPaircode}</Text>
-                        <Text style={styles.helpCenter}>
-                          No WhatsApp, escolha conectar com o número de telefone
-                          e digite este código.
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.help}>
-                      Escaneie o QR no WhatsApp (Aparelhos conectados). O código
-                      renova sozinho enquanto a conexão não for concluída.
+                    <Text style={styles.helpCenter}>
+                      Abra o WhatsApp → Aparelhos conectados → Conectar um
+                      aparelho
                     </Text>
-                    {waBusy && !waQrcode ? (
-                      <ActivityIndicator
-                        color={d.ink}
-                        style={{ marginTop: 8 }}
-                      />
-                    ) : null}
-                    {waQrcode ? (
-                      <View style={styles.qrWrap}>
-                        <Image
-                          source={{ uri: waQrcode }}
-                          style={styles.qrImage}
-                          accessibilityLabel="QR Code WhatsApp"
-                        />
-                        <Text style={styles.helpCenter}>
-                          Abra o WhatsApp → Aparelhos conectados → Conectar um
-                          aparelho
-                        </Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.waActions}>
-                      <SofButton
-                        title="Usar código"
-                        variant="light"
-                        theme="dashboard"
-                        disabled={waBusy}
-                        onPress={() => {
-                          stopPolling();
-                          setWaMode('paircode');
-                          setWaQrcode(null);
-                          setWaPaircode(null);
-                          setWaError('');
-                        }}
-                      />
-                    </View>
-                  </>
-                )}
+                  </View>
+                ) : null}
+                <View style={styles.waActions}>
+                  <SofButton
+                    title="Usar código"
+                    variant="light"
+                    theme="dashboard"
+                    disabled={waBusy}
+                    onPress={() => {
+                      stopPolling();
+                      setWaMode('paircode');
+                      setWaQrcode(null);
+                      setWaPaircode(null);
+                      setWaError('');
+                    }}
+                  />
+                </View>
               </>
             )}
+          </>
+        )}
 
-            {waError ? <Text style={styles.error}>{waError}</Text> : null}
+        {waError ? <Text style={styles.error}>{waError}</Text> : null}
 
-            {has('botPause') && waLinked ? (
-              <View style={styles.pauseBlock}>
-                <View style={styles.pauseHead}>
-                  <Text style={styles.label}>Pausa do bot</Text>
-                  <View
-                    style={[
-                      styles.miniBadge,
-                      botPausedNow
-                        ? styles.miniBadgeWarn
-                        : styles.miniBadgeOk,
-                    ]}
+        {has('botPause') && waLinked ? (
+          <View style={styles.pauseBlock}>
+            <View style={styles.pauseHead}>
+              <Text style={styles.label}>Pausa do bot</Text>
+              <View
+                style={[
+                  styles.miniBadge,
+                  botPausedNow ? styles.miniBadgeWarn : styles.miniBadgeOk,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.miniBadgeText,
+                    botPausedNow
+                      ? styles.miniBadgeTextWarn
+                      : styles.miniBadgeTextOk,
+                  ]}
+                >
+                  {account?.botPausedPermanent
+                    ? 'Desligado'
+                    : formatBotPauseUntil(account?.botPausedUntil)
+                      ? 'Pausado'
+                      : 'Ativo'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.help}>
+              Silencia o bot para todos os clientes (conta inteira). Útil em
+              folga, feriado ou quando você atende manualmente no WhatsApp.
+            </Text>
+            <View style={styles.chips}>
+              {BOT_PAUSE_PRESETS.map((p) => {
+                const active = botPauseMode === p.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setBotPauseMode(p.id)}
+                    style={[styles.chip, active && styles.chipActive]}
+                    disabled={savingBotPause}
                   >
                     <Text
                       style={[
-                        styles.miniBadgeText,
-                        botPausedNow
-                          ? styles.miniBadgeTextWarn
-                          : styles.miniBadgeTextOk,
+                        styles.chipText,
+                        active && styles.chipTextActive,
                       ]}
                     >
-                      {account?.botPausedPermanent
-                        ? 'Desligado'
-                        : formatBotPauseUntil(account?.botPausedUntil)
-                          ? 'Pausado'
-                          : 'Ativo'}
+                      {p.label}
                     </Text>
-                  </View>
-                </View>
-                <Text style={styles.help}>
-                  Silencia o bot para todos os clientes (conta inteira). Útil em
-                  folga, feriado ou quando você atende manualmente no WhatsApp.
-                </Text>
-                <View style={styles.chips}>
-                  {BOT_PAUSE_PRESETS.map((p) => {
-                    const active = botPauseMode === p.id;
-                    return (
-                      <Pressable
-                        key={p.id}
-                        onPress={() => setBotPauseMode(p.id)}
-                        style={[styles.chip, active && styles.chipActive]}
-                        disabled={savingBotPause}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            active && styles.chipTextActive,
-                          ]}
-                        >
-                          {p.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {account?.botPausedPermanent ? (
-                  <Text style={styles.pauseStatus}>
-                    Bot desligado (permanente).
-                  </Text>
-                ) : formatBotPauseUntil(account?.botPausedUntil) ? (
-                  <Text style={styles.pauseStatus}>
-                    Pausado até {formatBotPauseUntil(account?.botPausedUntil)}.
-                  </Text>
-                ) : (
-                  <Text style={styles.pauseStatus}>
-                    Bot ativo para novos clientes.
-                  </Text>
-                )}
-                {botPauseError ? (
-                  <Text style={styles.error}>{botPauseError}</Text>
-                ) : null}
-                {botPauseSaved ? (
-                  <Text style={styles.saved}>{botPauseSaved}</Text>
-                ) : null}
-                <SofButton
-                  title={savingBotPause ? 'Salvando…' : 'Salvar pausa do bot'}
-                  variant="dark"
-                  theme="dashboard"
-                  disabled={savingBotPause}
-                  onPress={async () => {
-                    setBotPauseError('');
-                    setSavingBotPause(true);
-                    try {
-                      const { account: updated } =
-                        await dashboardApi.updateAccount(
-                          botPausePayload(botPauseMode),
-                        );
-                      await setSession(updated);
-                      setBotPauseMode(botPauseModeFromAccount(updated));
-                      setBotPauseSaved('Pausa do bot atualizada!');
-                      setTimeout(() => setBotPauseSaved(''), 2000);
-                    } catch (err) {
-                      setBotPauseError(
-                        err instanceof Error
-                          ? err.message
-                          : 'Não foi possível salvar.',
-                      );
-                    } finally {
-                      setSavingBotPause(false);
-                    }
-                  }}
-                />
-              </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {account?.botPausedPermanent ? (
+              <Text style={styles.pauseStatus}>
+                Bot desligado (permanente).
+              </Text>
+            ) : formatBotPauseUntil(account?.botPausedUntil) ? (
+              <Text style={styles.pauseStatus}>
+                Pausado até {formatBotPauseUntil(account?.botPausedUntil)}.
+              </Text>
+            ) : (
+              <Text style={styles.pauseStatus}>
+                Bot ativo para novos clientes.
+              </Text>
+            )}
+            {botPauseError ? (
+              <Text style={styles.error}>{botPauseError}</Text>
             ) : null}
-          </SofCard>
-        </View>
-
-        {has('reminders') && waLinked ? (
-          <View style={gridItemStyle}>
-            <Text style={styles.sectionLabel}>Lembretes</Text>
-            <SofCard>
-              <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
-              <Text style={styles.help}>
-                A Sof envia um lembrete automático pela instância conectada, no
-                máximo 1× por agendamento. O job roda a cada 30 minutos — o
-                aviso pode sair até meia hora depois do horário estimado.
-              </Text>
-              <Text style={styles.label}>Antecedência</Text>
-              <View style={styles.chips}>
-                {REMINDER_PRESETS.map((preset) => {
-                  const active = reminderMinutes === preset.minutes;
-                  return (
-                    <Pressable
-                      key={preset.minutes}
-                      onPress={() => setReminderMinutes(preset.minutes)}
-                      style={[styles.chip, active && styles.chipActive]}
-                      disabled={savingReminder}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          active && styles.chipTextActive,
-                        ]}
-                      >
-                        {preset.label}
-                      </Text>
-                    </Pressable>
+            {botPauseSaved ? (
+              <Text style={styles.saved}>{botPauseSaved}</Text>
+            ) : null}
+            <SofButton
+              title={savingBotPause ? 'Salvando…' : 'Salvar pausa do bot'}
+              variant="dark"
+              theme="dashboard"
+              disabled={savingBotPause}
+              onPress={async () => {
+                setBotPauseError('');
+                setSavingBotPause(true);
+                try {
+                  const { account: updated } =
+                    await dashboardApi.updateAccount(
+                      botPausePayload(botPauseMode),
+                    );
+                  await setSession(updated);
+                  setBotPauseMode(botPauseModeFromAccount(updated));
+                  setBotPauseSaved('Pausa do bot atualizada!');
+                  setTimeout(() => setBotPauseSaved(''), 2000);
+                } catch (err) {
+                  setBotPauseError(
+                    err instanceof Error
+                      ? err.message
+                      : 'Não foi possível salvar.',
                   );
-                })}
-              </View>
-              <Text style={[styles.label, { marginTop: 4 }]}>
-                Fuso horário
-              </Text>
-              <Pressable
-                onPress={() => setTimezoneOpen((prev) => !prev)}
-                style={styles.tzButton}
-                disabled={savingReminder}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: timezoneOpen }}
-              >
-                <Text style={styles.tzButtonText}>
-                  {TIMEZONE_OPTIONS.find((opt) => opt.value === timezone)
-                    ?.label || timezone}
-                </Text>
-                <Text style={styles.tzChevron}>
-                  {timezoneOpen ? '▲' : '▼'}
-                </Text>
-              </Pressable>
-              {timezoneOpen ? (
-                <View style={styles.tzList}>
-                  {TIMEZONE_OPTIONS.map((opt) => {
-                    const active = timezone === opt.value;
-                    return (
-                      <Pressable
-                        key={opt.value}
-                        onPress={() => {
-                          setTimezone(opt.value);
-                          setTimezoneOpen(false);
-                        }}
-                        style={[
-                          styles.tzOption,
-                          active && styles.tzOptionActive,
-                        ]}
-                        disabled={savingReminder}
-                      >
-                        <Text
-                          style={[
-                            styles.tzOptionText,
-                            active && styles.tzOptionTextActive,
-                          ]}
-                        >
-                          {opt.label}
-                        </Text>
-                        {active ? (
-                          <Text style={styles.tzCheck}>✓</Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : null}
-              {reminderError ? (
-                <Text style={styles.error}>{reminderError}</Text>
-              ) : null}
-              {reminderSaved ? (
-                <Text style={styles.saved}>{reminderSaved}</Text>
-              ) : null}
-              <SofButton
-                title={savingReminder ? 'Salvando…' : 'Salvar lembrete'}
-                variant="dark"
-                theme="dashboard"
-                disabled={savingReminder}
-                onPress={async () => {
-                  setReminderError('');
-                  setSavingReminder(true);
-                  try {
-                    const { account: updated } =
-                      await dashboardApi.updateAccount({
-                        whatsappReminderMinutes: reminderMinutes,
-                        timezone,
-                      });
-                    await setSession(updated);
-                    setReminderSaved('Configuração de lembrete salva!');
-                    setTimeout(() => setReminderSaved(''), 2000);
-                  } catch (err) {
-                    setReminderError(
-                      err instanceof Error
-                        ? err.message
-                        : 'Não foi possível salvar.',
-                    );
-                  } finally {
-                    setSavingReminder(false);
-                  }
-                }}
-              />
-            </SofCard>
+                } finally {
+                  setSavingBotPause(false);
+                }
+              }}
+            />
           </View>
         ) : null}
+      </SofCard>
+    </View>
+  );
 
-        <View style={gridItemStyle}>
-          <Text style={styles.sectionLabel}>Ajuda</Text>
-          <SofCard>
-            <View style={styles.cardTitleBlock}>
-              <Text style={styles.cardTitle}>Suporte Sof</Text>
-              <Text style={styles.cardHint}>
-                Abra um ticket para falar com a equipe Sof sobre conta,
-                cobrança ou WhatsApp.
-              </Text>
-            </View>
-            <SofButton
-              title="Abrir suporte"
-              variant="light"
-              theme="dashboard"
-              onPress={() => router.push('/(dashboard)/support')}
-            />
-          </SofCard>
-        </View>
-      </View>
-
-      <View style={styles.dangerZone}>
-        <View style={styles.dangerText}>
-          <Text style={styles.dangerTitle}>Sessão</Text>
+  const remindersSection =
+    has('reminders') && waLinked ? (
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Lembretes</Text>
+        <SofCard>
+          <Text style={styles.cardTitle}>Lembrete WhatsApp</Text>
           <Text style={styles.help}>
-            Encerra o acesso neste dispositivo. Você pode entrar de novo a
-            qualquer momento.
+            A Sof envia um lembrete automático pela instância conectada, no
+            máximo 1× por agendamento. O job roda a cada 30 minutos — o aviso
+            pode sair até meia hora depois do horário estimado.
+          </Text>
+          <Text style={styles.label}>Antecedência</Text>
+          <View style={styles.chips}>
+            {REMINDER_PRESETS.map((preset) => {
+              const active = reminderMinutes === preset.minutes;
+              return (
+                <Pressable
+                  key={preset.minutes}
+                  onPress={() => setReminderMinutes(preset.minutes)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  disabled={savingReminder}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      active && styles.chipTextActive,
+                    ]}
+                  >
+                    {preset.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={[styles.label, { marginTop: 4 }]}>Fuso horário</Text>
+          <Pressable
+            onPress={() => setTimezoneOpen((prev) => !prev)}
+            style={styles.tzButton}
+            disabled={savingReminder}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: timezoneOpen }}
+          >
+            <Text style={styles.tzButtonText}>
+              {TIMEZONE_OPTIONS.find((opt) => opt.value === timezone)
+                ?.label || timezone}
+            </Text>
+            <Text style={styles.tzChevron}>{timezoneOpen ? '▲' : '▼'}</Text>
+          </Pressable>
+          {timezoneOpen ? (
+            <View style={styles.tzList}>
+              {TIMEZONE_OPTIONS.map((opt) => {
+                const active = timezone === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => {
+                      setTimezone(opt.value);
+                      setTimezoneOpen(false);
+                    }}
+                    style={[styles.tzOption, active && styles.tzOptionActive]}
+                    disabled={savingReminder}
+                  >
+                    <Text
+                      style={[
+                        styles.tzOptionText,
+                        active && styles.tzOptionTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    {active ? <Text style={styles.tzCheck}>✓</Text> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+          {reminderError ? (
+            <Text style={styles.error}>{reminderError}</Text>
+          ) : null}
+          {reminderSaved ? (
+            <Text style={styles.saved}>{reminderSaved}</Text>
+          ) : null}
+          <SofButton
+            title={savingReminder ? 'Salvando…' : 'Salvar lembrete'}
+            variant="dark"
+            theme="dashboard"
+            disabled={savingReminder}
+            onPress={async () => {
+              setReminderError('');
+              setSavingReminder(true);
+              try {
+                const { account: updated } = await dashboardApi.updateAccount({
+                  whatsappReminderMinutes: reminderMinutes,
+                  timezone,
+                });
+                await setSession(updated);
+                setReminderSaved('Configuração de lembrete salva!');
+                setTimeout(() => setReminderSaved(''), 2000);
+              } catch (err) {
+                setReminderError(
+                  err instanceof Error
+                    ? err.message
+                    : 'Não foi possível salvar.',
+                );
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+          />
+        </SofCard>
+      </View>
+    ) : null;
+
+  const helpSection = (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>Ajuda</Text>
+      <SofCard>
+        <View style={styles.cardTitleBlock}>
+          <Text style={styles.cardTitle}>Suporte Sof</Text>
+          <Text style={styles.cardHint}>
+            Abra um ticket para falar com a equipe Sof sobre conta, cobrança
+            ou WhatsApp.
           </Text>
         </View>
         <SofButton
-          title="Sair da conta"
-          variant="danger"
+          title="Abrir suporte"
+          variant="light"
           theme="dashboard"
-          onPress={async () => {
-            await logout();
-            router.replace('/');
-          }}
+          onPress={() => router.push('/(dashboard)/support')}
         />
-      </View>
+      </SofCard>
+    </View>
+  );
+
+  return (
+    <View style={[styles.page, wide && styles.pageWide]}>
+      {wide ? (
+        <View style={styles.columns}>
+          <View style={styles.column}>
+            {establishmentSection}
+            {planSection}
+            {remindersSection}
+            {helpSection}
+          </View>
+          <View style={styles.column}>
+            {hoursSection}
+            {whatsappSection}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.stack}>
+          {establishmentSection}
+          {hoursSection}
+          {planSection}
+          {whatsappSection}
+          {remindersSection}
+          {helpSection}
+        </View>
+      )}
 
       <EstablishmentModal
         visible={establishmentOpen}
