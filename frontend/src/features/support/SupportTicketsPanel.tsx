@@ -325,7 +325,7 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
 }
 
 const styles = StyleSheet.create({
-  page: { paddingBottom: 48, gap: 20 },
+  page: { paddingBottom: 48, gap: 24 },
   headerActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -337,13 +337,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: d.ink,
     fontFamily: d.fonts.displayBold,
+    lineHeight: 28,
   },
-  meta: { color: d.muted, marginTop: 4, fontSize: 14, fontFamily: d.fonts.body },
+  meta: {
+    color: d.muted,
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
+  },
   body: {
     color: d.ink,
     fontSize: 15,
     lineHeight: 22,
-    marginTop: 12,
+    marginTop: 16,
     fontFamily: d.fonts.body,
   },
   section: {
@@ -352,21 +359,23 @@ const styles = StyleSheet.create({
     color: d.muted,
     textTransform: 'uppercase',
     marginBottom: 10,
+    letterSpacing: 0.4,
     fontFamily: d.fonts.bodyMedium,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  commentList: { gap: 10 },
+  commentList: { gap: 12 },
   comment: {
     backgroundColor: d.surface,
     borderWidth: 1,
     borderColor: d.line,
     borderRadius: d.radiusSm,
-    padding: 12,
+    padding: 16,
   },
   commentAuthor: {
     fontSize: 12,
     color: d.muted,
-    marginBottom: 4,
+    marginBottom: 8,
+    lineHeight: 16,
     fontFamily: d.fonts.body,
   },
   commentBody: {
@@ -381,5 +390,6 @@ const styles = StyleSheet.create({
     color: d.accent,
     textTransform: 'uppercase',
     fontFamily: d.fonts.bodyMedium,
+    paddingLeft: 4,
   },
 });
