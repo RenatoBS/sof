@@ -138,6 +138,7 @@ Ver lista completa em `backend/.env.example`, `frontend/.env.example`, `admin-ba
 2. O Admin Token é distinto do token da instância — copie o admin no painel Uazapi.  
 3. Para webhook real, use túnel HTTPS (ex. ngrok) em `API_PUBLIC_URL`.  
 4. No painel Conta → Bot do WhatsApp → Escanear QR ou Usar código.  
+5. Ops no admin Sof (`:8091` → detalhe da conta): mesmos `WHATSAPP_*` + `API_PUBLIC_URL` no `admin-backend/.env` para status/conectar/recriar sem abrir o Uazapi.  
 5. Sem essas envs, o simulador em `/simulator` continua disponível.  
 6. Para áudio: configure `OPENAI_API_KEY` (custo ~US$ 0,006/min via Whisper na Uazapi).  
 7. Lembretes: com a API no ar (`backend:dev`), o job roda no boot e a cada 30 min. Configure antecedência/fuso em Conta → Lembrete WhatsApp (default 2h, `America/Sao_Paulo`). Precisa de instância conectada para enviar de verdade.

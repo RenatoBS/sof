@@ -109,6 +109,10 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-agendamento-api`) para `Date` 
 | `CORS_ORIGIN` | mesma URL do admin-web |
 | `DATABASE_URL` / `DIRECT_URL` | mesmos do produto (Supabase) |
 | `STRIPE_SECRET_KEY` | criar/alterar planos (mesmo da API produto) |
+| `WHATSAPP_BASE_URL` | URL do servidor Uazapi (ops no detalhe da conta) |
+| `WHATSAPP_ADMIN_TOKEN` | cria/pareia instância por conta |
+| `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` | legado (instância única), opcional |
+| `API_PUBLIC_URL` | URL HTTPS da **API produto** (webhook Uazapi) |
 | `SEED_ADMIN_*` | só para seed no app produto |
 
 ### Variáveis Admin Web (`sof-agendamento-admin-web`)

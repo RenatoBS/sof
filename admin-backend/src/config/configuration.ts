@@ -37,8 +37,17 @@ export default () => {
     isProd,
     jwtSecret,
     databaseUrl: process.env.DATABASE_URL || '',
+    apiPublicUrl: (
+      process.env.API_PUBLIC_URL || 'http://localhost:3001'
+    ).replace(/\/+$/, ''),
     stripe: {
       secretKey: process.env.STRIPE_SECRET_KEY || '',
+    },
+    whatsapp: {
+      baseUrl: (process.env.WHATSAPP_BASE_URL || '').replace(/\/+$/, ''),
+      adminToken: process.env.WHATSAPP_ADMIN_TOKEN || '',
+      token: process.env.WHATSAPP_TOKEN || '',
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
     },
   };
 };

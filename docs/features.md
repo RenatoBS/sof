@@ -77,6 +77,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `ad
 | Listar / buscar contas | `/accounts` | `GET /api/accounts?q=&planId=` |
 | Criar conta manual | `/accounts/new` | `POST /api/accounts` |
 | Editar conta / plano / status | `/edit-account` | `PUT /api/accounts/:id` |
+| Ops WhatsApp (Uazapi) | `/edit-account` (seção WA) | `GET/POST /api/accounts/:id/whatsapp*` |
 | Resetar senha | detalhe da conta | `POST /api/accounts/:id/reset-password` |
 | Listar planos (com contagem de contas) | `/plans` | `GET /api/plans` (`accountCount`) |
 | Criar / editar / apagar plano (+ Stripe Product/Price/Payment Link) | `/new-plan`, `/edit-plan` | `POST/PUT/DELETE /api/plans` |
@@ -281,6 +282,7 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Health | `GET /api/health` |
 | Auth | `POST /api/auth/login`, `logout`, `GET me` |
 | Accounts | `GET/POST /api/accounts`, `GET/PUT …/:id`, `POST …/:id/reset-password` |
+| WhatsApp ops (Uazapi) | `GET …/:id/whatsapp`, `POST …/connect|disconnect|clear|recreate` |
 | Plans | `GET/POST /api/plans`, `GET/PUT/DELETE …/:id` (inclui `entitlements`) |
 | Feature catalog | `GET /api/feature-catalog` |
 | Tickets | `GET /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
