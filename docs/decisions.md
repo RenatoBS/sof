@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-29 — Ops WhatsApp (Uazapi) no painel admin
+
+- **Contexto:** Suporte precisava desconectar/reconectar/recriar instâncias sem entrar no console Uazapi nem no painel do tenant.
+- **Decisão:** Endpoints admin `GET/POST /api/accounts/:id/whatsapp*` + UI em `/edit-account` (status, QR/código, disconnect, clear, recreate). Admin-api usa as mesmas envs Uazapi; webhook permanece na API produto (`API_PUBLIC_URL`). Token da instância não vai ao front.
+- **Consequências:** Admin-api precisa de `WHATSAPP_*` + `API_PUBLIC_URL`; badge WA na lista de contas.
+- **Alternativas descartadas:** Proxy para o painel Uazapi; console completo (envio de msgs, chats); só leitura de status.
+
 ## 2026-07-29 — Rotas do frontend em inglês
 
 - **Contexto:** Mix de paths PT (`/simulador`, `/esqueci-senha`, `/profissional/…`) e EN (`/account`, `/employees`) no export estático.

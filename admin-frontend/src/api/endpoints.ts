@@ -114,6 +114,37 @@ export const accountsApi = {
       `/accounts/${id}/reset-password`,
       { method: 'POST' },
     ),
+  whatsappStatus: (id: string) =>
+    api<{
+      pairingAvailable: boolean;
+      hasInstance: boolean;
+      instanceId: string;
+      connected: boolean;
+      connectedAt: string | null;
+      liveStatus: string | null;
+      phone: string | null;
+      qrcode: string | null;
+      paircode: string | null;
+    }>(`/accounts/${id}/whatsapp`),
+  whatsappConnect: (id: string, body?: { phone?: string }) =>
+    api<{
+      status: string;
+      instanceId: string;
+      qrcode?: string;
+      paircode?: string | null;
+      mode: 'qrcode' | 'paircode';
+    }>(`/accounts/${id}/whatsapp/connect`, { method: 'POST', body: body || {} }),
+  whatsappDisconnect: (id: string) =>
+    api<{ ok: boolean }>(`/accounts/${id}/whatsapp/disconnect`, {
+      method: 'POST',
+    }),
+  whatsappClear: (id: string) =>
+    api<{ ok: boolean }>(`/accounts/${id}/whatsapp/clear`, { method: 'POST' }),
+  whatsappRecreate: (id: string) =>
+    api<{ ok: boolean; instanceId: string; hasInstance: boolean }>(
+      `/accounts/${id}/whatsapp/recreate`,
+      { method: 'POST' },
+    ),
 };
 
 export const plansApi = {

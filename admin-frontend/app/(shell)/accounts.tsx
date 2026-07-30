@@ -132,6 +132,14 @@ export default function AccountsScreen() {
             }
             right={
               <>
+                <Text
+                  style={[
+                    styles.waBadge,
+                    item.whatsappConnected && styles.waBadgeOn,
+                  ]}
+                >
+                  {item.whatsappConnected ? 'WA' : 'sem WA'}
+                </Text>
                 <Text style={styles.plan}>
                   {item.plan} · R$ {item.planPrice}
                 </Text>
@@ -173,6 +181,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   plan: { fontFamily: fonts.bodyMedium, color: colors.ink, fontSize: 13 },
+  waBadge: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.muted,
+    textTransform: 'uppercase',
+  },
+  waBadgeOn: { color: colors.accent },
   status: {
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
