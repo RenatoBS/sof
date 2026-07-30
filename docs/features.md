@@ -69,7 +69,7 @@ Keys stub (existem no catálogo, feature incompleta): `maxWhatsappNumbers` (aind
 
 ## Painel admin Sof (plataforma)
 
-Superfície interna (não é o dashboard do tenant). Apps `admin-frontend` + `admin-backend`.
+Superfície interna (não é o dashboard do tenant). Apps `admin/frontend` + `admin/backend`.
 
 | Feature | UI | API |
 |---------|-----|-----|
@@ -252,7 +252,7 @@ Cada conta: 4 serviços, 10 clientes, ~10 agendamentos/cliente, bloqueios (almo�
 
 O dashboard carrega handoffs à parte: plano sem `handoffs` (ex. Solo) recebe 403 nessa rota e **não** deve impedir o load de agenda/clientes/serviços.
 
-Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Para apagar e semear de novo: `npm run backend:reset-seed`.
+Arquivo: `saas/backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Para apagar e semear de novo: `npm run backend:reset-seed`.
 
 ## API — mapa rápido
 
@@ -275,7 +275,7 @@ Arquivo: `backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria
 | Events | `GET /api/events/stream` |
 | Support tickets | `GET/POST /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
 
-### Admin API (`admin-backend`, porta 3011)
+### Admin API (`admin/backend`, porta 3011)
 
 | Área | Métodos |
 |------|---------|

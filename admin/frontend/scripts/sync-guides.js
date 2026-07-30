@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Copia docs/guides + prints para admin-frontend/public/guides
+ * Copia docs/guides + prints para admin/frontend/public/guides
  * (rotas públicas estáticas no admin web).
  *
- * No Heroku (buildpack monorepo) só existe admin-frontend/ — sem docs/.
+ * No Heroku (buildpack monorepo) só existe admin/frontend/ — sem docs/.
  * Nesse caso sai 0 e usa o public/guides já commitado.
  */
 const fs = require('fs');
 const path = require('path');
 
 const adminRoot = path.resolve(__dirname, '..');
-const monorepoRoot = path.resolve(adminRoot, '..');
+const monorepoRoot = path.resolve(adminRoot, '../..');
 const srcGuides = path.join(monorepoRoot, 'docs/guides');
 const srcAssets = path.join(monorepoRoot, 'docs/assets/onboarding');
 const dest = path.join(adminRoot, 'public/guides');

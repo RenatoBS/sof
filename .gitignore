@@ -5,10 +5,11 @@ node_modules/
 .env
 .env.*
 !.env.example
-backend/.env
-frontend/.env
-admin-backend/.env
-admin-frontend/.env
+!.env.qa.example
+saas/backend/.env
+saas/frontend/.env
+admin/backend/.env
+admin/frontend/.env
 
 # Build / artefatos compilados
 build/*
@@ -18,12 +19,12 @@ out/
 .next/
 .nuxt/
 .output/
-backend/dist/
-admin-backend/dist/
-frontend/build/*
-!frontend/build/.gitkeep
-frontend/dist/
-admin-frontend/dist/
+saas/backend/dist/
+admin/backend/dist/
+saas/frontend/build/*
+!saas/frontend/build/.gitkeep
+saas/frontend/dist/
+admin/frontend/dist/
 
 # TypeScript
 *.tsbuildinfo
@@ -63,13 +64,13 @@ Thumbs.db
 *.sublime-workspace
 
 # Prisma (artefatos gerados do seed)
-backend/prisma/seed.js
-backend/prisma/seed.js.map
-backend/prisma/seed.d.ts
+saas/backend/prisma/seed.js
+saas/backend/prisma/seed.js.map
+saas/backend/prisma/seed.d.ts
 
 # Docker (volumes locais, se mapeados)
 .expo/
-frontend/.expo/
-frontend/web-build/
-admin-frontend/.expo/
-admin-frontend/web-build/
+saas/frontend/.expo/
+saas/frontend/web-build/
+admin/frontend/.expo/
+admin/frontend/web-build/

@@ -19,10 +19,10 @@ Para agentes de IA e visão completa do projeto, comece por:
 ## Estrutura
 
 ```
-backend/           NestJS + Prisma (API produto /api/*)
-frontend/          Expo + expo-router (produto)
-admin-backend/     NestJS (painel admin Sof, mesmo Postgres)
-admin-frontend/    Expo Web (painel admin)
+saas/backend/      NestJS + Prisma (API produto /api/*)
+saas/frontend/     Expo + expo-router (produto)
+admin/backend/     NestJS (painel admin Sof, mesmo Postgres)
+admin/frontend/    Expo Web (painel admin)
 docker-compose.yml PostgreSQL 16 (dev local)
 ```
 
@@ -39,7 +39,7 @@ Postgres em `localhost:5433` (usuário/senha/db: `sof`).
 ### 2. Backend
 
 ```bash
-cd backend
+cd saas/backend
 cp .env.example .env
 npm install
 npx prisma migrate dev
@@ -52,7 +52,7 @@ API em `http://localhost:3001`.
 ### 3. Frontend (Expo)
 
 ```bash
-cd frontend
+cd saas/frontend
 cp .env.example .env
 npm install
 npm run web        # web em http://localhost:8081
@@ -64,7 +64,7 @@ Configure `EXPO_PUBLIC_API_URL=http://localhost:3001` no `.env`.
 ### Conta de teste
 
 - e-mail: `demo@sof.com`
-- senha: valor de `SEED_DEMO_PASSWORD` no `backend/.env`
+- senha: valor de `SEED_DEMO_PASSWORD` no `saas/backend/.env`
 
 ## Auth cross-platform
 
@@ -76,11 +76,11 @@ Configure `EXPO_PUBLIC_API_URL=http://localhost:3001` no `.env`.
 
 | Onde | Variável | Uso |
 |------|----------|-----|
-| backend | `DATABASE_URL` | Postgres (pooler em Supabase ok) |
-| backend | `DIRECT_URL` | Postgres direto (migrations Prisma) |
-| backend | `CORS_ORIGIN` | Origens do front |
-| backend | `PUBLIC_URL` | URL do frontend (retorno Stripe Checkout) |
-| frontend | `EXPO_PUBLIC_API_URL` | URL da API |
+| saas/backend | `DATABASE_URL` | Postgres (pooler em Supabase ok) |
+| saas/backend | `DIRECT_URL` | Postgres direto (migrations Prisma) |
+| saas/backend | `CORS_ORIGIN` | Origens do front |
+| saas/backend | `PUBLIC_URL` | URL do frontend (retorno Stripe Checkout) |
+| saas/frontend | `EXPO_PUBLIC_API_URL` | URL da API |
 
 ## Scripts na raiz
 
@@ -98,8 +98,8 @@ Dois apps no monorepo:
 
 | App | Base | URL |
 |-----|------|-----|
-| `sof-agendamento-api` | `backend/` | https://sof-agendamento-api-105cf5acdd23.herokuapp.com |
-| `sof-agendamento-web` | `frontend/` | https://sof-agendamento-web-34fd9a1e97f3.herokuapp.com |
+| `sof-solutions-api` | `saas/backend/` | https://sof-solutions-api-20faec08383c.herokuapp.com |
+| `sof-solutions-web` | `saas/frontend/` | https://sof-solutions-web-c45a36088329.herokuapp.com |
 
 Buildpacks (nessa ordem): monorepo (`APP_BASE`) + `heroku/nodejs`.
 
@@ -116,7 +116,7 @@ npm run deploy       # API depois front (sequencial)
 npm run deploy:together  # API + front em paralelo
 
 # seed opcional
-heroku run -a sof-agendamento-api npx prisma db seed
+heroku run -a sof-solutions-api npx prisma db seed
 ```
 
 Variáveis críticas no API: `JWT_SECRET`, `PUBLIC_URL`, `CORS_ORIGIN`, `API_PUBLIC_URL`, `DATABASE_URL`, `DIRECT_URL`.  

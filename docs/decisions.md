@@ -17,6 +17,48 @@ Formato sugerido:
 
 ---
 
+## 2026-07-30 — Apps Heroku renomeados para `sof-solutions-*`
+
+- **Contexto:** Apps ainda usavam o prefixo legado `sof-solutions-*`.
+- **Decisão:** Renomear os 6 apps para `sof-solutions-{api,web,admin-api,admin-web,api-qa,web-qa}`. Domínios custom (`api`/`www`/`qa`/`painel-admin`) permanecem; hostnames `*.herokuapp.com` mudam — atualizar `EXPO_PUBLIC_API_URL` onde apontava ao host Heroku e redeployar o front correspondente.
+- **Consequências:** Remotes git e docs/scripts atualizados; URLs Heroku antigas deixam de ser canônicas.
+- **Alternativas descartadas:** Manter nomes antigos; renomear só QA.
+
+## 2026-07-30 — Domínio QA API `qa-api.sof.solutions`
+
+- **Contexto:** API QA só no hostname Heroku; rename de apps quebrava `EXPO_PUBLIC_API_URL` embutido no front.
+- **Decisão:** Custom domain no `sof-solutions-api-qa`; CNAME `qa-api` → target Heroku; `API_PUBLIC_URL` + `EXPO_PUBLIC_API_URL` = `https://qa-api.sof.solutions` (redeploy do web QA).
+- **Consequências:** Webhooks e front QA estáveis independentemente do slug Heroku.
+- **Alternativas descartadas:** Manter só `*.herokuapp.com`; path no mesmo host `qa`.
+
+## 2026-07-30 — Domínio QA `qa.sof.solutions`
+
+- **Contexto:** Web QA só em `*.herokuapp.com`.
+- **Decisão:** Custom domain no `sof-solutions-web-qa`; CNAME Hostinger `qa` → target Heroku DNS; API QA usa `PUBLIC_URL`/`CORS_ORIGIN` = `https://qa.sof.solutions`. API continua no hostname Heroku até haver subdomínio dedicado.
+- **Consequências:** Certificado ACM após DNS propagar; `heroku:qa:config` prefere o domínio custom.
+- **Alternativas descartadas:** `www-qa`; apontar API e web no mesmo host.
+
+## 2026-07-30 — Ambiente QA SaaS (Heroku + Supabase staging)
+
+- **Contexto:** Precisávamos de um ambiente isolado do produto (sem admin) para validar com banco/Stripe/Uazapi de staging.
+- **Decisão:** Apps `sof-solutions-api-qa` + `sof-solutions-web-qa`; envs a partir de `saas/backend/.env.qa` via `npm run heroku:qa:config` (URLs Heroku sobrescrevem localhost do arquivo); deploy com `npm run deploy:qa`.
+- **Consequências:** Postgres staging separado da prod; admin continua só em produção.
+- **Alternativas descartadas:** Reusar apps de prod com review apps; incluir admin no QA agora.
+
+## 2026-07-30 — Prisma `adminClient` não escreve fora do slug Heroku
+
+- **Contexto:** Com `APP_BASE=saas/backend`, `prisma generate` tentava `../../../admin/backend/...` → `EACCES mkdir /admin`.
+- **Decisão:** `heroku-postbuild` usa `prisma generate --generator client`; output do `adminClient` fica em `saas/backend/node_modules/.prisma/admin-client`. Admin continua com sync-schema + generate próprio.
+- **Consequências:** Deploy da API produto não depende da pasta `admin/`.
+- **Alternativas descartadas:** Remover `adminClient` do schema; copiar `admin/` para o slug da API.
+
+## 2026-07-30 — Monorepo em `saas/` + `admin/`
+
+- **Contexto:** Quatro apps na raiz (`backend`, `frontend`, `admin-backend`, `admin-frontend`) misturavam produto e painel interno.
+- **Decisão:** Produto em `saas/backend` + `saas/frontend`; painel em `admin/backend` + `admin/frontend` (sem prefixo `admin-` nos nomes das pastas). Scripts npm da raiz mantêm aliases (`backend:dev`, `admin-backend:dev`) com `--prefix` novo. Heroku `APP_BASE` aponta para os subpaths.
+- **Consequências:** Prisma `adminClient` output em `admin/backend/...`; `sync-guides` sobe dois níveis até a raiz; docs/AGENTS atualizados.
+- **Alternativas descartadas:** Manter pastas planas; `packages/*` estilo turborepo (overkill agora).
+
 ## 2026-07-29 — Ops WhatsApp (Uazapi) no painel admin
 
 - **Contexto:** Suporte precisava desconectar/reconectar/recriar instâncias sem entrar no console Uazapi nem no painel do tenant.
@@ -65,7 +107,7 @@ Formato sugerido:
 ## 2026-07-29 — Domínio custom do painel admin
 
 - **Contexto:** Admin web só em `*.herokuapp.com`; produto já usa `*.sof.solutions` (Hostinger → Heroku DNS).
-- **Decisão:** `painel-admin.sof.solutions` → `sof-agendamento-admin-web`; `PUBLIC_URL`/`CORS_ORIGIN` da admin-api apontam para o novo host (mantém URL Heroku no CORS na transição). API admin permanece no host Heroku por enquanto.
+- **Decisão:** `painel-admin.sof.solutions` → `sof-solutions-admin-web`; `PUBLIC_URL`/`CORS_ORIGIN` da admin-api apontam para o novo host (mantém URL Heroku no CORS na transição). API admin permanece no host Heroku por enquanto.
 - **Consequências:** CNAME na Hostinger + ACM; SSL só após DNS propagar.
 - **Alternativas descartadas:** `admin.sof.solutions` (menos descritivo); domínio só na API admin.
 
@@ -362,7 +404,7 @@ Formato sugerido:
 ## 2026-07-23 — `TZ=America/Sao_Paulo` no dyno da API Heroku
 
 - **Contexto:** Bot usava `new Date()` local do servidor; dyno em UTC fazia “amanhã” virar o dia seguinte após 21h BRT (ex.: pediu 24/07 e marcou 25/07).  
-- **Decisão:** Config var `TZ=America/Sao_Paulo` em `sof-agendamento-api` para o Node interpretar data/hora local no fuso BR.  
+- **Decisão:** Config var `TZ=America/Sao_Paulo` em `sof-solutions-api` para o Node interpretar data/hora local no fuso BR.  
 - **Consequências:** Hoje/amanhã no bot alinhados ao Brasil sem redeploy de código. Contas com fuso diferente de SP ainda podem divergir até o bot usar `Account.timezone` de ponta a ponta.  
 - **Alternativas descartadas:** Só corrigir código agora (melhor a médio prazo; pode coexistir com `TZ`).
 
@@ -716,7 +758,7 @@ Formato sugerido:
 ## 2026-07-15 — Deploy em dois apps Heroku + Supabase
 
 - **Contexto:** Separar front estático Expo e API Nest; banco já existia no Supabase.  
-- **Decisão:** `sof-agendamento-api` (`APP_BASE=backend`) e `sof-agendamento-web` (`APP_BASE=frontend`); sem add-on Heroku Postgres; `DATABASE_URL` + `DIRECT_URL`.  
+- **Decisão:** `sof-solutions-api` (`APP_BASE=backend`) e `sof-solutions-web` (`APP_BASE=frontend`); sem add-on Heroku Postgres; `DATABASE_URL` + `DIRECT_URL`.  
 - **Consequências:** `EXPO_PUBLIC_API_URL` no build do web; CORS/PUBLIC_URL apontam para o web; deploy via `git push` para remotes `heroku-api` / `heroku-web`.  
 - **Alternativas descartadas:** app único servindo static+API; Render-only (fica como opção em `render.yaml`).
 

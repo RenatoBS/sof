@@ -1,6 +1,6 @@
 # Guias por plano — Sof
 
-Funções de cada plano (alinha ao catálogo em `backend/src/entitlements/feature-catalog.ts` e ao marketing em `backend/src/common/plans.ts`). Valores no admin podem sobrescrever o padrão.
+Funções de cada plano (alinha ao catálogo em `saas/backend/src/entitlements/feature-catalog.ts` e ao marketing em `saas/backend/src/common/plans.ts`). Valores no admin podem sobrescrever o padrão.
 
 **HTML (enviar ao cliente):**
 

@@ -25,8 +25,8 @@ for arg in "$@"; do
 Deploy admin Sof → Heroku
 
   ./scripts/deploy-admin.sh              # schema sync + API + web
-  ./scripts/deploy-admin.sh --api-only   # só sof-agendamento-admin-api
-  ./scripts/deploy-admin.sh --web-only   # só sof-agendamento-admin-web
+  ./scripts/deploy-admin.sh --api-only   # só sof-solutions-admin-api
+  ./scripts/deploy-admin.sh --web-only   # só sof-solutions-admin-web
   ./scripts/deploy-admin.sh --skip-sync  # não roda admin:sync-schema
 
 Requer remotes git (npm run heroku:remotes):
@@ -63,21 +63,21 @@ SHA="$(git rev-parse --short HEAD)"
 echo "==> Deploy admin a partir de $BRANCH ($SHA)"
 
 if [[ "$SKIP_SYNC" -eq 0 && "$WEB_ONLY" -eq 0 ]]; then
-  echo "==> Sincronizando schema Prisma → admin-backend/"
+  echo "==> Sincronizando schema Prisma → admin/backend/"
   npm run admin:sync-schema
 fi
 
 if [[ "$WEB_ONLY" -eq 0 ]]; then
-  echo "==> Push heroku-admin-api (sof-agendamento-admin-api)"
+  echo "==> Push heroku-admin-api (sof-solutions-admin-api)"
   git push heroku-admin-api HEAD:main
 fi
 
 if [[ "$API_ONLY" -eq 0 ]]; then
-  echo "==> Push heroku-admin-web (sof-agendamento-admin-web)"
+  echo "==> Push heroku-admin-web (sof-solutions-admin-web)"
   git push heroku-admin-web HEAD:main
 fi
 
 echo ""
 echo "OK — admin deploy concluído."
-echo "  API: https://sof-agendamento-admin-api-62c9ca1861c2.herokuapp.com"
+echo "  API: https://sof-solutions-admin-api-28e60756b423.herokuapp.com"
 echo "  Web: https://painel-admin.sof.solutions"
