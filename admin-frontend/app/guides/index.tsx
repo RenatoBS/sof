@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, radius, space } from '@/src/theme/admin';
 
 const GUIDES = [
@@ -38,7 +38,11 @@ function openGuide(path: string) {
 
 export default function GuidesHub() {
   return (
-    <View style={styles.root}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.root}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.kicker}>Sof · Guias públicos</Text>
       <Text style={styles.title}>Material para o cliente</Text>
       <Text style={styles.lede}>
@@ -73,18 +77,21 @@ export default function GuidesHub() {
           )}
         </Pressable>
       </Link>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  scroll: {
     flex: 1,
+    backgroundColor: colors.bg,
+  },
+  root: {
     maxWidth: 720,
     width: '100%',
     alignSelf: 'center',
     padding: space.xl,
-    backgroundColor: colors.bg,
+    paddingBottom: space.xl * 2,
   },
   kicker: {
     fontFamily: fonts.bodyMedium,
