@@ -15,7 +15,7 @@ export function SofChatCard() {
       </View>
       <View style={styles.body}>
         <View style={[styles.msg, styles.them]}>
-          <Text style={styles.msgText}>Oi! Qual serviço você quer agendar?</Text>
+          <Text style={styles.msgText}>Oi. Qual serviço você quer agendar?</Text>
         </View>
         <View style={styles.chips}>
           {['Corte', 'Barba', 'Corte + barba'].map((c) => (

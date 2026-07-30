@@ -45,6 +45,7 @@ Ao terminar: atualize a documentação na **mesma** sessão de trabalho (não �
 | Documento | Conteúdo |
 |-----------|----------|
 | [`docs/architecture.md`](docs/architecture.md) | Monorepo, backend Nest, frontend Expo, dados, auth, tempo real |
+| [`docs/brand.md`](docs/brand.md) | Persona verbal Sof (voz do bot e da marca) |
 | [`docs/features.md`](docs/features.md) | Features de produto e mapa de telas/APIs |
 | [`docs/onboarding-cliente.md`](docs/onboarding-cliente.md) | Guia do cliente: plano/cupom → WhatsApp + cadastros (com prints) |
 | [`docs/planos-funcoes.md`](docs/planos-funcoes.md) | Funções por plano (Solo / Equipe / Rede) |
@@ -154,6 +155,7 @@ Sof/
 | Rotas UI | `saas/frontend/app/` |
 | Rotas admin | `admin/frontend/app/` |
 | Tema marketing/dashboard | `saas/frontend/src/theme/` |
+| Persona / copy do bot WA | `docs/brand.md`; `saas/backend/src/whatsapp/bot-copy.ts` |
 
 ---
 

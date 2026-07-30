@@ -202,6 +202,12 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Ao conectar, a API configura o webhook da instância para `API_PUBLIC_URL/api/whatsapp/webhook`.  
 - Webhook `GET/POST /api/whatsapp/webhook`.  
 
+### Voz / persona
+- A Sof fala com a persona definida em [`docs/brand.md`](brand.md): leve, confiante, calma e sofisticada (sem emoji, poucas exclamações).  
+- Copy canônica em `saas/backend/src/whatsapp/bot-copy.ts` (cliente, profissional, lembrete, aviso ao prof, fallbacks de áudio/handoff).  
+- Apresentação: “Aqui é a Sof, do {businessName}.” Confirmação: “Marcado.” Avanço: “Certo: …”. Mal-entendido: “Não peguei isso.” + próxima ação.  
+- Gates de plano **não** aparecem na copy do WhatsApp (nem “não incluso no plano”); a Sof só redireciona (“prefiro texto”, “use o painel ou o portal”).
+
 ### Fluxo do cliente
 - Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
 - **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** (mín. 2 palavras) antes do menu de serviços.  

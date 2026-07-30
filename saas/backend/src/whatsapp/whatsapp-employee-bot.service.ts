@@ -29,6 +29,7 @@ import type {
   WhatsappInteractiveMenu,
   WhatsappMenuChoice,
 } from './whatsapp-bot.service';
+import * as botCopy from './bot-copy';
 
 type EmpSessionData = {
   role: 'employee';
@@ -153,7 +154,7 @@ export class WhatsappEmployeeBotService {
       await this.resetSession(account.id, phone);
       return {
         replies: [
-          `Pronto, ${employee.name}. Reiniciei o menu do profissional. Manda qualquer mensagem para ver as opções.`,
+          botCopy.employeeMenuReset(employee.name),
         ],
       };
     }
@@ -245,7 +246,7 @@ export class WhatsappEmployeeBotService {
         if (!hasFeature(entsBook, 'employeeWhatsappBookBlock')) {
           return {
             replies: [
-              'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+              botCopy.employeeActionUnavailableOnWhatsapp(),
             ],
           };
         }
@@ -261,7 +262,7 @@ export class WhatsappEmployeeBotService {
         if (!hasFeature(entsEvent, 'employeeWhatsappBookBlock')) {
           return {
             replies: [
-              'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+              botCopy.employeeActionUnavailableOnWhatsapp(),
             ],
           };
         }
@@ -392,7 +393,7 @@ export class WhatsappEmployeeBotService {
           account,
           employee,
           phone,
-          'Ok, não gravei. O que você quer fazer?',
+          botCopy.employeeDiscardedDraft(),
         );
       }
       return this.confirmMenu('Confirma com Sim ou Não?');
@@ -457,7 +458,7 @@ export class WhatsappEmployeeBotService {
       }
       if (NEGATIVE.includes(lower)) {
         await this.resetSession(account.id, phone);
-        return this.mainMenu(account, employee, phone, 'Ok, mantive o horário.');
+        return this.mainMenu(account, employee, phone, botCopy.employeeKeptAppointment());
       }
       return this.confirmMenu('Confirma o cancelamento? Sim ou Não.');
     }
@@ -531,7 +532,7 @@ export class WhatsappEmployeeBotService {
           account,
           employee,
           phone,
-          'Marcado como concluído — o restante do horário ficou livre. Mais alguma coisa?',
+          botCopy.employeeCompleted(),
         );
       }
       if (NEGATIVE.includes(lower)) {
@@ -540,7 +541,7 @@ export class WhatsappEmployeeBotService {
           account,
           employee,
           phone,
-          'Ok, mantive como agendado.',
+          botCopy.employeeKeptScheduled(),
         );
       }
       return this.confirmMenu('Confirma a conclusão? Sim ou Não.');
@@ -1010,7 +1011,7 @@ export class WhatsappEmployeeBotService {
       .map((s) => `- id: ${s.id} | nome: ${s.name}`)
       .join('\n');
     const system = [
-      'Você extrai a intenção de um PROFISSIONAL de salão falando no WhatsApp (PT-BR).',
+      'Você extrai a intenção de um PROFISSIONAL de um negócio falando no WhatsApp (PT-BR).',
       `Hoje é ${weekday}, ${today}, agora são ${nowTime}.`,
       'Serviços que esse profissional realiza:',
       serviceList || '(nenhum)',
@@ -1139,8 +1140,7 @@ export class WhatsappEmployeeBotService {
       data: { role: 'employee', employeeId: employee.id },
     });
     const header =
-      intro ||
-      `Oi, ${employee.name}! Aqui é a Sof — menu do profissional (${account.businessName}).`;
+      intro || botCopy.greetEmployee(employee.name, account.businessName);
 
     const completable = await this.listCompletableForEmployee(
       account,
@@ -1229,7 +1229,7 @@ export class WhatsappEmployeeBotService {
       if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
         return {
           replies: [
-            'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+            botCopy.employeeActionUnavailableOnWhatsapp(),
           ],
         };
       }
@@ -1240,7 +1240,7 @@ export class WhatsappEmployeeBotService {
       if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
         return {
           replies: [
-            'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+            botCopy.employeeActionUnavailableOnWhatsapp(),
           ],
         };
       }
@@ -1251,7 +1251,7 @@ export class WhatsappEmployeeBotService {
       if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
         return {
           replies: [
-            'Seu plano não inclui marcar clientes ou bloqueios pelo WhatsApp. Use o painel ou o portal.',
+            botCopy.employeeActionUnavailableOnWhatsapp(),
           ],
         };
       }
@@ -1293,7 +1293,7 @@ export class WhatsappEmployeeBotService {
         account,
         employee,
         phone,
-        'Não entendi. Escolha uma opção do menu:',
+        botCopy.employeeDidNotCatchMenu(),
       )),
       unresolved: true,
     };
@@ -1307,7 +1307,7 @@ export class WhatsappEmployeeBotService {
     await this.resetSession(account.id, phone);
     return {
       replies: [
-        `Combinado, ${employee.name} — vou avisar a conta para te atender por aqui.`,
+        botCopy.employeeHandoff(employee.name),
       ],
       humanRequested: true,
     };

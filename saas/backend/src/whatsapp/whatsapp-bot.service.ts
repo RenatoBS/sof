@@ -25,6 +25,7 @@ import {
   hasFeature,
 } from '../entitlements/feature-catalog';
 import { formatReminderLeadLabel } from '../reminders/reminder-window';
+import * as botCopy from './bot-copy';
 
 type SessionData = {
   clientId?: string;
@@ -81,11 +82,10 @@ function accountAddress(account: Account) {
 }
 
 function formatAddressReply(account: Account) {
-  const address = accountAddress(account);
-  if (!address) {
-    return `Ainda não temos o endereço cadastrado do ${account.businessName}. Pode perguntar pelo WhatsApp do salão ou tentar de novo em breve.`;
-  }
-  return `Endereço do ${account.businessName}:\n${address}`;
+  return botCopy.formatAddressReply({
+    businessName: account.businessName,
+    address: accountAddress(account),
+  });
 }
 
 @Injectable()
@@ -127,9 +127,7 @@ export class WhatsappBotService {
 
     if (parsed.intent === 'human') {
       return {
-        replies: [
-          'Combinado — vou avisar a equipe para te atender por aqui.',
-        ],
+        replies: [botCopy.handoffToTeam()],
         humanRequested: true,
       };
     }
@@ -164,7 +162,7 @@ export class WhatsappBotService {
         sessionBase,
         phone,
         parsed.date,
-        `Combinado: ${service.name} em ${this.formatDayLabel(parsed.date)}. Horários:`,
+        botCopy.ackServiceDay(service.name, this.formatDayLabel(parsed.date)),
       );
     }
     return this.pathMenu(account, service, sessionBase, phone);
@@ -318,9 +316,7 @@ export class WhatsappBotService {
       .map((c, idx) => `${idx + 1}. ${c.title}`)
       .join('\n');
     return {
-      replies: [
-        `${bodyText}\n${numbered}\n\nToque numa opção ou responda com o número.`,
-      ],
+      replies: [botCopy.menuTouchOrNumber(bodyText, numbered)],
       interactive: [
         {
           text: bodyText,
@@ -767,7 +763,7 @@ export class WhatsappBotService {
 
     const body =
       intro ||
-      `Combinado: ${service.name}. Quem você prefere?`;
+      botCopy.ackServicePath(service.name, 'Quem você prefere?');
 
     if (!allowPathChoice) {
       return this.employeeMenu(body, employees, {
@@ -1028,7 +1024,7 @@ export class WhatsappBotService {
     if (!service) {
       await this.resetSession(account.id, customerPhone);
       return this.serviceMenu(
-        'Vamos recomeçar — qual serviço você quer agendar?',
+        botCopy.restartServicePrompt(),
         services,
       );
     }
@@ -1193,15 +1189,16 @@ export class WhatsappBotService {
     client: { id: string; name: string },
     services: { id: string; name: string; duration: number; price: number }[],
   ): Promise<WhatsappBotResult> {
-    const addressBit = accountAddress(account)
-      ? ` Nosso endereço: ${accountAddress(account)}.`
-      : '';
     return this.mainMenu(
       account,
       client,
       services,
       customerPhone,
-      `Oi, ${client.name}! Aqui é a Sof, do ${account.businessName}.${addressBit}`,
+      botCopy.greetKnownClient(
+        client.name,
+        account.businessName,
+        accountAddress(account),
+      ),
     );
   }
 
@@ -1367,8 +1364,8 @@ export class WhatsappBotService {
       return {
         replies: [
           lower === '/reset' || lower === 'reset'
-            ? 'Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser agendar.'
-            : 'Combinado, cancelei o que estava em andamento. É só chamar de novo quando quiser marcar um horário.',
+            ? botCopy.conversationReset()
+            : botCopy.conversationCancelled(),
         ],
       };
     }
@@ -1381,15 +1378,11 @@ export class WhatsappBotService {
       const entsHuman = await this.entsFor(account.id);
       if (!hasFeature(entsHuman, 'clientRequestHuman')) {
         return {
-          replies: [
-            'No momento não consigo transferir para um atendente por aqui. Use o menu para agendar ou cancelar.',
-          ],
+          replies: [botCopy.handoffUnavailable()],
         };
       }
       return {
-        replies: [
-          'Combinado — vou avisar a equipe para te atender por aqui.',
-        ],
+        replies: [botCopy.handoffToTeam()],
         humanRequested: true,
       };
     }
@@ -1404,9 +1397,7 @@ export class WhatsappBotService {
 
     if (services.length === 0 || employeeCount === 0) {
       return {
-        replies: [
-          'Esse salão ainda está configurando o agendamento por aqui. Peça para tentarem de novo em instantes ou contate o número do salão.',
-        ],
+        replies: [botCopy.setupIncomplete()],
       };
     }
 
@@ -1440,9 +1431,7 @@ export class WhatsappBotService {
         data: {},
       });
       return {
-        replies: [
-          `Oi! Aqui é a Sof, do ${account.businessName}. Para começar, qual é o seu nome e sobrenome?`,
-        ],
+        replies: [botCopy.greetNewClient(account.businessName)],
       };
     }
 
@@ -1450,9 +1439,7 @@ export class WhatsappBotService {
       const name = this.parseClientFullName(trimmed);
       if (!name) {
         return {
-          replies: [
-            'Me diga seu nome e sobrenome (ex.: Ana Silva).',
-          ],
+          replies: [botCopy.askFullNameAgain()],
         };
       }
       const client = await this.prisma.client.upsert({
@@ -1555,12 +1542,15 @@ export class WhatsappBotService {
               client,
               services,
               phone,
-              'Não entendi.',
+              botCopy.DID_NOT_CATCH,
             ),
           );
         }
         return this.withUnresolved(
-          this.serviceMenu('Não entendi. Escolha um serviço:', services),
+          this.serviceMenu(
+            botCopy.didNotCatchWithHint('Escolha um serviço:'),
+            services,
+          ),
         );
       }
       const service = services[serviceIdx];
@@ -1573,7 +1563,7 @@ export class WhatsappBotService {
       if (!clientId) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -1600,7 +1590,7 @@ export class WhatsappBotService {
       if (idx === null) {
         return this.withUnresolved(
           this.menuReply(
-            'Não entendi. Qual horário você quer cancelar?',
+            botCopy.didNotCatchWithHint('Qual horário você quer cancelar?'),
             future.map((a) => ({
               id: `appt:${a.id}`,
               title: this.appointmentChoiceTitle(a),
@@ -1636,7 +1626,7 @@ export class WhatsappBotService {
       if (!clientId || !apptId) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -1648,7 +1638,7 @@ export class WhatsappBotService {
           client,
           services,
           phone,
-          'Combinado, mantive o horário.',
+          botCopy.keptAppointment(),
         );
       }
 
@@ -1734,7 +1724,7 @@ export class WhatsappBotService {
       if (!service) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -1758,7 +1748,7 @@ export class WhatsappBotService {
             serviceId: service.id,
           },
           phone,
-          `Combinado: ${service.name}. Qual dia você prefere?`,
+          botCopy.ackServicePath(service.name, 'Qual dia você prefere?'),
         );
       }
 
@@ -1775,7 +1765,7 @@ export class WhatsappBotService {
             serviceId: service.id,
           },
           phone,
-          `Combinado: ${service.name}. Qual dia você prefere?`,
+          botCopy.ackServicePath(service.name, 'Qual dia você prefere?'),
         );
       }
 
@@ -1790,7 +1780,9 @@ export class WhatsappBotService {
             service,
             sessionData,
             phone,
-            'Não entendi. Escolha um profissional ou Escolher horário:',
+            botCopy.didNotCatchWithHint(
+              'Escolha um profissional ou Escolher horário:',
+            ),
           ),
         );
       }
@@ -1814,7 +1806,7 @@ export class WhatsappBotService {
       if (!service) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -1880,7 +1872,9 @@ export class WhatsappBotService {
             service,
             sessionData,
             phone,
-            'Não entendi. Escolha Hoje, Amanhã ou Outra data:',
+            botCopy.didNotCatchWithHint(
+              'Escolha Hoje, Amanhã ou Outra data:',
+            ),
           ),
         );
       }
@@ -1904,7 +1898,7 @@ export class WhatsappBotService {
       if (!service) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -1942,7 +1936,7 @@ export class WhatsappBotService {
         }
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -1981,7 +1975,9 @@ export class WhatsappBotService {
             sessionData,
             phone,
             date,
-            'Não entendi. Escolha um horário da lista ou toque em Outro horário:',
+            botCopy.didNotCatchWithHint(
+              'Escolha um horário da lista ou toque em Outro horário:',
+            ),
           ),
         );
       }
@@ -1998,7 +1994,7 @@ export class WhatsappBotService {
       if (!service) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -2053,7 +2049,7 @@ export class WhatsappBotService {
       }
       await this.resetSession(account.id, phone);
       return this.serviceMenu(
-        'Vamos recomeçar — qual serviço você quer agendar?',
+        botCopy.restartServicePrompt(),
         services,
       );
     }
@@ -2083,7 +2079,7 @@ export class WhatsappBotService {
               serviceId: service.id,
             },
             phone,
-            `Combinado: ${service.name}. Qual dia você prefere?`,
+            botCopy.ackServicePath(service.name, 'Qual dia você prefere?'),
           );
         }
 
@@ -2095,7 +2091,7 @@ export class WhatsappBotService {
           const entsEmp = await this.entsFor(account.id);
           return this.withUnresolved(
             this.employeeMenu(
-              'Não entendi. Escolha um profissional:',
+              botCopy.didNotCatchWithHint('Escolha um profissional:'),
               employees,
               {
                 includeSofPick: hasFeature(entsEmp, 'sofPickProfessional'),
@@ -2121,7 +2117,7 @@ export class WhatsappBotService {
       if (!service || !date || !time) {
         await this.resetSession(account.id, phone);
         return this.serviceMenu(
-          'Vamos recomeçar — qual serviço você quer agendar?',
+          botCopy.restartServicePrompt(),
           services,
         );
       }
@@ -2173,7 +2169,9 @@ export class WhatsappBotService {
           const entsEmp = await this.entsFor(account.id);
           return this.withUnresolved(
             this.employeeMenu(
-              `Não entendi. Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
+              botCopy.didNotCatchWithHint(
+                `Quem você prefere em ${this.formatSlotLabel(date, time)}?`,
+              ),
               free,
               { includeSofPick: hasFeature(entsEmp, 'sofPickProfessional') },
             ),
@@ -2205,7 +2203,7 @@ export class WhatsappBotService {
       }
       await this.resetSession(account.id, phone);
       return this.serviceMenu(
-        'Vamos recomeçar — qual serviço você quer agendar?',
+        botCopy.restartServicePrompt(),
         services,
       );
     }
@@ -2221,7 +2219,7 @@ export class WhatsappBotService {
         if (!service || !employeeId || !date || !time || !serviceId) {
           await this.resetSession(account.id, phone);
           return this.serviceMenu(
-            'Vamos recomeçar — qual serviço você quer agendar?',
+            botCopy.restartServicePrompt(),
             services,
           );
         }
@@ -2315,17 +2313,13 @@ export class WhatsappBotService {
           appointmentIds: [appointment.id],
         });
         const lead = Number(account.whatsappReminderMinutes) || 0;
-        const leadLabel = formatReminderLeadLabel(lead);
-        const reminderLine =
-          lead > 0
-            ? ` Você recebe um lembrete no WhatsApp ${leadLabel} antes do horário.`
-            : '';
-        const address = accountAddress(account);
+        const leadLabel = lead > 0 ? formatReminderLeadLabel(lead) : null;
         return {
           replies: [
-            address
-              ? `Marcado!${reminderLine}\nEndereço: ${address}\nAté lá!`
-              : `Marcado!${reminderLine} Até lá!`,
+            botCopy.bookedConfirmation({
+              reminderLeadLabel: leadLabel,
+              address: accountAddress(account),
+            }),
           ],
           appointment: shaped,
         };
@@ -2333,9 +2327,7 @@ export class WhatsappBotService {
       if (isNo) {
         await this.resetSession(account.id, phone);
         return {
-          replies: [
-            'Sem problemas, não marquei nada. É só chamar de novo quando quiser agendar.',
-          ],
+          replies: [botCopy.cancelledNothingBooked()],
         };
       }
       return this.confirmMenu(

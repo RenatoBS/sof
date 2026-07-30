@@ -52,7 +52,7 @@ Registrados em `saas/backend/src/app.module.ts`:
 | `BillingModule` | renovação / mudança de plano (Stripe ou cupom) para conta logada |
 | `CheckoutModule` | assinatura / Checkout Session Stripe (+ cupom no create) |
 | `PaymentsModule` | webhook Stripe |
-| `WhatsappModule` | webhook Meta/Uazapi + bot + simulador |
+| `WhatsappModule` | webhook Meta/Uazapi + bot + simulador; copy/persona em `whatsapp/bot-copy.ts` ([`docs/brand.md`](brand.md)) |
 | `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
 | `RemindersModule` | job de lembretes WhatsApp (a cada 30 min) |
 | `EventsModule` | SSE de appointments + handoffs |

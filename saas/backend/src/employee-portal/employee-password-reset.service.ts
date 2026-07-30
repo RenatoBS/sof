@@ -5,6 +5,7 @@ import { isValidPhone, normalizePhone } from '../common/phone';
 import { MailService } from '../mail/mail.service';
 import { passwordResetEmail } from '../mail/mail-templates';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
+import { passwordResetBody } from '../whatsapp/bot-copy';
 import { EmployeePasswordTokenService } from './employee-password-token.service';
 
 export type EmployeePasswordResetResult = {
@@ -158,21 +159,11 @@ export class EmployeePasswordResetService {
     source: 'account' | 'self';
   }) {
     const businessName = opts.account.businessName || 'seu estabelecimento';
-    const intro =
-      opts.source === 'self'
-        ? `Olá, ${opts.employee.name}! Você pediu para redefinir a senha da agenda Sof (${businessName}).`
-        : `Olá, ${opts.employee.name}!\n\n${businessName} enviou um link para você definir (ou redefinir) a senha de acesso à agenda Sof.`;
-
-    const body = [
-      intro,
-      '',
-      'Instruções:',
-      '1. Toque em "Redefinir senha"',
-      '2. Crie uma senha nova',
-      '3. Pronto — você já entra na sua agenda',
-      '',
-      'O link é de uso único e vale por 2 horas.',
-    ].join('\n');
+    const body = passwordResetBody({
+      employeeName: opts.employee.name,
+      businessName,
+      source: opts.source,
+    });
 
     try {
       await this.whatsapp.sendCtaUrl(
