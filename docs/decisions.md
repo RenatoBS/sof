@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Catálogo Stripe live e Payment Link opcional
+
+- **Contexto:** Produção estava em modo misto: `sof-solutions-api` com `sk_live_` mas `sof-solutions-admin-api` com `sk_test_`, então os planos no DB de produção apontavam para Product/Price/Payment Link de **sandbox** (`buy.stripe.com/test_…`). Qualquer Checkout Session live com aquele `stripePriceId` falharia. Ao criar o catálogo live, a Stripe recusou os Payment Links: a conta ainda está em análise (`charges_enabled: false`, `card_payments: pending`).
+- **Decisão:** Mesma chave live nas duas apps de produção; Product + Price live criados para Solo/Equipe/Rede (R$139/199/259 mensais) e gravados no `Plan`; `paymentLinkUrl` fica **vazio** até a Stripe ativar. `StripeCatalogService` passa a tratar `payment_link_no_valid_payment_methods` como não-fatal (grava Product/Price, loga aviso, devolve link vazio) em vez de derrubar o sync inteiro.
+- **Consequências:** O admin continua salvando planos com a conta em análise, e como `needsStripeSync` dispara enquanto o link estiver vazio, o link se preenche sozinho no primeiro save/sync depois da ativação. Cobrança em produção segue **bloqueada pela Stripe** até `charges_enabled: true` — não é algo que se resolva no código. `common/plans.ts` mantém IDs de test de propósito: é o fallback de tabela vazia, usado em local/QA.
+- **Alternativas descartadas:** Deixar os links de sandbox no DB de produção (risco de mandar link que não cobra); manter o admin em test e criar o catálogo à mão no Dashboard (volta a divergir do DB); abortar o sync inteiro quando o link falha (trava o admin durante toda a análise da conta).
+
 ## 2026-07-31 — Deploy por tag no GitHub Actions (`-stg` / `-prod`)
 
 - **Contexto:** Deploys eram só manuais (`npm run deploy:*` da máquina do dev), sem CI antes do push e sem registro de qual versão foi para cada ambiente.

@@ -251,6 +251,42 @@ curl -sS https://sof-solutions-admin-api-28e60756b423.herokuapp.com/api/health
 # abrir webs produto e admin
 ```
 
+### Stripe: modo live vs test
+
+| App | Chave | Modo |
+|-----|-------|------|
+| `sof-solutions-api` | `STRIPE_SECRET_KEY` | **live** |
+| `sof-solutions-admin-api` | `STRIPE_SECRET_KEY` | **live** (era test até 2026-07-31 — criava catálogo em sandbox) |
+| `sof-solutions-api-qa` / local | `STRIPE_SECRET_KEY` | test (`sk_test_`) |
+
+As duas apps de produção precisam da **mesma** chave: o admin cria Product/Price/Payment Link e a API do produto abre a Checkout Session com aquele `stripePriceId`. Chaves em modos diferentes = `No such price` no checkout.
+
+Webhook live: endpoint `we_1TzHT2...` → `https://api.sof.solutions/api/payments/webhook`, eventos `checkout.session.completed` e `customer.subscription.created|updated|deleted`. `STRIPE_WEBHOOK_SECRET` da API prod é o desse endpoint.
+
+Catálogo live (conta `acct_1Tte4l…`, criado em 2026-07-31):
+
+| Plano | Preço | Product | Price |
+|-------|-------|---------|-------|
+| Solo | R$ 139/mês | `prod_UzGzJcQf12d5Mn` | `price_1TzIRNCwNmtUZFHwGLD5Ukfu` |
+| Equipe | R$ 199/mês | `prod_UzGzAwApsaCrGd` | `price_1TzIRwCwNmtUZFHwTEWLxpXv` |
+| Rede | R$ 259/mês | `prod_UzGzdCI4ciBGDG` | `price_1TzIRxCwNmtUZFHwsnm2lXAo` |
+
+#### Pendência: ativação da conta Stripe
+
+A conta está com `charges_enabled: false` e capabilities `card_payments` / `boleto_payments` / `transfers` em **`pending`** (análise da Stripe; `details_submitted: true`, nada em `currently_due`). Enquanto isso:
+
+- Payment Links **não** podem ser criados (`payment_link_no_valid_payment_methods`) — os `paymentLinkUrl` dos planos ficam vazios;
+- Checkout Sessions live também são recusadas pelo mesmo motivo, ou seja, **não é possível cobrar em produção ainda**.
+
+Assim que a Stripe liberar (conferir em Dashboard → Configurações → Métodos de pagamento, ou `charges_enabled: true` em `GET /v1/account`), gerar os links sem deploy:
+
+```bash
+# painel admin → Planos → cada plano → botão "Sincronizar Stripe"
+# equivalente por API: POST /api/plans/:id/sync-stripe (admin JWT)
+```
+
+O sync reaproveita o Product/Price já existentes e só cria o Payment Link que falta.
+
 ### Auth cross-origin em produção
 
 Front e API em hosts diferentes ⇒ front envia **Bearer**; cookie com `SameSite=None; Secure`.

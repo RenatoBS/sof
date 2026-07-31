@@ -62,6 +62,8 @@ Cupom amarra um **plano** e N dias grátis; `maxUses` é o teto global; cada con
 
 Planos: tabela `Plan` (seed + painel admin); marketing consome `GET /api/plans`. Fallback em `common/plans.ts` / `CheckoutModal` (Solo R$139 / Equipe R$199 / Rede R$259) se a API/DB estiver vazia. Assinatura mensal Stripe; Payment Links em `paymentLinkUrl`. Apagar plano no admin desativa o Payment Link e remove/arquiva o Product na Stripe via API.
 
+O checkout do produto usa **Checkout Session com `stripePriceId`** — o `paymentLinkUrl` é metadado do catálogo (venda manual / admin), não entra no fluxo do site. Por isso, quando a Stripe recusa criar o link (conta sem métodos de pagamento ativos, `payment_link_no_valid_payment_methods`), o sync grava Product + Price e deixa `paymentLinkUrl` vazio em vez de falhar; o próximo save/sync no admin preenche sozinho. Estado do catálogo live em [`deployment.md`](deployment.md#stripe-modo-live-vs-test).
+
 ### Gate por plano (entitlements)
 
 Cada plano tem `entitlements` configuráveis no admin (matriz boolean/limite). Login e `GET /api/auth/me` devolvem `account.entitlements`. Backend bloqueia com 403 (`PLAN_FEATURE_REQUIRED` / `PLAN_LIMIT_REACHED`). Front esconde Faturamento/Atendimentos, recorrência, lembretes, pausa do bot, etc., conforme o mapa. Limite de profissionais enforced em `POST /api/employees`.

@@ -21,6 +21,17 @@ function isStripeMissing(err: unknown) {
   );
 }
 
+/**
+ * Conta ainda sem métodos de pagamento ativos (ativação Stripe pendente).
+ * Product e Price já podem existir; só o Payment Link é recusado.
+ */
+function isPaymentLinkUnavailable(err: unknown) {
+  return (
+    err instanceof Stripe.errors.StripeInvalidRequestError &&
+    err.code === 'payment_link_no_valid_payment_methods'
+  );
+}
+
 @Injectable()
 export class StripeCatalogService {
   private client: Stripe | null = null;
@@ -61,6 +72,25 @@ export class StripeCatalogService {
       });
     }
     return { paymentLinkId: link.id, paymentLinkUrl: link.url };
+  }
+
+  /**
+   * Payment Link é metadado do catálogo — o checkout do produto usa o Price.
+   * Enquanto a Stripe não ativa os métodos de pagamento da conta, o link não
+   * pode ser criado; nesse caso devolve '' e o plano é salvo sem link (o
+   * próximo sync preenche sozinho).
+   */
+  private async tryCreatePaymentLink(priceId: string): Promise<string> {
+    try {
+      const link = await this.createPaymentLink(priceId);
+      return link.paymentLinkUrl;
+    } catch (err) {
+      if (!isPaymentLinkUnavailable(err)) throw err;
+      console.warn(
+        `[stripe] Payment Link de ${priceId} não criado: conta sem métodos de pagamento ativos (ativação pendente).`,
+      );
+      return '';
+    }
   }
 
   /**
@@ -202,8 +232,7 @@ export class StripeCatalogService {
     }
 
     if (!paymentLinkUrl) {
-      const link = await this.createPaymentLink(priceId);
-      paymentLinkUrl = link.paymentLinkUrl;
+      paymentLinkUrl = await this.tryCreatePaymentLink(priceId);
     }
 
     return {
@@ -231,11 +260,10 @@ export class StripeCatalogService {
       recurring: { interval: input.interval },
       metadata: { sof_plan: input.name },
     });
-    const link = await this.createPaymentLink(price.id);
     return {
       stripeProductId: product.id,
       stripePriceId: price.id,
-      paymentLinkUrl: link.paymentLinkUrl,
+      paymentLinkUrl: await this.tryCreatePaymentLink(price.id),
     };
   }
 
