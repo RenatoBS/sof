@@ -30,6 +30,7 @@ import { mentionsSof } from './sof-mention';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { hasFeature } from '../entitlements/feature-catalog';
 import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
+import type { HandoffParty } from '../whatsapp-handoffs/whatsapp-handoffs.service';
 import * as botCopy from './bot-copy';
 
 const AUDIO_FALLBACK_REPLY = botCopy.audioFailed();
@@ -435,7 +436,7 @@ export class WhatsappController {
    */
   private async pauseAfterHandoff(
     opts: { accountId: string; customerPhone: string },
-    party: 'client' | 'employee',
+    party: HandoffParty,
     opened: { created: boolean } | null,
   ) {
     if (party !== 'client' || !opened) return;
@@ -458,9 +459,10 @@ export class WhatsappController {
       opts.accountId,
       opts.customerPhone,
     );
-    const party = employee ? 'employee' : 'client';
+    // Anotar o tipo evita que `party` alargue para `string` dentro do objeto.
+    const party: HandoffParty = employee ? 'employee' : 'client';
     const partyOpts = {
-      party: party,
+      party,
       employeeId: employee?.id,
       displayName: employee?.name,
     };
