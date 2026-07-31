@@ -160,6 +160,24 @@ Atualizar Impeccable: `npx impeccable install --providers=cursor --scope=project
 
 Depois do polish UI: no Agent, `/impeccable init` gera `PRODUCT.md` / `DESIGN.md` para futuras iterações de design.
 
+## VM Cloud Agent (Cursor)
+
+No boot, [`.cursor/environment.json`](../.cursor/environment.json) roda:
+
+1. `bash scripts/cloud-vm-bootstrap.sh --install` — instala/configura **ngrok** e importa secrets de **Heroku QA** (`sof-solutions-api-qa`) para `saas/backend/.env`
+2. Terminal `ngrok` — `bash scripts/cloud-vm-bootstrap.sh --ngrok-tunnel` (túnel na porta `NGROK_PORT`, default **9080**; URL em `/tmp/sof-ngrok-url.txt`)
+
+Keys importadas (allowlist): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `WHATSAPP_PROVIDER`, `WHATSAPP_BASE_URL`, `WHATSAPP_ADMIN_TOKEN`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `OPENAI_API_KEY`. Ausentes no Heroku ficam intactas no `.env`.
+
+Secrets no [dashboard Cloud Agents](https://cursor.com/dashboard/cloud-agents):
+
+| Secret | Uso |
+|--------|-----|
+| `HEROKU_API_KEY` | Platform API (já usado pelo bootstrap) |
+| `NGROK_AUTHTOKEN` | obrigatório em VMs novas (senão só vale config local prévia) |
+
+Manual: `npm run cloud:bootstrap` / `npm run cloud:import-qa-env`. O script **não imprime** valores.
+
 ## Acesso remoto via ngrok (front + API)
 
 Um único túnel HTTPS para o browser (login, dashboard, SSE). O script [`scripts/sof-dev-proxy.js`](../scripts/sof-dev-proxy.js) junta Expo (`:8081`) e Nest (`:3001`) na porta **9080**.

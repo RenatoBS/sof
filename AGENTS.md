@@ -158,6 +158,7 @@ Sof/
 | Rotas admin | `admin/frontend/app/` |
 | Tema marketing/dashboard | `saas/frontend/src/theme/` |
 | Persona / copy do bot WA | `docs/brand.md`; `docs/bot-messages.md`; `saas/backend/src/whatsapp/bot-copy.ts` |
+| Cloud VM bootstrap (QA envs + ngrok) | `.cursor/environment.json`; `scripts/cloud-vm-bootstrap.sh` |
 
 ---
 
