@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-30 — UI de `/docs` alinhada ao shell admin (lista + leitor)
+
+- **Contexto:** Hub usava grid de cards com padding/maxWidth duplicados em relação ao shell; TOC do leitor não rolava até a seção; tabelas Markdown estouravam o layout.
+- **Decisão:** Hub com `ListRow` (mesmo padrão de Contas/Planos); leitor com artigo único + TOC clicável (scroll no web); `MarkdownDoc` com scroll horizontal em tabelas, `nativeID` nos headings e strip do H1 (já no header).
+- **Consequências:** Docs internas visualmente coerentes com o painel; TOC útil no desktop.
+- **Alternativas descartadas:** Manter cards; TOC só decorativo; renderizar MD como HTML isolado.
+
 ## 2026-07-30 — Documentação interativa no painel-admin (`/docs`)
 
 - **Contexto:** Markdowns vivos em `docs/` só existiam no Git; o admin só tinha guias HTML públicos para o cliente.

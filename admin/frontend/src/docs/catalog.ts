@@ -71,6 +71,11 @@ export function slugify(text: string) {
     .replace(/^-|-$/g, '');
 }
 
+/** Remove o H1 inicial — o título já aparece no PageHeader do painel. */
+export function stripLeadingH1(markdown: string) {
+  return markdown.replace(/^#[^#\n][^\n]*\n+/, '');
+}
+
 /**
  * Reescreve links relativos de docs/ para rotas do painel.
  * - `foo.md` / `./foo.md` / `../AGENTS.md` → /docs/foo (AGENTS fica como texto)
