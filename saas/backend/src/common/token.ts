@@ -1,3 +1,4 @@
+import type { CookieOptions } from 'express';
 import { sign as jwtSign, verify as jwtVerify } from 'jsonwebtoken';
 
 export const COOKIE_NAME = 'sof_session';
@@ -67,7 +68,11 @@ export function verifyToken(token: string, jwtSecret: string): string | null {
   return payload.sub;
 }
 
-export function cookieOptions(isProd: boolean) {
+/**
+ * O tipo de retorno é explícito de propósito: sem ele o `sameSite` do ternário
+ * vira `string` e não casa com o overload de `res.cookie`, quebrando o build.
+ */
+export function cookieOptions(isProd: boolean): CookieOptions {
   return {
     httpOnly: true,
     secure: isProd,
