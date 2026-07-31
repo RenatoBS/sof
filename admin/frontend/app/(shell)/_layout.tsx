@@ -35,6 +35,9 @@ export default function ShellLayout() {
 
   if (!admin) return <Redirect href="/login" />;
 
+  /** Leitor de documento usa a largura toda: texto + sumário lado a lado. */
+  const isDocViewer = pathname.startsWith('/docs/');
+
   return (
     <View style={styles.root}>
       <View style={styles.nav}>
@@ -106,7 +109,7 @@ export default function ShellLayout() {
           </Pressable>
         </View>
       </View>
-      <View style={styles.body}>
+      <View style={[styles.body, isDocViewer && styles.bodyWide]}>
         <Slot />
       </View>
     </View>
@@ -207,4 +210,5 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  bodyWide: { maxWidth: '100%' },
 });

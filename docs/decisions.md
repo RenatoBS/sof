@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Leitor de docs do admin em largura total
+
+- **Contexto:** `/docs/[slug]` renderizava o texto numa coluna de ~410 px com o sumário ocupando ~610 px. Causa: no RN Web o `ScrollView` traz `flexGrow: 1` no estilo base, então o `width: 200` do sumário virou só a base de cálculo e ele cresceu junto com o conteúdo (`flex: 1`), dividindo a sobra meio a meio. Somado ao `maxWidth: 1100` do shell, sobrava pouquíssima medida para o texto.
+- **Decisão:** Sumário com `flexGrow: 0` + `flexBasis`/`width` de 248 px e borda de separação; conteúdo `flex: 1`. O shell libera o `maxWidth` quando a rota começa com `/docs/`, então o leitor usa a janela inteira — as tabelas dos docs são largas e ganham muito com isso.
+- **Consequências:** Em telas comuns (1100–1600 px) o texto fica com 750–1100 px de medida. Não há teto de largura: em monitor ultrawide a linha fica longa — se incomodar, o ajuste é um `maxWidth` no `root` do leitor, não no shell. O hub `/docs` continua em 1100 px como as demais listagens.
+- **Alternativas descartadas:** Manter os 1100 px do shell e só corrigir o sumário (resolvia a divisão, mas continuava estreito, que era metade da reclamação); liberar a largura para todo o shell (listagens de conta/plano ficam ruins em linha muito longa); dar ao texto uma medida de leitura fixa (~800 px) com sobra vazia no meio — parece bug e desperdiça a tela.
+
 ## 2026-07-31 — Máscara de telefone/e-mail via prop `mask` no input compartilhado
 
 - **Contexto:** A máscara `maskBrPhone` existia só no produto e era chamada à mão em cada tela (`onChangeText={(t) => setPhone(maskBrPhone(t))}`), então faltava justamente onde mais importa — cadastro da conta (`CheckoutModal`), pareamento do WhatsApp e **todo** o `admin/frontend`, que nem tinha util de validação. Campos de e-mail também variavam: uns com `keyboardType`, outros sem `autoCapitalize`, e nenhum impedindo espaço colado.

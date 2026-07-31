@@ -21,6 +21,8 @@ import {
 import { MarkdownDoc } from '@/src/docs/MarkdownDoc';
 import { colors, fonts, radius, space } from '@/src/theme/admin';
 
+const TOC_WIDTH = 248;
+
 function paramStr(value: string | string[] | undefined) {
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw || raw === 'undefined') return '';
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     flexDirection: 'row',
-    gap: space.lg,
+    gap: space.xl,
   },
   main: { flex: 1, minWidth: 0 },
   mainContent: {
@@ -172,12 +174,18 @@ const styles = StyleSheet.create({
     paddingVertical: space.lg,
     paddingHorizontal: space.lg,
   },
+  /** `ScrollView` do RN Web nasce com `flexGrow: 1` — sem zerar, a coluna come o conteúdo. */
   toc: {
-    width: 200,
+    width: TOC_WIDTH,
+    flexBasis: TOC_WIDTH,
+    flexGrow: 0,
     flexShrink: 0,
     maxHeight: '100%',
+    borderLeftWidth: 1,
+    borderLeftColor: colors.line,
   },
   tocContent: {
+    paddingLeft: space.lg,
     paddingBottom: space.xl,
     gap: 2,
   },
