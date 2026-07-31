@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Ngrok: um túnel + reverse proxy (front+API mesma origem)
+
+- **Contexto:** Acesso remoto ao Sof local (cloud VM / WhatsApp webhooks) precisa de HTTPS; free ngrok costuma limitar a um endpoint; Expo CorsMiddleware e Metro quebram com Host/`X-Forwarded-*` mal encaminhados.
+- **Decisão:** `scripts/sof-dev-proxy.js` na `:9080` — `/api` → Nest `:3001`, resto → Expo `:8081`; `ngrok http 9080`; `EXPO_PUBLIC_API_URL` = URL pública (mesma origem). Proxy não usa `changeOrigin` no front e stripa `X-Forwarded-*`.
+- **Consequências:** Login/dashboard/SSE pelo browser via um único HTTPS; CORS e cookies simplificados. Doc em `docs/local-development.md`.
+- **Alternativas descartadas:** Dois túneis ngrok; só API no túnel; `changeOrigin` no front (quebra CORS do Expo).
+
 ## 2026-07-31 — Copy de confirmação: “Podemos agendar?” (não “Marcar”)
 
 - **Contexto:** Site e bot usavam “marca/Marcar” no fluxo de agendamento; soava seco e fácil de confundir com outras ações (“marcar concluído”).

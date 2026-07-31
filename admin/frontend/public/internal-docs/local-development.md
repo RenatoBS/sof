@@ -160,12 +160,42 @@ Atualizar Impeccable: `npx impeccable install --providers=cursor --scope=project
 
 Depois do polish UI: no Agent, `/impeccable init` gera `PRODUCT.md` / `DESIGN.md` para futuras iterações de design.
 
+## Acesso remoto via ngrok (front + API)
+
+Um único túnel HTTPS para o browser (login, dashboard, SSE). O script [`scripts/sof-dev-proxy.js`](../scripts/sof-dev-proxy.js) junta Expo (`:8081`) e Nest (`:3001`) na porta **9080**.
+
+```bash
+# 1) Stack local (Postgres + API + front) já no ar
+# 2) Proxy
+npm install http-proxy   # uma vez (qualquer pasta; o script só faz require)
+node scripts/sof-dev-proxy.js   # :9080
+
+# 3) Túnel
+ngrok http 9080
+# anote a URL https://….ngrok-free.dev
+```
+
+Envs (substitua `https://SEU.ngrok-free.dev`):
+
+| Onde | Variável | Valor |
+|------|----------|--------|
+| `saas/backend/.env` | `PUBLIC_URL` | URL do ngrok |
+| `saas/backend/.env` | `CORS_ORIGIN` | URL do ngrok (+ `http://localhost:8081` se quiser) |
+| `saas/backend/.env` | `API_PUBLIC_URL` | URL do ngrok (webhooks WA) |
+| `saas/frontend/.env` | `EXPO_PUBLIC_API_URL` | **mesma** URL do ngrok (origem única via proxy) |
+
+Reinicie API e `npm run web` depois de mudar `EXPO_PUBLIC_*`. Contas demo: ver tabela acima (`demo@sof.com` / `SEED_DEMO_PASSWORD`).
+
+O free tier do ngrok mostra um interstitial na 1ª visita — clique em Visit Site. Inspect local: `http://127.0.0.1:4040`.
+
 ## Troubleshooting
 
 | Sintoma | Causa provável | Ação |
 |---------|----------------|------|
 | API não conecta no DB | Docker off / porta 5432 ocupada | Usar 5433; `docker compose ps` |
-| CORS no browser | origem não listada | Incluir a URL do Expo em `CORS_ORIGIN` |
+| CORS no browser | origem não listada | Incluir a URL do Expo/ngrok em `CORS_ORIGIN` |
+| Expo “Unauthorized request from https://…ngrok…” | Host reescrito pelo proxy | Usar `scripts/sof-dev-proxy.js` (sem `changeOrigin` no front) |
+| Metro `TypeError: Invalid URL` atrás do ngrok | `X-Forwarded-*` multi-valor | O proxy remove esses headers antes do Expo |
 | Prisma migrate falha (Supabase) | URL pooler / senha com `&` | Usar `DIRECT_URL`; URL-encode senha |
 | DataGrip “Incorrect driver/URL” | URL colada com senha especial | Campos separados + SSL Require + porta 5432 |
 | Fundo preto no web | dark mode do shell HTML | `app/+html.tsx` força paper `#F4F4F6` |
