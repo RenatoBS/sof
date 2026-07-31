@@ -44,22 +44,54 @@ export async function fetchDocMarkdown(slug: string): Promise<string> {
 
 export type TocItem = { id: string; title: string; level: number };
 
-export function extractToc(markdown: string): TocItem[] {
+/** `[label](url)` → `label`; tira marcadores inline para o título casar com o texto exibido. */
+function inlineText(raw: string) {
+  return raw
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[`*_[\]]/g, '')
+    .replace(/\s*#+\s*$/, '')
+    .trim();
+}
+
+/**
+ * Fonte única dos âncoras: a mesma lista numera o índice e nomeia os headings
+ * renderizados (por ordem de aparição), então clicar sempre cai no destino certo.
+ */
+export function extractHeadings(markdown: string): TocItem[] {
   const items: TocItem[] = [];
   const seen = new Map<string, number>();
-  for (const line of markdown.split('\n')) {
-    const m = /^(#{2,3})\s+(.+)$/.exec(line.trim());
+  /** `#` dentro de bloco de código não vira heading — contá-lo desalinha o índice inteiro. */
+  let fence: string | null = null;
+  for (const rawLine of markdown.split('\n')) {
+    const line = rawLine.trim();
+    const fenceMatch = /^(```|~~~)/.exec(line);
+    if (fenceMatch) {
+      if (!fence) fence = fenceMatch[1];
+      else if (fence === fenceMatch[1]) fence = null;
+      continue;
+    }
+    if (fence) continue;
+    const m = /^(#{1,3})\s+(.+)$/.exec(line);
     if (!m) continue;
-    const level = m[1].length;
-    const title = m[2].replace(/[#*`[\]]/g, '').trim();
+    const title = inlineText(m[2]);
     if (!title) continue;
     let id = slugify(title);
     const n = (seen.get(id) || 0) + 1;
     seen.set(id, n);
     if (n > 1) id = `${id}-${n}`;
-    items.push({ id, title, level });
+    items.push({ id, title, level: m[1].length });
   }
   return items;
+}
+
+/** Índice lateral: só H2/H3 (o H1 já vira título da página). */
+export function extractToc(markdown: string): TocItem[] {
+  return extractHeadings(markdown).filter((h) => h.level >= 2);
+}
+
+/** Markdown como o leitor realmente renderiza — base comum do índice e dos âncoras. */
+export function docBody(markdown: string) {
+  return rewriteDocLinks(stripLeadingH1(markdown));
 }
 
 export function slugify(text: string) {

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import {
   Linking,
   Platform,
@@ -10,7 +10,7 @@ import {
 import Markdown from 'react-native-markdown-display';
 import { router, type Href } from 'expo-router';
 import { colors, fonts, radius, space } from '@/src/theme/admin';
-import { rewriteDocLinks, slugify, stripLeadingH1 } from './catalog';
+import { docBody, extractHeadings } from './catalog';
 
 type Props = {
   markdown: string;
@@ -25,34 +25,19 @@ type MdNode = {
   sourceInfo?: string;
 };
 
-function nodeText(node: MdNode | undefined): string {
-  if (!node) return '';
-  if (typeof node.content === 'string') return node.content;
-  if (Array.isArray(node.children)) {
-    return node.children.map(nodeText).join('');
-  }
-  return '';
-}
-
-function headingId(node: MdNode) {
-  return slugify(nodeText(node));
-}
-
 export function MarkdownDoc({ markdown }: Props) {
-  const body = useMemo(
-    () => rewriteDocLinks(stripLeadingH1(markdown)),
-    [markdown],
-  );
+  const body = useMemo(() => docBody(markdown), [markdown]);
+  const headings = useMemo(() => extractHeadings(body), [body]);
+
+  /**
+   * Os headings recebem o id pela ordem em que aparecem, então o cursor precisa
+   * voltar a zero a cada render — senão o segundo render desloca todos os âncoras.
+   */
+  const cursor = useRef(0);
+  cursor.current = 0;
 
   const rules = useMemo(() => {
-    const seen = new Map<string, number>();
-    const uniqueId = (node: MdNode) => {
-      let id = headingId(node);
-      const n = (seen.get(id) || 0) + 1;
-      seen.set(id, n);
-      if (n > 1) id = `${id}-${n}`;
-      return id;
-    };
+    const uniqueId = () => headings[cursor.current++]?.id;
     return {
       heading1: (
         node: MdNode,
@@ -60,7 +45,7 @@ export function MarkdownDoc({ markdown }: Props) {
         _parent: MdNode[],
         styles: typeof markdownStyles,
       ) => (
-        <Text key={node.key} nativeID={uniqueId(node)} style={styles.heading1}>
+        <Text key={node.key} nativeID={uniqueId()} style={styles.heading1}>
           {children}
         </Text>
       ),
@@ -70,7 +55,7 @@ export function MarkdownDoc({ markdown }: Props) {
         _parent: MdNode[],
         styles: typeof markdownStyles,
       ) => (
-        <Text key={node.key} nativeID={uniqueId(node)} style={styles.heading2}>
+        <Text key={node.key} nativeID={uniqueId()} style={styles.heading2}>
           {children}
         </Text>
       ),
@@ -80,7 +65,7 @@ export function MarkdownDoc({ markdown }: Props) {
         _parent: MdNode[],
         styles: typeof markdownStyles,
       ) => (
-        <Text key={node.key} nativeID={uniqueId(node)} style={styles.heading3}>
+        <Text key={node.key} nativeID={uniqueId()} style={styles.heading3}>
           {children}
         </Text>
       ),
@@ -102,7 +87,7 @@ export function MarkdownDoc({ markdown }: Props) {
         </ScrollView>
       ),
     };
-  }, [body]);
+  }, [headings]);
 
   return (
     <View style={styles.wrap}>

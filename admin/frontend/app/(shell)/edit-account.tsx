@@ -17,6 +17,7 @@ import {
   type PlanRow,
 } from '@/src/api/endpoints';
 import { Button, ErrorText, Field } from '@/src/components/ui';
+import { maskBrPhone, normalizePhoneDigits } from '@/src/lib/validation';
 import { colors, fonts, space } from '@/src/theme/admin';
 
 function paramId(value: string | string[] | undefined) {
@@ -91,7 +92,7 @@ export default function AccountDetailScreen() {
     setBusinessName(detail.account.businessName);
     setOwnerName(detail.account.ownerName);
     setEmail(detail.account.email);
-    setPhone(detail.account.phone || '');
+    setPhone(maskBrPhone(detail.account.phone || ''));
     setPlan(detail.account.plan);
     setPlanPrice(String(detail.account.planPrice));
     setStatus(detail.account.status);
@@ -126,7 +127,7 @@ export default function AccountDetailScreen() {
         businessName,
         ownerName,
         email,
-        phone: phone.replace(/\D/g, ''),
+        phone: normalizePhoneDigits(phone),
         plan,
         planPrice: Number(planPrice),
         status,
@@ -161,7 +162,7 @@ export default function AccountDetailScreen() {
     try {
       const res = await accountsApi.whatsappConnect(
         id,
-        withPhone ? { phone: waPhone } : undefined,
+        withPhone ? { phone: normalizePhoneDigits(waPhone) } : undefined,
       );
       setWaMode(res.mode);
       await loadWa();
@@ -256,15 +257,11 @@ export default function AccountDetailScreen() {
 
       <Field label="Negócio" value={businessName} onChangeText={setBusinessName} />
       <Field label="Responsável" value={ownerName} onChangeText={setOwnerName} />
-      <Field
-        label="E-mail"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
+      <Field label="E-mail" mask="email" value={email} onChangeText={setEmail} />
       <Field
         label="Telefone"
-        keyboardType="phone-pad"
+        mask="phone"
+        placeholder="(11) 99999-8888"
         value={phone}
         onChangeText={setPhone}
       />
@@ -345,10 +342,10 @@ export default function AccountDetailScreen() {
         {waMode === 'paircode' && !wa?.connected ? (
           <Field
             label="Telefone do aparelho (DDI)"
-            keyboardType="phone-pad"
+            mask="phoneDdi"
             value={waPhone}
             onChangeText={setWaPhone}
-            placeholder="5511999998888"
+            placeholder="+55 (11) 99999-8888"
           />
         ) : null}
 
@@ -379,13 +376,13 @@ export default function AccountDetailScreen() {
             disabled={waBusy || !wa?.pairingAvailable}
             onPress={() => {
               setWaMode('paircode');
-              if (waPhone.replace(/\D/g, '').length >= 10) waConnect(true);
+              if (normalizePhoneDigits(waPhone).length >= 10) waConnect(true);
             }}
           />
           {waMode === 'paircode' ? (
             <Button
               title="Gerar código"
-              disabled={waBusy || waPhone.replace(/\D/g, '').length < 10}
+              disabled={waBusy || normalizePhoneDigits(waPhone).length < 10}
               onPress={() => waConnect(true)}
             />
           ) : null}

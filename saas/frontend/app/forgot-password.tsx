@@ -68,9 +68,8 @@ export default function EsqueciSenhaScreen() {
                 label="E-mail"
                 value={email}
                 onChangeText={setEmail}
-                keyboardType="email-address"
+                mask="email"
                 placeholder="voce@negocio.com"
-                autoCapitalize="none"
               />
               <SofButton
                 title="Enviar link"

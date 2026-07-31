@@ -185,12 +185,12 @@ export function EmployeeFormModal({
         label="Telefone"
         value={phone}
         onChangeText={(t) => {
-          setPhone(maskBrPhone(t));
+          setPhone(t);
           clearField('phone');
         }}
         theme="dashboard"
         placeholder="(11) 99999-8888"
-        keyboardType="phone-pad"
+        mask="phone"
         error={touched ? fieldErrors.phone : undefined}
       />
       <SofInput
@@ -202,8 +202,7 @@ export function EmployeeFormModal({
         }}
         theme="dashboard"
         placeholder="profissional@negocio.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
+        mask="email"
         error={touched ? fieldErrors.email : undefined}
       />
       <Text style={styles.label}>Cor na agenda</Text>

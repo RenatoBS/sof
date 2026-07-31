@@ -70,7 +70,7 @@ export default function LoginScreen() {
             label="E-mail"
             value={email}
             onChangeText={setEmail}
-            keyboardType="email-address"
+            mask="email"
             placeholder="voce@negocio.com"
           />
           <SofInput

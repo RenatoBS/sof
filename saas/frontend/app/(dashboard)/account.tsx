@@ -324,7 +324,7 @@ export default function AccountScreen() {
     setWaError('');
     const digits = normalizePhoneDigits(waPhone);
     if (!isValidPhoneDigits(digits)) {
-      setWaError('Informe o telefone com DDI (ex: 5511999998888).');
+      setWaError('Informe o telefone com DDI (ex: +55 11 99999-8888).');
       return;
     }
     setWaBusy(true);
@@ -598,8 +598,8 @@ export default function AccountScreen() {
                   value={waPhone}
                   onChangeText={setWaPhone}
                   theme="dashboard"
-                  placeholder="5511999998888"
-                  keyboardType="phone-pad"
+                  placeholder="+55 (11) 99999-8888"
+                  mask="phoneDdi"
                 />
                 <View style={styles.waActions}>
                   <SofButton

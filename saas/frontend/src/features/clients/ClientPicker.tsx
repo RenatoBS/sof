@@ -149,12 +149,12 @@ export function ClientPicker({
             label="Telefone"
             value={phone}
             onChangeText={(t) => {
-              setPhone(maskBrPhone(t));
+              setPhone(t);
               clearField('phone');
             }}
             theme="dashboard"
             placeholder="(11) 99999-0000"
-            keyboardType="phone-pad"
+            mask="phone"
             error={touched ? fieldErrors.phone : undefined}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}

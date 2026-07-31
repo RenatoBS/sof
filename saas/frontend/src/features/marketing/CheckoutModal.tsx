@@ -307,8 +307,8 @@ export function CheckoutModal({
               setPhone(t);
               clearFieldError('phone');
             }}
-            keyboardType="phone-pad"
-            placeholder="DDD + número"
+            mask="phone"
+            placeholder="(11) 99999-8888"
             error={touched ? fieldErrors.phone : undefined}
           />
           <SofInput
@@ -318,7 +318,7 @@ export function CheckoutModal({
               setEmail(t);
               clearFieldError('email');
             }}
-            keyboardType="email-address"
+            mask="email"
             placeholder="Onde você acessa o painel"
             error={touched ? fieldErrors.email : undefined}
           />

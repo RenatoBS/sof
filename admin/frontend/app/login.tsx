@@ -47,8 +47,7 @@ export default function LoginScreen() {
         <Text style={styles.sub}>Gerencie contas e planos Stripe.</Text>
         <Field
           label="E-mail"
-          autoCapitalize="none"
-          keyboardType="email-address"
+          mask="email"
           value={email}
           onChangeText={setEmail}
         />

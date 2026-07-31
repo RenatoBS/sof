@@ -9,19 +9,65 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { colors, fonts, radius, shadow, space } from '@/src/theme/admin';
+import { maskBrPhone, maskEmail, maskPhoneWithDdi } from '@/src/lib/validation';
+
+/** Máscaras dos campos recorrentes; o valor exibido é formatado, o submit normaliza. */
+export type InputMask = 'phone' | 'phoneDdi' | 'email';
+
+const INPUT_MASKS: Record<
+  InputMask,
+  { format: (raw: string) => string; props: TextInputProps }
+> = {
+  phone: {
+    format: maskBrPhone,
+    props: {
+      keyboardType: 'phone-pad',
+      inputMode: 'tel',
+      autoComplete: 'tel',
+      maxLength: 15,
+    },
+  },
+  phoneDdi: {
+    format: maskPhoneWithDdi,
+    props: {
+      keyboardType: 'phone-pad',
+      inputMode: 'tel',
+      autoComplete: 'tel',
+      maxLength: 20,
+    },
+  },
+  email: {
+    format: maskEmail,
+    props: {
+      keyboardType: 'email-address',
+      inputMode: 'email',
+      autoCapitalize: 'none',
+      autoCorrect: false,
+      autoComplete: 'email',
+    },
+  },
+};
 
 export function Field({
   label,
   error,
+  mask,
+  onChangeText,
   ...props
-}: TextInputProps & { label: string; error?: string }) {
+}: TextInputProps & { label: string; error?: string; mask?: InputMask }) {
+  const maskConfig = mask ? INPUT_MASKS[mask] : null;
+  const handleChangeText = maskConfig
+    ? (text: string) => onChangeText?.(maskConfig.format(text))
+    : onChangeText;
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         placeholderTextColor={colors.muted}
         style={[styles.input, error ? styles.inputError : null]}
+        {...maskConfig?.props}
         {...props}
+        onChangeText={handleChangeText}
       />
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
