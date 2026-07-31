@@ -1,21 +1,114 @@
-import { useMemo } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { useMemo, type ReactNode } from 'react';
+import {
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { router, type Href } from 'expo-router';
 import { colors, fonts, radius, space } from '@/src/theme/admin';
-import { rewriteDocLinks } from './catalog';
+import { rewriteDocLinks, slugify, stripLeadingH1 } from './catalog';
 
 type Props = {
   markdown: string;
 };
 
+type MdNode = {
+  key: string;
+  type?: string;
+  content?: string;
+  attributes?: Record<string, unknown>;
+  children?: MdNode[];
+  sourceInfo?: string;
+};
+
+function nodeText(node: MdNode | undefined): string {
+  if (!node) return '';
+  if (typeof node.content === 'string') return node.content;
+  if (Array.isArray(node.children)) {
+    return node.children.map(nodeText).join('');
+  }
+  return '';
+}
+
+function headingId(node: MdNode) {
+  return slugify(nodeText(node));
+}
+
 export function MarkdownDoc({ markdown }: Props) {
-  const body = useMemo(() => rewriteDocLinks(markdown), [markdown]);
+  const body = useMemo(
+    () => rewriteDocLinks(stripLeadingH1(markdown)),
+    [markdown],
+  );
+
+  const rules = useMemo(() => {
+    const seen = new Map<string, number>();
+    const uniqueId = (node: MdNode) => {
+      let id = headingId(node);
+      const n = (seen.get(id) || 0) + 1;
+      seen.set(id, n);
+      if (n > 1) id = `${id}-${n}`;
+      return id;
+    };
+    return {
+      heading1: (
+        node: MdNode,
+        children: ReactNode[],
+        _parent: MdNode[],
+        styles: typeof markdownStyles,
+      ) => (
+        <Text key={node.key} nativeID={uniqueId(node)} style={styles.heading1}>
+          {children}
+        </Text>
+      ),
+      heading2: (
+        node: MdNode,
+        children: ReactNode[],
+        _parent: MdNode[],
+        styles: typeof markdownStyles,
+      ) => (
+        <Text key={node.key} nativeID={uniqueId(node)} style={styles.heading2}>
+          {children}
+        </Text>
+      ),
+      heading3: (
+        node: MdNode,
+        children: ReactNode[],
+        _parent: MdNode[],
+        styles: typeof markdownStyles,
+      ) => (
+        <Text key={node.key} nativeID={uniqueId(node)} style={styles.heading3}>
+          {children}
+        </Text>
+      ),
+      table: (
+        node: MdNode,
+        children: ReactNode[],
+        _parent: MdNode[],
+        styles: typeof markdownStyles,
+      ) => (
+        <ScrollView
+          key={node.key}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator
+          style={styles.tableScroll}
+          contentContainerStyle={styles.tableScrollContent}
+        >
+          <View style={styles.table}>{children}</View>
+        </ScrollView>
+      ),
+    };
+  }, [body]);
 
   return (
     <View style={styles.wrap}>
       <Markdown
         style={markdownStyles}
+        rules={rules}
         onLinkPress={(url) => {
           if (!url) return false;
           if (url.startsWith('/docs/')) {
@@ -24,7 +117,7 @@ export function MarkdownDoc({ markdown }: Props) {
             return false;
           }
           if (url.startsWith('/guides/')) {
-            if (typeof window !== 'undefined') {
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
               window.open(url, '_blank', 'noopener,noreferrer');
             } else {
               void Linking.openURL(url);
@@ -53,29 +146,29 @@ const markdownStyles = StyleSheet.create({
   },
   heading1: {
     fontFamily: fonts.displayBold,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 22,
+    lineHeight: 28,
     color: colors.ink,
-    marginTop: space.sm,
+    marginTop: space.md,
     marginBottom: space.md,
   },
   heading2: {
     fontFamily: fonts.display,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 24,
     color: colors.ink,
-    marginTop: space.lg,
+    marginTop: space.xl,
     marginBottom: space.sm,
     paddingBottom: space.xs,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
   heading3: {
-    fontFamily: fonts.display,
-    fontSize: 17,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
     lineHeight: 22,
     color: colors.ink,
-    marginTop: space.md,
+    marginTop: space.lg,
     marginBottom: space.xs,
   },
   paragraph: {
@@ -102,8 +195,21 @@ const markdownStyles = StyleSheet.create({
   list_item: {
     marginBottom: space.xs,
   },
+  bullet_list_icon: {
+    color: colors.muted,
+    marginLeft: 0,
+    marginRight: space.sm,
+  },
+  ordered_list_icon: {
+    color: colors.muted,
+    marginLeft: 0,
+    marginRight: space.sm,
+  },
   code_inline: {
-    fontFamily: 'Menlo, Monaco, Consolas, monospace',
+    fontFamily: Platform.select({
+      web: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      default: 'Menlo',
+    }),
     backgroundColor: colors.fill,
     color: colors.ink,
     paddingHorizontal: 5,
@@ -118,7 +224,10 @@ const markdownStyles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space.md,
     marginBottom: space.md,
-    fontFamily: 'Menlo, Monaco, Consolas, monospace',
+    fontFamily: Platform.select({
+      web: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      default: 'Menlo',
+    }),
     fontSize: 12,
     lineHeight: 18,
     color: colors.ink,
@@ -130,32 +239,51 @@ const markdownStyles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space.md,
     marginBottom: space.md,
-    fontFamily: 'Menlo, Monaco, Consolas, monospace',
+    fontFamily: Platform.select({
+      web: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      default: 'Menlo',
+    }),
     fontSize: 12,
     lineHeight: 18,
+  },
+  tableScroll: {
+    marginBottom: space.md,
+  },
+  tableScrollContent: {
+    flexGrow: 1,
   },
   table: {
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.sm,
-    marginBottom: space.md,
+    overflow: 'hidden',
+    minWidth: '100%',
   },
   thead: {
     backgroundColor: colors.fill,
   },
   th: {
-    padding: space.sm,
+    paddingVertical: 10,
+    paddingHorizontal: space.sm,
     fontFamily: fonts.bodyMedium,
+    fontSize: 13,
     color: colors.ink,
+    minWidth: 120,
   },
   td: {
-    padding: space.sm,
-    borderTopWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.line,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.ink,
+    minWidth: 120,
   },
   tr: {
     borderBottomWidth: 0,
+    flexDirection: 'row',
   },
   blockquote: {
     backgroundColor: colors.copperSoft,
@@ -167,7 +295,7 @@ const markdownStyles = StyleSheet.create({
   },
   hr: {
     backgroundColor: colors.line,
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     marginVertical: space.lg,
   },
 });

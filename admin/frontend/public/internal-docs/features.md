@@ -86,7 +86,7 @@ Superfície interna (não é o dashboard do tenant). Apps `admin/frontend` + `ad
 | Cupons promocionais (7/30/60 dias) | `/coupons`, `/new-coupon`, `/edit-coupon` | `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id` |
 | Contas que usaram um cupom | `/edit-coupon` (seção Usos) | `GET /api/coupons/:id` (`redemptions`) |
 | Guias públicos (onboarding + bot WA + planos) | `/guides` (+ HTML em `public/guides/`) | sem auth |
-| Documentação interna (MD vivo) | `/docs`, `/docs/[slug]` (nav **Docs**) | auth admin; sync `docs/*.md` → `public/internal-docs/` |
+| Documentação interna (MD vivo) | `/docs`, `/docs/[slug]` (nav **Docs**) | auth admin; hub em lista (`ListRow`) + leitor com TOC clicável; sync `docs/*.md` → `public/internal-docs/` |
 | Tickets de suporte (lista) | `/tickets` | `GET /api/tickets` (default abertos/em andamento) |
 | Ticket detalhe / comentários / status | `/edit-ticket` | `GET/POST/PATCH /api/tickets/:id…` |
 

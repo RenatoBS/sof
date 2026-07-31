@@ -3,16 +3,16 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { router, type Href } from 'expo-router';
 import {
+  EmptyState,
   ErrorText,
+  ListRow,
   PageHeader,
   SearchField,
 } from '@/src/components/ui';
@@ -22,7 +22,7 @@ import {
   type DocEntry,
   type DocsManifest,
 } from '@/src/docs/catalog';
-import { colors, fonts, radius, shadow, space } from '@/src/theme/admin';
+import { colors, fonts, space } from '@/src/theme/admin';
 
 function openExternal(href: string) {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -33,8 +33,6 @@ function openExternal(href: string) {
 }
 
 export default function DocsHubScreen() {
-  const { width } = useWindowDimensions();
-  const wide = width >= 900;
   const [manifest, setManifest] = useState<DocsManifest | null>(null);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -78,167 +76,117 @@ export default function DocsHubScreen() {
     return [...map.entries()].filter(([, list]) => list.length > 0);
   }, [filtered, manifest]);
 
+  const guides = useMemo(() => {
+    const list = manifest?.clientGuides || [];
+    const needle = q.trim().toLowerCase();
+    if (!needle) return list;
+    return list.filter((g) => {
+      const hay = `${g.title} ${g.summary}`.toLowerCase();
+      return hay.includes(needle);
+    });
+  }, [manifest, q]);
+
   return (
-    <ScrollView
-      style={styles.page}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView contentContainerStyle={styles.wrap}>
       <PageHeader
         title="Documentação"
-        subtitle="Tudo que vive em docs/ — atualizado com o projeto. Área interna Sof."
+        subtitle="Referência interna — a mesma pasta docs/ do repositório."
       />
 
-      <SearchField
-        value={q}
-        onChangeText={setQ}
-        placeholder="Buscar por título, grupo ou resumo…"
-      />
+      <View style={styles.searchRow}>
+        <SearchField
+          value={q}
+          onChangeText={setQ}
+          placeholder="Buscar por título, grupo ou resumo…"
+        />
+      </View>
 
       {loading ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: space.lg }} />
       ) : null}
-      {error ? <ErrorText>{error}</ErrorText> : null}
+      <ErrorText>{error}</ErrorText>
 
       {!loading && !error
         ? byGroup.map(([group, docs]) => (
             <View key={group} style={styles.section}>
               <Text style={styles.groupTitle}>{group}</Text>
-              <View style={[styles.grid, !wide && styles.gridNarrow]}>
-                {docs.map((doc) => (
-                  <DocCard key={doc.slug} doc={doc} />
-                ))}
-              </View>
+              {docs.map((doc) => (
+                <DocRow key={doc.slug} doc={doc} />
+              ))}
             </View>
           ))
         : null}
 
-      {!loading && !error && filtered.length === 0 ? (
-        <Text style={styles.empty}>Nenhum documento com esse filtro.</Text>
+      {!loading && !error && filtered.length === 0 && guides.length === 0 ? (
+        <EmptyState message="Nenhum documento com esse filtro." />
       ) : null}
 
-      {manifest?.clientGuides?.length ? (
+      {!loading && !error && guides.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.groupTitle}>Guias do cliente (públicos)</Text>
+          <Text style={styles.groupTitle}>Guias do cliente</Text>
           <Text style={styles.groupHint}>
-            Compartilháveis sem login — abrem em nova aba.
+            Públicos — abrem em nova aba, sem login.
           </Text>
-          <View style={[styles.grid, !wide && styles.gridNarrow]}>
-            {manifest.clientGuides.map((g) => (
-              <GuideCard key={g.href} guide={g} />
-            ))}
-          </View>
+          {guides.map((g) => (
+            <GuideRow key={g.href} guide={g} />
+          ))}
         </View>
       ) : null}
     </ScrollView>
   );
 }
 
-function DocCard({ doc }: { doc: DocEntry }) {
-  const [hovered, setHovered] = useState(false);
+function DocRow({ doc }: { doc: DocEntry }) {
   return (
-    <Pressable
+    <ListRow
+      title={doc.title}
+      meta={doc.summary}
       onPress={() => router.push(`/docs/${doc.slug}` as Href)}
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      style={[styles.card, hovered && styles.cardHover]}
-    >
-      <Text style={styles.cardKicker}>{doc.group}</Text>
-      <Text style={styles.cardTitle}>{doc.title}</Text>
-      <Text style={styles.cardSummary} numberOfLines={3}>
-        {doc.summary}
-      </Text>
-    </Pressable>
+      right={<Text style={styles.chevron}>Abrir</Text>}
+    />
   );
 }
 
-function GuideCard({ guide }: { guide: ClientGuide }) {
-  const [hovered, setHovered] = useState(false);
+function GuideRow({ guide }: { guide: ClientGuide }) {
   return (
-    <Pressable
+    <ListRow
+      title={guide.title}
+      meta={guide.summary}
       onPress={() => openExternal(guide.href)}
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      style={[styles.card, styles.guideCard, hovered && styles.cardHover]}
-    >
-      <Text style={styles.cardKicker}>Público</Text>
-      <Text style={styles.cardTitle}>{guide.title}</Text>
-      <Text style={styles.cardSummary} numberOfLines={3}>
-        {guide.summary}
-      </Text>
-    </Pressable>
+      right={<Text style={styles.external}>↗</Text>}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
-  content: {
-    padding: space.lg,
-    paddingBottom: space.xl * 2,
-    gap: space.md,
-    maxWidth: 1100,
-    width: '100%',
-    alignSelf: 'center',
+  wrap: { paddingBottom: 40 },
+  searchRow: {
+    flexDirection: 'row',
+    marginBottom: space.md,
   },
-  section: { marginTop: space.md, gap: space.sm },
+  section: { marginTop: space.lg },
   groupTitle: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.ink,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.muted,
+    marginBottom: space.sm,
   },
   groupHint: {
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.muted,
-    marginBottom: space.xs,
+    marginBottom: space.sm,
+    marginTop: -4,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space.md,
-  },
-  gridNarrow: { flexDirection: 'column' },
-  card: {
-    backgroundColor: colors.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: space.md,
-    width: '100%',
-    maxWidth: 320,
-    flexGrow: 1,
-    flexBasis: 260,
-    ...shadow.soft,
-  },
-  guideCard: {
-    backgroundColor: colors.copperSoft,
-    borderColor: '#E6D9C7',
-  },
-  cardHover: {
-    borderColor: colors.accent,
-  },
-  cardKicker: {
+  chevron: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: colors.muted,
-    marginBottom: space.xs,
-  },
-  cardTitle: {
-    fontFamily: fonts.display,
-    fontSize: 16,
-    color: colors.ink,
-    marginBottom: space.xs,
-  },
-  cardSummary: {
-    fontFamily: fonts.body,
     fontSize: 13,
-    lineHeight: 19,
-    color: colors.muted,
+    color: colors.copper,
   },
-  empty: {
-    fontFamily: fonts.body,
+  external: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 16,
     color: colors.muted,
-    marginTop: space.md,
+    lineHeight: 20,
   },
 });

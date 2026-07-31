@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,13 @@ function paramStr(value: string | string[] | undefined) {
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw || raw === 'undefined') return '';
   return raw;
+}
+
+function scrollToHeading(id: string) {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export default function DocViewerScreen() {
@@ -85,10 +93,16 @@ export default function DocViewerScreen() {
           }
         />
 
+        {meta?.group ? (
+          <Text style={styles.crumb}>
+            Docs · {meta.group}
+          </Text>
+        ) : null}
+
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ marginTop: space.lg }} />
         ) : null}
-        {error ? <ErrorText>{error}</ErrorText> : null}
+        <ErrorText>{error}</ErrorText>
 
         {!loading && !error && markdown ? (
           <View style={styles.article}>
@@ -116,20 +130,15 @@ function TocLink({ item }: { item: TocItem }) {
   const [hovered, setHovered] = useState(false);
   return (
     <Pressable
-      onPress={() => {
-        // react-native-markdown-display doesn't expose heading anchors on RN web
-        // reliably; keep TOC as visual outline of sections.
-      }}
+      onPress={() => scrollToHeading(item.id)}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      style={styles.tocItem}
+      style={[styles.tocItem, item.level === 3 && styles.tocItemNested]}
+      accessibilityRole="link"
+      accessibilityLabel={item.title}
     >
       <Text
-        style={[
-          styles.tocText,
-          item.level === 3 && styles.tocTextNested,
-          hovered && styles.tocTextHover,
-        ]}
+        style={[styles.tocText, hovered && styles.tocTextHover]}
         numberOfLines={2}
       >
         {item.title}
@@ -142,55 +151,57 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     flexDirection: 'row',
+    gap: space.lg,
   },
-  main: { flex: 1 },
+  main: { flex: 1, minWidth: 0 },
   mainContent: {
-    padding: space.lg,
-    paddingBottom: space.xl * 2,
-    maxWidth: 820,
-    width: '100%',
-    alignSelf: 'center',
+    paddingBottom: 48,
+  },
+  crumb: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: -space.md,
+    marginBottom: space.md,
   },
   article: {
     backgroundColor: colors.paper,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: space.lg,
+    paddingVertical: space.lg,
+    paddingHorizontal: space.lg,
   },
   toc: {
-    width: 240,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.line,
-    backgroundColor: colors.paper,
+    width: 200,
+    flexShrink: 0,
+    maxHeight: '100%',
   },
   tocContent: {
-    padding: space.md,
-    gap: space.xs,
+    paddingBottom: space.xl,
+    gap: 2,
   },
   tocTitle: {
-    fontFamily: fonts.display,
-    fontSize: 13,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
     color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginBottom: space.sm,
   },
   tocItem: {
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingRight: space.sm,
+    borderRadius: radius.sm - 2,
+  },
+  tocItemNested: {
+    paddingLeft: space.md,
   },
   tocText: {
     fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.ink,
-  },
-  tocTextNested: {
-    paddingLeft: space.sm,
-    color: colors.muted,
     fontSize: 12,
+    lineHeight: 17,
+    color: colors.muted,
   },
   tocTextHover: {
-    color: colors.copper,
+    color: colors.ink,
   },
 });
