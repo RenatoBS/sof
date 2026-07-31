@@ -105,6 +105,15 @@ Buildpacks (nessa ordem): monorepo (`APP_BASE`) + `heroku/nodejs`.
 
 Banco: usar `DATABASE_URL` / `DIRECT_URL` já existentes (ex.: Supabase) — **não** exige add-on Heroku Postgres.
 
+Caminho padrão: **tag dispara o GitHub Actions** (`-stg` → QA, `-prod` → produção).
+
+```bash
+npm run release:qa -- v1.4.0     # cria v1.4.0-stg  → deploy QA
+npm run release:prod -- v1.4.0   # cria v1.4.0-prod → deploy produção
+```
+
+Deploy manual (fallback, direto da máquina):
+
 ```bash
 # remotes (uma vez)
 npm run heroku:remotes

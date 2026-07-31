@@ -1,0 +1,97 @@
+name: Deploy QA
+
+# Dispara ao criar/pushar uma tag terminada em -stg (ex. v1.4.0-stg).
+# Publica apenas os apps SaaS de QA — o painel admin não tem ambiente QA.
+on:
+  push:
+    tags:
+      - '*-stg'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-qa
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validar ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir sufixo da tag
+        run: |
+          ref="${{ github.ref }}"
+          if [[ "$ref" == refs/tags/* ]]; then
+            tag="${ref#refs/tags/}"
+            if [[ "$tag" != *-stg ]]; then
+              echo "::error::Tag '$tag' não termina em -stg. QA publica apenas tags *-stg."
+              exit 1
+            fi
+            echo "Publicando tag $tag em QA."
+          else
+            echo "::warning::Deploy manual a partir de '$ref' (não é tag *-stg)."
+          fi
+
+  ci:
+    name: CI
+    needs: validate
+    uses: ./.github/workflows/ci.yml
+    with:
+      environment: qa
+
+  api:
+    name: deploy sof-solutions-api-qa
+    needs: ci
+    runs-on: ubuntu-latest
+    environment:
+      name: qa
+      url: https://qa-api.sof.solutions
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Heroku rejeita push de clone shallow
+
+      - uses: ./.github/actions/heroku-deploy
+        with:
+          app: sof-solutions-api-qa
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+          health-url: https://qa-api.sof.solutions/api/health
+
+  web:
+    name: deploy sof-solutions-web-qa
+    needs: api # API primeiro: o release phase roda prisma migrate deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: qa
+      url: https://qa.sof.solutions
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/heroku-deploy
+        with:
+          app: sof-solutions-web-qa
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+          health-url: https://qa.sof.solutions
+
+  summary:
+    name: resumo
+    needs: [api, web]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Escrever resumo
+        run: |
+          {
+            echo "## Deploy QA"
+            echo ""
+            echo "| Item | Valor |"
+            echo "|------|-------|"
+            echo "| Ref | \`${{ github.ref_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| API | https://qa-api.sof.solutions (${{ needs.api.result }}) |"
+            echo "| Web | https://qa.sof.solutions (${{ needs.web.result }}) |"
+          } >> "$GITHUB_STEP_SUMMARY"

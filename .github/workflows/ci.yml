@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+    inputs:
+      environment:
+        description: Nome do ambiente alvo (apenas rotulagem nos logs)
+        type: string
+        required: false
+        default: ci
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: build ${{ matrix.name }} (${{ inputs.environment || 'ci' }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: saas-backend
+            dir: saas/backend
+            check: npx eslint "{src,apps,libs,test}/**/*.ts"
+            test: npm test
+          - name: saas-frontend
+            dir: saas/frontend
+            check: npx tsc --noEmit
+            test: echo "sem suíte de testes"
+          - name: admin-backend
+            dir: admin/backend
+            check: npx tsc --noEmit
+            test: echo "sem suíte de testes"
+          - name: admin-frontend
+            dir: admin/frontend
+            check: npx tsc --noEmit
+            test: echo "sem suíte de testes"
+    env:
+      # prisma generate exige as vars resolvíveis; nenhum banco é acessado no CI
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: ${{ matrix.dir }}
+
+      - name: Build (mesmo comando do Heroku)
+        run: npm run heroku-postbuild
+        working-directory: ${{ matrix.dir }}
+
+      - name: Testes
+        run: ${{ matrix.test }}
+        working-directory: ${{ matrix.dir }}
+
+      # Informativo: a base ainda tem violações de lint/tipos herdadas.
+      # Não bloqueia deploy; ver docs/decisions.md.
+      - name: Lint / typecheck (informativo)
+        continue-on-error: true
+        run: ${{ matrix.check }}
+        working-directory: ${{ matrix.dir }}
+
+  schema-sync:
+    name: prisma schema sync (admin)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Regenerar cópia do schema para admin/backend
+        run: npm run admin:sync-schema
+
+      - name: Falhar se admin/backend/prisma/schema.prisma estiver desatualizado
+        run: |
+          if ! git diff --quiet -- admin/backend/prisma/schema.prisma; then
+            echo "::error file=admin/backend/prisma/schema.prisma::Schema do admin fora de sincronia. Rode 'npm run admin:sync-schema' e commite."
+            git --no-pager diff -- admin/backend/prisma/schema.prisma
+            exit 1
+          fi
+          echo "Schema do admin em dia."
+
+  content-sync:
+    name: docs e guides sincronizados (admin/frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Verificar public/internal-docs e public/guides
+        run: bash scripts/check-content-sync.sh
