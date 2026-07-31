@@ -12,6 +12,7 @@ import {
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Button, ErrorText, PageHeader } from '@/src/components/ui';
 import {
+  docBody,
   extractToc,
   fetchDocMarkdown,
   fetchDocsManifest,
@@ -74,7 +75,7 @@ export default function DocViewerScreen() {
     void load();
   }, [load]);
 
-  const toc = useMemo(() => extractToc(markdown), [markdown]);
+  const toc = useMemo(() => extractToc(docBody(markdown)), [markdown]);
 
   return (
     <View style={styles.root}>
