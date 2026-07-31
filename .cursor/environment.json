@@ -1,0 +1,17 @@
+{
+  "name": "Sof",
+  "install": "bash scripts/cloud-vm-bootstrap.sh --install",
+  "terminals": [
+    {
+      "name": "ngrok",
+      "command": "bash scripts/cloud-vm-bootstrap.sh --ngrok-tunnel",
+      "description": "Túnel ngrok para o proxy Sof (porta NGROK_PORT, default 9080). URL em /tmp/sof-ngrok-url.txt"
+    }
+  ],
+  "ports": [
+    { "name": "sof-proxy", "port": 9080 },
+    { "name": "sof-web", "port": 8081 },
+    { "name": "sof-api", "port": 3001 },
+    { "name": "ngrok-inspect", "port": 4040 }
+  ]
+}
