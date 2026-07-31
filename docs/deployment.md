@@ -278,14 +278,16 @@ A conta está com `charges_enabled: false` e capabilities `card_payments` / `bol
 - Payment Links **não** podem ser criados (`payment_link_no_valid_payment_methods`) — os `paymentLinkUrl` dos planos ficam vazios;
 - Checkout Sessions live também são recusadas pelo mesmo motivo, ou seja, **não é possível cobrar em produção ainda**.
 
-Assim que a Stripe liberar (conferir em Dashboard → Configurações → Métodos de pagamento, ou `charges_enabled: true` em `GET /v1/account`), gerar os links sem deploy:
+O `Plan` de produção já aponta para os IDs live acima, com `paymentLinkUrl` vazio. Assim que a Stripe liberar (conferir em Dashboard → Configurações → Métodos de pagamento, ou `charges_enabled: true` em `GET /v1/account`), gerar os links sem deploy:
 
 ```bash
 # painel admin → Planos → cada plano → botão "Sincronizar Stripe"
 # equivalente por API: POST /api/plans/:id/sync-stripe (admin JWT)
 ```
 
-O sync reaproveita o Product/Price já existentes e só cria o Payment Link que falta.
+O sync reaproveita o Product/Price já existentes e só cria o Payment Link que falta (validado em produção: hoje devolve 201 com link vazio, sem duplicar catálogo).
+
+Na primeira assinatura real, conferir em Dashboard → Webhooks se a entrega para `/api/payments/webhook` retorna 200: é a única forma de confirmar que o `STRIPE_WEBHOOK_SECRET` da API é mesmo o do endpoint **live** (a Stripe não expõe o secret depois da criação).
 
 ### Auth cross-origin em produção
 
