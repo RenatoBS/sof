@@ -73,7 +73,7 @@ export function conversationReset(): string {
 }
 
 export function conversationCancelled(): string {
-  return 'Certo, cancelei o que estava em andamento. Quando quiser, é só chamar para marcar um horário.';
+  return 'Certo, cancelei o que estava em andamento. Quando quiser, é só chamar para agendar.';
 }
 
 export function restartServicePrompt(): string {
@@ -89,7 +89,7 @@ export function keptAppointment(): string {
 }
 
 export function cancelledNothingBooked(): string {
-  return 'Sem problemas, não marquei nada. Quando quiser agendar, é só chamar.';
+  return 'Sem problemas, não agendei nada. Quando quiser agendar, é só chamar.';
 }
 
 export function ackServicePath(serviceName: string, nextQuestion: string): string {
@@ -110,9 +110,9 @@ export function bookedConfirmation(opts: {
     : '';
   const address = (opts.address || '').trim();
   if (address) {
-    return `Marcado.${reminderLine}\nEndereço: ${address}\nAté lá.`;
+    return `Agendado.${reminderLine}\nEndereço: ${address}\nAté lá.`;
   }
-  return `Marcado.${reminderLine} Até lá.`;
+  return `Agendado.${reminderLine} Até lá.`;
 }
 
 export function menuTouchOrNumber(bodyText: string, numbered: string): string {

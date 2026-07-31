@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Copy de confirmação: “Podemos agendar?” (não “Marcar”)
+
+- **Contexto:** Site e bot usavam “marca/Marcar” no fluxo de agendamento; soava seco e fácil de confundir com outras ações (“marcar concluído”).
+- **Decisão:** Confirmações do bot cliente/profissional e mock da landing passam a “Podemos agendar …?”; sucesso “Agendado.”; landing “agenda/agendam”. Mantém “Marcar como concluído/resolvido” e aceita “marca/marcar” como resposta afirmativa do usuário.
+- **Consequências:** Tom mais alinhado à persona Sof; inventário em `docs/bot-messages.md` atualizado.
+- **Alternativas descartadas:** Trocar só no site; banir “marcar” também no sense de concluir.
+
 ## 2026-07-31 — Faixa de ambiente (QA/local) no front produto
 
 - **Contexto:** Em QA/local era fácil confundir a UI com produção; não havia sinal visual global.

@@ -1091,7 +1091,7 @@ export class WhatsappBotService {
           data: { ...baseData, employeeId: preferred.id },
         });
         return this.confirmMenu(
-          `Marcar ${service.name} com ${preferred.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+          `Podemos agendar ${service.name} com ${preferred.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
         );
       }
 
@@ -1106,7 +1106,7 @@ export class WhatsappBotService {
           data: { ...baseData, employeeId: free[0].id },
         });
         return this.confirmMenu(
-          `${free[0].name} está livre nesse horário. Marcar ${service.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+          `${free[0].name} está livre nesse horário. Podemos agendar ${service.name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
         );
       }
       {
@@ -1126,7 +1126,7 @@ export class WhatsappBotService {
         data: { ...baseData, employeeId: free[0].id },
       });
       return this.confirmMenu(
-        `Marcar ${service.name} com ${free[0].name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
+        `Podemos agendar ${service.name} com ${free[0].name} em ${when.date.split('-').reverse().join('/')} às ${when.time}?`,
       );
     }
 
@@ -1232,7 +1232,7 @@ export class WhatsappBotService {
       {
         id: 'action:list',
         title: 'Ver agendamentos',
-        description: 'Seus horários marcados',
+        description: 'Seus horários agendados',
       },
       {
         id: 'action:cancel',
@@ -1678,7 +1678,7 @@ export class WhatsappBotService {
           client,
           services,
           phone,
-          'Esse horário já não estava marcado.',
+          'Esse horário já não estava agendado.',
         );
       }
 
@@ -2152,7 +2152,7 @@ export class WhatsappBotService {
           data: { ...sessionData, employeeId: employee.id },
         });
         return this.confirmMenu(
-          `Marcar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
+          `Podemos agendar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
         );
       }
 
@@ -2181,7 +2181,7 @@ export class WhatsappBotService {
         data: { ...sessionData, employeeId: employee.id },
       });
       return this.confirmMenu(
-        `Marcar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
+        `Podemos agendar ${service.name} com ${employee.name} em ${date.split('-').reverse().join('/')} às ${time}?`,
       );
     }
 

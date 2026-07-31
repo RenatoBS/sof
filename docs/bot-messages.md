@@ -52,13 +52,13 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 
 | Mensagem |
 |----------|
-| `Marcar ${service} com ${employee} em ${dd/mm/yyyy} às ${time}?` |
-| `${name} está livre nesse horário. Marcar ${service} em ${dd/mm/yyyy} às ${time}?` |
+| `Podemos agendar ${service} com ${employee} em ${dd/mm/yyyy} às ${time}?` |
+| `${name} está livre nesse horário. Podemos agendar ${service} em ${dd/mm/yyyy} às ${time}?` |
 | `Confirma o agendamento? Toque em Sim ou Não.` |
-| `Marcado.${reminder?} Até lá.` |
-| `Marcado.${reminder?}` + `Endereço: ${address}` + `Até lá.` |
+| `Agendado.${reminder?} Até lá.` |
+| `Agendado.${reminder?}` + `Endereço: ${address}` + `Até lá.` |
 | *(reminder)* ` Você recebe um lembrete no WhatsApp ${leadLabel} antes do horário.` |
-| `Sem problemas, não marquei nada. Quando quiser agendar, é só chamar.` |
+| `Sem problemas, não agendei nada. Quando quiser agendar, é só chamar.` |
 | `Certo, mantive o horário.` |
 
 ### Cancelar / listar
@@ -72,7 +72,7 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | `Cancelar ${linhaDoAgendamento}?` |
 | `Confirma o cancelamento? Toque em Sim ou Não.` |
 | `Pronto, cancelei ${linhaDoAgendamento}.` |
-| `Esse horário já não estava marcado.` |
+| `Esse horário já não estava agendado.` |
 | `Esse horário já passou; não dá para cancelar por aqui.` |
 
 ### Reset / cancelar fluxo
@@ -80,7 +80,7 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | Mensagem |
 |----------|
 | `Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser agendar.` |
-| `Certo, cancelei o que estava em andamento. Quando quiser, é só chamar para marcar um horário.` |
+| `Certo, cancelei o que estava em andamento. Quando quiser, é só chamar para agendar.` |
 
 ### Handoff humano
 
@@ -136,7 +136,7 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | Título | Descrição (lista) |
 |--------|-------------------|
 | `${serviço} ${preço}` | `${duração} min · ${preço}` |
-| `Ver agendamentos` | `Seus horários marcados` |
+| `Ver agendamentos` | `Seus horários agendados` |
 | `Cancelar horário` | `Cancelar um agendamento` |
 | `${1º nome ou nome}` | nome completo do profissional |
 | `Escolher horário` | `Ver horários livres primeiro` |
@@ -217,7 +217,7 @@ Footer: `Ou digite hh:mm`.
 | Mensagem |
 |----------|
 | `Confirma com Sim ou Não?` |
-| `Marcar ${service} para ${clientName}${telefone?} em ${when}?` |
+| `Podemos agendar ${service} para ${clientName}${telefone?} em ${when}?` |
 | `Bloquear “${title}” (${durationMinutes} min) em ${dd/mm/yyyy} às ${time}?` |
 | `Agendamento criado: ${service} em ${dd/mm/yyyy} às ${time}.` |
 | `Evento “${title}” gravado em ${dd/mm/yyyy} às ${time}.` |

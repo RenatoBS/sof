@@ -19,7 +19,7 @@ const FEATURES = [
   {
     icon: 'chat',
     title: 'Agenda pelo WhatsApp',
-    body: 'O cliente marca conversando. Sem baixar app, sem criar conta, sem senha.',
+    body: 'O cliente agenda conversando. Sem baixar app, sem criar conta, sem senha.',
   },
   {
     icon: 'calendar',
@@ -61,7 +61,7 @@ const STEPS = [
   },
   {
     num: 'Passo 03',
-    title: 'Os clientes marcam',
+    title: 'Os clientes agendam',
     body: 'Cada agendamento cai direto no painel, organizado por profissional e horário.',
   },
 ];

@@ -1878,7 +1878,7 @@ export class WhatsappEmployeeBotService {
       (l) => l.service.id === data.serviceId,
     )?.service;
     return this.confirmMenu(
-      `Marcar ${service?.name || 'serviço'} para ${data.clientName}${
+      `Podemos agendar ${service?.name || 'serviço'} para ${data.clientName}${
         data.clientPhone ? ` (${data.clientPhone})` : ''
       } em ${when}?`,
     );
