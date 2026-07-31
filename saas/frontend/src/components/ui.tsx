@@ -331,12 +331,21 @@ export function SofListRow({
 
 const COMPACT_ACTION_BP = 720;
 
+export type IconActionName = 'edit' | 'remove' | 'close' | 'logout';
+
+const ICON_ACTION_LABEL: Record<IconActionName, string> = {
+  edit: 'Editar',
+  remove: 'Remover',
+  close: 'Fechar',
+  logout: 'Sair',
+};
+
 function ActionGlyph({
   name,
   color,
   size = 16,
 }: {
-  name: 'edit' | 'remove' | 'close';
+  name: IconActionName;
   color: string;
   size?: number;
 }) {
@@ -362,6 +371,15 @@ function ActionGlyph({
       </Svg>
     );
   }
+  if (name === 'logout') {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+        <Path {...common} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <Path {...common} d="M16 17l5-5-5-5" />
+        <Path {...common} d="M21 12H9" />
+      </Svg>
+    );
+  }
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
       <Path {...common} d="M3 6h18" />
@@ -372,7 +390,7 @@ function ActionGlyph({
   );
 }
 
-/** Ação de linha (Editar / Remover / Fechar): ícone + texto; em viewport &lt; 720px só o ícone. */
+/** Ação de linha (Editar / Remover / Fechar / Sair): ícone + texto; em viewport &lt; 720px só o ícone. */
 export function SofIconAction({
   action,
   onPress,
@@ -380,7 +398,7 @@ export function SofIconAction({
   disabled,
   forceCompact,
 }: {
-  action: 'edit' | 'remove' | 'close';
+  action: IconActionName;
   onPress: () => void;
   label?: string;
   disabled?: boolean;
@@ -389,11 +407,15 @@ export function SofIconAction({
 }) {
   const { width } = useWindowDimensions();
   const compact = forceCompact ?? width < COMPACT_ACTION_BP;
-  const resolvedLabel =
-    label ??
-    (action === 'edit' ? 'Editar' : action === 'remove' ? 'Remover' : 'Fechar');
+  const resolvedLabel = label ?? ICON_ACTION_LABEL[action];
   const color =
-    action === 'edit' ? d.accent : action === 'remove' ? d.danger : d.muted;
+    action === 'edit'
+      ? d.accent
+      : action === 'remove'
+        ? d.danger
+        : action === 'logout'
+          ? d.mutedStrong
+          : d.muted;
 
   return (
     <Pressable

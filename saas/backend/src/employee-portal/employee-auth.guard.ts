@@ -36,7 +36,9 @@ export class EmployeeAuthGuard implements CanActivate {
       where: { id: auth.employeeId, accountId: auth.accountId },
     });
     if (!employee || !employee.passwordHash) {
-      throw new UnauthorizedException({ error: 'Profissional não encontrado.' });
+      throw new UnauthorizedException({
+        error: 'Profissional não encontrado.',
+      });
     }
 
     const account = await this.prisma.account.findUnique({

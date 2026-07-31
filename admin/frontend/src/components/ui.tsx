@@ -53,6 +53,7 @@ export function Field({
   error,
   mask,
   onChangeText,
+  style,
   ...props
 }: TextInputProps & { label: string; error?: string; mask?: InputMask }) {
   const maskConfig = mask ? INPUT_MASKS[mask] : null;
@@ -64,9 +65,9 @@ export function Field({
       <Text style={styles.label}>{label}</Text>
       <TextInput
         placeholderTextColor={colors.muted}
-        style={[styles.input, error ? styles.inputError : null]}
         {...maskConfig?.props}
         {...props}
+        style={[styles.input, error ? styles.inputError : null, style]}
         onChangeText={handleChangeText}
       />
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}

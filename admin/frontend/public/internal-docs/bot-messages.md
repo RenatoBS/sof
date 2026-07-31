@@ -7,7 +7,7 @@ Persona: [`brand.md`](brand.md). Copy canônica: [`saas/backend/src/whatsapp/bot
 
 Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também repetem as opções numeradas + *“Toque numa opção ou responda com o número.”*
 
-Última revisão: **2026-07-30**.
+Última revisão: **2026-07-31**.
 
 ---
 
@@ -18,7 +18,8 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | Mensagem |
 |----------|
 | `Oi. Aqui é a Sof, do ${businessName}. Qual é o seu nome e sobrenome?` |
-| `Me diga seu nome e sobrenome (ex.: Ana Silva).` |
+| `${firstName}, pode me informar seu sobrenome? É para eu cadastrar seu contato.` (veio só o primeiro nome; pedido único) |
+| `Me diga seu nome e sobrenome (ex.: Ana Silva).` (mensagem sem nenhum nome) |
 | `Oi, ${clientName}. Aqui é a Sof, do ${businessName}.` |
 | `${intro}` + `O que você precisa?` (menu inicial) |
 | `${intro} Qual serviço você quer agendar?` |

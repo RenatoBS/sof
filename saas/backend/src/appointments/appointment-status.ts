@@ -13,8 +13,7 @@ export const APPT_STATUS = {
   CANCELLED: 'cancelled',
 } as const;
 
-export type AppointmentStatus =
-  (typeof APPT_STATUS)[keyof typeof APPT_STATUS];
+export type AppointmentStatus = (typeof APPT_STATUS)[keyof typeof APPT_STATUS];
 
 /** Status que ainda ocupam horário na agenda. */
 export const APPT_OCCUPIES_SLOT: AppointmentStatus[] = [APPT_STATUS.SCHEDULED];
@@ -25,7 +24,9 @@ export const APPT_AGENDA_VISIBLE: AppointmentStatus[] = [
   APPT_STATUS.COMPLETED,
 ];
 
-export function isAppointmentStatus(value: unknown): value is AppointmentStatus {
+export function isAppointmentStatus(
+  value: unknown,
+): value is AppointmentStatus {
   return (
     value === APPT_STATUS.SCHEDULED ||
     value === APPT_STATUS.COMPLETED ||

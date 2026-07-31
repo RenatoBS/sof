@@ -108,8 +108,9 @@ export class WhatsappApiService {
       'Content-Type': 'application/json',
     };
     if (opts.auth.kind === 'admin') {
-      headers.admintoken =
-        this.config.getOrThrow<string>('whatsapp.adminToken');
+      headers.admintoken = this.config.getOrThrow<string>(
+        'whatsapp.adminToken',
+      );
     } else {
       headers.token = opts.auth.token;
     }
@@ -166,7 +167,12 @@ export class WhatsappApiService {
     if (s.includes('disconnect') || s === 'close' || s === 'closed') {
       return 'disconnected';
     }
-    if (s === 'connecting' || s.includes('connecting') || s === 'qr' || s === 'pair') {
+    if (
+      s === 'connecting' ||
+      s.includes('connecting') ||
+      s === 'qr' ||
+      s === 'pair'
+    ) {
       return 'connecting';
     }
     if (
@@ -330,7 +336,8 @@ export class WhatsappApiService {
     }
 
     const openaiApiKey =
-      (this.config.get<string>('whatsapp.openaiApiKey') || '').trim() || undefined;
+      (this.config.get<string>('whatsapp.openaiApiKey') || '').trim() ||
+      undefined;
 
     const body: Record<string, unknown> = {
       id: messageId,
@@ -466,9 +473,7 @@ export class WhatsappApiService {
     });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new Error(
-        `Whazap/Uazapi recusou o menu (${resp.status}): ${text}`,
-      );
+      throw new Error(`Whazap/Uazapi recusou o menu (${resp.status}): ${text}`);
     }
     return resp.json();
   }
@@ -602,7 +607,11 @@ export class WhatsappApiService {
         throw new Error('Uazapi sem token para enviar CTA.');
       }
       try {
-        return await this.sendCtaUrlUazapi(digits, { ...opts, buttonText }, token);
+        return await this.sendCtaUrlUazapi(
+          digits,
+          { ...opts, buttonText },
+          token,
+        );
       } catch {
         const fallback = [
           opts.body.trim(),
@@ -730,7 +739,9 @@ export class WhatsappApiService {
    */
   async configureUazapiWebhook(callbackUrl: string, instanceToken?: string) {
     if (this.provider() !== 'uazapi') {
-      throw new Error('Webhook Uazapi só se aplica com WHATSAPP_PROVIDER=uazapi.');
+      throw new Error(
+        'Webhook Uazapi só se aplica com WHATSAPP_PROVIDER=uazapi.',
+      );
     }
     const token =
       (instanceToken || '').trim() ||
@@ -775,7 +786,8 @@ export class WhatsappApiService {
     const appSecret = this.config.get<string>('whatsapp.appSecret') || '';
     if (!appSecret) return { valid: true, skipped: true as const };
     const header = req.headers['x-hub-signature-256'];
-    if (!header || !req.rawBody) return { valid: false, skipped: false as const };
+    if (!header || !req.rawBody)
+      return { valid: false, skipped: false as const };
 
     const expected = `sha256=${createHmac('sha256', appSecret)
       .update(req.rawBody)

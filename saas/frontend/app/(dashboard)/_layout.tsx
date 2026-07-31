@@ -14,14 +14,14 @@ import { dashboardApi } from '@/src/api/endpoints';
 import { DashboardProvider, useDashboard } from '@/src/context/DashboardContext';
 import { useToast } from '@/src/context/ToastContext';
 import { useRealtime } from '@/src/hooks/useRealtime';
-import { SofButton, SofLoadingGate } from '@/src/components/ui';
+import { SofIconAction, SofLoadingGate } from '@/src/components/ui';
 import { BusinessLogo } from '@/src/components/BusinessLogo';
 import {
   DashboardTabIcon,
   type DashboardTabIconName,
 } from '@/src/components/DashboardTabIcon';
 import { d } from '@/src/theme/dashboard';
-import type { Appointment, WhatsappHandoff } from '@/src/api/types';
+import type { Appointment, Client, WhatsappHandoff } from '@/src/api/types';
 
 const ALL_TABS: {
   href: string;
@@ -146,6 +146,17 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       },
       onHandoffUpdated: upsertHandoff,
       onHandoffResolved: upsertHandoff,
+      onClientUpdated: (client: Client) => {
+        setClients((prev) => {
+          const idx = prev.findIndex((c) => c.id === client.id);
+          if (idx < 0) {
+            return [...prev, client].sort((a, b) =>
+              a.name.localeCompare(b.name, 'pt-BR'),
+            );
+          }
+          return prev.map((c) => (c.id === client.id ? client : c));
+        });
+      },
     },
     !!account,
   );
@@ -187,10 +198,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
               </Text>
             </View>
           </View>
-          <SofButton
-            title="Sair"
-            variant="light"
-            theme="dashboard"
+          <SofIconAction
+            action="logout"
+            forceCompact
             onPress={async () => {
               await logout();
               router.replace('/');

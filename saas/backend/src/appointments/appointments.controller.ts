@@ -101,7 +101,7 @@ export class AppointmentsController {
     if ('error' in parsed) {
       throw new BadRequestException({ error: parsed.error });
     }
-    const data = parsed as AppointmentPayload;
+    const data = parsed;
     if (data.recurrenceDates.length > 1) {
       await this.entitlements.assertFeature(req.account.id, 'recurrence');
     }
@@ -156,7 +156,7 @@ export class AppointmentsController {
     if ('error' in parsed) {
       throw new BadRequestException({ error: parsed.error });
     }
-    const data = parsed as AppointmentPayload;
+    const data = parsed;
 
     const appointment = await this.prisma.appointment.update({
       where: { id: existing.id },

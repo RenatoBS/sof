@@ -188,7 +188,9 @@ export class EmployeeAuthController {
       });
     }
 
-    const row = await this.passwordTokens.findValidByRawToken(body?.token || '');
+    const row = await this.passwordTokens.findValidByRawToken(
+      body?.token || '',
+    );
     if (!row) {
       throw new BadRequestException({
         error: 'Link inválido, expirado ou já utilizado.',

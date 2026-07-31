@@ -33,6 +33,9 @@ const STATUSES: SupportTicketStatus[] = [
   'closed',
 ];
 
+/** Depois de resolvido/fechado, só a equipe Sof reabre — o tenant apenas comenta. */
+const LOCKED_STATUSES: string[] = ['resolved', 'closed'];
+
 function formatWhen(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
@@ -159,6 +162,7 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
   }
 
   if (selectedId && detail) {
+    const statusLocked = LOCKED_STATUSES.includes(detail.status);
     return (
       <ScrollView contentContainerStyle={styles.page}>
         <SofButton
@@ -182,18 +186,26 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
 
         <View>
           <Text style={styles.section}>Status</Text>
-          <View style={styles.chips}>
-            {STATUSES.map((s) => (
-              <SofButton
-                key={s}
-                title={STATUS_LABEL[s]}
-                theme="dashboard"
-                variant={detail.status === s ? 'dark' : 'light'}
-                disabled={busy}
-                onPress={() => onStatus(s)}
-              />
-            ))}
-          </View>
+          {statusLocked ? (
+            <Text style={styles.statusLocked}>
+              {STATUS_LABEL[detail.status] || detail.status} · somente a equipe
+              Sof pode alterar o status daqui. Comente abaixo para pedir a
+              reabertura.
+            </Text>
+          ) : (
+            <View style={styles.chips}>
+              {STATUSES.map((s) => (
+                <SofButton
+                  key={s}
+                  title={STATUS_LABEL[s]}
+                  theme="dashboard"
+                  variant={detail.status === s ? 'dark' : 'light'}
+                  disabled={busy}
+                  onPress={() => onStatus(s)}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         <View>
@@ -247,29 +259,29 @@ export function SupportTicketsPanel({ mode }: { mode: Mode }) {
             ? has('supportPriority')
               ? 'Seu plano inclui suporte prioritário. Abra um ticket e converse com a equipe Sof.'
               : 'Abra um ticket e converse com a equipe Sof.'
-            : 'Acompanhe e responda os tickets do estabelecimento.'
+            : 'Abra um ticket para a equipe Sof e acompanhe os do estabelecimento.'
         }
         action={
-          mode === 'account' ? (
-            <View style={styles.headerActions}>
+          <View style={styles.headerActions}>
+            {mode === 'account' ? (
               <SofButton
                 title="Voltar à Conta"
                 theme="dashboard"
                 variant="light"
                 onPress={() => router.push('/(dashboard)/account')}
               />
-              <SofButton
-                title={creating ? 'Cancelar' : 'Novo ticket'}
-                theme="dashboard"
-                variant={creating ? 'light' : 'dark'}
-                onPress={() => setCreating((v) => !v)}
-              />
-            </View>
-          ) : undefined
+            ) : null}
+            <SofButton
+              title={creating ? 'Cancelar' : 'Novo ticket'}
+              theme="dashboard"
+              variant={creating ? 'light' : 'dark'}
+              onPress={() => setCreating((v) => !v)}
+            />
+          </View>
         }
       />
 
-      {creating && mode === 'account' ? (
+      {creating ? (
         <SofCard>
           <SofInput
             label="Título"
@@ -363,6 +375,12 @@ const styles = StyleSheet.create({
     fontFamily: d.fonts.bodyMedium,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statusLocked: {
+    color: d.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: d.fonts.body,
+  },
   commentList: { gap: 12 },
   comment: {
     backgroundColor: d.surface,

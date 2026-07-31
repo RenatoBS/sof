@@ -110,7 +110,9 @@ export function zonedWallTimeToUtc(
   }
 
   const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0);
-  let utc = new Date(utcGuess - getTimeZoneOffsetMs(new Date(utcGuess), timeZone));
+  let utc = new Date(
+    utcGuess - getTimeZoneOffsetMs(new Date(utcGuess), timeZone),
+  );
   // Corrige edge de DST (se o offset mudou após o primeiro ajuste).
   const offset2 = getTimeZoneOffsetMs(utc, timeZone);
   utc = new Date(utcGuess - offset2);

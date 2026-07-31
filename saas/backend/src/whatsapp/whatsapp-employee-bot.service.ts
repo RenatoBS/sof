@@ -47,7 +47,17 @@ type EmpSessionData = {
 
 const DATE_ONLY_RE = /^(\d{1,2})[\/\-](\d{1,2})$/;
 const TIME_ONLY_RE = /^(\d{1,2}):(\d{2})$/;
-const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'marca', 'marcar', 'fecha', 'fechado'];
+const AFFIRMATIVE = [
+  'sim',
+  's',
+  'confirmar',
+  'confirmo',
+  'ok',
+  'marca',
+  'marcar',
+  'fecha',
+  'fechado',
+];
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
 const CUSTOM_TIME_RE = /^(outro|outra|custom|time:custom)$/i;
 const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;
@@ -141,7 +151,9 @@ export class WhatsappEmployeeBotService {
   }: {
     account: Account;
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     };
     customerPhone: string;
     text: string;
@@ -153,9 +165,7 @@ export class WhatsappEmployeeBotService {
     if (lower === '/reset' || lower === 'reset') {
       await this.resetSession(account.id, phone);
       return {
-        replies: [
-          botCopy.employeeMenuReset(employee.name),
-        ],
+        replies: [botCopy.employeeMenuReset(employee.name)],
       };
     }
 
@@ -245,9 +255,7 @@ export class WhatsappEmployeeBotService {
         const entsBook = await this.entitlements.forAccount(account.id);
         if (!hasFeature(entsBook, 'employeeWhatsappBookBlock')) {
           return {
-            replies: [
-              botCopy.employeeActionUnavailableOnWhatsapp(),
-            ],
+            replies: [botCopy.employeeActionUnavailableOnWhatsapp()],
           };
         }
         return this.startBooking(account, employee, phone);
@@ -261,18 +269,14 @@ export class WhatsappEmployeeBotService {
         const entsEvent = await this.entitlements.forAccount(account.id);
         if (!hasFeature(entsEvent, 'employeeWhatsappBookBlock')) {
           return {
-            replies: [
-              botCopy.employeeActionUnavailableOnWhatsapp(),
-            ],
+            replies: [botCopy.employeeActionUnavailableOnWhatsapp()],
           };
         }
         return this.startEvent(account, employee, phone);
       }
-      return this.menuReply(
-        'O que você quer criar?',
-        CREATE_KIND_CHOICES,
-        { listButton: 'Tipo' },
-      );
+      return this.menuReply('O que você quer criar?', CREATE_KIND_CHOICES, {
+        listButton: 'Tipo',
+      });
     }
 
     if (step === 'emp:awaiting_service') {
@@ -416,9 +420,7 @@ export class WhatsappEmployeeBotService {
         step: 'emp:awaiting_cancel_confirm',
         data: { ...data, cancelAppointmentId: appt.id },
       });
-      return this.confirmMenu(
-        `Cancelar ${this.formatApptLine(appt)}?`,
-      );
+      return this.confirmMenu(`Cancelar ${this.formatApptLine(appt)}?`);
     }
 
     if (step === 'emp:awaiting_cancel_confirm') {
@@ -458,17 +460,19 @@ export class WhatsappEmployeeBotService {
       }
       if (NEGATIVE.includes(lower)) {
         await this.resetSession(account.id, phone);
-        return this.mainMenu(account, employee, phone, botCopy.employeeKeptAppointment());
+        return this.mainMenu(
+          account,
+          employee,
+          phone,
+          botCopy.employeeKeptAppointment(),
+        );
       }
       return this.confirmMenu('Confirma o cancelamento? Sim ou Não.');
     }
 
     if (step === 'emp:awaiting_complete_pick') {
       const idMatch = /^appt:(.+)$/.exec(trimmed);
-      const list = await this.listCompletableForEmployee(
-        account,
-        employee.id,
-      );
+      const list = await this.listCompletableForEmployee(account, employee.id);
       const byNum = this.parseChoice(trimmed, list.length);
       const appt =
         (idMatch && list.find((a) => a.id === idMatch[1])) ||
@@ -587,7 +591,9 @@ export class WhatsappEmployeeBotService {
   private async tryEmployeeNlu(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     text: string,
@@ -595,7 +601,9 @@ export class WhatsappEmployeeBotService {
     const words = text.trim().split(/\s+/).filter(Boolean);
     if (words.length < 2) return null;
 
-    const apiKey = (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
+    const apiKey = (
+      this.config.get<string>('whatsapp.openaiApiKey') || ''
+    ).trim();
     const services = employee.services.map((l) => l.service);
 
     // Frases completas (áudio) → LLM primeiro; heurística só como fallback.
@@ -638,8 +646,7 @@ export class WhatsappEmployeeBotService {
     );
 
     if (parsed.intent === 'agenda') {
-      const date =
-        parsed.date || this.localDateStr(this.nowInAccount(account));
+      const date = parsed.date || this.localDateStr(this.nowInAccount(account));
       return this.showAgenda(account, employee, phone, date);
     }
     if (parsed.intent === 'cancel') {
@@ -683,8 +690,7 @@ export class WhatsappEmployeeBotService {
     }
     if (parsed.intent === 'book') {
       const service =
-        (parsed.serviceId &&
-          services.find((s) => s.id === parsed.serviceId)) ||
+        (parsed.serviceId && services.find((s) => s.id === parsed.serviceId)) ||
         this.matchServiceByName(services, text);
       if (!service) {
         return this.startBooking(account, employee, phone);
@@ -720,9 +726,14 @@ export class WhatsappEmployeeBotService {
         if (lower.includes(name)) return { s, score: name.length };
         const tokens = name.split(/\s+/).filter((t) => t.length >= 3);
         const hit = tokens.some((t) => lower.includes(t));
-        return hit ? { s, score: Math.max(...tokens.map((t) => t.length)) } : null;
+        return hit
+          ? { s, score: Math.max(...tokens.map((t) => t.length)) }
+          : null;
       })
-      .filter(Boolean) as Array<{ s: { id: string; name: string }; score: number }>;
+      .filter(Boolean) as Array<{
+      s: { id: string; name: string };
+      score: number;
+    }>;
     scored.sort((a, b) => b.score - a.score);
     return scored[0]?.s || null;
   }
@@ -758,7 +769,10 @@ export class WhatsappEmployeeBotService {
     ) {
       return { intent: 'reset_password' };
     }
-    if (HUMAN_REQUEST_RE.test(text) || /\b(falar\s+com\s+humano|ajuda\s+humana)\b/.test(lower)) {
+    if (
+      HUMAN_REQUEST_RE.test(text) ||
+      /\b(falar\s+com\s+humano|ajuda\s+humana)\b/.test(lower)
+    ) {
       return { intent: 'human' };
     }
     if (/\b(cancelar|desmarcar|cancela)\b/.test(lower)) {
@@ -792,8 +806,7 @@ export class WhatsappEmployeeBotService {
     ) {
       return {
         intent: 'agenda',
-        date:
-          relativeDate || this.localDateStr(this.nowInAccount(account)),
+        date: relativeDate || this.localDateStr(this.nowInAccount(account)),
       };
     }
 
@@ -896,9 +909,7 @@ export class WhatsappEmployeeBotService {
       const forceNextWeek =
         /\b(que\s+vem|proxima|proximo|seguinte)\b/.test(lower) ||
         /\b(semana\s+que\s+vem)\b/.test(lower);
-      return this.localDateStr(
-        this.nextWeekday(base, day.dow, forceNextWeek),
-      );
+      return this.localDateStr(this.nextWeekday(base, day.dow, forceNextWeek));
     }
     return null;
   }
@@ -933,8 +944,9 @@ export class WhatsappEmployeeBotService {
     }
 
     // "28 de julho" / "28 do setimo" / "dia 28 de setembro"
-    const named =
-      /(?:\bdia\s+)?(\d{1,2})\s+(?:do|de)\s+([a-z]+)\b/.exec(lowerNorm);
+    const named = /(?:\bdia\s+)?(\d{1,2})\s+(?:do|de)\s+([a-z]+)\b/.exec(
+      lowerNorm,
+    );
     if (named) {
       const month = byToken[named[2]];
       if (month) return this.buildFutureDate(base, Number(named[1]), month);
@@ -992,7 +1004,9 @@ export class WhatsappEmployeeBotService {
     title?: string;
     clientName?: string;
   } | null> {
-    const apiKey = (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
+    const apiKey = (
+      this.config.get<string>('whatsapp.openaiApiKey') || ''
+    ).trim();
     if (!apiKey) return null;
     const now = this.nowInAccount(account);
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -1048,9 +1062,7 @@ export class WhatsappEmployeeBotService {
         }),
       });
       if (!resp.ok) {
-        console.error(
-          `[whatsapp] NLU emp OpenAI falhou (${resp.status})`,
-        );
+        console.error(`[whatsapp] NLU emp OpenAI falhou (${resp.status})`);
         return null;
       }
       const json = (await resp.json()) as {
@@ -1193,7 +1205,9 @@ export class WhatsappEmployeeBotService {
   private async handleMainAction(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     text: string,
@@ -1228,31 +1242,31 @@ export class WhatsappEmployeeBotService {
       const ents = await this.entitlements.forAccount(account.id);
       if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
         return {
-          replies: [
-            botCopy.employeeActionUnavailableOnWhatsapp(),
-          ],
+          replies: [botCopy.employeeActionUnavailableOnWhatsapp()],
         };
       }
       return this.startCreate(account, employee, phone);
     }
-    if (text === 'emp:book' || /novo\s+agendamento|marcar\s+(cliente|hor[aá]rio)/i.test(lower)) {
+    if (
+      text === 'emp:book' ||
+      /novo\s+agendamento|marcar\s+(cliente|hor[aá]rio)/i.test(lower)
+    ) {
       const ents = await this.entitlements.forAccount(account.id);
       if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
         return {
-          replies: [
-            botCopy.employeeActionUnavailableOnWhatsapp(),
-          ],
+          replies: [botCopy.employeeActionUnavailableOnWhatsapp()],
         };
       }
       return this.startBooking(account, employee, phone);
     }
-    if (text === 'emp:event' || /novo\s+evento|bloquear|almo[cç]o/i.test(lower)) {
+    if (
+      text === 'emp:event' ||
+      /novo\s+evento|bloquear|almo[cç]o/i.test(lower)
+    ) {
       const ents = await this.entitlements.forAccount(account.id);
       if (!hasFeature(ents, 'employeeWhatsappBookBlock')) {
         return {
-          replies: [
-            botCopy.employeeActionUnavailableOnWhatsapp(),
-          ],
+          replies: [botCopy.employeeActionUnavailableOnWhatsapp()],
         };
       }
       return this.startEvent(account, employee, phone);
@@ -1284,7 +1298,11 @@ export class WhatsappEmployeeBotService {
     }
 
     // Atalhos de data no submenu de agenda
-    if (text === 'day:today' || text === 'day:tomorrow' || text === 'day:custom') {
+    if (
+      text === 'day:today' ||
+      text === 'day:tomorrow' ||
+      text === 'day:custom'
+    ) {
       return this.handleAgendaDayShortcut(account, employee, phone, text);
     }
 
@@ -1306,9 +1324,7 @@ export class WhatsappEmployeeBotService {
   ): Promise<WhatsappBotResult> {
     await this.resetSession(account.id, phone);
     return {
-      replies: [
-        botCopy.employeeHandoff(employee.name),
-      ],
+      replies: [botCopy.employeeHandoff(employee.name)],
       humanRequested: true,
     };
   }
@@ -1335,8 +1351,7 @@ export class WhatsappEmployeeBotService {
       const msg =
         err instanceof BadRequestException
           ? String(
-              (err.getResponse() as { error?: string })?.error ||
-                err.message,
+              (err.getResponse() as { error?: string })?.error || err.message,
             )
           : err instanceof Error
             ? err.message
@@ -1395,8 +1410,7 @@ export class WhatsappEmployeeBotService {
     }
     const lines = rows
       .map((a) => {
-        const mark =
-          a.status === APPT_STATUS.COMPLETED ? ' (concluído)' : '';
+        const mark = a.status === APPT_STATUS.COMPLETED ? ' (concluído)' : '';
         return `• ${this.formatApptLine(a)}${mark}`;
       })
       .join('\n');
@@ -1417,17 +1431,17 @@ export class WhatsappEmployeeBotService {
       step: 'emp:awaiting_create_kind',
       data: { role: 'employee', employeeId: employee.id },
     });
-    return this.menuReply(
-      'O que você quer criar?',
-      CREATE_KIND_CHOICES,
-      { listButton: 'Tipo' },
-    );
+    return this.menuReply('O que você quer criar?', CREATE_KIND_CHOICES, {
+      listButton: 'Tipo',
+    });
   }
 
   private async startBooking(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
   ) {
@@ -1633,7 +1647,9 @@ export class WhatsappEmployeeBotService {
   private async handleServicePick(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     text: string,
@@ -1675,7 +1691,9 @@ export class WhatsappEmployeeBotService {
   private async handleDayPick(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     text: string,
@@ -1710,7 +1728,9 @@ export class WhatsappEmployeeBotService {
   private async timeMenu(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     data: EmpSessionData,
@@ -1720,8 +1740,8 @@ export class WhatsappEmployeeBotService {
     const duration =
       data.kind === 'block'
         ? data.durationMinutes || 60
-        : employee.services.find((l) => l.service.id === data.serviceId)?.service
-            .duration || 30;
+        : employee.services.find((l) => l.service.id === data.serviceId)
+            ?.service.duration || 30;
     const slots = await this.findFreeSlots(
       account,
       employee.id,
@@ -1764,7 +1784,9 @@ export class WhatsappEmployeeBotService {
   private async handleTimePick(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     text: string,
@@ -1791,7 +1813,9 @@ export class WhatsappEmployeeBotService {
   private async afterTimeChosen(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     data: EmpSessionData,
@@ -1799,8 +1823,8 @@ export class WhatsappEmployeeBotService {
     const duration =
       data.kind === 'block'
         ? data.durationMinutes || 60
-        : employee.services.find((l) => l.service.id === data.serviceId)?.service
-            .duration || 30;
+        : employee.services.find((l) => l.service.id === data.serviceId)
+            ?.service.duration || 30;
 
     const hoursCheck = checkWithinOpeningHours(
       account.openingHours,
@@ -1859,7 +1883,9 @@ export class WhatsappEmployeeBotService {
   private async confirmBooking(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     data: EmpSessionData,
@@ -1887,7 +1913,9 @@ export class WhatsappEmployeeBotService {
   private async commitAppointment(
     account: Account,
     employee: Employee & {
-      services: { service: { id: string; name: string; duration: number; price: number } }[];
+      services: {
+        service: { id: string; name: string; duration: number; price: number };
+      }[];
     },
     phone: string,
     data: EmpSessionData,
@@ -1895,8 +1923,8 @@ export class WhatsappEmployeeBotService {
     const duration =
       data.kind === 'block'
         ? data.durationMinutes || 60
-        : employee.services.find((l) => l.service.id === data.serviceId)?.service
-            .duration || 30;
+        : employee.services.find((l) => l.service.id === data.serviceId)
+            ?.service.duration || 30;
 
     const busy = await listBusySlots(this.prisma, {
       accountId: account.id,
@@ -1915,7 +1943,7 @@ export class WhatsappEmployeeBotService {
 
     let clientId: string | null = null;
     let clientName = data.clientName || '';
-    let clientPhone = data.clientPhone || '';
+    const clientPhone = data.clientPhone || '';
 
     if (data.kind !== 'block') {
       const service = employee.services.find(
@@ -2183,11 +2211,11 @@ export class WhatsappEmployeeBotService {
         accountId,
         customerPhone,
         step: opts.step,
-        data: opts.data as unknown as Prisma.InputJsonValue,
+        data: opts.data,
       },
       update: {
         step: opts.step,
-        data: opts.data as unknown as Prisma.InputJsonValue,
+        data: opts.data,
       },
     });
   }

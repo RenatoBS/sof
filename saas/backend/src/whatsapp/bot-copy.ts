@@ -20,6 +20,11 @@ export function askFullNameAgain(): string {
   return 'Me diga seu nome e sobrenome (ex.: Ana Silva).';
 }
 
+/** Cliente mandou só o primeiro nome — pede o sobrenome uma única vez. */
+export function askLastName(firstName: string): string {
+  return `${firstName}, pode me informar seu sobrenome? É para eu cadastrar seu contato.`;
+}
+
 export function greetKnownClient(
   clientName: string,
   businessName: string,
@@ -92,7 +97,10 @@ export function cancelledNothingBooked(): string {
   return 'Sem problemas, não agendei nada. Quando quiser agendar, é só chamar.';
 }
 
-export function ackServicePath(serviceName: string, nextQuestion: string): string {
+export function ackServicePath(
+  serviceName: string,
+  nextQuestion: string,
+): string {
   return `${ACK}: ${serviceName}. ${nextQuestion}`;
 }
 

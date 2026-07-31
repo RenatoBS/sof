@@ -24,5 +24,7 @@ export function generateTempPassword() {
 export const ACCOUNT_PASSWORD_MIN_LENGTH = 8;
 
 export function isValidAccountPassword(value: unknown): value is string {
-  return typeof value === 'string' && value.length >= ACCOUNT_PASSWORD_MIN_LENGTH;
+  return (
+    typeof value === 'string' && value.length >= ACCOUNT_PASSWORD_MIN_LENGTH
+  );
 }

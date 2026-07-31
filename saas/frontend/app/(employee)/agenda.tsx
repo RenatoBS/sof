@@ -29,6 +29,11 @@ function localDateStr(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** Em tela estreita o ano só rouba linha do subtítulo. */
+function shortDate(date: Date) {
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+}
+
 function getWeekDates(offset: number) {
   const today = new Date();
   const first = today.getDate() - today.getDay() + offset * 7;
@@ -101,6 +106,17 @@ export default function ProfissionalAgendaScreen() {
       .filter((a) => a.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
 
+  const serviceById = useMemo(
+    () => new Map(services.map((s) => [s.id, s])),
+    [services],
+  );
+
+  // Agendamentos recém-criados no modal ainda não têm serviceName da API.
+  const serviceNameOf = (a: Appointment) =>
+    a.serviceName ||
+    (a.serviceId ? serviceById.get(a.serviceId)?.name : '') ||
+    '';
+
   const cancel = async () => {
     if (!selected) return;
     setCancelling(true);
@@ -145,6 +161,7 @@ export default function ProfissionalAgendaScreen() {
       accountId: employee.accountId,
       name: employee.name,
       email: employee.email,
+      phone: employee.phone,
       mustChangePassword: employee.mustChangePassword,
       color: employee.color,
       services,
@@ -158,38 +175,46 @@ export default function ProfissionalAgendaScreen() {
 
   const selectedDayItems = forDay(selectedDate);
 
+  const weekLabel = isCompact
+    ? `${shortDate(weekDates[0])} a ${shortDate(weekDates[6])}`
+    : `${weekDates[0].toLocaleDateString('pt-BR')} a ${weekDates[6].toLocaleDateString('pt-BR')}`;
+
+  const weekNav = [
+    {
+      key: 'prev',
+      title: isCompact ? 'Ant.' : 'Semana anterior',
+      onPress: () => setWeekOffset((w) => w - 1),
+    },
+    { key: 'today', title: 'Hoje', onPress: () => setWeekOffset(0) },
+    {
+      key: 'next',
+      title: isCompact ? 'Próx.' : 'Próxima',
+      onPress: () => setWeekOffset((w) => w + 1),
+    },
+  ];
+
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <View style={styles.head}>
-        <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={[styles.head, isCompact && styles.headCompact]}>
+        <View style={styles.headCopy}>
           <Text style={[styles.h2, isCompact && styles.h2Compact]}>
             Minha agenda
           </Text>
-          <Text style={styles.sub}>
-            {weekDates[0].toLocaleDateString('pt-BR')} a{' '}
-            {weekDates[6].toLocaleDateString('pt-BR')}
+          <Text style={[styles.sub, isCompact && styles.subCompact]}>
+            {weekLabel}
             {isCompact ? ' — escolha o dia' : ' — clique no dia para agendar'}
           </Text>
         </View>
-        <View style={styles.toolbar}>
-          <SofButton
-            title={isCompact ? 'Ant.' : 'Semana anterior'}
-            variant="light"
-            theme="dashboard"
-            onPress={() => setWeekOffset((w) => w - 1)}
-          />
-          <SofButton
-            title="Hoje"
-            variant="light"
-            theme="dashboard"
-            onPress={() => setWeekOffset(0)}
-          />
-          <SofButton
-            title={isCompact ? 'Próx.' : 'Próxima'}
-            variant="light"
-            theme="dashboard"
-            onPress={() => setWeekOffset((w) => w + 1)}
-          />
+        <View style={[styles.toolbar, isCompact && styles.toolbarCompact]}>
+          {weekNav.map((item) => (
+            <SofButton
+              key={item.key}
+              title={item.title}
+              variant="light"
+              theme="dashboard"
+              onPress={item.onPress}
+            />
+          ))}
         </View>
       </View>
 
@@ -198,11 +223,7 @@ export default function ProfissionalAgendaScreen() {
         <ActivityIndicator color={d.muted} />
       ) : isCompact ? (
         <View style={styles.compactRoot}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.dayStrip}
-          >
+          <View style={styles.dayStrip}>
             {weekDates.map((day) => {
               const ds = localDateStr(day);
               const isToday = ds === todayStr;
@@ -219,6 +240,7 @@ export default function ProfissionalAgendaScreen() {
                   ]}
                 >
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.dayChipDow,
                       active && styles.dayChipTextActive,
@@ -249,7 +271,7 @@ export default function ProfissionalAgendaScreen() {
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
 
           <View style={styles.dayPanel}>
             <View style={styles.dayPanelHead}>
@@ -301,6 +323,11 @@ export default function ProfissionalAgendaScreen() {
                   <Text style={styles.client}>
                     {a.kind === 'block' ? a.title || 'Evento' : a.clientName}
                   </Text>
+                  {a.kind !== 'block' && serviceNameOf(a) ? (
+                    <Text style={styles.service} numberOfLines={1}>
+                      {serviceNameOf(a)}
+                    </Text>
+                  ) : null}
                   {a.status === 'completed' ? (
                     <Text style={styles.doneBadge}>Concluído</Text>
                   ) : null}
@@ -354,6 +381,11 @@ export default function ProfissionalAgendaScreen() {
                           ? a.title || 'Evento'
                           : a.clientName}
                       </Text>
+                      {a.kind !== 'block' && serviceNameOf(a) ? (
+                        <Text style={styles.service} numberOfLines={1}>
+                          {serviceNameOf(a)}
+                        </Text>
+                      ) : null}
                       {a.status === 'completed' ? (
                         <Text style={styles.doneBadge}>Concluído</Text>
                       ) : null}
@@ -386,6 +418,11 @@ export default function ProfissionalAgendaScreen() {
               <Text style={styles.detailLine}>
                 Cliente: {selected.clientName}
               </Text>
+              {serviceNameOf(selected) ? (
+                <Text style={styles.detailLine}>
+                  Serviço: {serviceNameOf(selected)}
+                </Text>
+              ) : null}
               {selected.clientPhone ? (
                 <Text style={styles.detailLine}>
                   Tel: {selected.clientPhone}
@@ -464,6 +501,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  // Em coluna o título ocupa a linha inteira e não é comprimido pelos botões.
+  headCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  headCopy: { flex: 1, minWidth: 0 },
   h2: {
     fontSize: 28,
     fontWeight: '700',
@@ -473,19 +513,24 @@ const styles = StyleSheet.create({
   },
   h2Compact: { fontSize: 22 },
   sub: { color: d.muted, marginTop: 6 },
+  subCompact: { fontSize: 13, marginTop: 4 },
   toolbar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // `width: '100%'` (e não `alignSelf: 'stretch'`) é o que garante a linha inteira
+  // para centrar os botões — stretch só valeria no eixo cruzado do cabeçalho.
+  toolbarCompact: { width: '100%', justifyContent: 'center' },
   error: { color: '#dc2626', fontWeight: '600' },
   compactRoot: { gap: 16 },
+  // A semana inteira cabe na largura: nenhum dia fica escondido atrás de scroll.
   dayStrip: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     paddingVertical: 2,
-    paddingRight: 8,
   },
   dayChip: {
-    width: 56,
+    flex: 1,
+    minWidth: 0,
     paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingHorizontal: 2,
     borderRadius: d.radiusSm,
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
@@ -576,6 +621,7 @@ const styles = StyleSheet.create({
   },
   time: { fontWeight: '700', color: d.ink, fontSize: 13 },
   client: { color: d.muted, fontSize: 12 },
+  service: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
   doneBadge: {
     fontSize: 10,
     color: '#15803d',

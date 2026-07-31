@@ -105,10 +105,7 @@ export function weekdayFromDate(date: string): number {
   return new Date(`${date}T12:00:00`).getDay();
 }
 
-export function getDaySchedule(
-  hours: OpeningHours,
-  date: string,
-): DaySchedule {
+export function getDaySchedule(hours: OpeningHours, date: string): DaySchedule {
   const normalized = normalizeOpeningHours(hours);
   return normalized[weekdayFromDate(date)];
 }

@@ -62,19 +62,17 @@ const employeeInclude = {
   },
 } as const;
 
-function shapeEmployee(
-  employee: {
-    id: string;
-    accountId: string;
-    name: string;
-    email: string | null;
-    phone: string;
-    mustChangePassword: boolean;
-    color: string;
-    createdAt: Date;
-    services: { service: Record<string, unknown> & { createdAt: Date } }[];
-  },
-) {
+function shapeEmployee(employee: {
+  id: string;
+  accountId: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  mustChangePassword: boolean;
+  color: string;
+  createdAt: Date;
+  services: { service: Record<string, unknown> & { createdAt: Date } }[];
+}) {
   const { services: links, ...rest } = employee;
   return {
     id: rest.id,
@@ -91,11 +89,7 @@ function shapeEmployee(
 
 function parseServiceIds(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
-  return [
-    ...new Set(
-      raw.map((id) => String(id || '').trim()).filter(Boolean),
-    ),
-  ];
+  return [...new Set(raw.map((id) => String(id || '').trim()).filter(Boolean))];
 }
 
 @Controller('api/employees')
@@ -340,13 +334,12 @@ export class EmployeesController {
       throw new NotFoundException({ error: 'Profissional não encontrado.' });
     }
 
-    const { resetLink, expiresAt } = await this.passwordReset.issueAndSendWhatsapp(
-      {
+    const { resetLink, expiresAt } =
+      await this.passwordReset.issueAndSendWhatsapp({
         employee,
         account: req.account,
         source: 'account',
-      },
-    );
+      });
 
     return {
       ok: true,

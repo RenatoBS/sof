@@ -127,8 +127,7 @@ export class WhatsappHandoffsService {
     party?: HandoffParty;
     employeeId?: string;
   }): Promise<{ count: number; threshold: number; reached: boolean }> {
-    const phone =
-      normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
+    const phone = normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
     if (!phone) {
       return { count: 0, threshold: 2, reached: false };
     }
@@ -187,8 +186,7 @@ export class WhatsappHandoffsService {
     const ents = await this.entitlements.forAccount(opts.accountId);
     if (!hasFeature(ents, 'handoffs')) return null;
 
-    const phone =
-      normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
+    const phone = normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
     if (!phone) return null;
 
     const party: HandoffParty =
@@ -276,6 +274,81 @@ export class WhatsappHandoffsService {
   }
 
   /**
+   * Silencia o bot para este cliente por 1h e zera o contador de falhas.
+   * Usado quando a conversa vira caso de humano: alerta aberto na aba
+   * Atendimentos ou resposta humana pelo WhatsApp.
+   */
+  async pauseClientBot(opts: {
+    accountId: string;
+    phone: string;
+    displayName?: string;
+  }) {
+    const phone = normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
+    const pausedUntil = new Date(Date.now() + HUMAN_PAUSE_MS);
+
+    const client = await this.prisma.client.upsert({
+      where: {
+        accountId_phone: { accountId: opts.accountId, phone },
+      },
+      create: {
+        accountId: opts.accountId,
+        phone,
+        name: opts.displayName || `Cliente WhatsApp ${phone.slice(-4)}`,
+        botPausedUntil: pausedUntil,
+        botPausedPermanent: false,
+        botPausedAuto: true,
+        botUnresolvedCount: 0,
+      },
+      update: {
+        botPausedUntil: pausedUntil,
+        botPausedPermanent: false,
+        botPausedAuto: true,
+        botUnresolvedCount: 0,
+        ...(opts.displayName ? { name: opts.displayName } : {}),
+      },
+    });
+
+    this.realtime.broadcast(opts.accountId, 'client:updated', {
+      client: this.shape(client),
+    });
+    return { client, pausedUntil };
+  }
+
+  /**
+   * Cliente chamou pela Sof durante a pausa automática: bot volta a responder.
+   * Pausa definida pelo dono na aba Clientes não é desfeita por aqui.
+   */
+  async resumeAutoPausedClient(accountId: string, rawPhone: string) {
+    const phone = normalizePhone(rawPhone) || rawPhone.replace(/\D/g, '');
+    if (!phone) return false;
+
+    const updated = await this.prisma.client.updateMany({
+      where: {
+        accountId,
+        phone,
+        botPausedAuto: true,
+        botPausedPermanent: false,
+      },
+      data: {
+        botPausedUntil: null,
+        botPausedAuto: false,
+        botUnresolvedCount: 0,
+      },
+    });
+    if (updated.count === 0) return false;
+
+    const client = await this.prisma.client.findUnique({
+      where: { accountId_phone: { accountId, phone } },
+    });
+    if (client) {
+      this.realtime.broadcast(accountId, 'client:updated', {
+        client: this.shape(client),
+      });
+    }
+    return true;
+  }
+
+  /**
    * Humano respondeu no WhatsApp: resolve alertas abertos.
    * Cliente: pausa bot 1h. Profissional: só resolve (não silencia o bot do prof).
    */
@@ -286,8 +359,7 @@ export class WhatsappHandoffsService {
     party?: HandoffParty;
     employeeId?: string;
   }) {
-    const phone =
-      normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
+    const phone = normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
     if (!phone) return { pausedUntil: null as Date | null, resolved: [] };
 
     const party: HandoffParty =
@@ -332,26 +404,10 @@ export class WhatsappHandoffsService {
       return { pausedUntil: null as Date | null, resolved };
     }
 
-    const pausedUntil = new Date(Date.now() + HUMAN_PAUSE_MS);
-
-    const client = await this.prisma.client.upsert({
-      where: {
-        accountId_phone: { accountId: opts.accountId, phone },
-      },
-      create: {
-        accountId: opts.accountId,
-        phone,
-        name: opts.displayName || `Cliente WhatsApp ${phone.slice(-4)}`,
-        botPausedUntil: pausedUntil,
-        botPausedPermanent: false,
-        botUnresolvedCount: 0,
-      },
-      update: {
-        botPausedUntil: pausedUntil,
-        botPausedPermanent: false,
-        botUnresolvedCount: 0,
-        ...(opts.displayName ? { name: opts.displayName } : {}),
-      },
+    const { client, pausedUntil } = await this.pauseClientBot({
+      accountId: opts.accountId,
+      phone,
+      displayName: opts.displayName,
     });
 
     const open = await this.prisma.whatsappHandoff.findMany({

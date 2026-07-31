@@ -34,6 +34,8 @@ DIRECT_URL=postgresql://sof:sof@localhost:5433/sof?schema=public
 
 ## Backend
 
+Atalho depois do primeiro setup: `npm run saas` na raiz sobe API + front juntos (ver [Scripts na raiz](#scripts-na-raiz)).
+
 ```bash
 cd saas/backend
 cp .env.example .env   # se necessário
@@ -93,7 +95,7 @@ cd admin/backend && cp .env.example .env && npm install && npm run start:dev
 cd admin/frontend && cp .env.example .env && npm install && npm run web
 ```
 
-Na raiz: `npm run admin/backend:dev` / `npm run admin/frontend:web`.  
+Na raiz: `npm run admin` sobe os dois de uma vez; separados, `npm run admin-backend:dev` / `npm run admin-frontend:web`.  
 Use o **mesmo** `DATABASE_URL` do produto. Seed cria `AdminUser` + catálogo `Plan` (Solo / Equipe / Rede com entitlements) e **uma conta demo por plano**.  
 Login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@sof.com` / `admin123`).
 
@@ -224,8 +226,16 @@ O free tier do ngrok mostra um interstitial na 1ª visita — clique em Visit Si
 ```bash
 npm run db:up
 npm run db:down
+
+# stack inteira num terminal (API + Expo web)
+npm run saas     # :3001 + :8081
+npm run admin    # :3011 + :8091
+
+# processos separados
 npm run backend:dev
 npm run frontend:web
-npm run admin/backend:dev
-npm run admin/frontend:web
+npm run admin-backend:dev
+npm run admin-frontend:web
 ```
+
+`saas` / `admin` chamam [`scripts/dev-stack.js`](../scripts/dev-stack.js) (Node puro, sem dependências — a raiz não tem `node_modules`). O log da API sai prefixado com `[api]`; o Expo fica com o terminal, então QR e atalhos de teclado continuam funcionando. `Ctrl+C` derruba os dois — o script mata a árvore de processos, porque `npm run` não repassa o sinal para `nest`/`expo`. Se um dos lados cair, o outro é encerrado junto. O Postgres **não** entra nesses comandos: rode `npm run db:up` antes. Falta de `node_modules` no pacote alvo aborta com a instrução de instalar.

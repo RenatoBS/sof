@@ -16,16 +16,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const payload = exception.getResponse();
-      if (typeof payload === 'object' && payload !== null && 'error' in payload) {
+      if (
+        typeof payload === 'object' &&
+        payload !== null &&
+        'error' in payload
+      ) {
         return res.status(status).json(payload);
       }
       if (typeof payload === 'string') {
         return res.status(status).json({ error: payload });
       }
       const message =
-        typeof payload === 'object' &&
-        payload !== null &&
-        'message' in payload
+        typeof payload === 'object' && payload !== null && 'message' in payload
           ? (payload as { message: string | string[] }).message
           : 'Erro';
       return res.status(status).json({

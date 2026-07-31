@@ -134,7 +134,9 @@ export default function ClientsScreen() {
                       <Text style={styles.name} numberOfLines={2}>
                         {c.name}
                       </Text>
-                      {has('botPause') ? (
+                      {/* Pausa automática aparece mesmo sem o gate: é estado
+                          do sistema, não uma ação do dono. */}
+                      {has('botPause') || badge ? (
                         <View style={styles.badgeRow}>
                           {badge ? (
                             <EntityChip tone={badge.tone}>{badge.label}</EntityChip>
@@ -153,7 +155,9 @@ export default function ClientsScreen() {
                   </View>
                   {isClientBotPaused(c) && !c.botPausedPermanent ? (
                     <Text style={styles.note}>
-                      Bot silencioso neste período
+                      {c.botPausedAuto
+                        ? 'Sof saiu da conversa — a equipe assumiu'
+                        : 'Bot silencioso neste período'}
                     </Text>
                   ) : null}
                 </EntityCardBody>

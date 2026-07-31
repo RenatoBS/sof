@@ -20,16 +20,16 @@ import { BookingNluService } from './booking-nlu.service';
 import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { EmployeeBookingNotifyService } from './employee-booking-notify.service';
 import { EntitlementsService } from '../entitlements/entitlements.service';
-import {
-  EntitlementsMap,
-  hasFeature,
-} from '../entitlements/feature-catalog';
+import { EntitlementsMap, hasFeature } from '../entitlements/feature-catalog';
 import { formatReminderLeadLabel } from '../reminders/reminder-window';
+import { mergeLastName, parseFirstName, parseFullName } from './client-name';
 import * as botCopy from './bot-copy';
 
 type SessionData = {
   clientId?: string;
   clientName?: string;
+  /** Primeiro nome já informado, aguardando o sobrenome (1º contato). */
+  pendingFirstName?: string;
   serviceId?: string;
   employeeId?: string;
   date?: string;
@@ -65,7 +65,17 @@ export type WhatsappBotResult = {
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
 const DATE_ONLY_RE = /^(\d{1,2})[\/\-](\d{1,2})$/;
 const TIME_ONLY_RE = /^(\d{1,2}):(\d{2})$/;
-const AFFIRMATIVE = ['sim', 's', 'confirmar', 'confirmo', 'ok', 'marca', 'marcar', 'fecha', 'fechado'];
+const AFFIRMATIVE = [
+  'sim',
+  's',
+  'confirmar',
+  'confirmo',
+  'ok',
+  'marca',
+  'marcar',
+  'fecha',
+  'fechado',
+];
 const NEGATIVE = ['não', 'nao', 'n', 'cancelar'];
 const CUSTOM_TIME_RE = /^(outro|outra|custom|time:custom|slot:custom)$/i;
 const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;
@@ -119,7 +129,10 @@ export class WhatsappBotService {
     if (!hasFeature(ents, 'freeTextNlu')) return null;
     if (!this.nlu.isEnabled()) return null;
     // Só frases livres — menus/números/comandos seguem o fluxo normal.
-    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+    const words = String(text || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
     if (words.length < 3) return null;
 
     const parsed = await this.nlu.extract({ text, services });
@@ -183,22 +196,6 @@ export class WhatsappBotService {
       .replace(/[^a-z0-9\s]/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-  }
-
-  /**
-   * Nome e sobrenome no 1º contato: pelo menos 2 palavras com 2+ letras cada.
-   */
-  private parseClientFullName(text: string): string | null {
-    const name = String(text || '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (name.length < 5) return null;
-    const parts = name.split(' ').filter(Boolean);
-    if (parts.length < 2) return null;
-    if (parts.some((part) => part.replace(/[^\p{L}]/gu, '').length < 2)) {
-      return null;
-    }
-    return name;
   }
 
   private labelsMatch(needleRaw: string, labelRaw: string): boolean {
@@ -285,10 +282,7 @@ export class WhatsappBotService {
   }
 
   /** Título curto no menu: 1º nome se for único entre os listados. */
-  private employeeChoiceTitle(
-    name: string,
-    peers: { name: string }[],
-  ): string {
+  private employeeChoiceTitle(name: string, peers: { name: string }[]): string {
     const full = String(name || '').trim() || 'Profissional';
     const first = full.split(/\s+/)[0] || full;
     const firstNorm = this.normalizeMatchText(first);
@@ -375,11 +369,8 @@ export class WhatsappBotService {
     title?: string;
   }) {
     const what =
-      appt.service?.name ||
-      (appt.title ? appt.title : 'Agendamento');
-    const withWho = appt.employee?.name
-      ? ` com ${appt.employee.name}`
-      : '';
+      appt.service?.name || (appt.title ? appt.title : 'Agendamento');
+    const withWho = appt.employee?.name ? ` com ${appt.employee.name}` : '';
     return `${what}${withWho} — ${this.formatSlotLabel(appt.date, appt.time)}`;
   }
 
@@ -463,7 +454,11 @@ export class WhatsappBotService {
     const trimmed = String(text || '').trim();
     if (!trimmed) return false;
     if (trimmed === 'path:time') return true;
-    if (/escolher hor[aá]rio|qualquer hor[aá]rio|hor[aá]rio primeiro/i.test(trimmed)) {
+    if (
+      /escolher hor[aá]rio|qualquer hor[aá]rio|hor[aá]rio primeiro/i.test(
+        trimmed,
+      )
+    ) {
       return true;
     }
     const byNumber = this.parseChoice(trimmed, employeeCount + 1);
@@ -762,8 +757,7 @@ export class WhatsappBotService {
     });
 
     const body =
-      intro ||
-      botCopy.ackServicePath(service.name, 'Quem você prefere?');
+      intro || botCopy.ackServicePath(service.name, 'Quem você prefere?');
 
     if (!allowPathChoice) {
       return this.employeeMenu(body, employees, {
@@ -796,14 +790,15 @@ export class WhatsappBotService {
     });
   }
 
-  private sessionCore(sessionBase: SessionData, serviceId: string): SessionData {
+  private sessionCore(
+    sessionBase: SessionData,
+    serviceId: string,
+  ): SessionData {
     return {
       clientId: sessionBase.clientId,
       clientName: sessionBase.clientName,
       serviceId,
-      ...(sessionBase.employeeId
-        ? { employeeId: sessionBase.employeeId }
-        : {}),
+      ...(sessionBase.employeeId ? { employeeId: sessionBase.employeeId } : {}),
     };
   }
 
@@ -868,9 +863,7 @@ export class WhatsappBotService {
       data,
     });
 
-    const preferredName = sessionBase.employeeId
-      ? employees[0]?.name
-      : null;
+    const preferredName = sessionBase.employeeId ? employees[0]?.name : null;
     const body =
       intro ||
       (preferredName
@@ -973,8 +966,7 @@ export class WhatsappBotService {
       data,
     });
 
-    const body =
-      intro || `Horários em ${this.formatDayLabel(date)}:`;
+    const body = intro || `Horários em ${this.formatDayLabel(date)}:`;
 
     const choices: WhatsappMenuChoice[] = [
       ...times.map((time) => ({
@@ -1023,10 +1015,7 @@ export class WhatsappBotService {
     const service = services.find((s) => s.id === sessionData.serviceId);
     if (!service) {
       await this.resetSession(account.id, customerPhone);
-      return this.serviceMenu(
-        botCopy.restartServicePrompt(),
-        services,
-      );
+      return this.serviceMenu(botCopy.restartServicePrompt(), services);
     }
 
     const hoursCheck = checkWithinOpeningHours(
@@ -1157,13 +1146,19 @@ export class WhatsappBotService {
         accountId,
         customerPhone,
         step: patch.step,
-        data: patch.data as Prisma.InputJsonValue,
+        data: patch.data,
       },
       update: {
         step: patch.step,
-        data: patch.data as Prisma.InputJsonValue,
+        data: patch.data,
       },
     });
+  }
+
+  /** Recomeça a conversa do cliente (usado quando o bot volta de uma pausa). */
+  async resetClientSession(accountId: string, customerPhone: string) {
+    const phone = normalizePhone(customerPhone) || customerPhone;
+    await this.resetSession(accountId, phone);
   }
 
   private async resetSession(accountId: string, customerPhone: string) {
@@ -1180,6 +1175,18 @@ export class WhatsappBotService {
       where: {
         accountId_phone: { accountId, phone: normalized },
       },
+    });
+  }
+
+  private async upsertClientByPhone(
+    accountId: string,
+    phone: string,
+    name: string,
+  ) {
+    return this.prisma.client.upsert({
+      where: { accountId_phone: { accountId, phone } },
+      create: { accountId, name, phone },
+      update: { name },
     });
   }
 
@@ -1366,7 +1373,11 @@ export class WhatsappBotService {
       };
     }
 
-    if (ADDRESS_RE.test(trimmed) || lower === 'endereço' || lower === 'endereco') {
+    if (
+      ADDRESS_RE.test(trimmed) ||
+      lower === 'endereço' ||
+      lower === 'endereco'
+    ) {
       return { replies: [formatAddressReply(account)] };
     }
 
@@ -1431,33 +1442,41 @@ export class WhatsappBotService {
       };
     }
 
-    if (step === 'awaiting_name') {
-      const name = this.parseClientFullName(trimmed);
-      if (!name) {
+    // Sobrenome pedido uma única vez: qualquer resposta segue o fluxo.
+    if (step === 'awaiting_last_name' && sessionData.pendingFirstName) {
+      const name = mergeLastName(sessionData.pendingFirstName, trimmed);
+      const client = await this.upsertClientByPhone(account.id, phone, name);
+      return this.startBooking(account, phone, client, services);
+    }
+
+    if (step === 'awaiting_name' || step === 'awaiting_last_name') {
+      const name = parseFullName(trimmed);
+      if (name) {
+        const client = await this.upsertClientByPhone(account.id, phone, name);
+        return this.startBooking(account, phone, client, services);
+      }
+
+      const firstName = parseFirstName(trimmed);
+      if (!firstName) {
         return {
           replies: [botCopy.askFullNameAgain()],
+          unresolved: true,
         };
       }
-      const client = await this.prisma.client.upsert({
-        where: {
-          accountId_phone: { accountId: account.id, phone },
-        },
-        create: {
-          accountId: account.id,
-          name,
-          phone,
-        },
-        update: { name },
+
+      await this.saveSession(account.id, phone, {
+        step: 'awaiting_last_name',
+        data: { pendingFirstName: firstName },
       });
-      return this.startBooking(account, phone, client, services);
+      return {
+        replies: [botCopy.askLastName(firstName)],
+      };
     }
 
     if (step === 'awaiting_service') {
       const clientId = sessionData.clientId;
       const clientName = sessionData.clientName || 'Cliente';
-      const client = clientId
-        ? { id: clientId, name: clientName }
-        : null;
+      const client = clientId ? { id: clientId, name: clientName } : null;
 
       const future = client
         ? await this.listFutureAppointments(account.id, client.id, phone)
@@ -1465,16 +1484,12 @@ export class WhatsappBotService {
       const manageCount = future.length > 0 ? 2 : 0;
 
       const wantsList =
-        trimmed === 'action:list' ||
-        /^ver agendamentos?$/i.test(trimmed);
+        trimmed === 'action:list' || /^ver agendamentos?$/i.test(trimmed);
       const wantsCancel =
         trimmed === 'action:cancel' ||
         /^cancelar (hor[aá]rio|agendamento)$/i.test(trimmed);
 
-      const byNumber = this.parseChoice(
-        trimmed,
-        services.length + manageCount,
-      );
+      const byNumber = this.parseChoice(trimmed, services.length + manageCount);
       let action: 'list' | 'cancel' | null = null;
       if (wantsList) action = 'list';
       else if (wantsCancel) action = 'cancel';
@@ -1493,12 +1508,7 @@ export class WhatsappBotService {
           );
         }
         if (action === 'list') {
-          return this.showFutureAppointments(
-            account,
-            client,
-            services,
-            phone,
-          );
+          return this.showFutureAppointments(account, client, services, phone);
         }
         return this.startCancelFlow(account, client, services, phone);
       }
@@ -1558,10 +1568,7 @@ export class WhatsappBotService {
       const clientName = sessionData.clientName || 'Cliente';
       if (!clientId) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
       const client = { id: clientId, name: clientName };
       const future = await this.listFutureAppointments(
@@ -1606,25 +1613,19 @@ export class WhatsappBotService {
           cancelAppointmentId: appt.id,
         },
       });
-      return this.confirmMenu(
-        `Cancelar ${this.formatAppointmentLine(appt)}?`,
-      );
+      return this.confirmMenu(`Cancelar ${this.formatAppointmentLine(appt)}?`);
     }
 
     if (step === 'awaiting_cancel_confirm') {
       const clientId = sessionData.clientId;
       const clientName = sessionData.clientName || 'Cliente';
       const apptId = sessionData.cancelAppointmentId;
-      const isYes =
-        AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
+      const isYes = AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
       const isNo = NEGATIVE.includes(lower) || trimmed === 'confirm:no';
 
       if (!clientId || !apptId) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
       const client = { id: clientId, name: clientName };
 
@@ -1719,10 +1720,7 @@ export class WhatsappBotService {
       const service = services.find((s) => s.id === sessionData.serviceId);
       if (!service) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
 
       const employees = await this.employeesForService(account.id, service.id);
@@ -1801,10 +1799,7 @@ export class WhatsappBotService {
       const service = services.find((s) => s.id === sessionData.serviceId);
       if (!service) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
 
       const employees = await this.resolveSlotEmployees(
@@ -1829,15 +1824,9 @@ export class WhatsappBotService {
       let chosen: 'today' | 'tomorrow' | 'other' | string | null = null;
       if (trimmed === 'day:today' || /^hoje$/i.test(trimmed)) {
         chosen = todayTimes.length > 0 ? 'today' : null;
-      } else if (
-        trimmed === 'day:tomorrow' ||
-        /^amanh[aã]$/i.test(trimmed)
-      ) {
+      } else if (trimmed === 'day:tomorrow' || /^amanh[aã]$/i.test(trimmed)) {
         chosen = tomorrowTimes.length > 0 ? 'tomorrow' : null;
-      } else if (
-        trimmed === 'day:other' ||
-        /^outra( data)?$/i.test(trimmed)
-      ) {
+      } else if (trimmed === 'day:other' || /^outra( data)?$/i.test(trimmed)) {
         chosen = 'other';
       } else {
         const byNumber = this.parseChoice(trimmed, dayOptions.length);
@@ -1868,9 +1857,7 @@ export class WhatsappBotService {
             service,
             sessionData,
             phone,
-            botCopy.didNotCatchWithHint(
-              'Escolha Hoje, Amanhã ou Outra data:',
-            ),
+            botCopy.didNotCatchWithHint('Escolha Hoje, Amanhã ou Outra data:'),
           ),
         );
       }
@@ -1880,11 +1867,7 @@ export class WhatsappBotService {
       }
 
       const date =
-        chosen === 'today'
-          ? today
-          : chosen === 'tomorrow'
-            ? tomorrow
-            : chosen;
+        chosen === 'today' ? today : chosen === 'tomorrow' ? tomorrow : chosen;
 
       return this.timeMenu(account, service, sessionData, phone, date);
     }
@@ -1893,10 +1876,7 @@ export class WhatsappBotService {
       const service = services.find((s) => s.id === sessionData.serviceId);
       if (!service) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
 
       const asDateTime = this.parseDateTime(trimmed);
@@ -1931,10 +1911,7 @@ export class WhatsappBotService {
           return this.dayMenu(account, service, sessionData, phone);
         }
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
 
       const employees = await this.resolveSlotEmployees(
@@ -1989,10 +1966,7 @@ export class WhatsappBotService {
       const date = sessionData.date;
       if (!service) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
 
       const asDateTime = this.parseDateTime(trimmed);
@@ -2044,10 +2018,7 @@ export class WhatsappBotService {
         );
       }
       await this.resetSession(account.id, phone);
-      return this.serviceMenu(
-        botCopy.restartServicePrompt(),
-        services,
-      );
+      return this.serviceMenu(botCopy.restartServicePrompt(), services);
     }
 
     if (step === 'awaiting_employee') {
@@ -2112,10 +2083,7 @@ export class WhatsappBotService {
 
       if (!service || !date || !time) {
         await this.resetSession(account.id, phone);
-        return this.serviceMenu(
-          botCopy.restartServicePrompt(),
-          services,
-        );
+        return this.serviceMenu(botCopy.restartServicePrompt(), services);
       }
 
       const free = await this.availableEmployeesAt(
@@ -2198,15 +2166,11 @@ export class WhatsappBotService {
         );
       }
       await this.resetSession(account.id, phone);
-      return this.serviceMenu(
-        botCopy.restartServicePrompt(),
-        services,
-      );
+      return this.serviceMenu(botCopy.restartServicePrompt(), services);
     }
 
     if (step === 'awaiting_confirmation') {
-      const isYes =
-        AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
+      const isYes = AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
       const isNo = NEGATIVE.includes(lower) || trimmed === 'confirm:no';
 
       if (isYes) {
@@ -2214,10 +2178,7 @@ export class WhatsappBotService {
         const service = services.find((s) => s.id === serviceId);
         if (!service || !employeeId || !date || !time || !serviceId) {
           await this.resetSession(account.id, phone);
-          return this.serviceMenu(
-            botCopy.restartServicePrompt(),
-            services,
-          );
+          return this.serviceMenu(botCopy.restartServicePrompt(), services);
         }
 
         const hoursCheck = checkWithinOpeningHours(
@@ -2275,8 +2236,7 @@ export class WhatsappBotService {
             data: {
               accountId: account.id,
               name:
-                sessionData.clientName ||
-                `Cliente WhatsApp ${phone.slice(-4)}`,
+                sessionData.clientName || `Cliente WhatsApp ${phone.slice(-4)}`,
               phone,
             },
           });
@@ -2326,9 +2286,7 @@ export class WhatsappBotService {
           replies: [botCopy.cancelledNothingBooked()],
         };
       }
-      return this.confirmMenu(
-        'Confirma o agendamento? Toque em Sim ou Não.',
-      );
+      return this.confirmMenu('Confirma o agendamento? Toque em Sim ou Não.');
     }
 
     await this.resetSession(account.id, phone);

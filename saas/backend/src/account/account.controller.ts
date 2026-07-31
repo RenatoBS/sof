@@ -123,7 +123,7 @@ export class AccountController {
       if ('error' in parsed) {
         throw new BadRequestException({ error: parsed.error });
       }
-      data.openingHours = parsed.hours as Prisma.InputJsonValue;
+      data.openingHours = parsed.hours;
     }
     if (body?.whatsappReminderMinutes !== undefined) {
       const lead = normalizeReminderLeadMinutes(body.whatsappReminderMinutes);

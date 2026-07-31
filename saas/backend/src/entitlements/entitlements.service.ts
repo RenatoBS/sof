@@ -75,14 +75,12 @@ export class EntitlementsService {
     return defaultsForPlanSlug(slug);
   }
 
-  async forAccountOrLoad(
-    account: {
-      id: string;
-      plan: string;
-      planId: string | null;
-      planRef?: { slug: string; entitlements: unknown; name: string } | null;
-    },
-  ): Promise<EntitlementsMap> {
+  async forAccountOrLoad(account: {
+    id: string;
+    plan: string;
+    planId: string | null;
+    planRef?: { slug: string; entitlements: unknown; name: string } | null;
+  }): Promise<EntitlementsMap> {
     if (account.planRef || !account.planId) {
       return this.resolveFromAccount(account);
     }
@@ -91,11 +89,15 @@ export class EntitlementsService {
 
   slugFromPlanName(name: string): string {
     const slug = slugifyPlanName(name || '');
-    const aliased = PLAN_NAME_ALIASES[slug] || PLAN_NAME_ALIASES[name.toLowerCase()];
+    const aliased =
+      PLAN_NAME_ALIASES[slug] || PLAN_NAME_ALIASES[name.toLowerCase()];
     return aliased || slug || 'solo';
   }
 
-  async assertFeature(accountId: string, key: string): Promise<EntitlementsMap> {
+  async assertFeature(
+    accountId: string,
+    key: string,
+  ): Promise<EntitlementsMap> {
     const ents = await this.forAccount(accountId);
     if (!hasFeature(ents, key)) {
       throw new PlanGateException('PLAN_FEATURE_REQUIRED', key);

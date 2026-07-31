@@ -16,9 +16,13 @@ describe('RemindersService.tryClaim', () => {
       $queryRaw: jest.fn(),
     };
     const whatsapp = { sendText: jest.fn() };
-    const service = new RemindersService(prisma as never, whatsapp as never, {
-      forAccount: async () => ({ reminders: true }),
-    } as never);
+    const service = new RemindersService(
+      prisma as never,
+      whatsapp as never,
+      {
+        forAccount: async () => ({ reminders: true }),
+      } as never,
+    );
 
     const [a, b] = await Promise.all([
       service.tryClaim('appt-1'),
@@ -31,10 +35,7 @@ describe('RemindersService.tryClaim', () => {
 });
 
 describe('RemindersService.processDueReminders', () => {
-  function makeService(opts: {
-    sendText: jest.Mock;
-    claimResults?: number[];
-  }) {
+  function makeService(opts: { sendText: jest.Mock; claimResults?: number[] }) {
     let claimIdx = 0;
     const updates: object[] = [];
     const prisma = {

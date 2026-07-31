@@ -82,6 +82,8 @@ export type Client = {
   phone: string;
   botPausedPermanent: boolean;
   botPausedUntil?: string | null;
+  /** Pausa aplicada pela Sof (alerta de atendimento / resposta humana). */
+  botPausedAuto?: boolean;
   createdAt: string;
 };
 
@@ -121,6 +123,8 @@ export type Appointment = {
   title: string;
   durationMinutes?: number | null;
   serviceId?: string | null;
+  /** Só vem nas listagens do portal do profissional; no painel use o catálogo local. */
+  serviceName?: string | null;
   clientId?: string | null;
   clientName: string;
   clientPhone: string;

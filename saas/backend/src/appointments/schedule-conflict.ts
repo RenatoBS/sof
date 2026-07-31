@@ -60,7 +60,12 @@ export function hasScheduleConflict(
 ): boolean {
   const start = timeToMinutes(startTime);
   return busy.some((slot) =>
-    rangesOverlap(start, durationMinutes, timeToMinutes(slot.time), slot.duration),
+    rangesOverlap(
+      start,
+      durationMinutes,
+      timeToMinutes(slot.time),
+      slot.duration,
+    ),
   );
 }
 
