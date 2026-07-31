@@ -170,3 +170,42 @@ Sof/
 - [ ] Flow local alterado → [`docs/local-development.md`](docs/local-development.md)
 - [ ] Índice / resumo deste `AGENTS.md` ainda correto
 - [ ] Se `docs/*.md` mudou → `npm run sync-docs` em `admin/frontend` + `public/internal-docs/` commitado
+
+---
+
+## Cursor Cloud specific instructions
+
+Notas para agentes rodando no ambiente Cloud (o update script já rodou os `npm install` + `prisma generate` dos 4 pacotes). Fluxo local completo em [`docs/local-development.md`](docs/local-development.md).
+
+### GOTCHA crítico — `npm run lint` reescreve o código e quebra o build
+
+O script `lint` do backend é `eslint … --fix`. Rodá-lo **reescreve arquivos de `saas/backend/src`** (ex.: remove escapes/variáveis que o compilador precisa), o que introduz ~13 erros de TypeScript e **impede o `nest start`/build de subir**. Além disso, a base tem erros de lint pré-existentes (o comando sai com código 1 mesmo limpo).
+- Para só **verificar** lint sem mexer no código: `cd saas/backend && npx eslint "src/**/*.ts"` (sem `--fix`).
+- Se rodar `npm run lint` por engano: reverta com `git checkout -- saas/backend/src` e o dev server recompila com 0 erros.
+
+### Banco de dados
+
+Não há Docker no Cloud; o Postgres é **nativo (apt, cluster 16 `main`) escutando na porta 5433** para casar com os `DATABASE_URL`/`DIRECT_URL` dos `.env`. Role/DB `sof`/`sof`/`sof` (superuser).
+- Iniciar após boot do VM: `sudo pg_ctlcluster 16 main start` (a porta 5433 fica em `/etc/postgresql/16/main/postgresql.conf`).
+- Recriar do zero (se o cluster sumir): criar role+db `sof`, depois em `saas/backend`: `npx prisma migrate deploy` e `npm run prisma:seed`.
+
+### `.env` (não versionados — criar 1x por pacote)
+
+`cp .env.example .env` em `saas/backend`, `saas/frontend`, `admin/backend`, `admin/frontend`. Defaults locais já apontam para `localhost:5433` e as portas certas. Para conseguir logar, defina no `saas/backend/.env` um `SEED_DEMO_PASSWORD`/`SEED_ADMIN_PASSWORD` conhecidos **antes** de seed (ex.: `demo123` / `admin123`).
+
+### Serviços, portas e como subir (dev)
+
+| Serviço | Dir | Porta | Subir | Sanidade |
+|---------|-----|-------|-------|----------|
+| API produto | `saas/backend` | 3001 | `npm run start:dev` | `GET /api/health` → `{"ok":true}` |
+| API admin | `admin/backend` | 3011 | `npm run start:dev` | `GET /api/health` |
+| Front produto (Expo web) | `saas/frontend` | 8081 | `npm run web` | abrir `/` ; login em `/login` |
+| Front admin (Expo web) | `admin/frontend` | 8091 | `npm run web` | abrir `/` |
+
+- Testes backend: `cd saas/backend && npm test` (Jest; unit puros, não precisam de DB).
+- Expo web: o Metro só faz o **bundle no primeiro request** de cada página (o primeiro `curl`/abertura demora ~1 min). Rode cada dev server num tmux separado.
+- Admin usa o **mesmo Postgres**; o client Prisma dele é gerado em `node_modules/.prisma/admin-client` a partir de `admin/backend/prisma/schema.prisma`.
+
+### Contas demo (após seed)
+
+`demo@sof.com` (Equipe), `demo-solo@sof.com` (Solo), `demo-rede@sof.com` (Rede) — senha = `SEED_DEMO_PASSWORD`. Admin: `admin@sof.com` / `SEED_ADMIN_PASSWORD`. Sem `STRIPE_SECRET_KEY`/`WHATSAPP_*`, checkout fica em modo demo e o WhatsApp usa o simulador — suficiente para desenvolver o core (agenda/agendamentos).
