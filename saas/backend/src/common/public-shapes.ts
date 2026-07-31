@@ -45,7 +45,9 @@ export function publicEmployeeSession(
 }
 
 export function serializeDates<T extends object>(record: T) {
-  const out: Record<string, unknown> = { ...(record as Record<string, unknown>) };
+  const out: Record<string, unknown> = {
+    ...(record as Record<string, unknown>),
+  };
   for (const [key, value] of Object.entries(out)) {
     if (value instanceof Date) out[key] = value.toISOString();
   }

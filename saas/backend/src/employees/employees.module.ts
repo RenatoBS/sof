@@ -6,7 +6,12 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
 import { EmployeesController } from './employees.controller';
 
 @Module({
-  imports: [AuthModule, EmployeePortalModule, WhatsappModule, EntitlementsModule],
+  imports: [
+    AuthModule,
+    EmployeePortalModule,
+    WhatsappModule,
+    EntitlementsModule,
+  ],
   controllers: [EmployeesController],
 })
 export class EmployeesModule {}

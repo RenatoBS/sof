@@ -8,6 +8,13 @@ export function isTicketStatus(value: unknown): value is TicketStatus {
   );
 }
 
+/** Status finais: a partir deles só a equipe Sof (admin) pode mexer no ticket. */
+const TICKET_LOCKED_STATUSES: readonly TicketStatus[] = ['resolved', 'closed'];
+
+export function isLockedTicketStatus(value: string): boolean {
+  return (TICKET_LOCKED_STATUSES as readonly string[]).includes(value);
+}
+
 export const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
   open: 'Aberto',
   in_progress: 'Em andamento',

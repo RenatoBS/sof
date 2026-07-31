@@ -74,7 +74,7 @@ Account  (plan / planPrice snapshot + planId → Plan)
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Client[]  (botPausedPermanent / botPausedUntil / botUnresolvedCount)
+  ├── Client[]  (botPausedPermanent / botPausedUntil / botPausedAuto / botUnresolvedCount)
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
   ├── WhatsappSession[]
@@ -100,9 +100,9 @@ Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; 
 
 `Employee` não tem mais `specialty`; a especialização é a lista de `Service` via `EmployeeService`.
 
-`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`); `botUnresolvedCount` conta "não entendi" consecutivos para escalonamento.
+`Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`); `botPausedAuto` marca que quem pausou foi a própria Sof (alerta de atendimento ou resposta humana) — só essa pausa é desfeita quando o cliente chama pela Sof, a do dono não; `botUnresolvedCount` conta "não entendi" consecutivos para escalonamento.
 
-`WhatsappHandoff`: alerta de atendimento humano por conversa — `party` (`client` | `employee`), `clientId` / `employeeId` opcionais, `reason` (`unresolved` | `human_requested`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). Contadores: `Client.botUnresolvedCount` e `Employee.botUnresolvedCount`. `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta (cliente e prof). Fluxo: webhook detecta `fromMe` sem `wasSentByApi` → `onHumanReply`: em cliente pausa bot 1 h e resolve; em profissional só resolve (sem pausar o bot operacional). Webhook Uazapi **sem** excluir `fromMe` (só `wasSentByApi` + grupos); `GET /api/account/whatsapp/status` ressincroniza a config no máx. 1x/hora por instância.
+`WhatsappHandoff`: alerta de atendimento humano por conversa — `party` (`client` | `employee`), `clientId` / `employeeId` opcionais, `reason` (`unresolved` | `human_requested`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). Contadores: `Client.botUnresolvedCount` e `Employee.botUnresolvedCount`. `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta (cliente e prof). Fluxo: webhook detecta `fromMe` sem `wasSentByApi` → `onHumanReply`: em cliente pausa bot 1 h e resolve; em profissional só resolve (sem pausar o bot operacional). Abrir/atualizar alerta de **cliente** também pausa 1 h (`pauseClientBot`, chamado em `whatsapp.controller.ts#pauseAfterHandoff`) — o bot sai da conversa assim que ela vira caso de humano. Volta antes da hora se o cliente chamar pela Sof: `shouldSilenceIncoming` usa `mentionsSof` (`whatsapp/sof-mention.ts`), chama `resumeAutoPausedClient` e reinicia a sessão do bot. Webhook Uazapi **sem** excluir `fromMe` (só `wasSentByApi` + grupos); `GET /api/account/whatsapp/status` ressincroniza a config no máx. 1x/hora por instância.
 
 `Appointment`: `kind` (`service` | `block`), data/hora, `status` (`scheduled` | `completed` | `cancelled`), `completedAt`, `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts` — só `scheduled` ocupa slot). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Conclusão: manual (conta sem restrição de janela; profissional só em [início, fim]) ou job `AppointmentCompletionsScheduler` (~5 min) quando `now >= endAt`; SSE `appointment:updated`. Cancelamento usa soft-cancel (`cancelled`). Lembrete WhatsApp: `reminderClaimedAt` / `reminderSentAt` (no máximo 1 envio bem-sucedido; job em `reminders/`; só `scheduled`). Aviso imediato ao profissional: `EmployeeBookingNotifyService` (WhatsApp da conta → `Employee.phone`) após create de `kind=service`.
 
@@ -136,7 +136,7 @@ URLs:
 
 ### Tempo real
 
-`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`saas/frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted` e `whatsapp-handoff:opened|updated|resolved`.
+`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`saas/frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted`, `whatsapp-handoff:opened|updated|resolved` e `client:updated` (pausa automática do bot entrando ou saindo — mantém o badge da aba Clientes em dia sem reload).
 
 ## Frontend (`saas/frontend/`)
 
@@ -195,7 +195,7 @@ Temas: `src/theme/marketing.ts` (`m`) e `src/theme/dashboard.ts` (`d`) — ident
 
 Máscaras de input: `SofInput` aceita `mask="phone" | "phoneDdi" | "email"` — formata o valor exibido e já define teclado/`inputMode`/`autoComplete` do campo. As funções vivem em `src/lib/validation.ts` (`maskBrPhone`, `maskPhoneWithDdi`, `maskEmail`); o submit continua enviando dígitos (`normalizePhoneDigits`) e e-mail com `trim`.
 
-Kit compartilhado em `src/components/ui.tsx`: `SofButton` (pressed/hover/`loading`), `SofInput`, `SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, `SofListRow`, `SofIconAction` / `SofRowActions` (Editar/Remover com ícone; só ícone abaixo de 720px), `Eyebrow`, `Wrap`. Marketing: `MarketingNav` (menu mobile), `SiteFooter`, `SofChatCard`, `FeatureIcon`.
+Kit compartilhado em `src/components/ui.tsx`: `SofButton` (pressed/hover/`loading`), `SofInput`, `SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, `SofListRow`, `SofIconAction` / `SofRowActions` (Editar/Remover/Fechar/**Sair** com ícone; só ícone abaixo de 720px ou com `forceCompact`), `Eyebrow`, `Wrap`. Marketing: `MarketingNav` (menu mobile), `SiteFooter`, `SofChatCard`, `FeatureIcon`.
 
 Toast dismissível no root layout. Shell do dashboard usa tabs com accent Sof, `SofLoadingGate` e `BusinessLogo` (logo da conta antes do nome). Body JSON da API: limite `8mb` (para upload de logo em base64).
 

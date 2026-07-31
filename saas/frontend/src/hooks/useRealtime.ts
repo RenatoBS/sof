@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import EventSource from 'react-native-sse';
 import { getApiBaseUrl } from '@/src/api/client';
 import { getToken } from '@/src/auth/tokenStorage';
-import type { Appointment, WhatsappHandoff } from '@/src/api/types';
+import type { Appointment, Client, WhatsappHandoff } from '@/src/api/types';
 
 type Handlers = {
   onCreated?: (appointment: Appointment) => void;
@@ -11,6 +11,7 @@ type Handlers = {
   onHandoffOpened?: (handoff: WhatsappHandoff) => void;
   onHandoffUpdated?: (handoff: WhatsappHandoff) => void;
   onHandoffResolved?: (handoff: WhatsappHandoff) => void;
+  onClientUpdated?: (client: Client) => void;
 };
 
 export function useRealtime(handlers: Handlers, enabled = true) {
@@ -74,6 +75,12 @@ export function useRealtime(handlers: Handlers, enabled = true) {
           handlersRef.current.onHandoffResolved?.(data.handoff);
         },
       );
+
+      es.addEventListener('client:updated' as 'message', (event) => {
+        if (!event.data) return;
+        const data = JSON.parse(event.data);
+        handlersRef.current.onClientUpdated?.(data.client);
+      });
     })();
 
     return () => {

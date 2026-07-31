@@ -58,12 +58,12 @@ async function bootstrap() {
       ? Boolean(
           (config.get<string>('whatsapp.adminToken') &&
             config.get<string>('whatsapp.baseUrl')) ||
-            (config.get<string>('whatsapp.token') &&
-              config.get<string>('whatsapp.baseUrl')),
+          (config.get<string>('whatsapp.token') &&
+            config.get<string>('whatsapp.baseUrl')),
         )
       : Boolean(
           config.get<string>('whatsapp.token') &&
-            config.get<string>('whatsapp.phoneNumberId'),
+          config.get<string>('whatsapp.phoneNumberId'),
         );
 
   console.log(`Sof API rodando em http://localhost:${port}`);

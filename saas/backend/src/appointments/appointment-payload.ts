@@ -82,7 +82,9 @@ export async function resolveClientForAppointment(
 }
 
 function parseKind(body: Record<string, unknown>): AppointmentKind {
-  const raw = String(body?.kind || 'service').trim().toLowerCase();
+  const raw = String(body?.kind || 'service')
+    .trim()
+    .toLowerCase();
   return raw === 'block' ? 'block' : 'service';
 }
 
@@ -100,9 +102,7 @@ export async function validateAppointmentPayload(
   const kind = parseKind(body);
   const date = String(body?.date || '');
   const time = String(body?.time || '');
-  const employeeId = String(
-    options?.forceEmployeeId || body?.employeeId || '',
-  );
+  const employeeId = String(options?.forceEmployeeId || body?.employeeId || '');
 
   if (!DATE_RE.test(date)) return { error: 'Data inválida.' };
   if (!TIME_RE.test(time)) return { error: 'Horário inválido.' };
@@ -124,8 +124,7 @@ export async function validateAppointmentPayload(
   const datesResult = expandRecurrenceDates(date, recurrence);
   if ('error' in datesResult) return datesResult;
   const recurrenceDates = datesResult;
-  const recurrenceGroupId =
-    recurrenceDates.length > 1 ? randomUUID() : null;
+  const recurrenceGroupId = recurrenceDates.length > 1 ? randomUUID() : null;
 
   if (kind === 'block') {
     const title = String(body?.title || '').trim();
@@ -254,12 +253,7 @@ export function appointmentCreateRows(
   payload: AppointmentPayload,
   source = 'manual',
 ): Prisma.AppointmentCreateManyInput[] {
-  const {
-    recurrenceDates,
-    recurrenceGroupId,
-    date: _date,
-    ...base
-  } = payload;
+  const { recurrenceDates, recurrenceGroupId, date: _date, ...base } = payload;
 
   return recurrenceDates.map((occurrenceDate) => ({
     accountId,

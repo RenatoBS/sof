@@ -160,6 +160,7 @@ Sof/
 | Rotas admin | `admin/frontend/app/` |
 | Tema marketing/dashboard | `saas/frontend/src/theme/` |
 | Persona / copy do bot WA | `docs/brand.md`; `docs/bot-messages.md`; `saas/backend/src/whatsapp/bot-copy.ts` |
+| Subir stack local (API + web num terminal) | `scripts/dev-stack.js` — `npm run saas` / `npm run admin` na raiz |
 | Cloud VM bootstrap (QA envs + ngrok) | `.cursor/environment.json`; `scripts/cloud-vm-bootstrap.sh` |
 | CI / deploy por tag | `.github/workflows/` (`ci.yml`, `deploy-qa.yml`, `deploy-prod.yml`); `.github/actions/heroku-deploy/`; `scripts/release-tag.sh` |
 

@@ -159,6 +159,9 @@ model Client {
   botPausedPermanent  Boolean   @default(false)
   /// Mute temporário: bot silencioso enquanto > now()
   botPausedUntil      DateTime?
+  /// Pausa aplicada pela própria Sof (alerta de atendimento / resposta humana).
+  /// Só a pausa automática é desfeita quando o cliente chama pela Sof.
+  botPausedAuto       Boolean   @default(false)
   /// Falhas consecutivas do bot (escalonamento humano)
   botUnresolvedCount  Int       @default(0)
   createdAt           DateTime  @default(now())

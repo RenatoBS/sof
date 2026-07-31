@@ -18,11 +18,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
 import { normalizePhone } from '../common/phone';
-import { isAccountBotPaused, isClientBotPaused } from '../clients/client-bot-pause';
+import {
+  isAccountBotPaused,
+  isClientBotPaused,
+} from '../clients/client-bot-pause';
 import { WhatsappApiService } from './whatsapp-api.service';
 import { WhatsappBotService } from './whatsapp-bot.service';
 import { WhatsappEmployeeBotService } from './whatsapp-employee-bot.service';
 import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
+import { mentionsSof } from './sof-mention';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { hasFeature } from '../entitlements/feature-catalog';
 import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
@@ -121,7 +125,10 @@ export class WhatsappController {
   @Post('webhook')
   @HttpCode(200)
   @Throttle({ default: { limit: 120, ttl: 60 * 1000 } })
-  async webhook(@Req() req: Request, @Res({ passthrough: true }) _res: Response) {
+  async webhook(
+    @Req() req: Request,
+    @Res({ passthrough: true }) _res: Response,
+  ) {
     const { valid, skipped } = this.api.verifySignature(
       req as Request & { rawBody?: Buffer },
     );
@@ -251,8 +258,9 @@ export class WhatsappController {
         return;
       }
 
-      const openaiApiKey =
-        (this.config.get<string>('whatsapp.openaiApiKey') || '').trim();
+      const openaiApiKey = (
+        this.config.get<string>('whatsapp.openaiApiKey') || ''
+      ).trim();
       if (!openaiApiKey) {
         await this.api.sendText(
           customerPhone,
@@ -329,7 +337,9 @@ export class WhatsappController {
       event,
     });
     if (isDuplicateWebhook(dedupeKey)) {
-      console.warn(`[whatsapp] Webhook duplicado ignorado (${dedupeKey.slice(0, 48)})`);
+      console.warn(
+        `[whatsapp] Webhook duplicado ignorado (${dedupeKey.slice(0, 48)})`,
+      );
       return;
     }
 
@@ -345,7 +355,7 @@ export class WhatsappController {
       return;
     }
 
-    if (await this.shouldSilenceIncoming(account, customerPhone)) {
+    if (await this.shouldSilenceIncoming(account, customerPhone, text)) {
       return;
     }
 
@@ -418,6 +428,23 @@ export class WhatsappController {
     });
   }
 
+  /**
+   * Caso virou humano: a Sof cala a boca por 1h para não atropelar a equipe.
+   * Vale só para cliente — o bot do profissional é operacional e continua.
+   * Sem alerta (plano sem `handoffs`) não há pausa.
+   */
+  private async pauseAfterHandoff(
+    opts: { accountId: string; customerPhone: string },
+    party: 'client' | 'employee',
+    opened: { created: boolean } | null,
+  ) {
+    if (party !== 'client' || !opened) return;
+    await this.handoffs.pauseClientBot({
+      accountId: opts.accountId,
+      phone: opts.customerPhone,
+    });
+  }
+
   private async afterBotResult(opts: {
     accountId: string;
     customerPhone: string;
@@ -433,7 +460,7 @@ export class WhatsappController {
     );
     const party = employee ? 'employee' : 'client';
     const partyOpts = {
-      party: party as 'client' | 'employee',
+      party: party,
       employeeId: employee?.id,
       displayName: employee?.name,
     };
@@ -456,6 +483,7 @@ export class WhatsappController {
           .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
           .catch(() => undefined);
       }
+      await this.pauseAfterHandoff(opts, party, opened);
       return { handoffOpened: Boolean(opened?.created) };
     }
 
@@ -478,6 +506,7 @@ export class WhatsappController {
             .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
             .catch(() => undefined);
         }
+        await this.pauseAfterHandoff(opts, party, opened);
         return { handoffOpened: Boolean(opened?.created) };
       }
       return { handoffOpened: false };
@@ -519,7 +548,9 @@ export class WhatsappController {
   private isUazapiAudioMessage(
     message: NonNullable<UazapiWebhookBody['message']>,
   ) {
-    const kind = String(message.messageType || message.type || '').toLowerCase();
+    const kind = String(
+      message.messageType || message.type || '',
+    ).toLowerCase();
     return kind.includes('audio') || kind.includes('ptt');
   }
 
@@ -578,7 +609,7 @@ export class WhatsappController {
           if (!account || !message.from) continue;
           const text = this.extractMetaSelection(message);
           if (!text) continue;
-          if (await this.shouldSilenceIncoming(account, message.from)) {
+          if (await this.shouldSilenceIncoming(account, message.from, text)) {
             continue;
           }
           const result = await this.bot.handleIncomingMessage({
@@ -636,15 +667,30 @@ export class WhatsappController {
 
   /** Profissionais usam o bot mesmo com pausa de cliente/conta (agenda operacional). */
   private async shouldSilenceIncoming(
-    account: { id: string; botPausedPermanent?: boolean; botPausedUntil?: Date | null },
+    account: {
+      id: string;
+      botPausedPermanent?: boolean;
+      botPausedUntil?: Date | null;
+    },
     rawPhone: string,
+    text?: string,
   ) {
     const phone = normalizePhone(rawPhone) || this.extractPhone(rawPhone);
     if (phone && (await this.employeeBot.findEmployee(account.id, phone))) {
       return false;
     }
     if (isAccountBotPaused(account)) return true;
-    return this.isBotPausedForPhone(account.id, rawPhone);
+    if (!(await this.isBotPausedForPhone(account.id, rawPhone))) return false;
+
+    // Chamou pela Sof: desfaz a pausa automática e recomeça a conversa.
+    if (!text || !mentionsSof(text)) return true;
+    const resumed = await this.handoffs.resumeAutoPausedClient(
+      account.id,
+      phone || rawPhone,
+    );
+    if (!resumed) return true;
+    await this.bot.resetClientSession(account.id, phone || rawPhone);
+    return false;
   }
 
   private async resolveAccount(opts: {
@@ -695,9 +741,7 @@ export class WhatsappController {
     @Req() req: AuthedRequest,
     @Body() body: { customerPhone?: string; message?: string },
   ) {
-    const customerPhone = String(
-      body?.customerPhone || '5511999990000',
-    ).trim();
+    const customerPhone = String(body?.customerPhone || '5511999990000').trim();
     const text = String(body?.message || '').trim();
     if (!text) {
       throw new BadRequestException({
@@ -705,7 +749,7 @@ export class WhatsappController {
       });
     }
 
-    if (await this.shouldSilenceIncoming(req.account, customerPhone)) {
+    if (await this.shouldSilenceIncoming(req.account, customerPhone, text)) {
       return {
         replies: [
           isAccountBotPaused(req.account)

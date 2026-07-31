@@ -1,12 +1,23 @@
 import { Redirect, Slot, router, usePathname } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
-import { SofButton, SofLoadingGate } from '@/src/components/ui';
+import {
+  SofButton,
+  SofIconAction,
+  SofLoadingGate,
+} from '@/src/components/ui';
 import { BusinessLogo } from '@/src/components/BusinessLogo';
 import { d } from '@/src/theme/dashboard';
 
 function EmployeeChrome({ children }: { children: React.ReactNode }) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 720;
   const { employee, loading, logout } = useEmployeeAuth();
   const pathname = usePathname();
   const onChangePassword = pathname.includes('change-password');
@@ -29,19 +40,24 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.root}>
       <View style={styles.topbar}>
-        <View style={styles.topbarInner}>
+        <View
+          style={[styles.topbarInner, isCompact && styles.topbarInnerCompact]}
+        >
           <View style={styles.brandBlock}>
             <BusinessLogo
               uri={employee.logoBase64}
               initials={employee.businessName}
-              size={40}
+              size={isCompact ? 36 : 40}
             />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.biz} numberOfLines={1}>
+              <Text
+                style={[styles.biz, isCompact && styles.bizCompact]}
+                numberOfLines={1}
+              >
                 {employee.businessName}
               </Text>
-              <Text style={styles.email} numberOfLines={1}>
-                {employee.name} · {employee.email}
+              <Text style={styles.who} numberOfLines={1}>
+                {employee.name}
               </Text>
             </View>
           </View>
@@ -62,10 +78,9 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
                 onPress={() => router.push('/(employee)/agenda')}
               />
             ) : null}
-            <SofButton
-              title="Sair"
-              variant="light"
-              theme="dashboard"
+            <SofIconAction
+              action="logout"
+              forceCompact
               onPress={async () => {
                 await logout();
                 router.replace('/login');
@@ -74,7 +89,9 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
           </View>
         </View>
       </View>
-      <View style={styles.main}>{children}</View>
+      <View style={[styles.main, isCompact && styles.mainCompact]}>
+        {children}
+      </View>
     </View>
   );
 }
@@ -100,17 +117,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
     gap: 12,
   },
+  topbarInnerCompact: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  // Sem wrap e podendo encolher: os nomes truncam e as ações ficam na mesma linha.
   brandBlock: {
     flex: 1,
-    minWidth: 180,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 8,
+  },
   biz: {
     fontSize: 22,
     fontWeight: '700',
@@ -118,6 +145,8 @@ const styles = StyleSheet.create({
     fontFamily: d.fonts.displayBold,
     letterSpacing: -0.3,
   },
-  email: { fontSize: 14, color: d.muted, marginTop: 4, fontFamily: d.fonts.body },
+  bizCompact: { fontSize: 18 },
+  who: { fontSize: 14, color: d.muted, marginTop: 4, fontFamily: d.fonts.body },
   main: { flex: 1, padding: 32 },
+  mainCompact: { padding: 16 },
 });

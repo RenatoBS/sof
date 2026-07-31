@@ -21,11 +21,7 @@ describe('reminder-window', () => {
   });
 
   it('converte horário de parede SP para UTC (UTC-3)', () => {
-    const utc = zonedWallTimeToUtc(
-      '2026-07-21',
-      '15:00',
-      'America/Sao_Paulo',
-    );
+    const utc = zonedWallTimeToUtc('2026-07-21', '15:00', 'America/Sao_Paulo');
     expect(utc).not.toBeNull();
     // 15:00 BRT = 18:00 UTC
     expect(utc!.toISOString()).toBe('2026-07-21T18:00:00.000Z');

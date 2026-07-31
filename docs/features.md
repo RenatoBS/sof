@@ -109,13 +109,13 @@ Seed: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@sof.com`).
 
 ## Painel (dashboard)
 
-Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label** por seção (Agenda, Profissionais, Serviços, Clientes, Atendimentos, Faturamento, Conta).
+Shell: topbar (negócio + email + **Sair como ícone**, igual ao portal do profissional — `SofIconAction action="logout"`) + abas horizontais com **ícone + label** por seção (Agenda, Profissionais, Serviços, Clientes, Atendimentos, Faturamento, Conta).
 
 ### Agenda
 
 - **Desktop (≥720px):** grade semanal por profissional × dia (**Separada**) ou uma linha com todos os horários (**Unificada**).  
-- **Celular (<720px):** seletor de dia (chips Dom–Sáb) + lista por profissional (**Separada**) ou lista única do dia com nome do profissional (**Unificada**).  
-- Toggle **Separada / Unificada** na toolbar (preferência em `localStorage`).  
+- **Celular (<720px):** seletor de dia (chips Dom–Sáb) + lista por profissional (**Separada**) ou lista única do dia com nome do profissional (**Unificada**). Os 7 chips **dividem a largura** (sem scroll horizontal), o cabeçalho fica em coluna (título e período em cima, controles **centralizados** embaixo) e o período perde o ano (`26/07 a 01/08`). Vale igual na agenda do profissional.
+- Toggle **Separada / Unificada** na toolbar (preferência em `localStorage`); no celular, centralizado acima da navegação de semana.
 - Cards de horário **não mostram preço** (só horário, cliente/serviço; na unificada, também o profissional).  
 - Navegação: semana anterior / hoje / próxima.  
 - Clique numa célula (ou “+ Agendar”) abre o modal; clique num horário edita.  
@@ -151,6 +151,9 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 - **Definir senha (convite/reset profissional):** `/employee/set-password?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).
 - **Definir senha (conta):** `/set-password?token=` — `GET/POST /api/auth/password-setup`.
 - Portal `/(employee)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.
+- Chrome do portal: topbar com logo + nome do negócio e, abaixo, **só o nome do profissional** (sem e-mail); à direita, sempre na mesma linha, o botão Suporte (ou Agenda, quando já está em Suporte) e **Sair como ícone** (`SofIconAction action="logout"`, `accessibilityLabel` “Sair”). Em telas estreitas os nomes truncam em vez de empurrar as ações para baixo. Segue o breakpoint de 720px do painel do dono (padding 16 em vez de 32, logo e nome do negócio menores).
+- Suporte (`/(employee)/support`, botão na topbar): **abre ticket**, comenta e muda status dos tickets do estabelecimento — ver [Suporte](#suporte).
+- Card de horário mostra **hora, cliente e serviço** (eventos `kind=block` seguem só com o título); o painel de detalhe traz a linha `Serviço:`. O nome vem de `serviceName` em `GET /api/employee/appointments`, com fallback no catálogo local (agendamento recém-criado pelo modal ainda não passou pela API de listagem).
 - Pode **marcar como concluído** (`POST /api/employee/appointments/:id/complete`) **somente dentro da janela** [início, fim] do atendimento; conclusão antecipada libera o restante do slot.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
 - Se `mustChangePassword` (legado), redireciona para `/(employee)/change-password` (exige senha atual).
@@ -169,8 +172,9 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 - Criação e edição em **modal** (padrão agenda).  
 - Form front (aba Clientes e cadastro rápido no `ClientPicker` da agenda): máscara `(11) 99999-0000` + validação por campo (nome, telefone 10–15 dígitos).  
 - Na **edição**: pausar o bot WhatsApp para aquele cliente — **Bot ativo**, timer (1 h / 8 h / 24 h / 7 dias) ou **Permanente**.  
-- Badge na lista: **Bot off** (permanente) ou **Bot pausado até …** (temporário).  
-- Enquanto pausado, o webhook **não responde** (silêncio). Só vale para `Client` cadastrado (mesmo telefone da conversa).
+- Badge na lista: **Bot desligado** (permanente) ou **Pausado até …** (temporário). A pausa automática aparece mesmo em plano sem o entitlement `botPause` — é estado do sistema, não ação do dono — com a nota “Sof saiu da conversa — a equipe assumiu”.  
+- Enquanto pausado, o webhook **não responde** (silêncio). Só vale para `Client` cadastrado (mesmo telefone da conversa).  
+- A pausa também pode vir da própria Sof (ver Atendimentos). `Client.botPausedAuto` separa as duas origens e o badge atualiza em tempo real via SSE `client:updated`.
 
 ### Atendimentos (escalonamento humano)
 
@@ -178,10 +182,12 @@ Shell: topbar (negócio + email + Sair) + abas horizontais com **ícone + label*
 - Alerta abre quando: (a) o interlocutor **pede atendente explicitamente** (regex + intent `human` do NLU) — imediato; ou (b) o bot responde "não entendi" **N vezes seguidas** (default 2; configurável na aba: 1 / 2 / 3 / 5, salvo em `Account.whatsappHandoffThreshold`). Vale para **cliente** e **profissional**.  
 - Cada card mostra badge **Cliente** (azul) ou **Profissional** (lilás), nome/telefone, motivo (Pediu atendente / Bot não entendeu), última mensagem e desde quando; botões **Abrir no WhatsApp** (WhatsApp Web no navegador, `wa.me` no celular) e **Marcar resolvido**.  
 - Quando o alerta abre, a pessoa recebe no WhatsApp: "Avisei a equipe — alguém vai te responder por aqui em breve."  
+- **Cliente: alerta pausa o bot 1 h** (`Client.botPausedUntil` + `botPausedAuto`), nos dois motivos. Depois de avisar que vai chamar a equipe, a Sof sai da conversa para não atropelar quem for responder; a pausa aparece na aba **Clientes** na hora (SSE `client:updated`). Profissional não é pausado (bot operacional). Plano sem `handoffs` não abre alerta e, portanto, não pausa.  
+- **Voltar antes da hora:** se o cliente **chamar pela Sof** (“Sof”, “oi Sof, quero marcar”), a pausa automática cai, a conversa recomeça do menu e o bot responde. Só desfaz pausa automática — a que o dono definiu na aba Clientes e a pausa da conta inteira continuam valendo. Áudio não desfaz (a transcrição só roda depois da checagem de pausa). O alerta segue aberto até alguém marcar como resolvido.  
 - **Resposta humana** (mensagem `fromMe` que não veio da API — celular ou WhatsApp Web): em **cliente**, pausa o bot **1 h** (`Client.botPausedUntil`), zera o contador e resolve o alerta; em **profissional**, só resolve o alerta e zera `Employee.botUnresolvedCount` (sem pausar o bot operacional).  
 - Intents `cancel`/`list`/`book` do NLU (cliente) e intents operacionais do prof continuam pelo bot — só o pedido explícito por humano escala na hora.  
 - Modelo: `WhatsappHandoff.party` (`client` | `employee`) + `employeeId` opcional.  
-- API: `GET /api/whatsapp-handoffs` (`?status=open|resolved`), `GET/PUT …/settings`, `POST …/:id/resolve`. SSE: `whatsapp-handoff:opened|updated|resolved`.
+- API: `GET /api/whatsapp-handoffs` (`?status=open|resolved`), `GET/PUT …/settings`, `POST …/:id/resolve`. SSE: `whatsapp-handoff:opened|updated|resolved` + `client:updated` (pausa).
 
 ### Faturamento
 
@@ -204,8 +210,9 @@ Layout em duas colunas em telas ≥ 900px (`maxWidth` ~1040, gap uniforme por co
 ### Suporte
 
 - Em **Conta → Abrir suporte** (não há mais aba no menu): abrir ticket (`title` + `description`), listar, comentar e mudar status (`open` | `in_progress` | `resolved` | `closed`). Rota `/(dashboard)/support` com botão “Voltar à Conta”.
-- Portal do profissional: ver tickets da conta, comentar e mudar status (não abre ticket novo).
-- Admin Sof: lista (filtro abertos por padrão), detalhe, responder e status.
+- Portal do profissional (`/(employee)/support`): **abre ticket** (mesmo `POST /api/tickets`), vê os tickets do estabelecimento, comenta e muda status. O ticket criado por profissional grava `createdByRole=employee` + `createdByEmployeeId`, então aparece com o nome dele na lista do tenant e no admin. A visibilidade é da conta inteira: qualquer profissional com login vê os tickets do estabelecimento, inclusive os abertos pelo dono.
+- **Status final trava o tenant:** ticket em `resolved` ou `closed` não pode mais ter o status alterado pela conta nem pelo profissional — só o admin Sof reabre. O `PATCH …/status` do produto responde **403** nesse caso; a UI troca os botões de status por um aviso e o tenant segue podendo comentar para pedir reabertura.
+- Admin Sof: lista (filtro abertos por padrão), detalhe, responder e status — sem restrição de transição.
 - API produto: `GET/POST /api/tickets`, `GET /api/tickets/:id`, `POST …/comments`, `PATCH …/status` — `TenantAuthGuard` (conta **ou** profissional).
 
 ## WhatsApp (bot)
@@ -227,7 +234,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 
 ### Fluxo do cliente
 - Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
-- **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** (mín. 2 palavras) antes do menu de serviços.  
+- **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** antes do menu de serviços. Se vier só o primeiro nome, a Sof pede o sobrenome **uma única vez** (“Pedro, pode me informar seu sobrenome? É para eu cadastrar seu contato.”); qualquer resposta depois disso segue o fluxo — repetiu o nome ou mandou outra coisa, cadastra só com o primeiro nome. Saudação e rodeio são descartados (“oi, meu nome é Ana Silva” → `Ana Silva`) e o nome é gravado com caixa normalizada (`ANA SILVA` → `Ana Silva`). Só quando a mensagem não tem nome nenhum (“bom dia”, “123”) a Sof repergunta, e aí conta para o escalonamento da aba Atendimentos.  
 - **Menu inicial:** se o cliente já tem agendamento **futuro** (`scheduled`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
 - **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher). Matching por texto aceita nome parcial, sem acento e título truncado do WhatsApp; no menu o botão usa o 1º nome quando é único.  
 - **Dia e horário (duas perguntas):** 1) Hoje, Amanhã (só se houver vaga) ou Outra data (`dd/mm`); 2) até 5 horários livres daquele dia + **Outro horário** (`hh:mm`).  
@@ -238,7 +245,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Endereço:** se cadastrado em Conta, o bot responde a perguntas (“onde fica” / endereço) e inclui na **confirmação** do agendamento (e no lembrete). **Não** entra na saudação.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
 - **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para **clientes** até a data ou até reativar (profissionais cadastrados continuam no fluxo operacional).  
-- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos**; resposta humana pelo WhatsApp pausa o bot **1 h** para aquele cliente (`Client.botPausedUntil`), zera o contador e resolve o alerta (ver seção Atendimentos acima).  
+- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos** e pausam o bot **1 h** para aquele cliente (`Client.botPausedUntil` + `botPausedAuto`); resposta humana pelo WhatsApp faz o mesmo e ainda resolve o alerta. Chamar pela **Sof** durante a pausa automática traz o bot de volta e recomeça do menu (ver seção Atendimentos acima).  
 - **Lembrete automático:** se `whatsappReminderMinutes > 0` e a instância está conectada, um job a cada 30 min avisa o cliente no WhatsApp antes do horário (1× por agendamento; fuso = `Account.timezone`). A confirmação do bot só promete lembrete quando a antecedência está ativa.  
 - **Aviso ao profissional:** ao criar agendamento `kind=service` (bot do cliente ou painel da conta), a conta envia WhatsApp ao telefone do profissional (`EmployeeBookingNotifyService`) com cliente, serviço e horário. Não envia se o próprio profissional criou (portal/bot operacional), se WhatsApp da conta estiver desconectado, ou se o telefone do prof for inválido. Falha de envio só no log — não bloqueia o agendamento.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  

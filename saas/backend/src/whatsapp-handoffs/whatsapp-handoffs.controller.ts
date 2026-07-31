@@ -23,10 +23,7 @@ export class WhatsappHandoffsController {
   ) {}
 
   @Get()
-  async list(
-    @Req() req: AuthedRequest,
-    @Query('status') status?: string,
-  ) {
+  async list(@Req() req: AuthedRequest, @Query('status') status?: string) {
     await this.entitlements.assertFeature(req.account.id, 'handoffs');
     const handoffs = await this.handoffs.list(req.account.id, status);
     return { handoffs };

@@ -144,7 +144,8 @@ export class RemindersService {
       return 'skipped';
     }
 
-    const phone = normalizePhone(row.clientPhone) || row.clientPhone.replace(/\D/g, '');
+    const phone =
+      normalizePhone(row.clientPhone) || row.clientPhone.replace(/\D/g, '');
     if (!phone || phone.length < 10) return 'skipped';
 
     const claimed = await this.tryClaim(row.id, now);
@@ -161,11 +162,7 @@ export class RemindersService {
     });
 
     try {
-      await this.whatsapp.sendText(
-        phone,
-        message,
-        row.whatsappInstanceToken,
-      );
+      await this.whatsapp.sendText(phone, message, row.whatsappInstanceToken);
       await this.prisma.appointment.update({
         where: { id: row.id },
         data: { reminderSentAt: now },

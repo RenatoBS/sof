@@ -54,7 +54,7 @@ export class StripeService {
         },
       },
       integration_identifier: `sof-checkout-${integrationSuffix}`,
-    } as Stripe.Checkout.SessionCreateParams);
+    });
 
     if (!session.url) {
       throw new Error('Stripe não retornou URL de checkout.');

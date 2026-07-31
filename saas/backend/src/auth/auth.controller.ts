@@ -21,11 +21,7 @@ import {
   isValidAccountPassword,
   verifyPassword,
 } from '../common/password';
-import {
-  COOKIE_NAME,
-  cookieOptions,
-  signAccountToken,
-} from '../common/token';
+import { COOKIE_NAME, cookieOptions, signAccountToken } from '../common/token';
 import { publicAccount } from '../common/public-shapes';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { PromoCouponsService } from '../promo-coupons/promo-coupons.service';

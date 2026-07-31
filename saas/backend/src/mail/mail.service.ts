@@ -49,8 +49,8 @@ export class MailService {
     );
     return Boolean(
       (this.config.get<string>('mail.host') || '').trim() &&
-        (this.config.get<string>('mail.user') || '').trim() &&
-        pass,
+      (this.config.get<string>('mail.user') || '').trim() &&
+      pass,
     );
   }
 

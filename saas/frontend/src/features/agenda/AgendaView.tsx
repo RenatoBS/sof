@@ -26,6 +26,11 @@ function localDateStr(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** Em tela estreita o ano só rouba linha do subtítulo. */
+function shortDate(date: Date) {
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+}
+
 function getWeekDates(offset: number) {
   const today = new Date();
   const first = today.getDate() - today.getDay() + offset * 7;
@@ -184,12 +189,28 @@ export function AgendaView({
     );
   };
 
-  const weekLabel = `${weekDates[0].toLocaleDateString('pt-BR')} a ${weekDates[6].toLocaleDateString('pt-BR')}`;
+  const weekLabel = isCompact
+    ? `${shortDate(weekDates[0])} a ${shortDate(weekDates[6])}`
+    : `${weekDates[0].toLocaleDateString('pt-BR')} a ${weekDates[6].toLocaleDateString('pt-BR')}`;
+
+  const weekNav = [
+    {
+      key: 'prev',
+      title: isCompact ? 'Ant.' : 'Semana Anterior',
+      onPress: () => setWeekOffset((w) => w - 1),
+    },
+    { key: 'today', title: 'Hoje', onPress: () => setWeekOffset(0) },
+    {
+      key: 'next',
+      title: isCompact ? 'Próx.' : 'Próxima Semana',
+      onPress: () => setWeekOffset((w) => w + 1),
+    },
+  ];
 
   return (
     <View style={{ gap: isCompact ? 20 : 32 }}>
       <View style={[styles.panelHead, isCompact && styles.panelHeadCompact]}>
-        <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={styles.headCopy}>
           <Text style={[styles.h2, isCompact && styles.h2Compact]}>
             Agenda Semanal
           </Text>
@@ -199,7 +220,7 @@ export function AgendaView({
               : `${weekLabel} — clique numa célula para agendar ou em um horário para editar`}
           </Text>
         </View>
-        <View style={styles.toolbar}>
+        <View style={[styles.toolbar, isCompact && styles.toolbarCompact]}>
           <View style={styles.viewToggle}>
             <Pressable
               onPress={() => setMode('separated')}
@@ -232,24 +253,17 @@ export function AgendaView({
               </Text>
             </Pressable>
           </View>
-          <SofButton
-            title={isCompact ? 'Ant.' : 'Semana Anterior'}
-            variant="light"
-            theme="dashboard"
-            onPress={() => setWeekOffset((w) => w - 1)}
-          />
-          <SofButton
-            title="Hoje"
-            variant="light"
-            theme="dashboard"
-            onPress={() => setWeekOffset(0)}
-          />
-          <SofButton
-            title={isCompact ? 'Próx.' : 'Próxima Semana'}
-            variant="light"
-            theme="dashboard"
-            onPress={() => setWeekOffset((w) => w + 1)}
-          />
+          <View style={[styles.weekNav, isCompact && styles.weekNavCompact]}>
+            {weekNav.map((item) => (
+              <SofButton
+                key={item.key}
+                title={item.title}
+                variant="light"
+                theme="dashboard"
+                onPress={item.onPress}
+              />
+            ))}
+          </View>
         </View>
       </View>
 
@@ -262,11 +276,7 @@ export function AgendaView({
         </View>
       ) : isCompact ? (
         <View style={styles.compactRoot}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.dayStrip}
-          >
+          <View style={styles.dayStrip}>
             {weekDates.map((day) => {
               const ds = localDateStr(day);
               const isToday = ds === todayStr;
@@ -289,6 +299,7 @@ export function AgendaView({
                   accessibilityState={{ selected: active }}
                 >
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.dayChipDow,
                       active && styles.dayChipTextActive,
@@ -319,7 +330,7 @@ export function AgendaView({
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
 
           {merged ? (
             <View style={styles.empCard}>
@@ -616,9 +627,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 16,
   },
+  // Em coluna o título ocupa a linha inteira e não é comprimido pela toolbar.
   panelHeadCompact: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 12,
   },
+  headCopy: { flex: 1, minWidth: 0 },
   h2: {
     fontSize: 28,
     fontWeight: '700',
@@ -640,6 +655,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
   },
+  // `width: '100%'` (e não `alignSelf: 'stretch'`) é o que garante a linha inteira
+  // para centrar toggle e navegação — stretch só valeria no eixo cruzado do cabeçalho.
+  toolbarCompact: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '100%',
+    flexWrap: 'nowrap',
+    gap: 8,
+  },
+  weekNav: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    alignItems: 'center',
+  },
+  weekNavCompact: { justifyContent: 'center', gap: 8 },
   viewToggle: {
     flexDirection: 'row',
     backgroundColor: '#f1f5f9',
@@ -675,16 +706,17 @@ const styles = StyleSheet.create({
   },
   emptyText: { color: d.muted },
   compactRoot: { gap: 16 },
+  // A semana inteira cabe na largura: nenhum dia fica escondido atrás de scroll.
   dayStrip: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     paddingVertical: 2,
-    paddingRight: 8,
   },
   dayChip: {
-    width: 56,
+    flex: 1,
+    minWidth: 0,
     paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingHorizontal: 2,
     borderRadius: d.radiusSm,
     backgroundColor: '#f1f5f9',
     alignItems: 'center',

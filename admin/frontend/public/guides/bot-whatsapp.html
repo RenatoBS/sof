@@ -101,7 +101,9 @@
         <h3>1º contato</h3>
         <p>
           Se o telefone ainda não é cliente, a Sof pede
-          <strong>nome e sobrenome</strong> (mín. 2 palavras) antes do menu.
+          <strong>nome e sobrenome</strong> antes do menu. Veio só o primeiro
+          nome? Ela pede o sobrenome <strong>uma vez</strong> e segue o fluxo
+          com qualquer resposta — sem ficar repetindo a pergunta.
         </p>
         <div class="chat" aria-label="Exemplo 1º contato">
           <div class="bubble user">Oi<span class="meta">cliente</span></div>
@@ -109,7 +111,13 @@
             Oi. Aqui é a Sof, do Santa Madalena. Qual é o seu nome e sobrenome?
             <span class="meta">sof</span>
           </div>
-          <div class="bubble user">Ana Souza<span class="meta">cliente</span></div>
+          <div class="bubble user">Ana<span class="meta">cliente</span></div>
+          <div class="bubble bot">
+            Ana, pode me informar seu sobrenome? É para eu cadastrar seu
+            contato.
+            <span class="meta">sof</span>
+          </div>
+          <div class="bubble user">Souza<span class="meta">cliente</span></div>
           <div class="bubble bot">
             Oi, Ana. Aqui é a Sof, do Santa Madalena.
             <span class="meta">sof</span>

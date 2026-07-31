@@ -155,21 +155,22 @@ export class AccountWhatsappController {
   }
 
   @Post('connect')
-  async connect(
-    @Req() req: AuthedRequest,
-    @Body() body: { phone?: string },
-  ) {
+  async connect(@Req() req: AuthedRequest, @Body() body: { phone?: string }) {
     this.ensureUazapiPairing();
 
     const ents = await this.entitlements.forAccount(req.account.id);
     const waLimit = this.entitlements.effectiveWhatsappLimit(ents);
     const alreadyLinked = Boolean(
       req.account.whatsappConnectedAt ||
-        req.account.whatsappInstanceToken ||
-        req.account.whatsappPhoneNumberId,
+      req.account.whatsappInstanceToken ||
+      req.account.whatsappPhoneNumberId,
     );
     if (!alreadyLinked && waLimit < 1) {
-      await this.entitlements.assertLimit(req.account.id, 'maxWhatsappNumbers', 0);
+      await this.entitlements.assertLimit(
+        req.account.id,
+        'maxWhatsappNumbers',
+        0,
+      );
     }
 
     const phone =
@@ -289,8 +290,7 @@ export class AccountWhatsappController {
     }
 
     if (linked && !account.whatsappConnectedAt) {
-      const instanceId =
-        live.instanceId || account.whatsappPhoneNumberId || '';
+      const instanceId = live.instanceId || account.whatsappPhoneNumberId || '';
       await this.prisma.account.update({
         where: { id: account.id },
         data: {

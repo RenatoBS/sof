@@ -5,6 +5,8 @@
   "scripts": {
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "saas": "node scripts/dev-stack.js saas",
+    "admin": "node scripts/dev-stack.js admin",
     "backend:dev": "npm run start:dev --prefix saas/backend",
     "backend:migrate": "npm run prisma:migrate --prefix saas/backend",
     "backend:seed": "npm run prisma:seed --prefix saas/backend",

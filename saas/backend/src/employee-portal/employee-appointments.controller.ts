@@ -48,8 +48,14 @@ export class EmployeeAppointmentsController {
         status: { in: [...APPT_AGENDA_VISIBLE] },
       },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
+      include: { service: { select: { name: true } } },
     });
-    return { appointments: appointments.map((a) => serializeDates(a)) };
+    return {
+      appointments: appointments.map(({ service, ...appointment }) => ({
+        ...serializeDates(appointment),
+        serviceName: service?.name ?? null,
+      })),
+    };
   }
 
   @Post('appointments')
@@ -66,7 +72,7 @@ export class EmployeeAppointmentsController {
     if ('error' in parsed) {
       throw new BadRequestException({ error: parsed.error });
     }
-    const data = parsed as AppointmentPayload;
+    const data = parsed;
     const rows = appointmentCreateRows(req.account.id, data);
 
     const created = await this.prisma.$transaction(

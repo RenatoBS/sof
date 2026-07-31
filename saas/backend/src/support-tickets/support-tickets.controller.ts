@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   NotFoundException,
   Param,
@@ -12,11 +13,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantAuthGuard, type TenantAuthedRequest } from './tenant-auth.guard';
 import {
-  TenantAuthGuard,
-  type TenantAuthedRequest,
-} from './tenant-auth.guard';
-import {
+  isLockedTicketStatus,
   isTicketStatus,
   publicComment,
   publicTicket,
@@ -53,11 +52,6 @@ export class SupportTicketsController {
     @Req() req: TenantAuthedRequest,
     @Body() body: { title?: string; description?: string },
   ) {
-    if (req.actor.role !== 'account') {
-      throw new BadRequestException({
-        error: 'Apenas a conta do estabelecimento pode abrir tickets.',
-      });
-    }
     const title = String(body?.title || '').trim();
     const description = String(body?.description || '').trim();
     if (!title || title.length > 160) {
@@ -77,8 +71,9 @@ export class SupportTicketsController {
         title,
         description,
         status: 'open',
-        createdByRole: 'account',
-        createdByEmployeeId: null,
+        createdByRole: req.actor.role,
+        createdByEmployeeId:
+          req.actor.role === 'employee' ? req.actor.employeeId : null,
       },
       include: ticketDetailInclude,
     });
@@ -156,10 +151,16 @@ export class SupportTicketsController {
 
     const existing = await this.prisma.supportTicket.findFirst({
       where: { id, accountId: req.account.id },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!existing) {
       throw new NotFoundException({ error: 'Ticket não encontrado.' });
+    }
+    if (isLockedTicketStatus(existing.status)) {
+      throw new ForbiddenException({
+        error:
+          'Ticket resolvido ou fechado: só a equipe Sof pode alterar o status. Comente no ticket para pedir a reabertura.',
+      });
     }
 
     const ticket = await this.prisma.supportTicket.update({

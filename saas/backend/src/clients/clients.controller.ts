@@ -64,22 +64,39 @@ export class ClientsController {
     return { name, phone };
   }
 
+  /**
+   * Pausa definida pelo dono. Sempre grava `botPausedAuto: false` — assim o
+   * cliente chamando pela Sof no WhatsApp não desfaz o que o dono decidiu.
+   */
   private parseBotPause(body: ClientWriteBody): {
     botPausedPermanent: boolean;
     botPausedUntil: Date | null;
+    botPausedAuto: boolean;
   } {
     const permanent = Boolean(body.botPausedPermanent);
     if (permanent) {
-      return { botPausedPermanent: true, botPausedUntil: null };
+      return {
+        botPausedPermanent: true,
+        botPausedUntil: null,
+        botPausedAuto: false,
+      };
     }
 
     if (body.botPausedUntil === null || body.botPausedUntil === '') {
-      return { botPausedPermanent: false, botPausedUntil: null };
+      return {
+        botPausedPermanent: false,
+        botPausedUntil: null,
+        botPausedAuto: false,
+      };
     }
 
     if (body.botPausedUntil === undefined) {
       // Campo omitido no create — defaults
-      return { botPausedPermanent: false, botPausedUntil: null };
+      return {
+        botPausedPermanent: false,
+        botPausedUntil: null,
+        botPausedAuto: false,
+      };
     }
 
     const until = new Date(String(body.botPausedUntil));
@@ -93,7 +110,11 @@ export class ClientsController {
         error: 'A pausa temporária precisa ser uma data/hora no futuro.',
       });
     }
-    return { botPausedPermanent: false, botPausedUntil: until };
+    return {
+      botPausedPermanent: false,
+      botPausedUntil: until,
+      botPausedAuto: false,
+    };
   }
 
   @Get()
@@ -137,19 +158,18 @@ export class ClientsController {
 
     const data = await this.parsePayload(req.account.id, body, existing.id);
     const pause =
-      body.botPausedPermanent !== undefined ||
-      body.botPausedUntil !== undefined
+      body.botPausedPermanent !== undefined || body.botPausedUntil !== undefined
         ? this.parseBotPause(body)
         : {
             botPausedPermanent: existing.botPausedPermanent,
             botPausedUntil: existing.botPausedUntil,
+            botPausedAuto: existing.botPausedAuto,
           };
     if (
       body.botPausedPermanent !== undefined ||
       body.botPausedUntil !== undefined
     ) {
-      const enabling =
-        pause.botPausedPermanent || pause.botPausedUntil != null;
+      const enabling = pause.botPausedPermanent || pause.botPausedUntil != null;
       if (enabling) {
         await this.entitlements.assertFeature(req.account.id, 'botPause');
       }
@@ -173,10 +193,7 @@ export class ClientsController {
   }
 
   @Delete(':clientId')
-  async remove(
-    @Req() req: AuthedRequest,
-    @Param('clientId') clientId: string,
-  ) {
+  async remove(@Req() req: AuthedRequest, @Param('clientId') clientId: string) {
     const existing = await this.prisma.client.findFirst({
       where: { id: clientId, accountId: req.account.id },
     });

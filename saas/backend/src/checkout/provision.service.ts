@@ -84,7 +84,7 @@ export class ProvisionService {
         planPrice: session.price,
         planId: planRow?.id ?? null,
         whatsappPhoneNumberId: '',
-        openingHours: DEFAULT_OPENING_HOURS as Prisma.InputJsonValue,
+        openingHours: DEFAULT_OPENING_HOURS,
         status: 'active',
         billingSource: 'paid',
         promoExpiresAt: null,

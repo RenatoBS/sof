@@ -43,7 +43,9 @@ export function parseRecurrenceInput(
     return { error: 'Recorrência inválida.' };
   }
   const row = raw as Record<string, unknown>;
-  const frequency = String(row.frequency || '').trim().toLowerCase();
+  const frequency = String(row.frequency || '')
+    .trim()
+    .toLowerCase();
   if (!frequency || frequency === 'none') return null;
   if (
     frequency !== 'daily' &&
@@ -73,7 +75,9 @@ export function expandRecurrenceDates(
   const start = parseDate(startDate);
   const until = parseDate(recurrence.until);
   if (until < start) {
-    return { error: 'A data final da recorrência deve ser após a data inicial.' };
+    return {
+      error: 'A data final da recorrência deve ser após a data inicial.',
+    };
   }
 
   const dates: string[] = [startDate];

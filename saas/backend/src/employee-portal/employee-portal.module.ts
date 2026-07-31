@@ -8,10 +8,7 @@ import { EmployeePasswordTokenService } from './employee-password-token.service'
 import { EmployeePasswordResetService } from './employee-password-reset.service';
 
 @Module({
-  imports: [
-    forwardRef(() => EventsModule),
-    forwardRef(() => WhatsappModule),
-  ],
+  imports: [forwardRef(() => EventsModule), forwardRef(() => WhatsappModule)],
   controllers: [EmployeeAuthController, EmployeeAppointmentsController],
   providers: [
     EmployeeAuthGuard,
