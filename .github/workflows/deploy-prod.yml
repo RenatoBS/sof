@@ -1,0 +1,136 @@
+name: Deploy Produção
+
+# Dispara ao criar/pushar uma tag terminada em -prod (ex. v1.4.0-prod).
+# Publica os quatro apps: API e web do produto + API e web do painel admin.
+on:
+  push:
+    tags:
+      - '*-prod'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validar ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir sufixo da tag
+        run: |
+          ref="${{ github.ref }}"
+          if [[ "$ref" == refs/tags/* ]]; then
+            tag="${ref#refs/tags/}"
+            if [[ "$tag" != *-prod ]]; then
+              echo "::error::Tag '$tag' não termina em -prod. Produção publica apenas tags *-prod."
+              exit 1
+            fi
+            echo "Publicando tag $tag em produção."
+          else
+            echo "::warning::Deploy manual a partir de '$ref' (não é tag *-prod)."
+          fi
+
+  ci:
+    name: CI
+    needs: validate
+    uses: ./.github/workflows/ci.yml
+    with:
+      environment: production
+
+  api:
+    name: deploy sof-solutions-api
+    needs: ci
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://api.sof.solutions
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Heroku rejeita push de clone shallow
+
+      - uses: ./.github/actions/heroku-deploy
+        with:
+          app: sof-solutions-api
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+          health-url: https://api.sof.solutions/api/health
+
+  # Migrations rodam no release phase da API do produto; os demais apps saem depois.
+  web:
+    name: deploy sof-solutions-web
+    needs: api
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://www.sof.solutions
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/heroku-deploy
+        with:
+          app: sof-solutions-web
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+          health-url: https://www.sof.solutions
+
+  admin-api:
+    name: deploy sof-solutions-admin-api
+    needs: api
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://sof-solutions-admin-api-28e60756b423.herokuapp.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/heroku-deploy
+        with:
+          app: sof-solutions-admin-api
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+          health-url: https://sof-solutions-admin-api-28e60756b423.herokuapp.com/api/health
+
+  admin-web:
+    name: deploy sof-solutions-admin-web
+    needs: api
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://painel-admin.sof.solutions
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/heroku-deploy
+        with:
+          app: sof-solutions-admin-web
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+          health-url: https://painel-admin.sof.solutions
+
+  summary:
+    name: resumo
+    needs: [api, web, admin-api, admin-web]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Escrever resumo
+        run: |
+          {
+            echo "## Deploy Produção"
+            echo ""
+            echo "| Item | Valor |"
+            echo "|------|-------|"
+            echo "| Ref | \`${{ github.ref_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| API | https://api.sof.solutions (${{ needs.api.result }}) |"
+            echo "| Web | https://www.sof.solutions (${{ needs.web.result }}) |"
+            echo "| Admin API | herokuapp (${{ needs['admin-api'].result }}) |"
+            echo "| Admin Web | https://painel-admin.sof.solutions (${{ needs['admin-web'].result }}) |"
+          } >> "$GITHUB_STEP_SUMMARY"

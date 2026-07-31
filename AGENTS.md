@@ -95,6 +95,7 @@ Browser / Expo Go                         Admin (web)
 - **Gate por plano:** keys no código; valores no admin; enforcement no backend; front via `account.entitlements`.
 - **WhatsApp:** Uazapi (default) com pareamento QR/código na Conta; Meta Cloud API opcional; simulador se desligado.
 - **Deploy atual:** Heroku prod (`saas/*` + `admin/*`) + QA SaaS (`sof-solutions-*-qa`, Supabase staging). `APP_BASE=saas/backend|saas/frontend|admin/backend|admin/frontend`.
+- **CI/CD:** GitHub Actions por tag — `*-stg` publica QA, `*-prod` publica produção (`npm run release:qa|release:prod`). CI roda em PR e antes de cada deploy.
 
 ---
 
@@ -104,6 +105,7 @@ Browser / Expo Go                         Admin (web)
 Sof/
 ├── AGENTS.md                 ← você está aqui (documento central)
 ├── README.md
+├── .github/                  ← CI e deploy por tag (workflows + action Heroku)
 ├── docs/                     ← documentação viva (cresce com o projeto)
 ├── package.json              ← scripts do monorepo
 ├── docker-compose.yml        ← Postgres local sof/sof/sof :5433
@@ -159,6 +161,7 @@ Sof/
 | Tema marketing/dashboard | `saas/frontend/src/theme/` |
 | Persona / copy do bot WA | `docs/brand.md`; `docs/bot-messages.md`; `saas/backend/src/whatsapp/bot-copy.ts` |
 | Cloud VM bootstrap (QA envs + ngrok) | `.cursor/environment.json`; `scripts/cloud-vm-bootstrap.sh` |
+| CI / deploy por tag | `.github/workflows/` (`ci.yml`, `deploy-qa.yml`, `deploy-prod.yml`); `.github/actions/heroku-deploy/`; `scripts/release-tag.sh` |
 
 ---
 

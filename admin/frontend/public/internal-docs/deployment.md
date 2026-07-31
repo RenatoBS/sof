@@ -157,7 +157,49 @@ Guias HTML públicos (sem auth): `/guides`, `/guides/onboarding`, `/guides/bot` 
 
 Docs internos (auth): `/docs` no shell — markdown de `docs/*.md` sincronizado para `public/internal-docs/` via `npm run sync-docs` (manifest + arquivos). Build usa `npm run sync-content` (= guides + docs). No Heroku, `public/internal-docs` commitado é obrigatório. `serve.json` desliga `cleanUrls` para o `.html` não virar SPA.
 
-### Deploy
+### Deploy por tag (GitHub Actions) — caminho padrão
+
+Publicar = criar uma tag. O sufixo escolhe o ambiente:
+
+| Sufixo | Workflow | Apps publicados |
+|--------|----------|-----------------|
+| `-stg` (ex. `v1.4.0-stg`) | `.github/workflows/deploy-qa.yml` | `sof-solutions-api-qa`, `sof-solutions-web-qa` |
+| `-prod` (ex. `v1.4.0-prod`) | `.github/workflows/deploy-prod.yml` | `sof-solutions-api`, `sof-solutions-web`, `sof-solutions-admin-api`, `sof-solutions-admin-web` |
+
+```bash
+npm run release:qa                # próxima versão derivada da última tag *-stg
+npm run release:qa -- v1.4.0      # cria e envia v1.4.0-stg → deploy QA
+npm run release:prod -- v1.4.0    # cria e envia v1.4.0-prod → deploy produção
+```
+
+Também dá para criar a tag na mão (`git tag -a v1.4.0-stg -m ... && git push origin v1.4.0-stg`) ou rodar o workflow manualmente em Actions → *Run workflow* (escolhendo a tag; ref que não seja tag do sufixo certo só gera aviso, tag com sufixo errado falha na validação).
+
+Em ambos os workflows a ordem é: **validação da tag → CI → API → demais apps → resumo**. A API do produto sai primeiro porque o release phase dela roda `prisma migrate deploy`. Cada deploy faz smoke test no health/URL pública.
+
+#### CI (`.github/workflows/ci.yml`)
+
+Reutilizável (`workflow_call`) e também disparado em PR e push na `main`. Jobs:
+
+| Job | O que faz | Bloqueia? |
+|-----|-----------|-----------|
+| `build` (matriz dos 4 apps) | `npm ci` + `npm run heroku-postbuild` (mesmo comando da Heroku) | sim |
+| `build` → testes | `npm test` em `saas/backend` | sim |
+| `build` → lint/typecheck | eslint (backend) / `tsc --noEmit` (demais) | **não** (informativo; base tem violações herdadas) |
+| `schema-sync` | `npm run admin:sync-schema` + diff | sim |
+| `content-sync` | `scripts/check-content-sync.sh` (docs/guides sincronizados em `admin/frontend/public/`) | sim |
+
+`prisma generate` roda com `DATABASE_URL`/`DIRECT_URL` fictícias — o CI não acessa banco.
+
+Local: `npm run check:content-sync` reproduz o job `content-sync`.
+
+#### Configuração no GitHub (uma vez)
+
+1. Secret `HEROKU_API_KEY` (`heroku authorizations:create -d "github-actions"` → campo *Token*).
+2. Environments `qa` e `production` em Settings → Environments, com o secret em cada um (ou como secret do repositório). Em `production`, vale exigir *required reviewers*.
+
+Detalhes de implementação: o push usa `git push --force https://git.heroku.com/<app>.git HEAD:refs/heads/main` com credential store (token nunca aparece em log); o checkout usa `fetch-depth: 0` porque a Heroku rejeita clone shallow. Se a tag apontar para o mesmo commit já publicado, a Heroku responde "Everything up-to-date" e não cria release novo.
+
+### Deploy manual (fallback)
 
 Na raiz do monorepo ([`package.json`](../package.json)):
 

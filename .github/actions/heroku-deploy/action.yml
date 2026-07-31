@@ -1,0 +1,65 @@
+name: Heroku deploy
+description: Publica o checkout atual em um app Heroku via git push e faz smoke test opcional.
+
+inputs:
+  app:
+    description: Nome do app Heroku (ex. sof-solutions-api)
+    required: true
+  api-key:
+    description: Heroku API key (secret HEROKU_API_KEY)
+    required: true
+  health-url:
+    description: URL de health para smoke test após o release (vazio = pula)
+    required: false
+    default: ''
+  health-retries:
+    description: Tentativas do smoke test (intervalo de 10s)
+    required: false
+    default: '18'
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar credenciais git da Heroku
+      shell: bash
+      env:
+        HEROKU_API_KEY: ${{ inputs.api-key }}
+      run: |
+        if [ -z "$HEROKU_API_KEY" ]; then
+          echo "::error::Secret HEROKU_API_KEY ausente no ambiente do job."
+          exit 1
+        fi
+        # Credential store mantém o token fora da linha de comando e dos logs.
+        git config --global credential.helper store
+        printf 'https://heroku:%s@git.heroku.com\n' "$HEROKU_API_KEY" > "$HOME/.git-credentials"
+        chmod 600 "$HOME/.git-credentials"
+
+    - name: Push para ${{ inputs.app }}
+      shell: bash
+      run: |
+        echo "::group::git push → ${{ inputs.app }}"
+        # --force: o deploy é da tag, que pode apontar para um commit anterior (rollback).
+        git push --force "https://git.heroku.com/${{ inputs.app }}.git" HEAD:refs/heads/main
+        echo "::endgroup::"
+
+    - name: Smoke test ${{ inputs.health-url }}
+      if: inputs.health-url != ''
+      shell: bash
+      run: |
+        url="${{ inputs.health-url }}"
+        for i in $(seq 1 ${{ inputs.health-retries }}); do
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$url" || echo 000)"
+          if [ "$code" = "200" ]; then
+            echo "OK ($code) — $url"
+            exit 0
+          fi
+          echo "tentativa $i: HTTP $code — aguardando release..."
+          sleep 10
+        done
+        echo "::error::Smoke test falhou em $url"
+        exit 1
+
+    - name: Limpar credenciais
+      if: always()
+      shell: bash
+      run: rm -f "$HOME/.git-credentials"

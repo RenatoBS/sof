@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Deploy por tag no GitHub Actions (`-stg` / `-prod`)
+
+- **Contexto:** Deploys eram só manuais (`npm run deploy:*` da máquina do dev), sem CI antes do push e sem registro de qual versão foi para cada ambiente.
+- **Decisão:** Pipelines em `.github/workflows/`: `ci.yml` (reutilizável, roda o `heroku-postbuild` real dos 4 apps + testes do backend + checagem de drift do schema admin e do `public/` do admin-web) chamado por `deploy-qa.yml` (tags `*-stg`) e `deploy-prod.yml` (tags `*-prod`). Push git para a Heroku via composite action `.github/actions/heroku-deploy` com `HEROKU_API_KEY` em GitHub Environments (`qa`, `production`).
+- **Consequências:** Só se publica com tag; a tag vira o registro da versão em cada ambiente. Scripts `npm run release:qa|release:prod` criam e enviam a tag. Os `npm run deploy:*` continuam válidos como saída de emergência. Checkout precisa de `fetch-depth: 0` (Heroku rejeita clone shallow) e o push é `--force` para permitir rollback por tag antiga.
+- **Alternativas descartadas:** Deploy por push em branch (`main` → prod, `develop` → QA) — perde o versionamento explícito; Heroku GitHub Integration/pipelines — não roda o CI do monorepo nem cobre os 4 apps com `APP_BASE`; lint/typecheck bloqueantes — a base tem violações herdadas (251 no eslint do backend, erros de tipo no front), então entram como passo informativo até serem zeradas.
+
 ## 2026-07-31 — Bootstrap Cloud VM: Heroku QA envs + ngrok no boot
 
 - **Contexto:** Cloud Agent precisava das keys Stripe/WhatsApp/OpenAI de QA e do ngrok a cada VM nova; setup manual era frágil.

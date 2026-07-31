@@ -28,7 +28,10 @@
     "deploy:qa": "bash scripts/deploy-qa.sh",
     "deploy": "npm run deploy:api && npm run deploy:web",
     "deploy:together": "bash scripts/deploy-together.sh",
-    "deploy:all": "npm run deploy:api && npm run deploy:web && npm run deploy:admin"
+    "deploy:all": "npm run deploy:api && npm run deploy:web && npm run deploy:admin",
+    "release:qa": "bash scripts/release-tag.sh stg",
+    "release:prod": "bash scripts/release-tag.sh prod",
+    "check:content-sync": "bash scripts/check-content-sync.sh"
   },
   "engines": {
     "node": "22.x"
