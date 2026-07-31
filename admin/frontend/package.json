@@ -7,7 +7,9 @@
     "start": "expo start --port 8091",
     "web": "expo start --web --port 8091",
     "sync-guides": "node scripts/sync-guides.js",
-    "export:web": "npm run sync-guides && expo export -p web && cp serve.json dist/serve.json",
+    "sync-docs": "node scripts/sync-docs.js",
+    "sync-content": "npm run sync-guides && npm run sync-docs",
+    "export:web": "npm run sync-content && expo export -p web && cp serve.json dist/serve.json",
     "start:web": "serve dist -s -l $PORT -c serve.json",
     "heroku-postbuild": "npm run export:web"
   },
@@ -25,6 +27,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-markdown-display": "^7.0.2",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
     "react-native-web": "~0.21.0",

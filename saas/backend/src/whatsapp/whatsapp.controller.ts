@@ -26,12 +26,11 @@ import { isDuplicateWebhook, webhookDedupeKey } from './webhook-dedupe';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { hasFeature } from '../entitlements/feature-catalog';
 import { WhatsappHandoffsService } from '../whatsapp-handoffs/whatsapp-handoffs.service';
+import * as botCopy from './bot-copy';
 
-const AUDIO_FALLBACK_REPLY =
-  'Não consegui ouvir seu áudio 😅 Pode escrever ou tocar numa das opções?';
+const AUDIO_FALLBACK_REPLY = botCopy.audioFailed();
 
-const HANDOFF_NOTICE =
-  'Avisei a equipe — alguém vai te responder por aqui em breve.';
+const HANDOFF_NOTICE = botCopy.handoffNoticeAfterAlert();
 
 type MetaWebhookBody = {
   entry?: Array<{
@@ -246,7 +245,7 @@ export class WhatsappController {
       if (!audioAllowed) {
         await this.api.sendText(
           customerPhone,
-          'No seu plano, o bot não processa áudio. Envie por texto, por favor.',
+          botCopy.audioNotInPlan(),
           account.whatsappInstanceToken ?? undefined,
         );
         return;

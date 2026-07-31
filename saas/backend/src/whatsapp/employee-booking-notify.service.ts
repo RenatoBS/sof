@@ -3,58 +3,7 @@ import type { Account } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { isValidPhone, normalizePhone } from '../common/phone';
 import { WhatsappApiService } from './whatsapp-api.service';
-
-function formatFriendlyWhen(date: string, time: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!match) return `${date} às ${time}`;
-  const [, y, m, d] = match;
-  return `${d}/${m}/${y} às ${time}`;
-}
-
-function buildEmployeeBookingMessage(opts: {
-  businessName: string;
-  clientName: string;
-  serviceName: string;
-  slots: Array<{ date: string; time: string }>;
-  source: string;
-}): string {
-  const business = (opts.businessName || '').trim() || 'Estabelecimento';
-  const client = (opts.clientName || '').trim() || 'Cliente';
-  const service = (opts.serviceName || '').trim() || 'Serviço';
-  const header =
-    opts.slots.length > 1
-      ? `Novos agendamentos na Sof (${business}):`
-      : `Novo agendamento na Sof (${business}):`;
-
-  const lines = [
-    header,
-    '',
-    `Cliente: ${client}`,
-    `Serviço: ${service}`,
-  ];
-
-  if (opts.slots.length === 1) {
-    lines.push(`Quando: ${formatFriendlyWhen(opts.slots[0].date, opts.slots[0].time)}`);
-  } else {
-    lines.push('Horários:');
-    for (const slot of opts.slots) {
-      lines.push(`• ${formatFriendlyWhen(slot.date, slot.time)}`);
-    }
-  }
-
-  const sourceLabel =
-    opts.source === 'whatsapp'
-      ? 'Origem: WhatsApp do cliente'
-      : opts.source === 'manual'
-        ? 'Origem: painel'
-        : '';
-  if (sourceLabel) {
-    lines.push('');
-    lines.push(sourceLabel);
-  }
-
-  return lines.join('\n');
-}
+import { buildEmployeeBookingNotify } from './bot-copy';
 
 /**
  * Avisa o profissional no WhatsApp da conta quando um agendamento
@@ -134,7 +83,7 @@ export class EmployeeBookingNotifyService {
           continue;
         }
 
-        const message = buildEmployeeBookingMessage({
+        const message = buildEmployeeBookingNotify({
           businessName: account.businessName,
           clientName: group[0].clientName,
           serviceName: group[0].service?.name || 'Serviço',

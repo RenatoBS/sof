@@ -57,7 +57,7 @@ export class BookingNluService {
       .join('\n');
 
     const system = [
-      'Você extrai a intenção de agendamento de mensagens de clientes de um salão (PT-BR).',
+      'Você extrai a intenção de agendamento de mensagens de clientes de um negócio (PT-BR).',
       `Hoje é ${weekday}, ${today}, agora são ${nowTime}.`,
       'Serviços disponíveis:',
       serviceList,

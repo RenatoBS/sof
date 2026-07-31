@@ -1,0 +1,119 @@
+{
+  "generatedAt": "2026-07-30T23:51:42.433Z",
+  "groups": [
+    "Índice",
+    "Produto",
+    "Marca e bot",
+    "Engenharia",
+    "Ops"
+  ],
+  "docs": [
+    {
+      "slug": "README",
+      "title": "docs/ — Sof",
+      "summary": "Entrada da pasta docs/ e pacto de documentação viva.",
+      "group": "Índice",
+      "order": 0,
+      "file": "README.md"
+    },
+    {
+      "slug": "features",
+      "title": "Features — Sof",
+      "summary": "Features de produto e mapa de telas/APIs.",
+      "group": "Produto",
+      "order": 10,
+      "file": "features.md"
+    },
+    {
+      "slug": "onboarding-cliente",
+      "title": "Guia de onboarding — Sof",
+      "summary": "Guia do cliente: plano/cupom → WhatsApp + cadastros.",
+      "group": "Produto",
+      "order": 20,
+      "file": "onboarding-cliente.md"
+    },
+    {
+      "slug": "planos-funcoes",
+      "title": "Guias por plano — Sof",
+      "summary": "Funções por plano (Solo / Equipe / Rede).",
+      "group": "Produto",
+      "order": 30,
+      "file": "planos-funcoes.md"
+    },
+    {
+      "slug": "brand",
+      "title": "Marca e persona verbal — Sof",
+      "summary": "Persona verbal Sof (voz do bot e da marca).",
+      "group": "Marca e bot",
+      "order": 40,
+      "file": "brand.md"
+    },
+    {
+      "slug": "bot-messages",
+      "title": "Mensagens do bot WhatsApp — Sof",
+      "summary": "Inventário de mensagens do bot WhatsApp.",
+      "group": "Marca e bot",
+      "order": 50,
+      "file": "bot-messages.md"
+    },
+    {
+      "slug": "architecture",
+      "title": "Arquitetura — Sof",
+      "summary": "Monorepo, Nest, Expo, dados, auth, tempo real.",
+      "group": "Engenharia",
+      "order": 60,
+      "file": "architecture.md"
+    },
+    {
+      "slug": "local-development",
+      "title": "Desenvolvimento local — Sof",
+      "summary": "Como rodar local, seed, portas, troubleshooting.",
+      "group": "Engenharia",
+      "order": 70,
+      "file": "local-development.md"
+    },
+    {
+      "slug": "decisions",
+      "title": "Decisões — Sof (ADR leve)",
+      "summary": "Log vivo de decisões (ADR leve).",
+      "group": "Engenharia",
+      "order": 80,
+      "file": "decisions.md"
+    },
+    {
+      "slug": "deployment",
+      "title": "Deploy — Sof",
+      "summary": "Heroku, Supabase, envs de produção, deploys.",
+      "group": "Ops",
+      "order": 90,
+      "file": "deployment.md"
+    }
+  ],
+  "clientGuides": [
+    {
+      "title": "Onboarding do cliente",
+      "href": "/guides/onboarding-cliente.html",
+      "summary": "Plano/cupom → WhatsApp + cadastros (com prints)."
+    },
+    {
+      "title": "Bot WhatsApp",
+      "href": "/guides/bot-whatsapp.html",
+      "summary": "Como o bot agenda e o menu do profissional."
+    },
+    {
+      "title": "Plano Solo",
+      "href": "/guides/plano-solo.html",
+      "summary": "Funções do plano Solo."
+    },
+    {
+      "title": "Plano Equipe",
+      "href": "/guides/plano-equipe.html",
+      "summary": "Funções do plano Equipe."
+    },
+    {
+      "title": "Plano Rede",
+      "href": "/guides/plano-rede.html",
+      "summary": "Funções do plano Rede."
+    }
+  ]
+}

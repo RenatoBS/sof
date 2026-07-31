@@ -1,4 +1,4 @@
-import { Redirect, Slot, usePathname, router } from 'expo-router';
+import { Redirect, Slot, usePathname, router, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -81,6 +81,11 @@ export default function ShellLayout() {
               pathname === '/new-coupon'
             }
             onPress={() => router.push('/coupons')}
+          />
+          <NavLink
+            label="Docs"
+            active={pathname === '/docs' || pathname.startsWith('/docs/')}
+            onPress={() => router.push('/docs' as Href)}
           />
           <NavLink
             label="Guias"

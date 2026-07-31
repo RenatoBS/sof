@@ -19,6 +19,7 @@ Na **mesma** sessão em que alterar código relevante, atualize a documentação
 | Heroku, Supabase, envs de prod, Procfile | `docs/deployment.md` |
 | Qualquer decisão com trade-off | **nova entrada no topo** de `docs/decisions.md` |
 | Mapa/resumo do repo | `AGENTS.md` se o índice ou resumo ficar obsoleto |
+| Qualquer `docs/*.md` | Rodar `npm run sync-docs` em `admin/frontend` e **commitar** `public/internal-docs/` (painel `/docs`) |
 
 ## Regras
 

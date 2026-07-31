@@ -90,9 +90,10 @@ describe('reminder-window', () => {
       time: '15:00',
       address: 'Rua A, 1',
     });
-    expect(msg).toContain('Oi, Maria!');
+    expect(msg).toContain('Oi, Maria.');
     expect(msg).toContain('Corte com Marcelo');
     expect(msg).toContain('22/07/2026 às 15:00');
     expect(msg).toContain('Endereço: Rua A, 1');
+    expect(msg).toContain('Até lá.');
   });
 });

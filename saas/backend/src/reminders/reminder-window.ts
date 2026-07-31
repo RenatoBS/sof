@@ -1,3 +1,5 @@
+import { buildReminderMessage as buildReminderMessageCopy } from '../whatsapp/bot-copy';
+
 /** Valores permitidos de antecedência do lembrete (0 = desativado). */
 export const REMINDER_LEAD_MINUTES = [0, 60, 120, 180, 360, 1440] as const;
 export type ReminderLeadMinutes = (typeof REMINDER_LEAD_MINUTES)[number];
@@ -169,23 +171,5 @@ export function buildReminderMessage(opts: {
   time: string;
   address?: string;
 }): string {
-  const name = (opts.clientName || '').trim() || 'olá';
-  const when = formatFriendlyWhen(opts.date, opts.time);
-  const service = opts.serviceName || 'seu horário';
-  const withWho = opts.employeeName ? ` com ${opts.employeeName}` : '';
-  const lines = [
-    `Oi, ${name}! Lembrete da ${opts.businessName}:`,
-    `${service}${withWho} — ${when}.`,
-  ];
-  const address = (opts.address || '').trim();
-  if (address) lines.push(`Endereço: ${address}`);
-  lines.push('Até lá!');
-  return lines.join('\n');
-}
-
-function formatFriendlyWhen(date: string, time: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!match) return `${date} às ${time}`;
-  const [, y, m, d] = match;
-  return `${d}/${m}/${y} às ${time}`;
+  return buildReminderMessageCopy(opts);
 }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, type Href } from 'expo-router';
 import { colors, fonts, space } from '@/src/theme/admin';
 
 const STATIC_PATH = '/guides/onboarding-cliente.html';
@@ -18,7 +18,7 @@ export default function GuidesOnboardingRedirect() {
       <ActivityIndicator color={colors.accent} />
       <Text style={styles.text}>Abrindo guia de onboarding…</Text>
       {Platform.OS !== 'web' ? (
-        <Link href="/guides" style={styles.fallback}>
+        <Link href={'/guides' as Href} style={styles.fallback}>
           Voltar aos guias
         </Link>
       ) : null}
