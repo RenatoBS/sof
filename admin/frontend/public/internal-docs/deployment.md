@@ -192,10 +192,18 @@ Reutilizável (`workflow_call`) e também disparado em PR e push na `main`. Jobs
 
 Local: `npm run check:content-sync` reproduz o job `content-sync`.
 
-#### Configuração no GitHub (uma vez)
+#### Configuração no GitHub
 
-1. Secret `HEROKU_API_KEY` (`heroku authorizations:create -d "github-actions"` → campo *Token*).
-2. Environments `qa` e `production` em Settings → Environments, com o secret em cada um (ou como secret do repositório). Em `production`, vale exigir *required reviewers*.
+Já configurado: secret de repositório `HEROKU_API_KEY`, gerado pela autorização Heroku **"GitHub Actions deploy Sof"** (`heroku authorizations`). Rotacionar:
+
+```bash
+heroku authorizations:revoke <id>          # a antiga
+heroku authorizations:create -d "GitHub Actions deploy Sof" --json \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).access_token.token))" \
+  | gh secret set HEROKU_API_KEY --repo RenatoBS/sof
+```
+
+Os environments (`qa`, `production`) são criados sozinhos no primeiro run que os referencia. Em `production` vale abrir Settings → Environments e exigir *required reviewers*.
 
 Detalhes de implementação: o push usa `git push --force https://git.heroku.com/<app>.git HEAD:refs/heads/main` com credential store (token nunca aparece em log); o checkout usa `fetch-depth: 0` porque a Heroku rejeita clone shallow. Se a tag apontar para o mesmo commit já publicado, a Heroku responde "Everything up-to-date" e não cria release novo.
 

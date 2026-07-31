@@ -49,7 +49,7 @@ jobs:
       name: qa
       url: https://qa-api.sof.solutions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Heroku rejeita push de clone shallow
 
@@ -67,7 +67,7 @@ jobs:
       name: qa
       url: https://qa.sof.solutions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -95,3 +95,9 @@ jobs:
             echo "| API | https://qa-api.sof.solutions (${{ needs.api.result }}) |"
             echo "| Web | https://qa.sof.solutions (${{ needs.web.result }}) |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Refletir falha de qualquer app
+        if: needs.api.result != 'success' || needs.web.result != 'success'
+        run: |
+          echo "::error::Deploy QA incompleto (api=${{ needs.api.result }}, web=${{ needs.web.result }})."
+          exit 1

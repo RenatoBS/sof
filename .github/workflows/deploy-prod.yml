@@ -49,7 +49,7 @@ jobs:
       name: production
       url: https://api.sof.solutions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Heroku rejeita push de clone shallow
 
@@ -68,7 +68,7 @@ jobs:
       name: production
       url: https://www.sof.solutions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -86,7 +86,7 @@ jobs:
       name: production
       url: https://sof-solutions-admin-api-28e60756b423.herokuapp.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -104,7 +104,7 @@ jobs:
       name: production
       url: https://painel-admin.sof.solutions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -134,3 +134,12 @@ jobs:
             echo "| Admin API | herokuapp (${{ needs['admin-api'].result }}) |"
             echo "| Admin Web | https://painel-admin.sof.solutions (${{ needs['admin-web'].result }}) |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Refletir falha de qualquer app
+        if: >-
+          needs.api.result != 'success' || needs.web.result != 'success'
+          || needs['admin-api'].result != 'success'
+          || needs['admin-web'].result != 'success'
+        run: |
+          echo "::error::Deploy de produção incompleto (api=${{ needs.api.result }}, web=${{ needs.web.result }}, admin-api=${{ needs['admin-api'].result }}, admin-web=${{ needs['admin-web'].result }})."
+          exit 1
