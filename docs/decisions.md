@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Faixa de ambiente (QA/local) no front produto
+
+- **Contexto:** Em QA/local era fácil confundir a UI com produção; não havia sinal visual global.
+- **Decisão:** `EnvStrip` no `app/_layout.tsx` (landing, dashboard e portal): faixa fina no topo, texto à direita; some em produção. Detecção: `EXPO_PUBLIC_APP_ENV` (build-time) + fallback hostname/`EXPO_PUBLIC_API_URL`.
+- **Consequências:** QA/local ficam óbvios; prod limpo. Mudar a var no Heroku exige rebuild do web (`expo export`).
+- **Alternativas descartadas:** Badge só no dashboard; ribbon diagonal; inferir só por `NODE_ENV` (QA e prod são `production`).
+
 ## 2026-07-30 — UI de `/docs` alinhada ao shell admin (lista + leitor)
 
 - **Contexto:** Hub usava grid de cards com padding/maxWidth duplicados em relação ao shell; TOC do leitor não rolava até a seção; tabelas Markdown estouravam o layout.

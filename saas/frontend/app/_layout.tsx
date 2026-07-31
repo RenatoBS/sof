@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider } from '@/src/auth/AuthProvider';
 import { EmployeeAuthProvider } from '@/src/auth/EmployeeAuthProvider';
+import { EnvStrip } from '@/src/components/EnvStrip';
 import { ToastProvider, useToast } from '@/src/context/ToastContext';
 import { m } from '@/src/theme/marketing';
 import { d } from '@/src/theme/dashboard';
@@ -41,23 +42,28 @@ export default function RootLayout() {
     <AuthProvider>
       <EmployeeAuthProvider>
         <ToastProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: m.paper },
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="pricing" />
-            <Stack.Screen name="about" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="employee/login" />
-            <Stack.Screen name="employee/set-password" />
-            <Stack.Screen name="checkout-return" />
-            <Stack.Screen name="(dashboard)" />
-            <Stack.Screen name="(employee)" />
-          </Stack>
-          <ToastBanner />
+          <View style={styles.root}>
+            <EnvStrip />
+            <View style={styles.stackWrap}>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: m.paper },
+                }}
+              >
+                <Stack.Screen name="index" />
+                <Stack.Screen name="pricing" />
+                <Stack.Screen name="about" />
+                <Stack.Screen name="login" />
+                <Stack.Screen name="employee/login" />
+                <Stack.Screen name="employee/set-password" />
+                <Stack.Screen name="checkout-return" />
+                <Stack.Screen name="(dashboard)" />
+                <Stack.Screen name="(employee)" />
+              </Stack>
+            </View>
+            <ToastBanner />
+          </View>
         </ToastProvider>
       </EmployeeAuthProvider>
     </AuthProvider>
@@ -81,6 +87,12 @@ function ToastBanner() {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  stackWrap: {
+    flex: 1,
+  },
   toast: {
     position: 'absolute',
     bottom: 24,

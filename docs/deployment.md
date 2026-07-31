@@ -120,8 +120,11 @@ Fuso do dyno: `TZ=America/Sao_Paulo` na API (`sof-solutions-api`) para `Date` lo
 
 | Var | Notas |
 |-----|--------|
-| `EXPO_PUBLIC_API_URL` | URL HTTPS da API |
+| `EXPO_PUBLIC_API_URL` | URL HTTPS da API (antes do build / `expo export`) |
+| `EXPO_PUBLIC_APP_ENV` | `local` \| `qa` \| `production` — faixa de ambiente no topo (omitir ou `production` em prod; some a faixa). Rebuild obrigatório. Fallback web: hostname (`qa.sof.solutions`, `localhost`) e heurística da API URL |
 | `NODE_ENV` | `production` |
+
+QA web: `EXPO_PUBLIC_APP_ENV=qa` em `sof-solutions-web-qa` (+ redeploy/`expo export`). Prod: sem a var (ou `production`).
 
 ### Variáveis Admin API (`sof-solutions-admin-api`)
 

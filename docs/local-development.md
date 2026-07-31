@@ -68,6 +68,7 @@ Não usa `migrate reset` (não dropa o schema / migrations).
 cd saas/frontend
 cp .env.example .env
 # EXPO_PUBLIC_API_URL=http://localhost:3001
+# EXPO_PUBLIC_APP_ENV=local   # faixa “Ambiente local”; omitir/production esconde
 npm install
 npm run web          # http://localhost:8081
 # npm run start      # Expo Go
@@ -125,6 +126,7 @@ Ver lista completa em `saas/backend/.env.example`, `saas/frontend/.env.example`,
 | `JWT_SECRET` | qualquer string longa em dev |
 | `ADMIN_JWT_SECRET` | segredo do painel admin (admin/backend) |
 | `EXPO_PUBLIC_API_URL` | produto → `:3001`; admin/frontend → `:3011` |
+| `EXPO_PUBLIC_APP_ENV` | produto web: `local` (faixa de ambiente); `qa` em staging; omitir/`production` em prod |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | operador do painel admin |
 | `WHATSAPP_PROVIDER` | default `uazapi` (ou `meta`) |
 | `WHATSAPP_BASE_URL` | URL do servidor Uazapi |

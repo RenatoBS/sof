@@ -28,6 +28,7 @@ Sof ajuda negócios a:
 | Definir senha (conta) | `/set-password?token=` | Reset da conta dona |
 | Definir senha (prof) | `/employee/set-password?token=` | Convite/reset do profissional |
 | Nav / footer | global | Wordmark `sof`, CTAs; menu mobile abaixo de 860px |
+| Faixa de ambiente | global (`EnvStrip` no root) | Em `local`/`qa` (não em prod): faixa fina no topo, texto à direita (“Ambiente local · desenvolvimento” / “Ambiente de teste · QA”) |
 
 Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`. Tabbar do painel: ícone + label por aba (`DashboardTabIcon`).
 
