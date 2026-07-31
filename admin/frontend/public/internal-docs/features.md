@@ -32,6 +32,18 @@ Sof ajuda negócios a:
 
 Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, fundos claros). Auth usa `SofAuthCard`; painel usa `SofPageHeader` / `SofCard` / `SofEmptyState`. Tabbar do painel: ícone + label por aba (`DashboardTabIcon`).
 
+### Máscara de telefone e e-mail (todos os formulários)
+
+Regra transversal ao produto e ao painel admin: **todo** campo de telefone ou e-mail usa a prop `mask` do input compartilhado (`SofInput` no produto, `Field` no admin), nunca formatação solta na tela.
+
+| Máscara | Formato | Onde |
+|---------|---------|------|
+| `phone` | `(11) 99999-8888` | checkout, cliente, profissional, estabelecimento, conta no admin |
+| `phoneDdi` | `+55 (11) 99999-8888` | pareamento do WhatsApp (produto e admin) e simulador |
+| `email` | sem espaços, minúsculo | login (conta/prof/admin), esqueci senha, checkout, profissional, conta no admin |
+
+A máscara é só apresentação: o submit envia telefone só com dígitos e o backend normaliza de novo (`common/phone`).
+
 ## Checkout e assinatura
 
 | Feature | Onde | API |
@@ -44,7 +56,7 @@ Copy e tokens devem permanecer alinhados à marca Sof (verde floresta + cobre, f
 
 Sem `STRIPE_SECRET_KEY`: modo **demonstração** (não cobra de verdade) — provisiona na hora e já entra na agenda.
 
-A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, 10–15 dígitos). No front, nome/e-mail/telefone/senha são validados por campo (borda + mensagem) antes do POST — alinhado às regras do backend. Em **nova conta**, após provisionar, a API envia e-mail de **boas-vindas** (`MailService`, SMTP) com link de login.
+A senha é definida no modal (mín. 8 caracteres), armazenada só como hash na `CheckoutSession` até o provisionamento; não há mais senha temporária gerada. O checkout também exige **telefone** (DDD, 10–15 dígitos), com máscara `(11) 99999-8888` no campo e e-mail sem espaço/caixa alta. No front, nome/e-mail/telefone/senha são validados por campo (borda + mensagem) antes do POST — alinhado às regras do backend. Em **nova conta**, após provisionar, a API envia e-mail de **boas-vindas** (`MailService`, SMTP) com link de login.
 
 ### Cupons promocionais
 

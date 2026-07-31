@@ -193,6 +193,8 @@ Token storage: web `localStorage` chave `sof_token`; native SecureStore.
 
 Temas: `src/theme/marketing.ts` (`m`) e `src/theme/dashboard.ts` (`d`) — identidade Sof da logo: verde floresta `#3D4743` + cobre `#C19A6B`, fundos claros (`paper` `#F4F4F6` / `surface` branco).
 
+Máscaras de input: `SofInput` aceita `mask="phone" | "phoneDdi" | "email"` — formata o valor exibido e já define teclado/`inputMode`/`autoComplete` do campo. As funções vivem em `src/lib/validation.ts` (`maskBrPhone`, `maskPhoneWithDdi`, `maskEmail`); o submit continua enviando dígitos (`normalizePhoneDigits`) e e-mail com `trim`.
+
 Kit compartilhado em `src/components/ui.tsx`: `SofButton` (pressed/hover/`loading`), `SofInput`, `SofCard`, `SofPageHeader`, `SofEmptyState`, `SofErrorBanner`, `SofAuthCard`, `SofLoadingGate`, `SofListRow`, `SofIconAction` / `SofRowActions` (Editar/Remover com ícone; só ícone abaixo de 720px), `Eyebrow`, `Wrap`. Marketing: `MarketingNav` (menu mobile), `SiteFooter`, `SofChatCard`, `FeatureIcon`.
 
 Toast dismissível no root layout. Shell do dashboard usa tabs com accent Sof, `SofLoadingGate` e `BusinessLogo` (logo da conta antes do nome). Body JSON da API: limite `8mb` (para upload de logo em base64).
@@ -249,3 +251,4 @@ Apps separados do produto, **mesmo Postgres**. Schema/migrations continuam em `s
 - **Rotas públicas (sem login):** `/guides` (hub), `/guides/onboarding`, `/guides/bot` + HTMLs estáticos (`onboarding-cliente`, `bot-whatsapp`, `plano-solo|equipe|rede`) em `public/guides/` (sync via `npm run sync-guides` no build). Nav **Guias** no shell abre `/guides` em nova aba.
 - **Docs internos (login admin):** `/docs` + `/docs/[slug]` — lê `public/internal-docs/` (sync `npm run sync-docs` a partir de `docs/*.md`). Hub em lista pesquisável (padrão Contas) + leitor com TOC clicável e tabelas com scroll. Nav **Docs**. Build: `sync-content`.
 - UI kit próprio (não compartilha código com `saas/frontend/`): tokens em `src/theme/admin.ts` (`colors`, `space`, `radius`, `shadow.soft`, `fonts` — mesmas famílias Hanken/Inter e mesma cromia Sof: verde floresta + cobre) e componentes em `src/components/ui.tsx` (`Field`, `Button` com `loading`/`size='sm'`/hover-pressed, `PageHeader`, `ListRow`, `EmptyState`, `ErrorText`, `SearchField`). Telas de listagem (`accounts`, `tickets`, `plans`, `coupons`) usam esses componentes; formulários usam `ErrorText` + `Button loading` mantendo a lógica original.
+- Máscaras: `Field` aceita `mask="phone" | "phoneDdi" | "email"`, com as mesmas funções do produto espelhadas em `admin/frontend/src/lib/validation.ts` (`maskBrPhone`, `maskPhoneWithDdi`, `maskEmail`, `normalizePhoneDigits`, `isValidEmail`, `isValidPhoneDigits`).

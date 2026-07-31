@@ -223,12 +223,12 @@ export function EstablishmentModal({
         label="Telefone (com DDD)"
         value={phone}
         onChangeText={(t) => {
-          setPhone(maskBrPhone(t));
+          setPhone(t);
           setError('');
         }}
         theme="dashboard"
         placeholder="(11) 99999-8888"
-        keyboardType="phone-pad"
+        mask="phone"
       />
       <SofInput
         label="Endereço"

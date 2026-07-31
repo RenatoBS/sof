@@ -10,6 +10,7 @@ import {
 import { dashboardApi } from '@/src/api/endpoints';
 import { useDashboard } from '@/src/context/DashboardContext';
 import { SofButton, SofPageHeader } from '@/src/components/ui';
+import { maskPhoneWithDdi, normalizePhoneDigits } from '@/src/lib/validation';
 import { d } from '@/src/theme/dashboard';
 
 const COMPACT_BREAKPOINT = 720;
@@ -19,7 +20,7 @@ export function WhatsappSimulatorPanel() {
   const { width } = useWindowDimensions();
   const isCompact = width < COMPACT_BREAKPOINT;
   const { loadAll } = useDashboard();
-  const [waPhone, setWaPhone] = useState('5511999990000');
+  const [waPhone, setWaPhone] = useState(maskPhoneWithDdi('5511999990000'));
   const [waMessage, setWaMessage] = useState('');
   const [waLog, setWaLog] = useState<{ dir: 'in' | 'out'; text: string }[]>(
     [],
@@ -39,7 +40,10 @@ export function WhatsappSimulatorPanel() {
     setWaLog((l) => [...l, { dir: 'out', text: waMessage }]);
     setWaLoading(true);
     try {
-      const data = await dashboardApi.simulateWhatsapp(waMessage, waPhone);
+      const data = await dashboardApi.simulateWhatsapp(
+        waMessage,
+        normalizePhoneDigits(waPhone),
+      );
       setWaLog((l) => [
         ...l,
         ...data.replies.map((text) => ({ dir: 'in' as const, text })),
@@ -93,9 +97,11 @@ export function WhatsappSimulatorPanel() {
           <TextInput
             style={[styles.waInput, isCompact && styles.waInputCompact]}
             value={waPhone}
-            onChangeText={setWaPhone}
+            onChangeText={(t) => setWaPhone(maskPhoneWithDdi(t))}
             placeholder="Telefone do cliente"
             accessibilityLabel="Telefone do cliente"
+            keyboardType="phone-pad"
+            inputMode="tel"
           />
           <TextInput
             style={[

@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Máscara de telefone/e-mail via prop `mask` no input compartilhado
+
+- **Contexto:** A máscara `maskBrPhone` existia só no produto e era chamada à mão em cada tela (`onChangeText={(t) => setPhone(maskBrPhone(t))}`), então faltava justamente onde mais importa — cadastro da conta (`CheckoutModal`), pareamento do WhatsApp e **todo** o `admin/frontend`, que nem tinha util de validação. Campos de e-mail também variavam: uns com `keyboardType`, outros sem `autoCapitalize`, e nenhum impedindo espaço colado.
+- **Decisão:** A máscara passa a ser responsabilidade do input compartilhado: `SofInput` (produto) e `Field` (admin) aceitam `mask="phone" | "phoneDdi" | "email"`, que formata o valor e aplica teclado/`inputMode`/`autoComplete`/`autoCapitalize` coerentes. Funções em `saas/frontend/src/lib/validation.ts`, espelhadas em `admin/frontend/src/lib/validation.ts` (novo). `maskPhoneWithDdi` (`+55 (11) 99999-8888`) cobre o pareamento WhatsApp, que precisa do DDI e por isso não podia usar a máscara BR.
+- **Consequências:** Campo novo de telefone/e-mail só precisa de `mask=…`; teclado e formato ficam iguais em todas as telas. O valor do estado passa a ser o texto mascarado, então o submit precisa de `normalizePhoneDigits` (já era assim no produto; no admin o pareamento enviava o valor cru e agora normaliza). Nenhum contrato de API muda: todo endpoint já fazia `normalizePhone`. Duplicação consciente entre os dois `validation.ts` — os frontends não compartilham código.
+- **Alternativas descartadas:** Instalar `react-native-mask-input`/`react-native-masked-text` (dependência a mais para ~40 linhas de lógica, e o suporte a RN Web/SDK 57 seria mais um risco de manutenção); manter `maskBrPhone` chamada tela a tela (foi exatamente o que deixou o signup sem máscara); extrair um pacote compartilhado no monorepo (os dois apps Expo não têm workspace comum hoje; seria mudança de build para pouco código).
+
 ## 2026-07-31 — Catálogo Stripe live e Payment Link opcional
 
 - **Contexto:** Produção estava em modo misto: `sof-solutions-api` com `sk_live_` mas `sof-solutions-admin-api` com `sk_test_`, então os planos no DB de produção apontavam para Product/Price/Payment Link de **sandbox** (`buy.stripe.com/test_…`). Qualquer Checkout Session live com aquele `stripePriceId` falharia. Ao criar o catálogo live, a Stripe recusou os Payment Links: a conta ainda está em análise (`charges_enabled: false`, `card_payments: pending`).

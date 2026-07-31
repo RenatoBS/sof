@@ -4,10 +4,14 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '@/src/api/client';
 import { accountsApi, plansApi, type PlanRow } from '@/src/api/endpoints';
 import { Button, ErrorText, Field } from '@/src/components/ui';
+import {
+  isValidEmail,
+  isValidPhoneDigits,
+  normalizePhoneDigits,
+} from '@/src/lib/validation';
 import { colors, fonts, space } from '@/src/theme/admin';
 
 const PASSWORD_MIN = 8;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FieldErrors = {
   businessName?: string;
@@ -32,15 +36,15 @@ function validateNewAccount(input: {
   const businessName = input.businessName.trim();
   const ownerName = input.ownerName.trim();
   const email = input.email.trim();
-  const phoneDigits = input.phone.replace(/\D/g, '');
+  const phoneDigits = normalizePhoneDigits(input.phone);
   const price = Number(input.planPrice);
 
   if (!businessName) errors.businessName = 'Informe o nome do negócio.';
   if (!ownerName) errors.ownerName = 'Informe o nome do responsável.';
   if (!email) errors.email = 'Informe o e-mail.';
-  else if (!EMAIL_RE.test(email)) errors.email = 'Informe um e-mail válido.';
+  else if (!isValidEmail(email)) errors.email = 'Informe um e-mail válido.';
   if (!phoneDigits) errors.phone = 'Informe o telefone com DDD.';
-  else if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+  else if (!isValidPhoneDigits(phoneDigits)) {
     errors.phone = 'Telefone inválido. Use DDD + número (10 a 15 dígitos).';
   }
   if (input.password && input.password.length < PASSWORD_MIN) {
@@ -113,7 +117,7 @@ export default function NewAccountScreen() {
         businessName: businessName.trim(),
         ownerName: ownerName.trim(),
         email: email.trim(),
-        phone: phone.replace(/\D/g, ''),
+        phone: normalizePhoneDigits(phone),
         password: password || undefined,
         plan,
         planPrice: Number(planPrice),
@@ -156,8 +160,7 @@ export default function NewAccountScreen() {
       />
       <Field
         label="E-mail"
-        autoCapitalize="none"
-        keyboardType="email-address"
+        mask="email"
         value={email}
         onChangeText={(t) => {
           setEmail(t);
@@ -167,7 +170,8 @@ export default function NewAccountScreen() {
       />
       <Field
         label="Telefone"
-        keyboardType="phone-pad"
+        mask="phone"
+        placeholder="(11) 99999-8888"
         value={phone}
         onChangeText={(t) => {
           setPhone(t);

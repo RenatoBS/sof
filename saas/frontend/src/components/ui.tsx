@@ -14,6 +14,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { m } from '@/src/theme/marketing';
 import { d } from '@/src/theme/dashboard';
+import { maskBrPhone, maskEmail, maskPhoneWithDdi } from '@/src/lib/validation';
 
 type BtnVariant = 'solid' | 'accent' | 'ghost' | 'light' | 'dark' | 'danger';
 
@@ -101,22 +102,71 @@ export function SofButton({
   );
 }
 
+/** Máscaras dos campos recorrentes; o valor exibido é formatado, o submit normaliza. */
+export type InputMask = 'phone' | 'phoneDdi' | 'email';
+
+const INPUT_MASKS: Record<
+  InputMask,
+  { format: (raw: string) => string; props: TextInputProps }
+> = {
+  phone: {
+    format: maskBrPhone,
+    props: {
+      keyboardType: 'phone-pad',
+      inputMode: 'tel',
+      autoComplete: 'tel',
+      textContentType: 'telephoneNumber',
+      maxLength: 15,
+    },
+  },
+  phoneDdi: {
+    format: maskPhoneWithDdi,
+    props: {
+      keyboardType: 'phone-pad',
+      inputMode: 'tel',
+      autoComplete: 'tel',
+      textContentType: 'telephoneNumber',
+      maxLength: 20,
+    },
+  },
+  email: {
+    format: maskEmail,
+    props: {
+      keyboardType: 'email-address',
+      inputMode: 'email',
+      autoCapitalize: 'none',
+      autoCorrect: false,
+      autoComplete: 'email',
+      textContentType: 'emailAddress',
+    },
+  },
+};
+
 export function SofInput({
   label,
   theme = 'marketing',
   error,
+  mask,
+  onChangeText,
   ...props
 }: {
   label: string;
   theme?: 'marketing' | 'dashboard';
   error?: string;
+  mask?: InputMask;
 } & TextInputProps) {
   const isDash = theme === 'dashboard';
+  const maskConfig = mask ? INPUT_MASKS[mask] : null;
+  const handleChangeText = maskConfig
+    ? (text: string) => onChangeText?.(maskConfig.format(text))
+    : onChangeText;
   return (
     <View style={field.wrap}>
       <Text style={[field.label, isDash && field.labelDash]}>{label}</Text>
       <TextInput
+        {...maskConfig?.props}
         {...props}
+        onChangeText={handleChangeText}
         placeholderTextColor={isDash ? d.muted : m.muted}
         style={[
           field.input,
