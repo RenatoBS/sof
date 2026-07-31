@@ -38,6 +38,8 @@ npm run deploy:qa          # push API + web QA
 # opcional: heroku run -a sof-solutions-api-qa npx prisma db seed
 ```
 
+**VM Cloud Agent:** o inverso (Heroku QA → `.env` local) roda no boot via `scripts/cloud-vm-bootstrap.sh` / `npm run cloud:import-qa-env` (allowlist Stripe/WhatsApp/OpenAI; requer secret `HEROKU_API_KEY`). Detalhe em [`local-development.md`](local-development.md#vm-cloud-agent-cursor).
+
 Remotes: `heroku-api-qa`, `heroku-web-qa` (`npm run heroku:remotes:qa`). Banco: Supabase **staging** (não o de produção). Admin Sof **não** tem apps QA neste momento.
 
 Painel admin compartilha o mesmo Postgres (Supabase) do produto. Migrations rodam só no release do `sof-solutions-api` (prod) ou `sof-solutions-api-qa` (QA). O `admin/backend` carrega uma cópia do schema em `admin/backend/prisma/schema.prisma` (sync: `npm run admin:sync-schema` após mudar o schema do produto).

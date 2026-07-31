@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-07-31 — Bootstrap Cloud VM: Heroku QA envs + ngrok no boot
+
+- **Contexto:** Cloud Agent precisava das keys Stripe/WhatsApp/OpenAI de QA e do ngrok a cada VM nova; setup manual era frágil.
+- **Decisão:** `.cursor/environment.json` chama `scripts/cloud-vm-bootstrap.sh` no `install` (ngrok + import allowlist via `HEROKU_API_KEY` → `saas/backend/.env`) e sobe túnel num terminal `ngrok`. Secret opcional `NGROK_AUTHTOKEN`.
+- **Consequências:** Boot idempotente; secrets não são logados; keys ausentes no Heroku não apagam o `.env`.
+- **Alternativas descartadas:** Commitar `.env.qa`; copiar todas as config-vars Heroku; só documentar passos manuais.
+
 ## 2026-07-31 — Ngrok: um túnel + reverse proxy (front+API mesma origem)
 
 - **Contexto:** Acesso remoto ao Sof local (cloud VM / WhatsApp webhooks) precisa de HTTPS; free ngrok costuma limitar a um endpoint; Expo CorsMiddleware e Metro quebram com Host/`X-Forwarded-*` mal encaminhados.
