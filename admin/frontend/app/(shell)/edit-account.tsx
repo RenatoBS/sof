@@ -166,12 +166,24 @@ export default function AccountDetailScreen() {
       );
       setWaMode(res.mode);
       await loadWa();
+      // Status nem sempre devolve o paircode; preserva o do connect.
+      if (withPhone && res.paircode) {
+        setWa((prev) =>
+          prev ? { ...prev, paircode: res.paircode || null } : prev,
+        );
+      } else if (withPhone && !res.paircode) {
+        setWaError(
+          'Não veio código de pareamento. Confira o telefone com DDI e tente de novo.',
+        );
+      }
       if (res.status !== 'connected') startPoll();
       setMessage(
         res.status === 'connected'
           ? 'WhatsApp conectado.'
           : withPhone
-            ? 'Código gerado — peça ao cliente para digitar no WhatsApp.'
+            ? res.paircode
+              ? 'Código gerado — peça ao cliente para digitar no WhatsApp.'
+              : 'Connect ok, mas sem código — tente de novo.'
             : 'QR gerado — peça ao cliente para escanear.',
       );
     } catch (e) {

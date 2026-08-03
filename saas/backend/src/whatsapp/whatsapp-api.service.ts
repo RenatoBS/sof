@@ -189,29 +189,32 @@ export class WhatsappApiService {
 
   private extractQrAndPair(raw: Record<string, unknown>) {
     const instance = this.nestRecord(raw, 'instance');
-    const qrcode =
-      this.pickString(raw, [
-        'qrcode',
-        'qrCode',
-        'qr',
-        'base64',
-        'qrcodeBase64',
-      ]) ||
-      this.pickString(instance, [
-        'qrcode',
-        'qrCode',
-        'qr',
-        'base64',
-        'qrcodeBase64',
-      ]);
-    const paircode =
-      this.pickString(raw, ['paircode', 'pairCode', 'code', 'pairingCode']) ||
-      this.pickString(instance, [
-        'paircode',
-        'pairCode',
-        'code',
-        'pairingCode',
-      ]);
+    const data = this.nestRecord(raw, 'data');
+    const response = this.nestRecord(raw, 'response');
+    const nests = [raw, instance, data, response].filter(
+      Boolean,
+    ) as Record<string, unknown>[];
+    const qrKeys = [
+      'qrcode',
+      'qrCode',
+      'qr',
+      'base64',
+      'qrcodeBase64',
+    ] as const;
+    // Não usar `code` — na Uazapi costuma ser status HTTP numérico (ex. 200/401).
+    const pairKeys = [
+      'paircode',
+      'pairCode',
+      'pairingCode',
+      'pairing_code',
+      'pair_code',
+    ] as const;
+    let qrcode = '';
+    let paircode = '';
+    for (const nest of nests) {
+      if (!qrcode) qrcode = this.pickString(nest, [...qrKeys]);
+      if (!paircode) paircode = this.pickString(nest, [...pairKeys]);
+    }
     return { qrcode: qrcode || undefined, paircode: paircode || undefined };
   }
 
@@ -252,8 +255,22 @@ export class WhatsappApiService {
     token: string,
     phone?: string,
   ): Promise<UazapiConnectResult> {
+    const digits = phone ? phone.replace(/\D/g, '') : '';
+    // Pair code exige sessão limpa: se a instância já está em connecting
+    // com QR (auto-refresh da Conta), a Uazapi responde 200 sem paircode.
+    if (digits) {
+      try {
+        await this.disconnectInstance(token);
+      } catch (err) {
+        console.warn(
+          '[whatsapp] disconnect antes do paircode:',
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+
     const body: Record<string, string> = {};
-    if (phone) body.phone = phone.replace(/\D/g, '');
+    if (digits) body.phone = digits;
 
     const raw = await this.uazapiFetch('/instance/connect', {
       method: 'POST',
@@ -271,6 +288,13 @@ export class WhatsappApiService {
       this.pickString(instance, ['id', 'instanceId']) ||
       this.pickString(raw, ['id', 'instanceId']) ||
       undefined;
+
+    if (digits && !paircode) {
+      console.warn(
+        '[whatsapp] connect com phone sem paircode. raw=',
+        JSON.stringify(raw).slice(0, 500),
+      );
+    }
 
     return {
       status: this.normalizeStatus(statusRaw),

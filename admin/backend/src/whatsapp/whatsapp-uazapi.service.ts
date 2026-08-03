@@ -161,14 +161,23 @@ export class WhatsappUazapiService {
         'base64',
         'qrcodeBase64',
       ]);
-    const paircode =
-      this.pickString(raw, ['paircode', 'pairCode', 'code', 'pairingCode']) ||
-      this.pickString(instance, [
-        'paircode',
-        'pairCode',
-        'code',
-        'pairingCode',
-      ]);
+    const data = this.nestRecord(raw, 'data');
+    const response = this.nestRecord(raw, 'response');
+    const nests = [raw, instance, data, response].filter(
+      Boolean,
+    ) as Record<string, unknown>[];
+    // Não usar `code` — na Uazapi costuma ser status HTTP numérico.
+    const pairKeys = [
+      'paircode',
+      'pairCode',
+      'pairingCode',
+      'pairing_code',
+      'pair_code',
+    ];
+    let paircode = '';
+    for (const nest of nests) {
+      if (!paircode) paircode = this.pickString(nest, pairKeys);
+    }
     return { qrcode: qrcode || undefined, paircode: paircode || undefined };
   }
 
@@ -202,8 +211,19 @@ export class WhatsappUazapiService {
     token: string,
     phone?: string,
   ): Promise<UazapiConnectResult> {
+    const digits = phone ? phone.replace(/\D/g, '') : '';
+    if (digits) {
+      try {
+        await this.disconnectInstance(token);
+      } catch (err) {
+        console.warn(
+          '[admin-whatsapp] disconnect antes do paircode:',
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
     const body: Record<string, string> = {};
-    if (phone) body.phone = phone.replace(/\D/g, '');
+    if (digits) body.phone = digits;
     const raw = await this.fetchJson('/instance/connect', {
       method: 'POST',
       auth: { kind: 'token', token },
@@ -219,6 +239,12 @@ export class WhatsappUazapiService {
       this.pickString(instance, ['id', 'instanceId']) ||
       this.pickString(raw, ['id', 'instanceId']) ||
       undefined;
+    if (digits && !paircode) {
+      console.warn(
+        '[admin-whatsapp] connect com phone sem paircode. raw=',
+        JSON.stringify(raw).slice(0, 500),
+      );
+    }
     return {
       status: this.normalizeStatus(statusRaw),
       qrcode,

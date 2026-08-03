@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-03 — Pair code WhatsApp: disconnect antes do connect com phone
+
+- **Contexto:** Em QA, `POST /account/whatsapp/connect` com telefone respondia 201 com ~88 bytes (`paircode: null`). O auto-QR da Conta deixa a instância Uazapi em `connecting`; um segundo `/instance/connect` com `phone` nessa sessão não devolve paircode. No admin, `loadWa()` após o connect ainda sobrescrevia o código pelo status (que raramente traz paircode).
+- **Decisão:** Antes do connect com phone, `disconnect` best-effort na instância; se ainda assim não houver paircode, 502 com mensagem clara + log do raw. Front da Conta atualiza `waModeRef` de forma síncrona, para o poll/auto-QR ao entrar em paircode, e trata `paircode` vazio como erro. Admin preserva `res.paircode` do connect após `loadWa()`.
+- **Consequências:** “Gerar código” deixa de falhar em silêncio quando o QR automático já tinha aberto a sessão; mais uma chamada Uazapi (disconnect) por tentativa de paircode.
+- **Alternativas descartadas:** Só confiar no paircode do `GET /status` (não vem); desligar o auto-QR (piora o fluxo principal de pareamento).
+
 ## 2026-08-03 — Confirmação Sim/Não aceita número do menu (1/2)
 
 - **Contexto:** O menu de confirmação (agendar, cancelar, concluir) mostra `1. Sim` / `2. Não` e a copy diz *“responda com o número”*, mas os steps `awaiting_confirmation` / `awaiting_cancel_confirm` (cliente) e `emp:awaiting_*_confirm` (profissional) só aceitavam palavras de `AFFIRMATIVE`/`NEGATIVE` ou o id do botão (`confirm:yes` / `sim`). Digitar `1` reenviava o menu sem sair do step → loop no WhatsApp real e no simulador (especialmente quando o envio interativo falha e cai no texto numerado).

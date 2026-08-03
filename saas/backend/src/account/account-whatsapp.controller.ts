@@ -197,6 +197,13 @@ export class AccountWhatsappController {
         });
       }
 
+      if (phone && !result.paircode) {
+        throw new BadGatewayException({
+          error:
+            'A Uazapi não devolveu o código de pareamento. Confira o telefone com DDI (ex: 5511999998888) e tente de novo.',
+        });
+      }
+
       return {
         status: result.status,
         instanceId: instanceId || account.whatsappPhoneNumberId,

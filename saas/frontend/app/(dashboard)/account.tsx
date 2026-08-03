@@ -209,6 +209,7 @@ export default function AccountScreen() {
       if (waModeRef.current === 'paircode') return;
       qrFetchLockRef.current = true;
       setWaError('');
+      waModeRef.current = 'qrcode';
       setWaMode('qrcode');
       setWaPaircode(null);
       if (!opts?.silent) setWaBusy(true);
@@ -229,7 +230,7 @@ export default function AccountScreen() {
         startPollingRef.current();
       } finally {
         qrFetchLockRef.current = false;
-        setWaBusy(false);
+        if (waModeRef.current !== 'paircode') setWaBusy(false);
       }
     },
     [],
@@ -327,16 +328,28 @@ export default function AccountScreen() {
       setWaError('Informe o telefone com DDI (ex: +55 11 99999-8888).');
       return;
     }
+    // Para o auto-QR: senão um connect sem phone em voo zera o paircode.
+    stopPolling();
     setWaBusy(true);
+    waModeRef.current = 'paircode';
     setWaMode('paircode');
     setWaQrcode(null);
+    setWaPaircode(null);
     try {
       const data = await dashboardApi.connectWhatsapp({ phone: digits });
+      if (waModeRef.current !== 'paircode') return;
       setWaStatus(data.status);
       setWaInstanceId(data.instanceId || '');
-      setWaPaircode(data.paircode || null);
+      if (!data.paircode) {
+        setWaError(
+          'Não veio código de pareamento. Confira o telefone com DDI e tente de novo.',
+        );
+        return;
+      }
+      setWaPaircode(data.paircode);
       startPolling();
     } catch (err) {
+      if (waModeRef.current !== 'paircode') return;
       setWaError(
         err instanceof Error
           ? err.message
@@ -619,6 +632,7 @@ export default function AccountScreen() {
                       setWaPaircode(null);
                       setWaError('');
                       lastQrFetchAtRef.current = 0;
+                      waModeRef.current = 'qrcode';
                       setWaMode('qrcode');
                     }}
                   />
@@ -669,6 +683,7 @@ export default function AccountScreen() {
                     disabled={waBusy}
                     onPress={() => {
                       stopPolling();
+                      waModeRef.current = 'paircode';
                       setWaMode('paircode');
                       setWaQrcode(null);
                       setWaPaircode(null);
