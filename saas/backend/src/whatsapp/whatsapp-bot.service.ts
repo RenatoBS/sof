@@ -187,6 +187,28 @@ export class WhatsappBotService {
     return n - 1;
   }
 
+  /** Sim/Não: palavras, id do botão (`confirm:yes|no`) ou número do menu (1/2). */
+  private parseYesNo(text: string): 'yes' | 'no' | null {
+    const trimmed = String(text).trim();
+    const lower = trimmed.toLowerCase();
+    const byNumber = this.parseChoice(trimmed, 2);
+    if (
+      AFFIRMATIVE.includes(lower) ||
+      trimmed === 'confirm:yes' ||
+      byNumber === 0
+    ) {
+      return 'yes';
+    }
+    if (
+      NEGATIVE.includes(lower) ||
+      trimmed === 'confirm:no' ||
+      byNumber === 1
+    ) {
+      return 'no';
+    }
+    return null;
+  }
+
   /** Normaliza texto para comparar nomes (sem acento/caixa/pontuação). */
   private normalizeMatchText(value: string) {
     return String(value || '')
@@ -1620,8 +1642,9 @@ export class WhatsappBotService {
       const clientId = sessionData.clientId;
       const clientName = sessionData.clientName || 'Cliente';
       const apptId = sessionData.cancelAppointmentId;
-      const isYes = AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
-      const isNo = NEGATIVE.includes(lower) || trimmed === 'confirm:no';
+      const answer = this.parseYesNo(trimmed);
+      const isYes = answer === 'yes';
+      const isNo = answer === 'no';
 
       if (!clientId || !apptId) {
         await this.resetSession(account.id, phone);
@@ -2170,8 +2193,9 @@ export class WhatsappBotService {
     }
 
     if (step === 'awaiting_confirmation') {
-      const isYes = AFFIRMATIVE.includes(lower) || trimmed === 'confirm:yes';
-      const isNo = NEGATIVE.includes(lower) || trimmed === 'confirm:no';
+      const answer = this.parseYesNo(trimmed);
+      const isYes = answer === 'yes';
+      const isNo = answer === 'no';
 
       if (isYes) {
         const { serviceId, employeeId, date, time, clientId } = sessionData;

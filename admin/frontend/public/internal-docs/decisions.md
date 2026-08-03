@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-03 — Confirmação Sim/Não aceita número do menu (1/2)
+
+- **Contexto:** O menu de confirmação (agendar, cancelar, concluir) mostra `1. Sim` / `2. Não` e a copy diz *“responda com o número”*, mas os steps `awaiting_confirmation` / `awaiting_cancel_confirm` (cliente) e `emp:awaiting_*_confirm` (profissional) só aceitavam palavras de `AFFIRMATIVE`/`NEGATIVE` ou o id do botão (`confirm:yes` / `sim`). Digitar `1` reenviava o menu sem sair do step → loop no WhatsApp real e no simulador (especialmente quando o envio interativo falha e cai no texto numerado).
+- **Decisão:** Helper `parseYesNo` nos dois bots: além de palavras e ids de botão, `parseChoice(text, 2)` trata `1` = sim e `2` = não.
+- **Consequências:** Fallback numerado e simulador passam a confirmar de fato; botões interativos continuam iguais.
+- **Alternativas descartadas:** Remover a instrução “responda com o número” (o fallback numerado continua existindo quando o menu interativo falha); aceitar só `sim`/`não` sem número (mantém o loop no caso real observado nos logs de QA).
+
 ## 2026-07-31 — CI vermelho na main: tipo de retorno em `cookieOptions` e `HandoffParty` explícito
 
 - **Contexto:** O merge do PR #7 entrou na `main` com o CI vermelho em dois jobs. (1) `build saas-backend` — o passo bloqueante é `npm run heroku-postbuild` (`nest build`), e ele acusou 13 erros: oito `res.cookie(...)` (auth, billing, checkout, employee-auth) porque `cookieOptions` perdeu o cast e passou a devolver `sameSite: string`, que não casa com nenhum overload do Express; e cinco em `whatsapp.controller.ts` porque `const party = employee ? 'employee' : 'client'` alarga para `string` ao virar propriedade de um objeto mutável (`partyOpts`), quebrando `openOrRefresh`/`bumpUnresolved`/`resetUnresolved`, que esperam `HandoffParty`. (2) `prisma schema sync (admin)` — o campo `Client.botPausedAuto` entrou no schema do produto sem rodar `npm run admin:sync-schema`. Detalhe que explica o merge às cegas: `npx tsc --noEmit` local com `incremental: true` pode reaproveitar o `tsconfig.tsbuildinfo` e responder “sem erros” — só `npm run build` (o mesmo comando do Heroku e do CI) é veredito.

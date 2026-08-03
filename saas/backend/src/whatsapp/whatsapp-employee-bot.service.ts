@@ -388,10 +388,11 @@ export class WhatsappEmployeeBotService {
     }
 
     if (step === 'emp:awaiting_confirmation') {
-      if (AFFIRMATIVE.includes(lower)) {
+      const answer = this.parseYesNo(trimmed);
+      if (answer === 'yes') {
         return this.commitAppointment(account, employee, phone, data);
       }
-      if (NEGATIVE.includes(lower)) {
+      if (answer === 'no') {
         await this.resetSession(account.id, phone);
         return this.mainMenu(
           account,
@@ -424,7 +425,8 @@ export class WhatsappEmployeeBotService {
     }
 
     if (step === 'emp:awaiting_cancel_confirm') {
-      if (AFFIRMATIVE.includes(lower) && data.cancelAppointmentId) {
+      const answer = this.parseYesNo(trimmed);
+      if (answer === 'yes' && data.cancelAppointmentId) {
         const updated = await this.prisma.appointment.updateMany({
           where: {
             id: data.cancelAppointmentId,
@@ -458,7 +460,7 @@ export class WhatsappEmployeeBotService {
           'Horário cancelado. Mais alguma coisa?',
         );
       }
-      if (NEGATIVE.includes(lower)) {
+      if (answer === 'no') {
         await this.resetSession(account.id, phone);
         return this.mainMenu(
           account,
@@ -493,7 +495,8 @@ export class WhatsappEmployeeBotService {
     }
 
     if (step === 'emp:awaiting_complete_confirm') {
-      if (AFFIRMATIVE.includes(lower) && data.cancelAppointmentId) {
+      const answer = this.parseYesNo(trimmed);
+      if (answer === 'yes' && data.cancelAppointmentId) {
         const existing = await this.prisma.appointment.findFirst({
           where: {
             id: data.cancelAppointmentId,
@@ -539,7 +542,7 @@ export class WhatsappEmployeeBotService {
           botCopy.employeeCompleted(),
         );
       }
-      if (NEGATIVE.includes(lower)) {
+      if (answer === 'no') {
         await this.resetSession(account.id, phone);
         return this.mainMenu(
           account,
@@ -2154,6 +2157,16 @@ export class WhatsappEmployeeBotService {
     const n = Number.parseInt(String(text).trim(), 10);
     if (!Number.isFinite(n) || n < 1 || n > max) return null;
     return n - 1;
+  }
+
+  /** Sim/Não: palavras, id do botão (`sim`/`nao`) ou número do menu (1/2). */
+  private parseYesNo(text: string): 'yes' | 'no' | null {
+    const trimmed = String(text).trim();
+    const lower = trimmed.toLowerCase();
+    const byNumber = this.parseChoice(trimmed, 2);
+    if (AFFIRMATIVE.includes(lower) || byNumber === 0) return 'yes';
+    if (NEGATIVE.includes(lower) || byNumber === 1) return 'no';
+    return null;
   }
 
   private parseDateInput(text: string, account: Account) {
