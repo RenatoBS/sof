@@ -10,7 +10,21 @@
     "web": "expo start --web",
     "export:web": "expo export -p web",
     "start:web": "serve dist -s -l $PORT",
-    "heroku-postbuild": "npm run export:web"
+    "heroku-postbuild": "npm run export:web",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts?(x)"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg)"
+    ]
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
@@ -38,7 +52,12 @@
     "serve": "^14.2.6"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "^0.86.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "jest": "^29.7.0",
+    "jest-expo": "^57.0.3",
+    "react-test-renderer": "^19.2.3",
     "typescript": "~6.0.3"
   },
   "engines": {

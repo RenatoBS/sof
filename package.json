@@ -33,7 +33,10 @@
     "deploy:all": "npm run deploy:api && npm run deploy:web && npm run deploy:admin",
     "release:qa": "bash scripts/release-tag.sh stg",
     "release:prod": "bash scripts/release-tag.sh prod",
-    "check:content-sync": "bash scripts/check-content-sync.sh"
+    "check:content-sync": "bash scripts/check-content-sync.sh",
+    "test:unit:saas-backend": "npm test --prefix saas/backend",
+    "test:unit:saas-frontend": "npm test --prefix saas/frontend",
+    "test:unit": "npm run test:unit:saas-backend && npm run test:unit:saas-frontend"
   },
   "engines": {
     "node": "22.x"

@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-05 — Suíte unitária SaaS (Jest + jest-expo)
+
+- **Contexto:** CI do frontend era no-op (`echo`); backend já tinha Jest com poucos specs. Precisávamos de base unitária expandível sem confundir com E2E Playwright.
+- **Decisão:** Expandir Jest Nest no backend (`*.spec.ts` colocalizados) e introduzir jest-expo no frontend (`**/__tests__/**/*.test.ts`), com scripts `test:unit*` na raiz e CI `saas-frontend` → `npm test`. Escopo seed: lógica pura + services com Prisma mock (sem RTL de telas nesta entrega). Jest 29 no front (compatível com jest-expo 57).
+- **Consequências:** `npm run test:unit` verde local/CI; cobertura cresce por domínio. Componentes Expo Router ficam para depois.
+- **Alternativas descartadas:** Vitest no front; cobertura total de todos os modules na primeira PR; misturar E2E no mesmo comando.
+
 ## 2026-08-05 — Link de pagamento por produto (sem Stripe)
 
 - **Contexto:** No pedido WhatsApp o cliente precisa de um jeito de pagar; a Sof não deve criar Payment Links/Checkout do estabelecimento.
