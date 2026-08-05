@@ -33,7 +33,10 @@
     "deploy:all": "npm run deploy:api && npm run deploy:web && npm run deploy:admin",
     "release:qa": "bash scripts/release-tag.sh stg",
     "release:prod": "bash scripts/release-tag.sh prod",
-    "check:content-sync": "bash scripts/check-content-sync.sh"
+    "check:content-sync": "bash scripts/check-content-sync.sh",
+    "test:e2e:handoff-api": "node scripts/e2e/handoff-inbox-api.mjs",
+    "test:e2e:handoff-browser": "node scripts/e2e/handoff-inbox-browser.mjs",
+    "test:e2e:handoff": "npm run test:e2e:handoff-api && npm run test:e2e:handoff-browser"
   },
   "engines": {
     "node": "22.x"

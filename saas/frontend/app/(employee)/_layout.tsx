@@ -22,6 +22,8 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const onChangePassword = pathname.includes('change-password');
   const onSupport = pathname.includes('support');
+  const onHandoffs = pathname.includes('handoffs');
+  const canHandoffs = Boolean(employee?.canHandleHandoffs);
 
   if (loading) {
     return <SofLoadingGate label="Carregando…" />;
@@ -34,6 +36,10 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
   }
 
   if (!employee.mustChangePassword && onChangePassword) {
+    return <Redirect href="/(employee)/agenda" />;
+  }
+
+  if (!canHandoffs && onHandoffs) {
     return <Redirect href="/(employee)/agenda" />;
   }
 
@@ -62,7 +68,23 @@ function EmployeeChrome({ children }: { children: React.ReactNode }) {
             </View>
           </View>
           <View style={styles.actions}>
-            {!onChangePassword && !onSupport ? (
+            {!onChangePassword && canHandoffs && !onHandoffs ? (
+              <SofButton
+                title="Atendimentos"
+                variant="light"
+                theme="dashboard"
+                onPress={() => router.push('/(employee)/handoffs')}
+              />
+            ) : null}
+            {!onChangePassword && onHandoffs ? (
+              <SofButton
+                title="Agenda"
+                variant="light"
+                theme="dashboard"
+                onPress={() => router.push('/(employee)/agenda')}
+              />
+            ) : null}
+            {!onChangePassword && !onSupport && !onHandoffs ? (
               <SofButton
                 title="Suporte"
                 variant="light"
@@ -124,7 +146,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 8,
   },
-  // Sem wrap e podendo encolher: os nomes truncam e as ações ficam na mesma linha.
   brandBlock: {
     flex: 1,
     minWidth: 0,

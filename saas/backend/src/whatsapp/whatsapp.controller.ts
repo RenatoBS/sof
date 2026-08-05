@@ -240,6 +240,13 @@ export class WhatsappController {
       }
 
       if (await this.shouldSilenceIncoming(account, customerPhone)) {
+        await this.persistInboundWhileSilenced({
+          accountId: account.id,
+          customerPhone,
+          text: 'Áudio',
+          providerMessageId: messageId ? String(messageId) : undefined,
+          isAudio: true,
+        });
         return;
       }
 
@@ -357,6 +364,13 @@ export class WhatsappController {
     }
 
     if (await this.shouldSilenceIncoming(account, customerPhone, text)) {
+      await this.persistInboundWhileSilenced({
+        accountId: account.id,
+        customerPhone,
+        text,
+        providerMessageId: messageId ? String(messageId) : undefined,
+        isAudio: false,
+      });
       return;
     }
 
@@ -420,12 +434,40 @@ export class WhatsappController {
       account.id,
       customerPhone,
     );
+    const outboundText =
+      this.extractUazapiSelection(message) ||
+      String(message.text || message.content || '').trim() ||
+      (this.isUazapiAudioMessage(message) ? 'Áudio' : '');
     await this.handoffs.onHumanReply({
       accountId: account.id,
       phone: customerPhone,
       party: employee ? 'employee' : 'client',
       employeeId: employee?.id,
       displayName: employee?.name,
+      messageBody: outboundText || undefined,
+      providerMessageId: messageId ? String(messageId) : undefined,
+    });
+  }
+
+  /** Cliente mandou mensagem com bot pausado: grava na thread do handoff aberto. */
+  private async persistInboundWhileSilenced(opts: {
+    accountId: string;
+    customerPhone: string;
+    text: string;
+    providerMessageId?: string;
+    isAudio?: boolean;
+  }) {
+    const employee = await this.employeeBot.findEmployee(
+      opts.accountId,
+      opts.customerPhone,
+    );
+    await this.handoffs.appendMessage({
+      accountId: opts.accountId,
+      phone: opts.customerPhone,
+      direction: 'inbound',
+      senderKind: employee ? 'employee_party' : 'client',
+      body: opts.text || (opts.isAudio ? 'Áudio' : ''),
+      providerMessageId: opts.providerMessageId,
     });
   }
 
@@ -645,6 +687,11 @@ export class WhatsappController {
           const text = this.extractMetaSelection(message);
           if (!text) continue;
           if (await this.shouldSilenceIncoming(account, message.from, text)) {
+            await this.persistInboundWhileSilenced({
+              accountId: account.id,
+              customerPhone: message.from,
+              text,
+            });
             continue;
           }
           const result = await this.bot.handleIncomingMessage({
@@ -785,19 +832,35 @@ export class WhatsappController {
     }
 
     if (await this.shouldSilenceIncoming(req.account, customerPhone, text)) {
+      await this.persistInboundWhileSilenced({
+        accountId: req.account.id,
+        customerPhone,
+        text,
+      });
       return {
         replies: [
           isAccountBotPaused(req.account)
             ? '(Bot pausado na conta — nenhuma resposta enviada. Reative em Conta → WhatsApp.)'
-            : '(Bot pausado para este cliente — nenhuma resposta enviada.)',
+            : '(Bot pausado para este cliente — nenhuma resposta enviada. A mensagem entrou no atendimento aberto.)',
         ],
+        handoffOpened: false,
+        silenced: true,
       };
     }
 
-    return this.bot.handleIncomingMessage({
+    const result = await this.bot.handleIncomingMessage({
       account: req.account,
       customerPhone,
       text,
     });
+    const { handoffOpened } = await this.afterBotResult({
+      accountId: req.account.id,
+      customerPhone,
+      text,
+      result,
+      instanceToken: req.account.whatsappInstanceToken ?? undefined,
+      skipOutboundNotice: true,
+    });
+    return { ...result, handoffOpened, silenced: false };
   }
 }

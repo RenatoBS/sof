@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-05 — Inbox Flex de Atendimentos (reply interno + claim)
+
+- **Contexto:** A aba Atendimentos só listava alertas e mandava o humano para o WhatsApp externo. Equipes Equipe/Rede precisam handoff dentro da Sof (estilo Twilio Flex), com profissionais habilitados pela conta.
+- **Decisão:** Inbox com fila/thread/contexto; `WhatsappMessage` persiste a conversa; `assigneeType` + `assignedEmployeeId` para claim/transfer; `Employee.canHandleHandoffs` + portal `/(employee)/handoffs`; reply via `WhatsappApiService.sendText`. `fromMe` no WA deixa de auto-resolver — fechamento é explícito (Resolver / Devolver à Sof). Profissionais só atendem `party=client`.
+- **Consequências:** Atendimento humano acontece no painel; deep link WhatsApp vira secundário. SSE ganha `whatsapp-handoff:message` e stream do profissional. Planos sem `handoffs` inalterados.
+- **Alternativas descartadas:** Só deep link (status quo); status disponível/ocupado e filas por skill (v2); auto-resolve no `fromMe` (conflita com inbox aberto).
+
 ## 2026-08-05 — Link de pagamento por produto (sem Stripe)
 
 - **Contexto:** No pedido WhatsApp o cliente precisa de um jeito de pagar; a Sof não deve criar Payment Links/Checkout do estabelecimento.

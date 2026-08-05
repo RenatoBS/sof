@@ -239,3 +239,26 @@ npm run admin-frontend:web
 ```
 
 `saas` / `admin` chamam [`scripts/dev-stack.js`](../scripts/dev-stack.js) (Node puro, sem dependências — a raiz não tem `node_modules`). O log da API sai prefixado com `[api]`; o Expo fica com o terminal, então QR e atalhos de teclado continuam funcionando. `Ctrl+C` derruba os dois — o script mata a árvore de processos, porque `npm run` não repassa o sinal para `nest`/`expo`. Se um dos lados cair, o outro é encerrado junto. O Postgres **não** entra nesses comandos: rode `npm run db:up` antes. Falta de `node_modules` no pacote alvo aborta com a instrução de instalar.
+
+## Testes E2E (inbox Atendimentos)
+
+Com a stack SaaS no ar (`npm run saas`) e seed Equipe (`demo@sof.com`):
+
+```bash
+# 1x: instalar Chromium do Playwright
+cd e2e && npm install && npx playwright install chromium && cd ..
+
+# API (login → simulate → claim → reply → transfer → return-to-sof)
+npm run test:e2e:handoff-api
+
+# Browser (Chromium: login → Atendimentos → Assumir → Enviar → Resolver)
+npm run test:e2e:handoff-browser
+
+# Os dois
+npm run test:e2e:handoff
+
+# Ver a janela do browser
+E2E_HEADED=1 npm run test:e2e:handoff-browser
+```
+
+Credenciais: `SEED_DEMO_EMAIL` / `SEED_DEMO_PASSWORD` de `saas/backend/.env` (ou `E2E_EMAIL` / `E2E_PASSWORD`). Scripts em [`scripts/e2e/`](../scripts/e2e/).

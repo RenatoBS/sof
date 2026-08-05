@@ -33,6 +33,7 @@ admin/frontend/dist/
 coverage/
 .nyc_output/
 *.lcov
+scripts/e2e/artifacts/
 
 # Logs
 logs/

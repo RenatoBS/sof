@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-08-05 — Reply do inbox best-effort + E2E API/browser
+
+- **Contexto:** Com a sessão Uazapi caída, `POST …/reply` estourava 500 e o agente não conseguia gravar a conversa no painel. Também faltava teste integrado do inbox Flex.
+- **Decisão:** `reply` tenta `sendText` e, se falhar, ainda persiste a mensagem (`delivered: false`). Scripts E2E em `scripts/e2e/` (API + Playwright) e `npm run test:e2e:handoff*`. Simulador passa a chamar `afterBotResult` (abre handoff de verdade).
+- **Consequências:** Inbox útil em dev/sem WA; entrega real continua quando a sessão está ok. Playwright vive em `e2e/node_modules`.
+- **Alternativas descartadas:** Falhar o reply inteiro sem WA; mock só nos testes.
+
+## 2026-08-05 — Inbox Flex de Atendimentos (reply interno + claim)
+
+- **Contexto:** A aba Atendimentos só listava alertas e mandava o humano para o WhatsApp externo. Equipes Equipe/Rede precisam handoff dentro da Sof (estilo Twilio Flex), com profissionais habilitados pela conta.
+- **Decisão:** Inbox com fila/thread/contexto; `WhatsappMessage` persiste a conversa; `assigneeType` + `assignedEmployeeId` para claim/transfer; `Employee.canHandleHandoffs` + portal `/(employee)/handoffs`; reply via `WhatsappApiService.sendText`. `fromMe` no WA deixa de auto-resolver — fechamento é explícito (Resolver / Devolver à Sof). Profissionais só atendem `party=client`.
+- **Consequências:** Atendimento humano acontece no painel; deep link WhatsApp vira secundário. SSE ganha `whatsapp-handoff:message` e stream do profissional. Planos sem `handoffs` inalterados.
+- **Alternativas descartadas:** Só deep link (status quo); status disponível/ocupado e filas por skill (v2); auto-resolve no `fromMe` (conflita com inbox aberto).
+
 ## 2026-08-05 — Link de pagamento por produto (sem Stripe)
 
 - **Contexto:** No pedido WhatsApp o cliente precisa de um jeito de pagar; a Sof não deve criar Payment Links/Checkout do estabelecimento.

@@ -38,6 +38,7 @@ export function publicEmployeeSession(
     phone: employee.phone || '',
     color: employee.color,
     mustChangePassword: employee.mustChangePassword,
+    canHandleHandoffs: Boolean(employee.canHandleHandoffs),
     businessName: account.businessName,
     logoBase64: account.logoBase64 || '',
     createdAt: employee.createdAt.toISOString(),
