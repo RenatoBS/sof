@@ -49,6 +49,12 @@ const ALL_TABS: {
     icon: 'services',
   },
   {
+    href: '/(dashboard)/products',
+    label: 'Produtos',
+    match: 'products',
+    icon: 'products',
+  },
+  {
     href: '/(dashboard)/clients',
     label: 'Clientes',
     match: 'clients',
@@ -81,7 +87,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const isCompact = width < 720;
   const { account, loading, logout } = useAuth();
   const { has } = useEntitlements();
-  const { loadAll, setAppointments, setClients, handoffs, setHandoffs } =
+  const { loadAll, setAppointments, setClients, handoffs, setHandoffs, services, products, loading: dashLoading } =
     useDashboard();
   const { showToast } = useToast();
   const pathname = usePathname();
@@ -169,9 +175,20 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
 
   const onChoosePlan =
     pathname.includes('choose-plan') || pathname.endsWith('/choose-plan');
+  const onSetupCatalog =
+    pathname.includes('setup-catalog') || pathname.endsWith('/setup-catalog');
 
   if (account.needsPlanSelection && !onChoosePlan) {
     return <Redirect href="/(dashboard)/choose-plan" />;
+  }
+
+  const needsCatalogSetup =
+    !account.needsPlanSelection &&
+    !dashLoading &&
+    services.length + products.length === 0;
+
+  if (needsCatalogSetup && !onSetupCatalog) {
+    return <Redirect href={'/(dashboard)/setup-catalog' as '/'} />;
   }
 
   return (
@@ -209,7 +226,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         </View>
       </View>
 
-      {!account.needsPlanSelection ? (
+      {!account.needsPlanSelection && !onSetupCatalog ? (
       <View style={styles.tabbar}>
         <ScrollView
           horizontal

@@ -273,6 +273,31 @@ async function seedDemoAccount(
     services[s.key] = row;
   }
 
+  await prisma.product.createMany({
+    data: [
+      {
+        accountId: account.id,
+        name: 'Pomada modeladora',
+        description: 'Fixação média, acabamento natural. 100g.',
+        price: 45,
+        images: [],
+        stock: 20,
+        handoffEnabled: false,
+        active: true,
+      },
+      {
+        accountId: account.id,
+        name: 'Kit presente',
+        description: 'Shampoo + condicionador + óleo. Embalagem para presente.',
+        price: 120,
+        images: [],
+        stock: null,
+        handoffEnabled: true,
+        active: true,
+      },
+    ],
+  });
+
   const templates = EMPLOYEE_TEMPLATES.slice(0, demo.employeeCount);
   const employees = [];
   for (let i = 0; i < templates.length; i++) {

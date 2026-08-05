@@ -36,7 +36,12 @@ function canvasToJpegDataUrl(
 /**
  * Converte um File de imagem em data URL ≤ 5 MB.
  * Redimensiona (máx. 1024px) e reduz qualidade JPEG até caber.
+ * Alias estável para logo e imagens de produto.
  */
+export async function fileToImageDataUrl(file: File): Promise<string> {
+  return fileToLogoDataUrl(file);
+}
+
 export async function fileToLogoDataUrl(file: File): Promise<string> {
   if (!file || !file.type.startsWith('image/')) {
     throw new Error('Selecione um arquivo de imagem (PNG, JPEG, WebP ou GIF).');

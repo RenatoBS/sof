@@ -4,6 +4,7 @@ export type DashboardTabIconName =
   | 'agenda'
   | 'employees'
   | 'services'
+  | 'products'
   | 'clients'
   | 'handoffs'
   | 'billing'
@@ -63,6 +64,21 @@ export function DashboardTabIcon({
         >
           <Path {...common} d="M8 6h13M8 12h13M8 18h13" />
           <Path {...common} d="M3 6h.01M3 12h.01M3 18h.01" />
+        </Svg>
+      );
+    case 'products':
+      return (
+        <Svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
+          <Path
+            {...common}
+            d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z"
+          />
+          <Path {...common} d="M12 12v9M3 7.5l9 4.5 9-4.5" />
         </Svg>
       );
     case 'clients':

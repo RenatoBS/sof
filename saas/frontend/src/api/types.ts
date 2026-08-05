@@ -37,6 +37,10 @@ export type Account = {
   promoExpiresAt?: string | null;
   /** true quando status === paused (cupom/trial vencido) */
   needsPlanSelection?: boolean;
+  /** Bot oferece fluxo de agendamento de serviços (default true). */
+  botAttendsServices?: boolean;
+  /** Bot oferece fluxo de venda de produtos (default false). */
+  botAttendsProducts?: boolean;
   createdAt: string;
   whatsappConnectedAt?: string | null;
 };
@@ -48,6 +52,45 @@ export type Service = {
   duration: number;
   price: number;
   createdAt: string;
+};
+
+export type Product = {
+  id: string;
+  accountId: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  stock: number | null;
+  handoffEnabled: boolean;
+  active: boolean;
+  createdAt: string;
+};
+
+export type OrderItem = {
+  id: string;
+  orderId: string;
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+  productImage?: string;
+};
+
+export type Order = {
+  id: string;
+  accountId: string;
+  clientId: string | null;
+  clientName: string;
+  clientPhone: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | string;
+  total: number;
+  source: string;
+  notes: string;
+  items: OrderItem[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Employee = {

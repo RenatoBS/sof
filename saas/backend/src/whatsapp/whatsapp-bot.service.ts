@@ -23,7 +23,19 @@ import { EntitlementsService } from '../entitlements/entitlements.service';
 import { EntitlementsMap, hasFeature } from '../entitlements/feature-catalog';
 import { formatReminderLeadLabel } from '../reminders/reminder-window';
 import { mergeLastName, parseFirstName, parseFullName } from './client-name';
+import { normalizeProductImages } from '../products/product-images';
 import * as botCopy from './bot-copy';
+
+type CatalogProduct = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: unknown;
+  stock: number | null;
+  handoffEnabled: boolean;
+  active: boolean;
+};
 
 type SessionData = {
   clientId?: string;
@@ -35,6 +47,8 @@ type SessionData = {
   date?: string;
   time?: string;
   cancelAppointmentId?: string;
+  productId?: string;
+  quantity?: number;
 };
 
 type SlotOption = { date: string; time: string };
@@ -55,11 +69,16 @@ export type WhatsappInteractiveMenu = {
 export type WhatsappBotResult = {
   replies: string[];
   interactive?: WhatsappInteractiveMenu[];
+  /** Data URLs de imagem para enviar (Uazapi); falha → só texto. */
+  images?: string[];
   appointment?: ReturnType<typeof serializeDates>;
+  order?: ReturnType<typeof serializeDates>;
   /** Entrada inválida / não entendida — conta para escalonamento. */
   unresolved?: boolean;
   /** Cliente pediu atendimento humano. */
   humanRequested?: boolean;
+  /** Pedido de produto com handoffEnabled — abre alerta product_sale. */
+  productSaleHandoff?: boolean;
 };
 
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
@@ -1217,14 +1236,282 @@ export class WhatsappBotService {
     customerPhone: string,
     client: { id: string; name: string },
     services: { id: string; name: string; duration: number; price: number }[],
+    products: CatalogProduct[] = [],
   ): Promise<WhatsappBotResult> {
-    return this.mainMenu(
+    return this.startConversation(
       account,
+      customerPhone,
       client,
       services,
-      customerPhone,
+      products,
       botCopy.greetKnownClient(client.name, account.businessName),
     );
+  }
+
+  private botAttendsServices(account: Account) {
+    return account.botAttendsServices !== false;
+  }
+
+  private botAttendsProducts(account: Account) {
+    return Boolean(account.botAttendsProducts);
+  }
+
+  private async startConversation(
+    account: Account,
+    customerPhone: string,
+    client: { id: string; name: string },
+    services: { id: string; name: string; duration: number; price: number }[],
+    products: CatalogProduct[],
+    intro: string,
+  ): Promise<WhatsappBotResult> {
+    const attServices = this.botAttendsServices(account) && services.length > 0;
+    const attProducts =
+      this.botAttendsProducts(account) && products.length > 0;
+
+    if (attServices && attProducts) {
+      await this.saveSession(account.id, customerPhone, {
+        step: 'awaiting_intent',
+        data: { clientId: client.id, clientName: client.name },
+      });
+      return this.intentMenu(intro);
+    }
+
+    if (attProducts && !attServices) {
+      return this.startProductFlow(
+        account,
+        customerPhone,
+        client,
+        products,
+        intro,
+      );
+    }
+
+    return this.mainMenu(account, client, services, customerPhone, intro);
+  }
+
+  private intentMenu(intro: string): WhatsappBotResult {
+    const body = `${intro} ${botCopy.intentMenuPrompt()}`;
+    return this.menuReply(
+      body,
+      [
+        {
+          id: 'intent:service',
+          title: 'Agendar serviço',
+          description: 'Marcar horário',
+        },
+        {
+          id: 'intent:product',
+          title: 'Comprar produto',
+          description: 'Ver catálogo e pedir',
+        },
+      ],
+      { listButton: 'Ver opções' },
+    );
+  }
+
+  private productChoiceTitle(name: string, price: number) {
+    const pricePart = ` ${this.formatPrice(price)}`;
+    const maxName = Math.max(4, 20 - pricePart.length);
+    const title =
+      name.length <= maxName ? name : `${name.slice(0, maxName - 1)}…`;
+    return `${title}${pricePart}`.slice(0, 24);
+  }
+
+  private productMenu(
+    bodyText: string,
+    products: CatalogProduct[],
+  ): WhatsappBotResult {
+    const choices: WhatsappMenuChoice[] = products.map((p) => ({
+      id: `prod:${p.id}`,
+      title: this.productChoiceTitle(p.name, p.price),
+      description: (p.description || '').trim().slice(0, 72) || this.formatPrice(p.price),
+    }));
+    return this.menuReply(bodyText, choices, { listButton: 'Ver produtos' });
+  }
+
+  private async startProductFlow(
+    account: Account,
+    customerPhone: string,
+    client: { id: string; name: string },
+    products: CatalogProduct[],
+    intro: string,
+  ): Promise<WhatsappBotResult> {
+    await this.saveSession(account.id, customerPhone, {
+      step: 'awaiting_product',
+      data: { clientId: client.id, clientName: client.name },
+    });
+    return this.productMenu(
+      `${intro} ${botCopy.askProductPrompt()}`,
+      products,
+    );
+  }
+
+  private matchProduct(
+    text: string,
+    products: CatalogProduct[],
+  ): CatalogProduct | null {
+    const byId = /^prod:(.+)$/i.exec(text.trim());
+    if (byId) {
+      return products.find((p) => p.id === byId[1]) || null;
+    }
+    const byNumber = this.parseChoice(text, products.length);
+    if (byNumber !== null) return products[byNumber] || null;
+    const norm = this.normalizeMatchText(text);
+    if (!norm) return null;
+    const exact = products.filter(
+      (p) => this.normalizeMatchText(p.name) === norm,
+    );
+    if (exact.length === 1) return exact[0];
+    const partial = products.filter((p) =>
+      this.normalizeMatchText(p.name).includes(norm),
+    );
+    if (partial.length === 1) return partial[0];
+    return null;
+  }
+
+  private async askProductQuantity(
+    account: Account,
+    phone: string,
+    client: { id: string; name: string },
+    product: CatalogProduct,
+  ): Promise<WhatsappBotResult> {
+    await this.saveSession(account.id, phone, {
+      step: 'awaiting_product_qty',
+      data: {
+        clientId: client.id,
+        clientName: client.name,
+        productId: product.id,
+      },
+    });
+    const images = normalizeProductImages(product.images);
+    const detail = botCopy.productDetail({
+      name: product.name,
+      description: product.description,
+      price: this.formatPrice(product.price),
+    });
+    const qtyPrompt = botCopy.askProductQuantity(
+      product.name,
+      this.formatPrice(product.price),
+    );
+    return {
+      replies: [detail, qtyPrompt],
+      images: images.slice(0, 1),
+    };
+  }
+
+  private async confirmProductOrderMenu(
+    account: Account,
+    phone: string,
+    client: { id: string; name: string },
+    product: CatalogProduct,
+    quantity: number,
+  ): Promise<WhatsappBotResult> {
+    await this.saveSession(account.id, phone, {
+      step: 'awaiting_product_confirm',
+      data: {
+        clientId: client.id,
+        clientName: client.name,
+        productId: product.id,
+        quantity,
+      },
+    });
+    const total = product.price * quantity;
+    return this.confirmMenu(
+      botCopy.confirmProductOrder({
+        productName: product.name,
+        quantity,
+        unitPrice: this.formatPrice(product.price),
+        total: this.formatPrice(total),
+      }),
+    );
+  }
+
+  private async placeProductOrder(opts: {
+    account: Account;
+    phone: string;
+    client: { id: string; name: string };
+    product: CatalogProduct;
+    quantity: number;
+  }): Promise<WhatsappBotResult> {
+    const { account, phone, client, product, quantity } = opts;
+
+    try {
+      const order = await this.prisma.$transaction(async (tx) => {
+        const fresh = await tx.product.findFirst({
+          where: { id: product.id, accountId: account.id, active: true },
+        });
+        if (!fresh) {
+          throw new Error('PRODUCT_GONE');
+        }
+        if (fresh.stock != null && fresh.stock < quantity) {
+          throw new Error(`STOCK:${fresh.stock}`);
+        }
+        if (fresh.stock != null) {
+          await tx.product.update({
+            where: { id: fresh.id },
+            data: { stock: fresh.stock - quantity },
+          });
+        }
+        const lineTotal = fresh.price * quantity;
+        return tx.order.create({
+          data: {
+            accountId: account.id,
+            clientId: client.id,
+            clientName: client.name,
+            clientPhone: phone,
+            status: 'pending',
+            total: lineTotal,
+            source: 'whatsapp',
+            items: {
+              create: [
+                {
+                  productId: fresh.id,
+                  productName: fresh.name,
+                  unitPrice: fresh.price,
+                  quantity,
+                  lineTotal,
+                },
+              ],
+            },
+          },
+          include: { items: true },
+        });
+      });
+
+      await this.resetSession(account.id, phone);
+      const shaped = serializeDates(order);
+      this.realtime.broadcast(account.id, 'order:created', { order: shaped });
+
+      const withHandoff = Boolean(product.handoffEnabled);
+      return {
+        replies: [
+          botCopy.orderPlaced({
+            total: this.formatPrice(order.total),
+            withHandoff,
+          }),
+        ],
+        order: shaped,
+        productSaleHandoff: withHandoff || undefined,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.startsWith('STOCK:')) {
+        const available = parseInt(msg.slice(6), 10);
+        return {
+          replies: [
+            botCopy.productInsufficientStock(product.name, available),
+          ],
+          unresolved: true,
+        };
+      }
+      if (msg === 'PRODUCT_GONE') {
+        return {
+          replies: [botCopy.productOutOfStock(product.name)],
+          unresolved: true,
+        };
+      }
+      throw err;
+    }
   }
 
   private async mainMenu(
@@ -1420,14 +1707,46 @@ export class WhatsappBotService {
       where: { accountId: account.id },
       orderBy: { createdAt: 'asc' },
     });
+    const productsRaw = await this.prisma.product.findMany({
+      where: { accountId: account.id, active: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const products: CatalogProduct[] = productsRaw.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      images: p.images,
+      stock: p.stock,
+      handoffEnabled: p.handoffEnabled,
+      active: p.active,
+    }));
     const employeeCount = await this.prisma.employee.count({
       where: { accountId: account.id },
     });
 
-    if (services.length === 0 || employeeCount === 0) {
-      return {
-        replies: [botCopy.setupIncomplete()],
-      };
+    const attServices = this.botAttendsServices(account);
+    const attProducts = this.botAttendsProducts(account);
+    const servicesReady = services.length > 0 && employeeCount > 0;
+    const productsReady = products.length > 0;
+
+    if (attServices && !attProducts && !servicesReady) {
+      return { replies: [botCopy.setupIncompleteServices()] };
+    }
+    if (attProducts && !attServices && !productsReady) {
+      return { replies: [botCopy.setupIncompleteProducts()] };
+    }
+    if (attServices && attProducts && !servicesReady && !productsReady) {
+      return { replies: [botCopy.setupIncomplete()] };
+    }
+    if (!attServices && !attProducts) {
+      return { replies: [botCopy.setupIncomplete()] };
+    }
+    // Serviços ligados mas incompletos: só produtos disponíveis
+    const canBook = attServices && servicesReady;
+    const canSell = attProducts && productsReady;
+    if (!canBook && !canSell) {
+      return { replies: [botCopy.setupIncomplete()] };
     }
 
     const session = await this.prisma.whatsappSession.findUnique({
@@ -1444,16 +1763,24 @@ export class WhatsappBotService {
     if (step === 'start') {
       const existingClient = await this.findClient(account.id, phone);
       if (existingClient) {
-        const viaNlu = await this.tryNluBooking(
+        if (canBook) {
+          const viaNlu = await this.tryNluBooking(
+            account,
+            services,
+            { clientId: existingClient.id, clientName: existingClient.name },
+            phone,
+            trimmed,
+            existingClient,
+          );
+          if (viaNlu) return viaNlu;
+        }
+        return this.startBooking(
           account,
-          services,
-          { clientId: existingClient.id, clientName: existingClient.name },
           phone,
-          trimmed,
           existingClient,
+          canBook ? services : [],
+          canSell ? products : [],
         );
-        if (viaNlu) return viaNlu;
-        return this.startBooking(account, phone, existingClient, services);
       }
       await this.saveSession(account.id, phone, {
         step: 'awaiting_name',
@@ -1468,14 +1795,26 @@ export class WhatsappBotService {
     if (step === 'awaiting_last_name' && sessionData.pendingFirstName) {
       const name = mergeLastName(sessionData.pendingFirstName, trimmed);
       const client = await this.upsertClientByPhone(account.id, phone, name);
-      return this.startBooking(account, phone, client, services);
+      return this.startBooking(
+        account,
+        phone,
+        client,
+        canBook ? services : [],
+        canSell ? products : [],
+      );
     }
 
     if (step === 'awaiting_name' || step === 'awaiting_last_name') {
       const name = parseFullName(trimmed);
       if (name) {
         const client = await this.upsertClientByPhone(account.id, phone, name);
-        return this.startBooking(account, phone, client, services);
+        return this.startBooking(
+          account,
+          phone,
+          client,
+          canBook ? services : [],
+          canSell ? products : [],
+        );
       }
 
       const firstName = parseFirstName(trimmed);
@@ -1493,6 +1832,142 @@ export class WhatsappBotService {
       return {
         replies: [botCopy.askLastName(firstName)],
       };
+    }
+
+    if (step === 'awaiting_intent') {
+      const clientId = sessionData.clientId;
+      const clientName = sessionData.clientName || 'Cliente';
+      if (!clientId) {
+        await this.resetSession(account.id, phone);
+        return { replies: [botCopy.conversationReset()] };
+      }
+      const client = { id: clientId, name: clientName };
+      const wantsService =
+        trimmed === 'intent:service' ||
+        /agendar|servi[cç]o/i.test(trimmed) ||
+        this.parseChoice(trimmed, 2) === 0;
+      const wantsProduct =
+        trimmed === 'intent:product' ||
+        /comprar|produto/i.test(trimmed) ||
+        this.parseChoice(trimmed, 2) === 1;
+      if (wantsService && canBook) {
+        return this.mainMenu(
+          account,
+          client,
+          services,
+          phone,
+          botCopy.ACK,
+        );
+      }
+      if (wantsProduct && canSell) {
+        return this.startProductFlow(
+          account,
+          phone,
+          client,
+          products,
+          botCopy.ACK,
+        );
+      }
+      return this.withUnresolved(this.intentMenu(botCopy.intentMenuPrompt()));
+    }
+
+    if (step === 'awaiting_product') {
+      const clientId = sessionData.clientId;
+      const clientName = sessionData.clientName || 'Cliente';
+      if (!clientId || !canSell) {
+        await this.resetSession(account.id, phone);
+        return { replies: [botCopy.conversationReset()] };
+      }
+      const client = { id: clientId, name: clientName };
+      const product = this.matchProduct(trimmed, products);
+      if (!product) {
+        return this.withUnresolved(
+          this.productMenu(botCopy.askProductPrompt(), products),
+        );
+      }
+      if (product.stock != null && product.stock <= 0) {
+        return this.withUnresolved(
+          this.productMenu(
+            botCopy.productOutOfStock(product.name),
+            products,
+          ),
+        );
+      }
+      return this.askProductQuantity(account, phone, client, product);
+    }
+
+    if (step === 'awaiting_product_qty') {
+      const clientId = sessionData.clientId;
+      const clientName = sessionData.clientName || 'Cliente';
+      const productId = sessionData.productId;
+      const product = products.find((p) => p.id === productId);
+      if (!clientId || !product) {
+        await this.resetSession(account.id, phone);
+        return { replies: [botCopy.conversationReset()] };
+      }
+      const client = { id: clientId, name: clientName };
+      const qty = parseInt(String(trimmed).trim(), 10);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 20) {
+        return {
+          replies: [
+            botCopy.askProductQuantity(
+              product.name,
+              this.formatPrice(product.price),
+            ),
+          ],
+          unresolved: true,
+        };
+      }
+      if (product.stock != null && qty > product.stock) {
+        return {
+          replies: [
+            botCopy.productInsufficientStock(product.name, product.stock),
+          ],
+          unresolved: true,
+        };
+      }
+      return this.confirmProductOrderMenu(
+        account,
+        phone,
+        client,
+        product,
+        qty,
+      );
+    }
+
+    if (step === 'awaiting_product_confirm') {
+      const answer = this.parseYesNo(trimmed);
+      const clientId = sessionData.clientId;
+      const clientName = sessionData.clientName || 'Cliente';
+      const productId = sessionData.productId;
+      const quantity = sessionData.quantity || 1;
+      const product = products.find((p) => p.id === productId);
+      if (!clientId || !product) {
+        await this.resetSession(account.id, phone);
+        return { replies: [botCopy.conversationReset()] };
+      }
+      const client = { id: clientId, name: clientName };
+      if (answer === 'yes') {
+        return this.placeProductOrder({
+          account,
+          phone,
+          client,
+          product,
+          quantity,
+        });
+      }
+      if (answer === 'no') {
+        await this.resetSession(account.id, phone);
+        return { replies: [botCopy.orderCancelledNothing()] };
+      }
+      return this.confirmMenu(
+        botCopy.confirmProductOrder({
+          productName: product.name,
+          quantity,
+          unitPrice: this.formatPrice(product.price),
+          total: this.formatPrice(product.price * quantity),
+        }),
+      );
     }
 
     if (step === 'awaiting_service') {
@@ -2314,6 +2789,23 @@ export class WhatsappBotService {
     }
 
     await this.resetSession(account.id, phone);
+    if (canBook && canSell) {
+      const clientId = sessionData.clientId;
+      const clientName = sessionData.clientName || 'Cliente';
+      if (clientId) {
+        return this.startConversation(
+          account,
+          phone,
+          { id: clientId, name: clientName },
+          services,
+          products,
+          'Vamos recomeçar.',
+        );
+      }
+    }
+    if (canSell && !canBook) {
+      return this.productMenu(botCopy.askProductPrompt(), products);
+    }
     return this.serviceMenu(
       'Vamos recomeçar — qual serviço você quer agendar?',
       services,

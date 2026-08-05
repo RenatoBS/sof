@@ -109,7 +109,9 @@ Seed: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@sof.com`).
 
 ## Painel (dashboard)
 
-Shell: topbar (negócio + email + **Sair como ícone**, igual ao portal do profissional — `SofIconAction action="logout"`) + abas horizontais com **ícone + label** por seção (Agenda, Profissionais, Serviços, Clientes, Atendimentos, Faturamento, Conta).
+Shell: topbar (negócio + email + **Sair como ícone**, igual ao portal do profissional — `SofIconAction action="logout"`) + abas horizontais com **ícone + label** por seção (Agenda, Profissionais, Serviços, Produtos, Clientes, Atendimentos, Faturamento, Conta).
+
+Após o login, se a conta não tem **nenhum serviço nem produto**, o painel redireciona para `/(dashboard)/setup-catalog` (gate no estilo `choose-plan`) até cadastrar o primeiro item.
 
 ### Agenda
 
@@ -165,6 +167,15 @@ Shell: topbar (negócio + email + **Sair como ícone**, igual ao portal do profi
 - Criação e edição em **modal** (padrão agenda).  
 - Copy: “Configure seu cardápio de serviços”.
 
+### Produtos
+
+- Catálogo vendável (nome, descrição, preço, até **5 imagens** data URL, estoque opcional, `active`, `handoffEnabled`).  
+- Aba **Produtos** com segmentos **Catálogo** e **Pedidos**.  
+- CRUD: `GET/POST /api/products`, `PUT/DELETE …/:id`. Upload de imagem no painel web (mesmo compress do logo).  
+- Ao criar o **primeiro** produto, a API liga `Account.botAttendsProducts`.  
+- Pedidos: `GET /api/orders`, `PATCH /api/orders/:id/status` (`pending` | `confirmed` | `cancelled` | `completed`). Sem pagamento online no v1 — o pedido fica registrado para a equipe combinar pagamento/retirada.  
+- SSE: `order:created` quando o bot confirma uma compra.
+
 ### Clientes
 
 - Listagem em cards (nome + telefone formatado).  
@@ -203,6 +214,7 @@ Layout em duas colunas em telas ≥ 900px (`maxWidth` ~1040, gap uniforme por co
 - **Horário:** pills Dom–Sáb + preview `formatHoursSummary` + editar → `OpeningHoursModal` (`HH:mm` por dia). `PUT /api/account` com `openingHours`. Sem editor inline na página.
 - **Assinatura:** plano + preço + desde (+ promo se houver); CTA “Alterar plano” abre `ChoosePlanModal` (cupom + catálogo / checkout Stripe). A rota `/(dashboard)/choose-plan` permanece para conta pausada / `needsPlanSelection`.
 - **Bot WhatsApp (Uazapi):** cards de status servidor/dispositivo. Se o dispositivo não estiver pareado, o **QR abre sozinho** (sem botão “Escanear”) e **renova automaticamente** (~45s ou quando o status deixa de trazer QR). Alternativa: “Usar código” com telefone — o backend faz `disconnect` antes do connect com phone (sessão QR aberta impede a Uazapi de devolver paircode). Poll `GET …/status` detecta conexão; `POST …/disconnect` despareia. Token da instância fica só no servidor.
+- **O bot atende:** toggles **Serviços** / **Produtos** (`botAttendsServices` / `botAttendsProducts` via `PUT /api/account`). Pelo menos um deve ficar ligado. Defaults: serviços ligado, produtos desligado (liga ao criar o 1º produto).
 - **Pausa do bot (conta):** só aparece com WhatsApp conectado (+ entitlement `botPause`). Badge Ativo/Pausado/Desligado + presets (**Bot ativo**, 1 h / 8 h / 24 h / 3 dias / 7 dias ou **Permanente**). Enquanto pausado, o webhook **não responde a clientes** (`Account.botPausedPermanent` / `botPausedUntil`). Profissionais com telefone cadastrado continuam no fluxo operacional. Pausa por cliente continua na aba Clientes.
 - **Lembrete WhatsApp:** só aparece com WhatsApp conectado (+ entitlement `reminders`). Antecedência (`Desativado` / `1h` / `2h` default / `3h` / `6h` / `24h`) e fuso horário (lista expansível); `PUT /api/account` com `whatsappReminderMinutes` + `timezone`. Job a cada 30 min envia no máximo 1 lembrete por agendamento confirmado pela instância conectada.
 - **Suporte:** botão “Abrir suporte” (seção Ajuda) → `/(dashboard)/support`.
@@ -233,9 +245,11 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - Inventário de strings: [`bot-messages.md`](bot-messages.md).
 
 ### Fluxo do cliente
-- Fluxo: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
-- **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** antes do menu de serviços. Se vier só o primeiro nome, a Sof pede o sobrenome **uma única vez** (“Pedro, pode me informar seu sobrenome? É para eu cadastrar seu contato.”); qualquer resposta depois disso segue o fluxo — repetiu o nome ou mandou outra coisa, cadastra só com o primeiro nome. Saudação e rodeio são descartados (“oi, meu nome é Ana Silva” → `Ana Silva`) e o nome é gravado com caixa normalizada (`ANA SILVA` → `Ana Silva`). Só quando a mensagem não tem nome nenhum (“bom dia”, “123”) a Sof repergunta, e aí conta para o escalonamento da aba Atendimentos.  
-- **Menu inicial:** se o cliente já tem agendamento **futuro** (`scheduled`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
+- **Escopo do bot:** `Account.botAttendsServices` / `botAttendsProducts`. Se ambos ligados → menu “Agendar serviço” / “Comprar produto”. Só serviços → fluxo de agenda. Só produtos → fluxo de venda (não exige profissionais).  
+- Fluxo agenda: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
+- Fluxo produto: lista ativos (nome + preço) → detalhe (+ 1ª imagem via Uazapi quando houver) → quantidade (1–20) → confirmação → `Order` + `OrderItem` (`source=whatsapp`, status `pending`). Estoque numérico é decrementado na confirmação. Se `Product.handoffEnabled`, abre handoff `product_sale` e pausa o bot do cliente (plano sem `handoffs`: pedido concluído sem alerta).  
+- **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** antes do menu. Se vier só o primeiro nome, a Sof pede o sobrenome **uma única vez** (“Pedro, pode me informar seu sobrenome? É para eu cadastrar seu contato.”); qualquer resposta depois disso segue o fluxo — repetiu o nome ou mandou outra coisa, cadastra só com o primeiro nome. Saudação e rodeio são descartados (“oi, meu nome é Ana Silva” → `Ana Silva`) e o nome é gravado com caixa normalizada (`ANA SILVA` → `Ana Silva`). Só quando a mensagem não tem nome nenhum (“bom dia”, “123”) a Sof repergunta, e aí conta para o escalonamento da aba Atendimentos.  
+- **Menu inicial (serviços):** se o cliente já tem agendamento **futuro** (`scheduled`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
 - **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher). Matching por texto aceita nome parcial, sem acento e título truncado do WhatsApp; no menu o botão usa o 1º nome quando é único.  
 - **Dia e horário (duas perguntas):** 1) Hoje, Amanhã (só se houver vaga) ou Outra data (`dd/mm`); 2) até 5 horários livres daquele dia + **Outro horário** (`hh:mm`).  
 - **Menus interativos:** escolhas de serviço (com **preço**), caminho/profissional, dia, horário e confirmação (Sim/Não) vão como **botões** (até 3 opções) ou **lista** (mais de 3) via `POST /send/menu` (Uazapi) / `interactive` (Meta). Números e texto continuam válidos (simulador e fallback) — inclusive na confirmação (`1`/`2` = Sim/Não via `parseYesNo`).  
@@ -278,9 +292,9 @@ Quando `SEED_DEMO_ENABLED=true`, o seed cria **uma conta por plano** (mesma senh
 | Equipe | `SEED_DEMO_EMAIL` / `demo@sof.com` | Santa Madalena | 3 (`marcelo@demo.sof`, …) |
 | Rede | `demo-rede@sof.com` | Rede Madalena | 3 (`marcelo@rede.demo.sof`, …) |
 
-Cada conta: 4 serviços, 10 clientes, ~10 agendamentos/cliente, bloqueios (almoço + compromisso semanal). Login profissional em `/login` (troca de senha no 1º acesso).
+Cada conta: 4 serviços, **2 produtos** (Pomada + Kit presente com handoff), 10 clientes, ~10 agendamentos/cliente, bloqueios (almoço + compromisso semanal). Login profissional em `/login` (troca de senha no 1º acesso).
 
-O dashboard carrega handoffs à parte: plano sem `handoffs` (ex. Solo) recebe 403 nessa rota e **não** deve impedir o load de agenda/clientes/serviços.
+O dashboard carrega handoffs à parte: plano sem `handoffs` (ex. Solo) recebe 403 nessa rota e **não** deve impedir o load de agenda/clientes/serviços/produtos.
 
 Arquivo: `saas/backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e cria `AdminUser` (`SEED_ADMIN_*`). Para apagar e semear de novo: `npm run backend:reset-seed`.
 
@@ -295,6 +309,8 @@ Arquivo: `saas/backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e
 | Account | `PUT /api/account`, `GET /api/account/integrations`, `POST/GET /api/account/whatsapp/*` |
 | Employees | `GET/POST /api/employees`, `PUT/DELETE …/:id`, `POST …/:id/send-password-link` |
 | Services | `GET/POST /api/services`, `PUT/DELETE …/:id` |
+| Products | `GET/POST /api/products`, `PUT/DELETE …/:id` |
+| Orders | `GET /api/orders`, `PATCH …/:id/status` |
 | Clients | `GET/POST /api/clients`, `PUT/DELETE …/:id` (pause do bot no PUT) |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
 | WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `POST …/:id/resolve` |

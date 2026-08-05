@@ -190,6 +190,12 @@ export default function AccountScreen() {
   const [botPauseError, setBotPauseError] = useState('');
   const [savingBotPause, setSavingBotPause] = useState(false);
 
+  const [botAttendsServices, setBotAttendsServices] = useState(true);
+  const [botAttendsProducts, setBotAttendsProducts] = useState(false);
+  const [botScopeSaved, setBotScopeSaved] = useState('');
+  const [botScopeError, setBotScopeError] = useState('');
+  const [savingBotScope, setSavingBotScope] = useState(false);
+
   useEffect(() => {
     waModeRef.current = waMode;
   }, [waMode]);
@@ -290,6 +296,8 @@ export default function AccountScreen() {
       );
       setTimezone(account.timezone || 'America/Sao_Paulo');
       setBotPauseMode(botPauseModeFromAccount(account));
+      setBotAttendsServices(account.botAttendsServices !== false);
+      setBotAttendsProducts(Boolean(account.botAttendsProducts));
     }
     dashboardApi.integrations().then((data) => {
       setIntegrations({
@@ -712,6 +720,112 @@ export default function AccountScreen() {
         ) : null}
 
         {waError ? <Text style={styles.error}>{waError}</Text> : null}
+
+        <View style={styles.pauseBlock}>
+          <Text style={styles.label}>O bot atende</Text>
+          <Text style={styles.help}>
+            Defina se a Sof agenda serviços, vende produtos, ou os dois. Pelo
+            menos uma opção precisa ficar ligada.
+          </Text>
+          <View style={styles.chips}>
+            <Pressable
+              style={[
+                styles.chip,
+                botAttendsServices && styles.chipActive,
+              ]}
+              disabled={savingBotScope}
+              onPress={async () => {
+                const next = !botAttendsServices;
+                if (!next && !botAttendsProducts) {
+                  setBotScopeError(
+                    'Mantenha serviços ou produtos ligados.',
+                  );
+                  return;
+                }
+                setBotScopeError('');
+                setSavingBotScope(true);
+                try {
+                  const { account: updated } =
+                    await dashboardApi.updateAccount({
+                      botAttendsServices: next,
+                      botAttendsProducts,
+                    });
+                  await setSession(updated);
+                  setBotAttendsServices(updated.botAttendsServices !== false);
+                  setBotAttendsProducts(Boolean(updated.botAttendsProducts));
+                  setBotScopeSaved('Preferências do bot salvas!');
+                  setTimeout(() => setBotScopeSaved(''), 2000);
+                } catch (err) {
+                  setBotScopeError(
+                    err instanceof Error ? err.message : 'Erro ao salvar.',
+                  );
+                } finally {
+                  setSavingBotScope(false);
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  botAttendsServices && styles.chipTextActive,
+                ]}
+              >
+                Serviços
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.chip,
+                botAttendsProducts && styles.chipActive,
+              ]}
+              disabled={savingBotScope}
+              onPress={async () => {
+                const next = !botAttendsProducts;
+                if (!next && !botAttendsServices) {
+                  setBotScopeError(
+                    'Mantenha serviços ou produtos ligados.',
+                  );
+                  return;
+                }
+                setBotScopeError('');
+                setSavingBotScope(true);
+                try {
+                  const { account: updated } =
+                    await dashboardApi.updateAccount({
+                      botAttendsServices,
+                      botAttendsProducts: next,
+                    });
+                  await setSession(updated);
+                  setBotAttendsServices(updated.botAttendsServices !== false);
+                  setBotAttendsProducts(Boolean(updated.botAttendsProducts));
+                  setBotScopeSaved('Preferências do bot salvas!');
+                  setTimeout(() => setBotScopeSaved(''), 2000);
+                } catch (err) {
+                  setBotScopeError(
+                    err instanceof Error ? err.message : 'Erro ao salvar.',
+                  );
+                } finally {
+                  setSavingBotScope(false);
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  botAttendsProducts && styles.chipTextActive,
+                ]}
+              >
+                Produtos
+              </Text>
+            </Pressable>
+          </View>
+          {botScopeError ? (
+            <Text style={styles.error}>{botScopeError}</Text>
+          ) : null}
+          {botScopeSaved ? (
+            <Text style={styles.saved}>{botScopeSaved}</Text>
+          ) : null}
+        </View>
 
         {has('botPause') && waLinked ? (
           <View style={styles.pauseBlock}>

@@ -13,7 +13,7 @@ import { hasFeature } from '../entitlements/feature-catalog';
 export const HANDOFF_THRESHOLDS = [1, 2, 3, 5] as const;
 export type HandoffThreshold = (typeof HANDOFF_THRESHOLDS)[number];
 
-export type HandoffReason = 'unresolved' | 'human_requested';
+export type HandoffReason = 'unresolved' | 'human_requested' | 'product_sale';
 export type HandoffParty = 'client' | 'employee';
 
 const HUMAN_PAUSE_MS = 60 * 60 * 1000;
