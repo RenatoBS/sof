@@ -36,7 +36,10 @@
     "check:content-sync": "bash scripts/check-content-sync.sh",
     "test:e2e:handoff-api": "node scripts/e2e/handoff-inbox-api.mjs",
     "test:e2e:handoff-browser": "node scripts/e2e/handoff-inbox-browser.mjs",
-    "test:e2e:handoff": "npm run test:e2e:handoff-api && npm run test:e2e:handoff-browser"
+    "test:e2e:handoff": "npm run test:e2e:handoff-api && npm run test:e2e:handoff-browser",
+    "test:e2e:api": "node scripts/e2e/run.mjs --suite=api",
+    "test:e2e:browser": "node scripts/e2e/run.mjs --suite=browser",
+    "test:e2e:all": "node scripts/e2e/run.mjs --suite=all"
   },
   "engines": {
     "node": "22.x"

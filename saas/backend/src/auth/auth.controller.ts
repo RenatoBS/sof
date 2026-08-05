@@ -21,6 +21,10 @@ import {
   isValidAccountPassword,
   verifyPassword,
 } from '../common/password';
+import {
+  LOGIN_THROTTLE,
+  PASSWORD_RESET_THROTTLE,
+} from '../common/throttle-limits';
 import { COOKIE_NAME, cookieOptions, signAccountToken } from '../common/token';
 import { publicAccount } from '../common/public-shapes';
 import { EntitlementsService } from '../entitlements/entitlements.service';
@@ -47,7 +51,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
-  @Throttle({ default: { limit: 20, ttl: 15 * 60 * 1000 } })
+  @Throttle(LOGIN_THROTTLE)
   async login(
     @Body() body: { email?: string; password?: string },
     @Res({ passthrough: true }) res: Response,
@@ -104,7 +108,7 @@ export class AuthController {
    */
   @Post('request-password-reset')
   @HttpCode(200)
-  @Throttle({ default: { limit: 8, ttl: 15 * 60 * 1000 } })
+  @Throttle(PASSWORD_RESET_THROTTLE)
   async requestPasswordReset(@Body() body: { email?: string }) {
     const email = String(body?.email || '')
       .trim()

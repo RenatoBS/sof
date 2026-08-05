@@ -1,9 +1,11 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '../..');
+export const ROOT = resolve(__dirname, '../..');
 
 /** Lê `saas/backend/.env` sem depender de dotenv. */
 export function loadBackendEnv() {
@@ -39,8 +41,10 @@ export function demoCredentials() {
 
 export const API_BASE = process.env.E2E_API_URL || 'http://localhost:3001';
 export const WEB_BASE = process.env.E2E_WEB_URL || 'http://localhost:8081';
+export const EMPLOYEE_EMAIL =
+  process.env.E2E_EMPLOYEE_EMAIL || 'marcelo@demo.sof';
 
-export async function api(path, { method = 'GET', token, body } = {}) {
+export async function api(path, { method = 'GET', token, body, auth } = {}) {
   const headers = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -67,14 +71,110 @@ export async function api(path, { method = 'GET', token, body } = {}) {
   return data;
 }
 
+/** api que não lança — devolve { ok, status, data } */
+export async function apiRaw(path, opts = {}) {
+  const headers = { Accept: 'application/json' };
+  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  const res = await fetch(`${API_BASE}/api${path}`, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+  return { ok: res.ok, status: res.status, data };
+}
+
 export async function loginAccount() {
   const { email, password } = demoCredentials();
   const data = await api('/auth/login', {
     method: 'POST',
     body: { email, password },
   });
-  if (!data.token) throw new Error('Login sem token');
+  if (!data.token) throw new Error('Login conta sem token');
   return data;
+}
+
+export async function loginEmployee(email = EMPLOYEE_EMAIL, password) {
+  const { password: demoPass } = demoCredentials();
+  const data = await api('/employee-auth/login', {
+    method: 'POST',
+    body: { email, password: password || demoPass },
+  });
+  if (!data.token) throw new Error('Login profissional sem token');
+  return data;
+}
+
+/**
+ * Garante senha conhecida no profissional (seed vem com mustChangePassword).
+ * Usa PUT resetPassword → password-setup (não depende de WhatsApp).
+ */
+export async function ensureEmployeePassword(
+  accountToken,
+  employee,
+  password,
+) {
+  const { password: demoPass } = demoCredentials();
+  const pass = password || demoPass;
+  const phone =
+    String(employee.phone || '').replace(/\D/g, '') || '11988881111';
+  const serviceIds = (employee.services || []).map((s) => s.id);
+  if (!serviceIds.length) {
+    throw new Error(
+      `Profissional ${employee.email} sem serviços — seed incompleto`,
+    );
+  }
+
+  const updated = await api(`/employees/${employee.id}`, {
+    method: 'PUT',
+    token: accountToken,
+    body: {
+      name: employee.name,
+      email: employee.email,
+      phone,
+      serviceIds,
+      color: employee.color || '#3b82f6',
+      canHandleHandoffs: Boolean(employee.canHandleHandoffs),
+      resetPassword: true,
+    },
+  });
+
+  const resetLink = updated.resetLink;
+  if (!resetLink) {
+    // Já tinha senha e reset não pediu link — tenta login direto
+    return loginEmployee(employee.email, pass);
+  }
+
+  const url = new URL(resetLink, WEB_BASE);
+  const token =
+    url.searchParams.get('token') ||
+    String(resetLink).split('token=')[1]?.split('&')[0];
+  if (!token) throw new Error(`resetLink sem token: ${resetLink}`);
+
+  const setup = await api('/employee-auth/password-setup', {
+    method: 'POST',
+    body: { token, password: pass },
+  });
+  if (!setup.token) throw new Error('password-setup sem token');
+  return setup;
+}
+
+export function uniquePhone(prefix = '55119') {
+  return `${prefix}${String(Date.now()).slice(-8)}`;
+}
+
+export function uniqueEmail(prefix = 'e2e') {
+  return `${prefix}.${Date.now()}@e2e.sof.test`;
+}
+
+export function assert(cond, msg) {
+  if (!cond) throw new Error(msg || 'Assertion failed');
 }
 
 export function log(step, msg) {
@@ -82,3 +182,93 @@ export function log(step, msg) {
 }
 
 export const pause = (ms = 600) => new Promise((r) => setTimeout(r, ms));
+
+export async function simulate(token, phone, message) {
+  return api('/whatsapp/simulate', {
+    method: 'POST',
+    token,
+    body: { customerPhone: phone, message },
+  });
+}
+
+/** Próximo dia útil YYYY-MM-DD (pula domingo). */
+export function nextOpenDateIso(from = new Date()) {
+  const d = new Date(from);
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0) d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function loadPlaywright() {
+  const require = createRequire(import.meta.url);
+  const candidates = [
+    resolve(ROOT, 'node_modules/playwright'),
+    resolve(ROOT, 'e2e/node_modules/playwright'),
+    '/tmp/node_modules/playwright',
+  ];
+  for (const c of candidates) {
+    try {
+      return require(c);
+    } catch {
+      /* next */
+    }
+  }
+  throw new Error(
+    'Playwright não encontrado. Rode: cd e2e && npm install && npx playwright install chromium',
+  );
+}
+
+export async function typeInto(locator, value) {
+  await locator.click({ timeout: 10000 });
+  await locator.fill('');
+  await locator.pressSequentially(String(value), { delay: 12 });
+}
+
+export async function loginInBrowser(page, { email, password } = {}) {
+  const creds = demoCredentials();
+  const e = email || creds.email;
+  const p = password || creds.password;
+  await page.goto(`${WEB_BASE}/login`, { waitUntil: 'networkidle' });
+  await pause(800);
+  await typeInto(page.getByPlaceholder('voce@negocio.com'), e);
+  await typeInto(page.getByPlaceholder('Sua senha'), p);
+  await page.getByRole('button', { name: 'Entrar' }).nth(1).click();
+}
+
+export function headedBrowser() {
+  return process.env.E2E_HEADED === '1' || process.env.E2E_HEADED === 'true';
+}
+
+export async function launchBrowser() {
+  const { chromium } = loadPlaywright();
+  const headed = headedBrowser();
+  const browser = await chromium.launch({
+    headless: !headed,
+    slowMo: headed ? 180 : 0,
+  });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  return { browser, page, headed };
+}
+
+export function runScript(file) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(process.execPath, [file], {
+      cwd: ROOT,
+      stdio: 'inherit',
+      env: process.env,
+    });
+    child.on('exit', (code) => {
+      if (code === 0) resolvePromise();
+      else reject(new Error(`${file} exited ${code}`));
+    });
+    child.on('error', reject);
+  });
+}
+
+export function scriptPath(name) {
+  return resolve(__dirname, name);
+}

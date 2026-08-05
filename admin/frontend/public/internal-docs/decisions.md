@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-08-05 — Suíte E2E produto (API + Playwright por domínio)
+
+- **Contexto:** Precisávamos cobrir auth, agenda, CRUD, bot, produtos, Flex, suporte e conta — sem Stripe pago nem Uazapi real. Já existia o padrão `scripts/e2e/` do handoff.
+- **Decisão:** Um script Node por domínio (API e browser); runner `scripts/e2e/run.mjs` com `npm run test:e2e:api|browser|all`; helpers em `lib.mjs` (login conta/profissional, `ensureEmployeePassword`, Playwright). Fora de escopo: checkout pago, QR WA, e-mail real. Throttle de login/reset mais folgado fora de produção (`throttle-limits.ts`) para a suíte não esgotar o limite local.
+- **Consequências:** `test:e2e:all` verde com stack + seed Equipe. Scripts handoff* permanecem como subset do Flex.
+- **Alternativas descartadas:** Jest Nest E2E; um único mega-script; depender de Stripe/Uazapi reais.
+
+## 2026-08-05 — Reply do inbox best-effort + E2E API/browser
+
+- **Contexto:** Com a sessão Uazapi caída, `POST …/reply` estourava 500 e o agente não conseguia gravar a conversa no painel. Também faltava teste integrado do inbox Flex.
+- **Decisão:** `reply` tenta `sendText` e, se falhar, ainda persiste a mensagem (`delivered: false`). Scripts E2E em `scripts/e2e/` (API + Playwright) e `npm run test:e2e:handoff*`. Simulador passa a chamar `afterBotResult` (abre handoff de verdade).
+- **Consequências:** Inbox útil em dev/sem WA; entrega real continua quando a sessão está ok. Playwright vive em `e2e/node_modules`.
+- **Alternativas descartadas:** Falhar o reply inteiro sem WA; mock só nos testes.
+
 ## 2026-08-05 — Inbox Flex de Atendimentos (reply interno + claim)
 
 - **Contexto:** A aba Atendimentos só listava alertas e mandava o humano para o WhatsApp externo. Equipes Equipe/Rede precisam handoff dentro da Sof (estilo Twilio Flex), com profissionais habilitados pela conta.

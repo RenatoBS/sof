@@ -156,6 +156,7 @@ Sof/
 | Produtos / pedidos | `saas/backend/src/products/`, `orders/`; aba Produtos no painel |
 | Cupons promocionais | `PromoCoupon` / `PromoCouponRedemption`; admin `/coupons`; checkout `couponCode`; `saas/backend/src/promo-coupons/`, `billing/` |
 | Inbox Atendimentos | `WhatsappHandoff` + `WhatsappMessage`; `saas/backend/src/whatsapp-handoffs/`; UI `handoffs.tsx` + `HandoffInbox` |
+| Suíte E2E (API + Playwright) | `scripts/e2e/` · `npm run test:e2e:all` · ver `docs/local-development.md` |
 | Client HTTP front | `saas/frontend/src/api/client.ts`, `endpoints.ts` |
 | Auth front | `saas/frontend/src/auth/AuthProvider.tsx` |
 | Rotas UI | `saas/frontend/app/` |
