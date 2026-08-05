@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-05 — Link de pagamento por produto (sem Stripe)
+
+- **Contexto:** No pedido WhatsApp o cliente precisa de um jeito de pagar; a Sof não deve criar Payment Links/Checkout do estabelecimento.
+- **Decisão:** Campo opcional `Product.paymentLinkUrl` (URL http/https). O bot inclui `Pagamento: {url}` na confirmação do pedido. Sem criação na Stripe.
+- **Consequências:** Cada produto pode ter link próprio (Pix, Mercado Pago, etc.). Conta não tem campo global de pagamento.
+- **Alternativas descartadas:** Link só na Account; Stripe Connect / Payment Link gerado pela Sof.
+
 ## 2026-08-05 — Produtos, pedidos sem gateway e gate de catálogo pós-login
 
 - **Contexto:** Contas precisavam oferecer só serviços agendáveis; negócios de varejo/kit querem vender produtos pelo WhatsApp. Signup não exigia cardápio; o bot listava 100% dos serviços sem toggle.

@@ -123,9 +123,18 @@ export function confirmProductOrder(opts: {
   return `Confirmar pedido: ${opts.productName} — ${qty} × ${opts.unitPrice} = ${opts.total}?`;
 }
 
-export function orderPlaced(opts: { total: string; withHandoff: boolean }): string {
+export function orderPlaced(opts: {
+  total: string;
+  withHandoff: boolean;
+  paymentLinkUrl?: string | null;
+}): string {
+  const link = (opts.paymentLinkUrl || '').trim();
+  const payLine = link ? `\nPagamento: ${link}` : '';
   if (opts.withHandoff) {
-    return `Pedido registrado (${opts.total}). Vou chamar a equipe para combinar o pagamento e a entrega por aqui.`;
+    return `Pedido registrado (${opts.total}). Vou chamar a equipe para combinar o pagamento e a entrega por aqui.${payLine}`;
+  }
+  if (link) {
+    return `Pedido registrado (${opts.total}).${payLine}\nQuando quiser outra coisa, é só chamar.`;
   }
   return `Pedido registrado (${opts.total}). A equipe confirma o pagamento e a retirada/entrega. Quando quiser outra coisa, é só chamar.`;
 }

@@ -33,6 +33,7 @@ type CatalogProduct = {
   price: number;
   images: unknown;
   stock: number | null;
+  paymentLinkUrl: string;
   handoffEnabled: boolean;
   active: boolean;
 };
@@ -1488,6 +1489,7 @@ export class WhatsappBotService {
           botCopy.orderPlaced({
             total: this.formatPrice(order.total),
             withHandoff,
+            paymentLinkUrl: product.paymentLinkUrl,
           }),
         ],
         order: shaped,
@@ -1718,6 +1720,7 @@ export class WhatsappBotService {
       price: p.price,
       images: p.images,
       stock: p.stock,
+      paymentLinkUrl: p.paymentLinkUrl || '',
       handoffEnabled: p.handoffEnabled,
       active: p.active,
     }));

@@ -169,7 +169,8 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 
 ### Produtos
 
-- Catálogo vendável (nome, descrição, preço, até **5 imagens** data URL, estoque opcional, `active`, `handoffEnabled`).  
+- Catálogo vendável (nome, descrição, preço, até **5 imagens** data URL, estoque opcional, `paymentLinkUrl` opcional, `active`, `handoffEnabled`).  
+- `paymentLinkUrl`: link externo do estabelecimento (Pix, Mercado Pago, etc.) — a Sof **não** cria nada na Stripe; o bot inclui o link na confirmação do pedido.  
 - Aba **Produtos** com segmentos **Catálogo** e **Pedidos**.  
 - CRUD: `GET/POST /api/products`, `PUT/DELETE …/:id`. Upload de imagem no painel web (mesmo compress do logo).  
 - Ao criar o **primeiro** produto, a API liga `Account.botAttendsProducts`.  
@@ -247,7 +248,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 ### Fluxo do cliente
 - **Escopo do bot:** `Account.botAttendsServices` / `botAttendsProducts`. Se ambos ligados → menu “Agendar serviço” / “Comprar produto”. Só serviços → fluxo de agenda. Só produtos → fluxo de venda (não exige profissionais).  
 - Fluxo agenda: **serviço → profissional** (lista quem faz o serviço) **ou “Escolher horário”** → **dia** (Hoje / Amanhã / Outra data) → **horário** (até 5 do dia ou “Outro horário”) → (se horário primeiro) profissional disponível + **“Deixa a Sof escolher”** → confirmação → `Appointment` (`source=whatsapp`).  
-- Fluxo produto: lista ativos (nome + preço) → detalhe (+ 1ª imagem via Uazapi quando houver) → quantidade (1–20) → confirmação → `Order` + `OrderItem` (`source=whatsapp`, status `pending`). Estoque numérico é decrementado na confirmação. Se `Product.handoffEnabled`, abre handoff `product_sale` e pausa o bot do cliente (plano sem `handoffs`: pedido concluído sem alerta).  
+- Fluxo produto: lista ativos (nome + preço) → detalhe (+ 1ª imagem via Uazapi quando houver) → quantidade (1–20) → confirmação → `Order` + `OrderItem` (`source=whatsapp`, status `pending`). Estoque numérico é decrementado na confirmação. Se o produto tiver `paymentLinkUrl`, a confirmação inclui a linha `Pagamento: {url}`. Se `Product.handoffEnabled`, abre handoff `product_sale` e pausa o bot do cliente (plano sem `handoffs`: pedido concluído sem alerta).  
 - **1º contato:** se o telefone ainda não é `Client`, pede **nome e sobrenome** antes do menu. Se vier só o primeiro nome, a Sof pede o sobrenome **uma única vez** (“Pedro, pode me informar seu sobrenome? É para eu cadastrar seu contato.”); qualquer resposta depois disso segue o fluxo — repetiu o nome ou mandou outra coisa, cadastra só com o primeiro nome. Saudação e rodeio são descartados (“oi, meu nome é Ana Silva” → `Ana Silva`) e o nome é gravado com caixa normalizada (`ANA SILVA` → `Ana Silva`). Só quando a mensagem não tem nome nenhum (“bom dia”, “123”) a Sof repergunta, e aí conta para o escalonamento da aba Atendimentos.  
 - **Menu inicial (serviços):** se o cliente já tem agendamento **futuro** (`scheduled`), além dos serviços aparecem **Ver agendamentos** e **Cancelar horário**; sem futuro, só a lista de serviços. Cancelar pede confirmação (Sim/Não) e marca `status=cancelled` (SSE `appointment:updated`).  
 - **Caminhos:** após o serviço, o bot lista os profissionais do serviço e, por último, **Escolher horário**. Se o cliente escolhe um profissional, os dias/horários são só dele. Se escolhe horário primeiro, depois pergunta quem está livre naquele slot (com opção da Sof escolher). Matching por texto aceita nome parcial, sem acento e título truncado do WhatsApp; no menu o botão usa o 1º nome quando é único.  

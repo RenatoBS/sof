@@ -62,6 +62,8 @@ export type Product = {
   price: number;
   images: string[];
   stock: number | null;
+  /** Link externo de pagamento do produto (a Sof não cria na Stripe). */
+  paymentLinkUrl?: string;
   handoffEnabled: boolean;
   active: boolean;
   createdAt: string;

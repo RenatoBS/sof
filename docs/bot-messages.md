@@ -43,7 +43,8 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | `Só temos ${n} unidade(s) de ${productName}…` |
 | `Confirmar pedido: ${productName} — ${qty} × ${unit} = ${total}?` |
 | `Pedido registrado (${total}). A equipe confirma o pagamento e a retirada/entrega…` |
-| `Pedido registrado (${total}). Vou chamar a equipe para combinar o pagamento e a entrega por aqui.` (handoffEnabled) |
+| `Pedido registrado (${total}).` + `Pagamento: ${paymentLinkUrl}` (se o produto tiver link) |
+| `Pedido registrado (${total}). Vou chamar a equipe…` (+ link se houver; handoffEnabled) |
 | `Sem problemas, não registrei o pedido…` |
 ### Endereço
 

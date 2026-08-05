@@ -267,6 +267,7 @@ export const dashboardApi = {
     price: number;
     images?: string[];
     stock?: number | null;
+    paymentLinkUrl?: string;
     handoffEnabled?: boolean;
     active?: boolean;
   }) => api<{ product: Product }>('/products', { method: 'POST', body }),
@@ -278,6 +279,7 @@ export const dashboardApi = {
       price: number;
       images?: string[];
       stock?: number | null;
+      paymentLinkUrl?: string;
       handoffEnabled?: boolean;
       active?: boolean;
     },

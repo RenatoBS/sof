@@ -76,7 +76,7 @@ Account  (plan / planPrice snapshot + planId → Plan; botAttendsServices / botA
   ├── Employee[]
   │     └── EmployeeService[] ──► Service
   ├── Service[]
-  ├── Product[]  (images Json, stock?, handoffEnabled, active)
+  ├── Product[]  (images Json, stock?, paymentLinkUrl, handoffEnabled, active)
   ├── Order[] ──► OrderItem[] ──► Product
   ├── Client[]  (botPausedPermanent / botPausedUntil / botPausedAuto / botUnresolvedCount)
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
@@ -92,7 +92,7 @@ Plan          (catálogo Sof ↔ stripeProductId / stripePriceId / paymentLinkUr
 
 Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; dígitos com DDD), `passwordHash`, `plan`, `planPrice`, `planId` (FK opcional a `Plan`), `address` (opcional, informado pelo bot), `logoBase64` (data URL do logo; até 5 MB), `whatsappPhoneNumberId` (Instance ID Uazapi ou Phone Number ID Meta), `whatsappInstanceToken` (segredo Uazapi, nunca na API pública), `whatsappConnectedAt`, `whatsappReminderMinutes` (0=off; default 120), `timezone` (IANA; default `America/Sao_Paulo`), `botPausedPermanent` / `botPausedUntil` (pausa global do bot), `botAttendsServices` (default true) / `botAttendsProducts` (default false), `openingHours` (JSON 7 dias, 0=domingo), `status` (`active` | `suspended` | `paused`), `billingSource` (`paid` | `promo`), `promoExpiresAt`.
 
-`Product`: nome, descrição, preço, `images` (JSON data URLs, máx. 5), `stock` (null = ilimitado), `handoffEnabled`, `active`. `Order` + `OrderItem`: pedido sem gateway (`status` pending|confirmed|cancelled|completed; `source` whatsapp|manual); snapshot de nome/preço no item.
+`Product`: nome, descrição, preço, `images` (JSON data URLs, máx. 5), `stock` (null = ilimitado), `paymentLinkUrl` (link externo opcional; a Sof não cria na Stripe), `handoffEnabled`, `active`. `Order` + `OrderItem`: pedido sem gateway (`status` pending|confirmed|cancelled|completed; `source` whatsapp|manual); snapshot de nome/preço no item.
 `Plan`: `name`/`slug` únicos, `price`, `stripeProductId`, `stripePriceId`, `paymentLinkUrl`, `features` (JSON marketing `string[]`), `entitlements` (JSON mapa featureKey → boolean | number | null), `active`, `sortOrder`. Admin com Stripe cria Product + Price + Payment Link juntos; `DELETE` desativa o link e remove/arquiva o produto na Stripe antes de apagar o registro. Checkout e pricing leem planos ativos; fallback em `common/plans.ts` (Solo/Equipe/Rede) se a tabela estiver vazia.
 
 `PromoCoupon`: código único, `planId`, `freeDays` (7|30|60), `maxUses` / `usedCount`, `active`. `PromoCouponRedemption` registra uso por conta (`@@unique([couponId, accountId])`) e `expiresAt`.

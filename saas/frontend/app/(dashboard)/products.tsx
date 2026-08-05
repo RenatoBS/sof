@@ -185,6 +185,9 @@ export default function ProductsScreen() {
                           {p.handoffEnabled ? (
                             <Text style={styles.handoff}>Handoff ao vender</Text>
                           ) : null}
+                          {p.paymentLinkUrl ? (
+                            <Text style={styles.inactive}>Com link de pagamento</Text>
+                          ) : null}
                         </View>
                       </View>
                       {p.description ? (

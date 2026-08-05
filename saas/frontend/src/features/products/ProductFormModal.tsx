@@ -34,6 +34,7 @@ export function ProductFormModal({
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('50');
   const [stock, setStock] = useState('');
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [handoffEnabled, setHandoffEnabled] = useState(false);
   const [active, setActive] = useState(true);
@@ -47,6 +48,7 @@ export function ProductFormModal({
     setDescription(product?.description || '');
     setPrice(String(product?.price ?? 50));
     setStock(product?.stock == null ? '' : String(product.stock));
+    setPaymentLinkUrl(product?.paymentLinkUrl || '');
     setImages(product?.images || []);
     setHandoffEnabled(Boolean(product?.handoffEnabled));
     setActive(product?.active !== false);
@@ -100,6 +102,7 @@ export function ProductFormModal({
         price: parseFloat(price),
         images,
         stock: stockTrim === '' ? null : parseInt(stockTrim, 10),
+        paymentLinkUrl: paymentLinkUrl.trim(),
         handoffEnabled,
         active,
       };
@@ -174,6 +177,18 @@ export function ProductFormModal({
           />
         </View>
       </View>
+      <SofInput
+        label="Link de pagamento (opcional)"
+        value={paymentLinkUrl}
+        onChangeText={setPaymentLinkUrl}
+        theme="dashboard"
+        placeholder="https://… (Pix, Mercado Pago, etc.)"
+        autoCapitalize="none"
+      />
+      <Text style={styles.hint}>
+        A Sof só envia este link no WhatsApp após o pedido — não cria cobrança na
+        Stripe.
+      </Text>
 
       <Text style={styles.label}>Imagens (até {MAX_IMAGES})</Text>
       <View style={styles.thumbs}>

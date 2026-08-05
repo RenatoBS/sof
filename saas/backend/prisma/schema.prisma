@@ -156,6 +156,8 @@ model Product {
   images          Json     @default("[]")
   /// null = estoque ilimitado
   stock           Int?
+  /// Link de pagamento externo deste produto (Pix, Mercado Pago, link próprio — a Sof não cria na Stripe)
+  paymentLinkUrl  String   @default("")
   /// Ao confirmar compra no bot, abre handoff humano
   handoffEnabled  Boolean  @default(false)
   active          Boolean  @default(true)

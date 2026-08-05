@@ -34,6 +34,7 @@ export class ProductsController {
     price: number;
     images: unknown;
     stock: number | null;
+    paymentLinkUrl: string;
     handoffEnabled: boolean;
     active: boolean;
     createdAt: Date;
@@ -44,12 +45,38 @@ export class ProductsController {
     });
   }
 
+  private parsePaymentLinkUrl(value: unknown): string {
+    if (value === undefined || value === null) return '';
+    const raw = String(value).trim();
+    if (!raw) return '';
+    if (raw.length > 2000) {
+      throw new BadRequestException({
+        error: 'Link de pagamento muito longo (máx. 2000 caracteres).',
+      });
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      throw new BadRequestException({
+        error: 'Informe um link válido (https://…).',
+      });
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new BadRequestException({
+        error: 'O link de pagamento deve começar com http:// ou https://.',
+      });
+    }
+    return parsed.toString();
+  }
+
   private parsePayload(body: {
     name?: string;
     description?: string;
     price?: number;
     images?: unknown;
     stock?: number | null;
+    paymentLinkUrl?: string;
     handoffEnabled?: boolean;
     active?: boolean;
   }) {
@@ -78,12 +105,15 @@ export class ProductsController {
       stock = n;
     }
 
+    const paymentLinkUrl = this.parsePaymentLinkUrl(body?.paymentLinkUrl);
+
     return {
       name,
       description,
       price,
       images: imagesParsed.images as Prisma.InputJsonValue,
       stock,
+      paymentLinkUrl,
       handoffEnabled: Boolean(body?.handoffEnabled),
       active: body?.active === undefined ? true : Boolean(body.active),
     };
@@ -108,6 +138,7 @@ export class ProductsController {
       price?: number;
       images?: unknown;
       stock?: number | null;
+      paymentLinkUrl?: string;
       handoffEnabled?: boolean;
       active?: boolean;
     },
@@ -140,6 +171,7 @@ export class ProductsController {
       price?: number;
       images?: unknown;
       stock?: number | null;
+      paymentLinkUrl?: string;
       handoffEnabled?: boolean;
       active?: boolean;
     },
@@ -154,6 +186,10 @@ export class ProductsController {
     const data = this.parsePayload({
       ...body,
       images: body.images !== undefined ? body.images : existing.images,
+      paymentLinkUrl:
+        body.paymentLinkUrl !== undefined
+          ? body.paymentLinkUrl
+          : existing.paymentLinkUrl,
       handoffEnabled:
         body.handoffEnabled !== undefined
           ? body.handoffEnabled
