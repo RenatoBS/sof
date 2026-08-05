@@ -7,11 +7,11 @@ Persona: [`brand.md`](brand.md). Copy canônica: [`saas/backend/src/whatsapp/bot
 
 Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também repetem as opções numeradas + *“Toque numa opção ou responda com o número.”*
 
-Última revisão: **2026-07-31**.
+Última revisão: **2026-08-05**.
 
 ---
 
-## Cliente (agenda pelo WhatsApp)
+## Cliente (agenda / compra pelo WhatsApp)
 
 ### Saudação e cadastro
 
@@ -21,9 +21,31 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | `${firstName}, pode me informar seu sobrenome? É para eu cadastrar seu contato.` (veio só o primeiro nome; pedido único) |
 | `Me diga seu nome e sobrenome (ex.: Ana Silva).` (mensagem sem nenhum nome) |
 | `Oi, ${clientName}. Aqui é a Sof, do ${businessName}.` |
-| `${intro}` + `O que você precisa?` (menu inicial) |
+| `${intro}` + `O que você precisa?` (menu intenção: Agendar serviço / Comprar produto, se ambos ligados) |
 | `${intro} Qual serviço você quer agendar?` |
+| `${intro} Qual produto você quer?` |
 
+### Setup incompleto
+
+| Mensagem |
+|----------|
+| `Esse estabelecimento ainda está configurando o atendimento por aqui…` |
+| `…configurando o agendamento por aqui…` (só serviços) |
+| `…configurando o catálogo de produtos por aqui…` (só produtos) |
+
+### Fluxo de produto (venda)
+
+| Mensagem |
+|----------|
+| `Certo: ${productName} (${price}). Quantas unidades? Responda com um número (1 a 20).` |
+| `${name} — ${price}` (+ descrição se houver; + 1ª imagem quando disponível) |
+| `${productName} está sem estoque no momento…` |
+| `Só temos ${n} unidade(s) de ${productName}…` |
+| `Confirmar pedido: ${productName} — ${qty} × ${unit} = ${total}?` |
+| `Pedido registrado (${total}). A equipe confirma o pagamento e a retirada/entrega…` |
+| `Pedido registrado (${total}).` + `Pagamento: ${paymentLinkUrl}` (se o produto tiver link) |
+| `Pedido registrado (${total}). Vou chamar a equipe…` (+ link se houver; handoffEnabled) |
+| `Sem problemas, não registrei o pedido…` |
 ### Endereço
 
 | Mensagem |
@@ -80,7 +102,8 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 
 | Mensagem |
 |----------|
-| `Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser agendar.` |
+| `Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser.` |
+| `Certo, cancelei o que estava em andamento. Quando quiser, é só chamar.` |
 | `Certo, cancelei o que estava em andamento. Quando quiser, é só chamar para agendar.` |
 
 ### Handoff humano
@@ -97,7 +120,7 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 |----------|
 | `Não consegui ouvir o áudio. Pode escrever ou escolher uma opção?` |
 | `Por aqui, prefiro texto. Pode escrever ou escolher uma opção?` |
-| `Esse estabelecimento ainda está configurando o agendamento por aqui. Peça para tentarem de novo em instantes ou contate o número do negócio.` |
+| `Esse estabelecimento ainda está configurando o atendimento por aqui. Peça para tentarem de novo em instantes ou contate o número do negócio.` |
 
 ### Erros e “não peguei”
 

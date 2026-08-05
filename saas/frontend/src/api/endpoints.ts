@@ -7,6 +7,8 @@ import type {
   Employee,
   EmployeeSession,
   OpeningHours,
+  Order,
+  Product,
   Service,
   SupportTicket,
   SupportTicketComment,
@@ -258,6 +260,45 @@ export const dashboardApi = {
     api<{ service: Service }>(`/services/${id}`, { method: 'PUT', body }),
   deleteService: (id: string) =>
     api<{ ok: boolean }>(`/services/${id}`, { method: 'DELETE' }),
+  products: () => api<{ products: Product[] }>('/products'),
+  createProduct: (body: {
+    name: string;
+    description?: string;
+    price: number;
+    images?: string[];
+    stock?: number | null;
+    paymentLinkUrl?: string;
+    handoffEnabled?: boolean;
+    active?: boolean;
+  }) => api<{ product: Product }>('/products', { method: 'POST', body }),
+  updateProduct: (
+    id: string,
+    body: {
+      name: string;
+      description?: string;
+      price: number;
+      images?: string[];
+      stock?: number | null;
+      paymentLinkUrl?: string;
+      handoffEnabled?: boolean;
+      active?: boolean;
+    },
+  ) =>
+    api<{ product: Product }>(`/products/${id}`, { method: 'PUT', body }),
+  deleteProduct: (id: string) =>
+    api<{ ok: boolean }>(`/products/${id}`, { method: 'DELETE' }),
+  orders: (status?: string) =>
+    api<{ orders: Order[] }>(
+      status ? `/orders?status=${encodeURIComponent(status)}` : '/orders',
+    ),
+  updateOrderStatus: (
+    id: string,
+    status: 'pending' | 'confirmed' | 'cancelled' | 'completed',
+  ) =>
+    api<{ order: Order }>(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
   clients: () => api<{ clients: Client[] }>('/clients'),
   createClient: (body: { name: string; phone: string }) =>
     api<{ client: Client }>('/clients', { method: 'POST', body }),
@@ -318,6 +359,8 @@ export const dashboardApi = {
     timezone?: string;
     botPausedPermanent?: boolean;
     botPausedUntil?: string | null;
+    botAttendsServices?: boolean;
+    botAttendsProducts?: boolean;
     logoBase64?: string | null;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>

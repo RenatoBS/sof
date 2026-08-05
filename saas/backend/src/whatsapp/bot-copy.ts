@@ -70,15 +70,89 @@ export function employeeActionUnavailableOnWhatsapp(): string {
 }
 
 export function setupIncomplete(): string {
+  return 'Esse estabelecimento ainda está configurando o atendimento por aqui. Peça para tentarem de novo em instantes ou contate o número do negócio.';
+}
+
+export function setupIncompleteServices(): string {
   return 'Esse estabelecimento ainda está configurando o agendamento por aqui. Peça para tentarem de novo em instantes ou contate o número do negócio.';
 }
 
+export function setupIncompleteProducts(): string {
+  return 'Esse estabelecimento ainda está configurando o catálogo de produtos por aqui. Peça para tentarem de novo em instantes ou contate o número do negócio.';
+}
+
 export function conversationReset(): string {
-  return 'Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser agendar.';
+  return 'Pronto, reiniciei a conversa. É só mandar uma mensagem quando quiser.';
 }
 
 export function conversationCancelled(): string {
-  return 'Certo, cancelei o que estava em andamento. Quando quiser, é só chamar para agendar.';
+  return 'Certo, cancelei o que estava em andamento. Quando quiser, é só chamar.';
+}
+
+export function intentMenuPrompt(): string {
+  return 'O que você precisa?';
+}
+
+export function askProductPrompt(): string {
+  return 'Qual produto você quer?';
+}
+
+export function askProductQuantity(productName: string, price: string): string {
+  return `${ACK}: ${productName} (${price}). Quantas unidades? Responda com um número (1 a 20).`;
+}
+
+export function productOutOfStock(productName: string): string {
+  return `${productName} está sem estoque no momento. Escolha outro produto ou fale com a equipe.`;
+}
+
+export function productInsufficientStock(
+  productName: string,
+  available: number,
+): string {
+  return `Só temos ${available} unidade(s) de ${productName}. Quer outra quantidade?`;
+}
+
+export function confirmProductOrder(opts: {
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  total: string;
+}): string {
+  const qty =
+    opts.quantity === 1 ? '1 unidade' : `${opts.quantity} unidades`;
+  return `Confirmar pedido: ${opts.productName} — ${qty} × ${opts.unitPrice} = ${opts.total}?`;
+}
+
+export function orderPlaced(opts: {
+  total: string;
+  withHandoff: boolean;
+  paymentLinkUrl?: string | null;
+}): string {
+  const link = (opts.paymentLinkUrl || '').trim();
+  const payLine = link ? `\nPagamento: ${link}` : '';
+  if (opts.withHandoff) {
+    return `Pedido registrado (${opts.total}). Vou chamar a equipe para combinar o pagamento e a entrega por aqui.${payLine}`;
+  }
+  if (link) {
+    return `Pedido registrado (${opts.total}).${payLine}\nQuando quiser outra coisa, é só chamar.`;
+  }
+  return `Pedido registrado (${opts.total}). A equipe confirma o pagamento e a retirada/entrega. Quando quiser outra coisa, é só chamar.`;
+}
+
+export function orderCancelledNothing(): string {
+  return 'Sem problemas, não registrei o pedido. Quando quiser, é só chamar.';
+}
+
+export function productDetail(opts: {
+  name: string;
+  description: string;
+  price: string;
+}): string {
+  const desc = (opts.description || '').trim();
+  if (desc) {
+    return `${opts.name} — ${opts.price}\n${desc}`;
+  }
+  return `${opts.name} — ${opts.price}`;
 }
 
 export function restartServicePrompt(): string {

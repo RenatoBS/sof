@@ -406,6 +406,65 @@ export class WhatsappApiService {
   }
 
   /**
+   * Envia imagem (data URL ou URL pública). Falha silenciosa no caller.
+   */
+  async sendImage(
+    to: string,
+    imageDataUrl: string,
+    caption?: string,
+    instanceToken?: string,
+  ) {
+    const digits = String(to).replace(/\D/g, '');
+    if (this.provider() === 'uazapi') {
+      const token =
+        (instanceToken || '').trim() ||
+        (this.config.get<string>('whatsapp.token') || '').trim();
+      if (!token || !this.config.get<string>('whatsapp.baseUrl')) {
+        throw new Error('Uazapi sem token para enviar imagem.');
+      }
+      return this.sendImageUazapi(digits, imageDataUrl, caption || '', token);
+    }
+    if (!this.isConfigured()) {
+      throw new Error('WhatsApp Meta não configurado.');
+    }
+    // Meta Cloud API exige media id/link público — data URL não é suportado
+    // sem upload. Fallback: caption como texto.
+    if (caption) {
+      return this.sendTextMeta(digits, caption);
+    }
+    throw new Error('Envio de imagem via data URL não suportado no Meta.');
+  }
+
+  private async sendImageUazapi(
+    to: string,
+    media: string,
+    caption: string,
+    token: string,
+  ) {
+    const baseUrl = this.uazapiBaseUrl();
+    const resp = await fetch(`${baseUrl}/send/media`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        token,
+      },
+      body: JSON.stringify({
+        number: to,
+        type: 'image',
+        file: media,
+        text: caption || undefined,
+      }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(
+        `Whazap/Uazapi recusou a imagem (${resp.status}): ${text}`,
+      );
+    }
+    return resp.json();
+  }
+
+  /**
    * Menu interativo: botões (≤3) ou lista (>3).
    * Fallback: se o provider falhar, o caller deve enviar texto.
    */

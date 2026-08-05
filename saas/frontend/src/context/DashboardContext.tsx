@@ -9,6 +9,7 @@ import type {
   Appointment,
   Client,
   Employee,
+  Product,
   Service,
   WhatsappHandoff,
 } from '@/src/api/types';
@@ -17,6 +18,7 @@ import { dashboardApi } from '@/src/api/endpoints';
 type DashboardContextValue = {
   employees: Employee[];
   services: Service[];
+  products: Product[];
   clients: Client[];
   appointments: Appointment[];
   handoffs: WhatsappHandoff[];
@@ -25,6 +27,7 @@ type DashboardContextValue = {
   setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
   setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
   setServices: React.Dispatch<React.SetStateAction<Service[]>>;
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   setHandoffs: React.Dispatch<React.SetStateAction<WhatsappHandoff[]>>;
   getEmployee: (id: string) => Employee | undefined;
@@ -37,6 +40,7 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [handoffs, setHandoffs] = useState<WhatsappHandoff[]>([]);
@@ -45,14 +49,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, s, c, a] = await Promise.all([
+      const [e, s, p, c, a] = await Promise.all([
         dashboardApi.employees(),
         dashboardApi.services(),
+        dashboardApi.products(),
         dashboardApi.clients(),
         dashboardApi.appointments(),
       ]);
       setEmployees(e.employees);
       setServices(s.services);
+      setProducts(p.products);
       setClients(c.clients);
       setAppointments(a.appointments);
 
@@ -87,6 +93,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     () => ({
       employees,
       services,
+      products,
       clients,
       appointments,
       handoffs,
@@ -95,6 +102,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setAppointments,
       setEmployees,
       setServices,
+      setProducts,
       setClients,
       setHandoffs,
       getEmployee,
@@ -104,6 +112,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     [
       employees,
       services,
+      products,
       clients,
       appointments,
       handoffs,

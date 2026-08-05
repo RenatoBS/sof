@@ -51,11 +51,17 @@ model Account {
   billingSource         String   @default("paid")
   /// Fim do período grátis do cupom (null se pago / sem promo)
   promoExpiresAt        DateTime?
+  /// Bot oferece fluxo de agendamento de serviços
+  botAttendsServices    Boolean  @default(true)
+  /// Bot oferece fluxo de venda de produtos
+  botAttendsProducts    Boolean  @default(false)
   createdAt             DateTime @default(now())
 
   planRef          Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
   employees        Employee[]
   services         Service[]
+  products         Product[]
+  orders           Order[]
   clients          Client[]
   appointments     Appointment[]
   checkoutSessions CheckoutSession[]
@@ -139,6 +145,72 @@ model Service {
   @@index([accountId])
 }
 
+/// Produto vendável da conta (catálogo; sem agendamento)
+model Product {
+  id              String   @id @default(cuid())
+  accountId       String
+  name            String
+  description     String   @default("") @db.Text
+  price           Float
+  /// Data URLs image/* (máx. 5); mesmo padrão do logo da conta
+  images          Json     @default("[]")
+  /// null = estoque ilimitado
+  stock           Int?
+  /// Link de pagamento externo deste produto (Pix, Mercado Pago, link próprio — a Sof não cria na Stripe)
+  paymentLinkUrl  String   @default("")
+  /// Ao confirmar compra no bot, abre handoff humano
+  handoffEnabled  Boolean  @default(false)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([accountId])
+  @@index([accountId, active])
+}
+
+/// Pedido de produtos (sem gateway de pagamento no v1)
+model Order {
+  id          String   @id @default(cuid())
+  accountId   String
+  clientId    String?
+  clientName  String   @default("")
+  clientPhone String   @default("")
+  /// pending | confirmed | cancelled | completed
+  status      String   @default("pending")
+  total       Float    @default(0)
+  /// whatsapp | manual
+  source      String   @default("manual")
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  client  Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  items   OrderItem[]
+
+  @@index([accountId, status, createdAt])
+  @@index([accountId, clientPhone])
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  productId   String
+  /// Snapshot do nome no momento do pedido
+  productName String
+  unitPrice   Float
+  quantity    Int
+  lineTotal   Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
 model EmployeeService {
   employeeId String
   serviceId  String
@@ -168,6 +240,7 @@ model Client {
 
   account      Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  orders       Order[]
   handoffs     WhatsappHandoff[]
 
   @@unique([accountId, phone])

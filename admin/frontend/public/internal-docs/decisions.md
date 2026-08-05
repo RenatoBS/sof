@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-08-05 — Link de pagamento por produto (sem Stripe)
+
+- **Contexto:** No pedido WhatsApp o cliente precisa de um jeito de pagar; a Sof não deve criar Payment Links/Checkout do estabelecimento.
+- **Decisão:** Campo opcional `Product.paymentLinkUrl` (URL http/https). O bot inclui `Pagamento: {url}` na confirmação do pedido. Sem criação na Stripe.
+- **Consequências:** Cada produto pode ter link próprio (Pix, Mercado Pago, etc.). Conta não tem campo global de pagamento.
+- **Alternativas descartadas:** Link só na Account; Stripe Connect / Payment Link gerado pela Sof.
+
+## 2026-08-05 — Produtos, pedidos sem gateway e gate de catálogo pós-login
+
+- **Contexto:** Contas precisavam oferecer só serviços agendáveis; negócios de varejo/kit querem vender produtos pelo WhatsApp. Signup não exigia cardápio; o bot listava 100% dos serviços sem toggle.
+- **Decisão:** Modelo `Product` + `Order`/`OrderItem` (pedido sem pagamento online no v1). Toggles `Account.botAttendsServices` / `botAttendsProducts` na Conta. Gate pós-login `setup-catalog` exige ≥1 serviço **ou** produto (mesmo padrão de `choose-plan`). Bot: menu intenção quando ambos ligados; fluxo produto → qtd → confirma → pedido; `Product.handoffEnabled` abre handoff `product_sale`. Imagens em data URL (máx. 5), padrão do logo.
+- **Consequências:** Contas só-produto funcionam no bot sem profissionais. Pagamento/Pix fica para versão futura. Criar o 1º produto liga `botAttendsProducts` automaticamente.
+- **Alternativas descartadas:** Checkout com campos de serviço/produto (mistura billing); gateway Stripe Connect no pedido (escopo grande); unificar Service/Product num único `CatalogItem` (agenda e venda têm fluxos distintos).
+
 ## 2026-08-03 — Pair code WhatsApp: disconnect antes do connect com phone
 
 - **Contexto:** Em QA, `POST /account/whatsapp/connect` com telefone respondia 201 com ~88 bytes (`paircode: null`). O auto-QR da Conta deixa a instância Uazapi em `connecting`; um segundo `/instance/connect` com `phone` nessa sessão não devolve paircode. No admin, `loadWa()` após o connect ainda sobrescrevia o código pelo status (que raramente traz paircode).

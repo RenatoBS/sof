@@ -489,6 +489,28 @@ export class WhatsappController {
       return { handoffOpened: Boolean(opened?.created) };
     }
 
+    if (opts.result.productSaleHandoff) {
+      const opened = await this.handoffs.openOrRefresh({
+        accountId: opts.accountId,
+        phone: opts.customerPhone,
+        lastMessage: opts.text,
+        reason: 'product_sale',
+        ...partyOpts,
+      });
+      await this.handoffs.resetUnresolved(
+        opts.accountId,
+        opts.customerPhone,
+        partyOpts,
+      );
+      if (opened?.created && !opts.skipOutboundNotice) {
+        await this.api
+          .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
+          .catch(() => undefined);
+      }
+      await this.pauseAfterHandoff(opts, party, opened);
+      return { handoffOpened: Boolean(opened?.created) };
+    }
+
     if (opts.result.unresolved) {
       const bump = await this.handoffs.bumpUnresolved({
         accountId: opts.accountId,
@@ -561,6 +583,17 @@ export class WhatsappController {
     result: Awaited<ReturnType<WhatsappBotService['handleIncomingMessage']>>,
     instanceToken?: string,
   ) {
+    for (const image of result.images || []) {
+      await this.api
+        .sendImage(customerPhone, image, undefined, instanceToken)
+        .catch((err) => {
+          console.error(
+            '[whatsapp] Falha ao enviar imagem:',
+            err instanceof Error ? err.message : err,
+          );
+        });
+    }
+
     const menus = result.interactive || [];
     if (menus.length > 0) {
       for (const menu of menus) {

@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { AccountModule } from './account/account.module';
 import { EmployeesModule } from './employees/employees.module';
 import { ServicesModule } from './services/services.module';
+import { ProductsModule } from './products/products.module';
+import { OrdersModule } from './orders/orders.module';
 import { ClientsModule } from './clients/clients.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { CheckoutModule } from './checkout/checkout.module';
@@ -45,6 +47,8 @@ import { HealthController } from './health/health.controller';
     AccountModule,
     EmployeesModule,
     ServicesModule,
+    ProductsModule,
+    OrdersModule,
     ClientsModule,
     AppointmentsModule,
     PlansModule,

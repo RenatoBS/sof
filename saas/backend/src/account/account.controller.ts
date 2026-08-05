@@ -82,6 +82,8 @@ export class AccountController {
       timezone?: string;
       botPausedPermanent?: boolean;
       botPausedUntil?: string | null;
+      botAttendsServices?: boolean;
+      botAttendsProducts?: boolean;
       /** data URL base64; "" ou null remove o logo */
       logoBase64?: string | null;
     },
@@ -96,6 +98,8 @@ export class AccountController {
       timezone?: string;
       botPausedPermanent?: boolean;
       botPausedUntil?: Date | null;
+      botAttendsServices?: boolean;
+      botAttendsProducts?: boolean;
       logoBase64?: string;
     } = {};
 
@@ -174,6 +178,28 @@ export class AccountController {
       if (!('noop' in logo)) {
         data.logoBase64 = logo.logoBase64;
       }
+    }
+
+    if (
+      body?.botAttendsServices !== undefined ||
+      body?.botAttendsProducts !== undefined
+    ) {
+      const nextServices =
+        body.botAttendsServices !== undefined
+          ? Boolean(body.botAttendsServices)
+          : req.account.botAttendsServices;
+      const nextProducts =
+        body.botAttendsProducts !== undefined
+          ? Boolean(body.botAttendsProducts)
+          : req.account.botAttendsProducts;
+      if (!nextServices && !nextProducts) {
+        throw new BadRequestException({
+          error:
+            'O bot precisa atender pelo menos serviços ou produtos. Mantenha um dos dois ligado.',
+        });
+      }
+      data.botAttendsServices = nextServices;
+      data.botAttendsProducts = nextProducts;
     }
 
     const account = await this.prisma.account.update({

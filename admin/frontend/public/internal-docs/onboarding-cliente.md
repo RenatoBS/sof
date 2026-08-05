@@ -19,13 +19,12 @@ Site: [www.sof.solutions](https://www.sof.solutions) · Planos: [www.sof.solutio
 |------:|-------|---------|
 | 1 | Conta criada (plano pago **ou** cupom) | Acesso ao painel |
 | 2 | Contato + endereço + horário | Bot responde “onde fica” e só agenda no expediente |
-| 3 | WhatsApp conectado (QR ou código) | Clientes marcam de verdade no WhatsApp |
-| 4 | Pelo menos **1 serviço** | Cardápio do bot e da agenda |
-| 5 | Pelo menos **1 profissional** ligado a serviço(s) | Agenda e fluxo WhatsApp |
+| 3 | WhatsApp conectado (QR ou código) | Clientes marcam / compram de verdade no WhatsApp |
+| 4 | Pelo menos **1 serviço ou 1 produto** | Gate `setup-catalog` após o login; cardápio do bot |
+| 5 | (Se serviços) Pelo menos **1 profissional** ligado a serviço(s) | Agenda e fluxo WhatsApp de agendamento |
 | 6 | (Opcional) Clientes | Podem nascer sozinhos no 1º contato no WhatsApp |
 
-Sem profissionais, a agenda fica vazia. Sem WhatsApp conectado, use só o simulador em **Simulador WhatsApp** (`/simulator`, demo).
-
+Contas **só produto** não precisam de profissional para o bot vender. Sem WhatsApp conectado, use só o simulador em **Simulador WhatsApp** (`/simulator`, demo). Em Conta → WhatsApp, ligue **Serviços** e/ou **Produtos** conforme o que o bot deve oferecer.
 ---
 
 ## Passo 1 — Escolher o plano
