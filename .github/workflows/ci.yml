@@ -17,6 +17,55 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Gate explícito dos deploys QA/prod (via workflow_call): unitários SaaS
+  # rodam sem heroku-postbuild (export Expo / nest build completo).
+  unit-saas-backend:
+    name: unit saas-backend (${{ inputs.environment || 'ci' }})
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: saas/backend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: saas/backend
+
+      - name: Prisma generate
+        run: npx prisma generate --generator client
+        working-directory: saas/backend
+
+      - name: Testes unitários
+        run: npm test
+        working-directory: saas/backend
+
+  unit-saas-frontend:
+    name: unit saas-frontend (${{ inputs.environment || 'ci' }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: saas/frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: saas/frontend
+
+      - name: Testes unitários
+        run: npm test
+        working-directory: saas/frontend
+
   build:
     name: build ${{ matrix.name }} (${{ inputs.environment || 'ci' }})
     runs-on: ubuntu-latest
@@ -27,19 +76,15 @@ jobs:
           - name: saas-backend
             dir: saas/backend
             check: npx eslint "{src,apps,libs,test}/**/*.ts"
-            test: npm test
           - name: saas-frontend
             dir: saas/frontend
             check: npx tsc --noEmit
-            test: npm test
           - name: admin-backend
             dir: admin/backend
             check: npx tsc --noEmit
-            test: echo "sem suíte de testes"
           - name: admin-frontend
             dir: admin/frontend
             check: npx tsc --noEmit
-            test: echo "sem suíte de testes"
     env:
       # prisma generate exige as vars resolvíveis; nenhum banco é acessado no CI
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
@@ -59,10 +104,6 @@ jobs:
 
       - name: Build (mesmo comando do Heroku)
         run: npm run heroku-postbuild
-        working-directory: ${{ matrix.dir }}
-
-      - name: Testes
-        run: ${{ matrix.test }}
         working-directory: ${{ matrix.dir }}
 
       # Informativo: a base ainda tem violações de lint/tipos herdadas.

@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
+
+- **Contexto:** Os `npm test` do SaaS rodavam só dentro da matriz `build` (depois do `heroku-postbuild`). No deploy QA/prod isso misturava unitário com export Expo/build Nest e deixava o gate pouco claro.
+- **Decisão:** Jobs dedicados `unit-saas-backend` e `unit-saas-frontend` no `ci.yml` (reusado por `deploy-qa` / `deploy-prod`). Unitários rodam sem `heroku-postbuild`; a matriz `build` fica só build + lint informativo.
+- **Consequências:** Deploy só publica se os unitários SaaS passarem; falha de teste aparece como job próprio no Actions.
+- **Alternativas descartadas:** Manter teste só na matriz build; job unitário só no deploy-qa (duplicaria lógica fora do `workflow_call`).
+
 ## 2026-08-05 — Suíte unitária SaaS (Jest + jest-expo)
 
 - **Contexto:** CI do frontend era no-op (`echo`); backend já tinha Jest com poucos specs. Precisávamos de base unitária expandível sem confundir com E2E Playwright.

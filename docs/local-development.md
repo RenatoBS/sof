@@ -257,4 +257,4 @@ cd saas/frontend && npm test
 
 - Backend: specs colocalizados `*.spec.ts` (phone, password, plans, entitlements, handoffs, reminders…).
 - Frontend: `src/**/__tests__/**/*.test.ts` (validation, appEnv, api client).
-- CI: matriz `saas-backend` e `saas-frontend` rodam `npm test` em [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+- CI/deploy: jobs `unit-saas-backend` e `unit-saas-frontend` em [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — gate de QA/prod via `workflow_call`.

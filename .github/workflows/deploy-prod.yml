@@ -129,6 +129,7 @@ jobs:
             echo "|------|-------|"
             echo "| Ref | \`${{ github.ref_name }}\` |"
             echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Gate | CI (unit SaaS + build + syncs) → \`${{ needs.ci.result }}\` |"
             echo "| API | https://api.sof.solutions (${{ needs.api.result }}) |"
             echo "| Web | https://www.sof.solutions (${{ needs.web.result }}) |"
             echo "| Admin API | herokuapp (${{ needs['admin-api'].result }}) |"

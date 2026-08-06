@@ -174,7 +174,7 @@ npm run release:prod -- v1.4.0    # cria e envia v1.4.0-prod → deploy produç�
 
 Também dá para criar a tag na mão (`git tag -a v1.4.0-stg -m ... && git push origin v1.4.0-stg`) ou rodar o workflow manualmente em Actions → *Run workflow* (escolhendo a tag; ref que não seja tag do sufixo certo só gera aviso, tag com sufixo errado falha na validação).
 
-Em ambos os workflows a ordem é: **validação da tag → CI → API → demais apps → resumo**. A API do produto sai primeiro porque o release phase dela roda `prisma migrate deploy`. Cada deploy faz smoke test no health/URL pública.
+Em ambos os workflows a ordem é: **validação da tag → CI (unitários SaaS + build + syncs) → API → demais apps → resumo**. A API do produto sai primeiro porque o release phase dela roda `prisma migrate deploy`. Cada deploy faz smoke test no health/URL pública. Sem os unitários SaaS verdes o deploy **não** publica.
 
 #### CI (`.github/workflows/ci.yml`)
 
@@ -182,15 +182,14 @@ Reutilizável (`workflow_call`) e também disparado em PR e push na `main`. Jobs
 
 | Job | O que faz | Bloqueia? |
 |-----|-----------|-----------|
+| `unit-saas-backend` | `npm ci` + `prisma generate` + `npm test` em `saas/backend` | **sim** (gate do deploy) |
+| `unit-saas-frontend` | `npm ci` + `npm test` em `saas/frontend` (jest-expo; sem `expo export`) | **sim** (gate do deploy) |
 | `build` (matriz dos 4 apps) | `npm ci` + `npm run heroku-postbuild` (mesmo comando da Heroku) | sim |
-| `build` → testes | `npm test` em `saas/backend` | sim |
 | `build` → lint/typecheck | eslint (backend) / `tsc --noEmit` (demais) | **não** (informativo; base tem violações herdadas) |
 | `schema-sync` | `npm run admin:sync-schema` + diff | sim |
 | `content-sync` | `scripts/check-content-sync.sh` (docs/guides sincronizados em `admin/frontend/public/`) | sim |
 
-`prisma generate` roda com `DATABASE_URL`/`DIRECT_URL` fictícias — o CI não acessa banco.
-
-Local: `npm run check:content-sync` reproduz o job `content-sync`.
+`prisma generate` roda com `DATABASE_URL`/`DIRECT_URL` fictícias — o CI não acessa banco. Local: `npm run test:unit`.
 
 #### Configuração no GitHub
 

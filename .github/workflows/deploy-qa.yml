@@ -43,7 +43,7 @@ jobs:
 
   api:
     name: deploy sof-solutions-api-qa
-    needs: ci
+    needs: [ci]
     runs-on: ubuntu-latest
     environment:
       name: qa
@@ -92,6 +92,7 @@ jobs:
             echo "|------|-------|"
             echo "| Ref | \`${{ github.ref_name }}\` |"
             echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Gate | CI (unit SaaS + build + syncs) → \`${{ needs.ci.result }}\` |"
             echo "| API | https://qa-api.sof.solutions (${{ needs.api.result }}) |"
             echo "| Web | https://qa.sof.solutions (${{ needs.web.result }}) |"
           } >> "$GITHUB_STEP_SUMMARY"
