@@ -102,6 +102,8 @@ export type Employee = {
   email: string;
   phone: string;
   mustChangePassword: boolean;
+  /** Pode assumir/responder handoffs de clientes no inbox. */
+  canHandleHandoffs?: boolean;
   color: string;
   services: Service[];
   createdAt: string;
@@ -115,6 +117,7 @@ export type EmployeeSession = {
   phone: string;
   color: string;
   mustChangePassword: boolean;
+  canHandleHandoffs?: boolean;
   businessName: string;
   logoBase64?: string;
   createdAt: string;
@@ -142,13 +145,31 @@ export type WhatsappHandoff = {
   customerPhone: string;
   customerName: string;
   lastMessage: string;
-  reason: 'unresolved' | 'human_requested';
+  reason: 'unresolved' | 'human_requested' | 'product_sale' | string;
   status: 'open' | 'resolved';
+  /** null = fila | account = dono | employee = profissional */
+  assigneeType?: 'account' | 'employee' | string | null;
+  assignedEmployeeId?: string | null;
+  assignedAt?: string | null;
   openedAt: string;
   humanRepliedAt?: string | null;
   resolvedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type WhatsappMessage = {
+  id: string;
+  accountId: string;
+  handoffId: string;
+  customerPhone: string;
+  direction: 'inbound' | 'outbound' | string;
+  senderKind: 'client' | 'employee_party' | 'bot' | 'human_wa' | 'agent' | string;
+  body: string;
+  agentEmployeeId?: string | null;
+  sentByAccountOwner?: boolean;
+  providerMessageId?: string | null;
+  createdAt: string;
 };
 
 export type AppointmentKind = 'service' | 'block';

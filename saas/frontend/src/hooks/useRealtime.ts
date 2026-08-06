@@ -1,8 +1,13 @@
 import { useEffect, useRef } from 'react';
 import EventSource from 'react-native-sse';
 import { getApiBaseUrl } from '@/src/api/client';
-import { getToken } from '@/src/auth/tokenStorage';
-import type { Appointment, Client, WhatsappHandoff } from '@/src/api/types';
+import { getEmployeeToken, getToken } from '@/src/auth/tokenStorage';
+import type {
+  Appointment,
+  Client,
+  WhatsappHandoff,
+  WhatsappMessage,
+} from '@/src/api/types';
 
 type Handlers = {
   onCreated?: (appointment: Appointment) => void;
@@ -11,10 +16,17 @@ type Handlers = {
   onHandoffOpened?: (handoff: WhatsappHandoff) => void;
   onHandoffUpdated?: (handoff: WhatsappHandoff) => void;
   onHandoffResolved?: (handoff: WhatsappHandoff) => void;
+  onHandoffMessage?: (handoffId: string, message: WhatsappMessage) => void;
   onClientUpdated?: (client: Client) => void;
 };
 
-export function useRealtime(handlers: Handlers, enabled = true) {
+type AuthMode = 'account' | 'employee';
+
+export function useRealtime(
+  handlers: Handlers,
+  enabled = true,
+  auth: AuthMode = 'account',
+) {
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
 
@@ -25,15 +37,20 @@ export function useRealtime(handlers: Handlers, enabled = true) {
     let cancelled = false;
 
     (async () => {
-      const token = await getToken();
+      const token =
+        auth === 'employee' ? await getEmployeeToken() : await getToken();
       if (!token || cancelled) return;
 
-      es = new EventSource<string>(`${getApiBaseUrl()}/api/events/stream`, {
+      const path =
+        auth === 'employee'
+          ? '/api/employee/events/stream'
+          : '/api/events/stream';
+
+      es = new EventSource<string>(`${getApiBaseUrl()}${path}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       es.addEventListener('message', (event) => {
-        // heartbeat comments — ignore
         if (!event.data || event.data.startsWith(':')) return;
       });
 
@@ -76,6 +93,12 @@ export function useRealtime(handlers: Handlers, enabled = true) {
         },
       );
 
+      es.addEventListener('whatsapp-handoff:message' as 'message', (event) => {
+        if (!event.data) return;
+        const data = JSON.parse(event.data);
+        handlersRef.current.onHandoffMessage?.(data.handoffId, data.message);
+      });
+
       es.addEventListener('client:updated' as 'message', (event) => {
         if (!event.data) return;
         const data = JSON.parse(event.data);
@@ -87,5 +110,5 @@ export function useRealtime(handlers: Handlers, enabled = true) {
       cancelled = true;
       es?.close();
     };
-  }, [enabled]);
+  }, [enabled, auth]);
 }

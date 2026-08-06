@@ -69,6 +69,7 @@ function shapeEmployee(employee: {
   email: string | null;
   phone: string;
   mustChangePassword: boolean;
+  canHandleHandoffs: boolean;
   color: string;
   createdAt: Date;
   services: { service: Record<string, unknown> & { createdAt: Date } }[];
@@ -81,6 +82,7 @@ function shapeEmployee(employee: {
     email: rest.email || '',
     phone: rest.phone || '',
     mustChangePassword: rest.mustChangePassword,
+    canHandleHandoffs: Boolean(rest.canHandleHandoffs),
     color: rest.color,
     createdAt: rest.createdAt.toISOString(),
     services: links.map((link) => serializeDates(link.service)),
@@ -197,6 +199,7 @@ export class EmployeesController {
       phone?: string;
       serviceIds?: unknown;
       color?: string;
+      canHandleHandoffs?: boolean;
     },
   ) {
     const { name, email, phone, serviceIds } = await this.validatePayload(
@@ -220,6 +223,7 @@ export class EmployeesController {
       body?.color,
       DEFAULT_COLORS[count % DEFAULT_COLORS.length],
     );
+    const canHandleHandoffs = body?.canHandleHandoffs === true;
     const employee = await this.prisma.employee.create({
       data: {
         accountId: req.account.id,
@@ -229,6 +233,7 @@ export class EmployeesController {
         passwordHash: null,
         mustChangePassword: true,
         color,
+        canHandleHandoffs,
         services: {
           create: serviceIds.map((serviceId) => ({ serviceId })),
         },
@@ -258,6 +263,7 @@ export class EmployeesController {
       phone?: string;
       serviceIds?: unknown;
       color?: string;
+      canHandleHandoffs?: boolean;
       resetPassword?: boolean;
     },
   ) {
@@ -284,6 +290,10 @@ export class EmployeesController {
     const color = parseColor(body?.color, existing.color);
     const resetPassword = body?.resetPassword === true;
     const needsInvite = resetPassword || !existing.passwordHash;
+    const canHandleHandoffs =
+      typeof body?.canHandleHandoffs === 'boolean'
+        ? body.canHandleHandoffs
+        : existing.canHandleHandoffs;
 
     const employee = await this.prisma.$transaction(async (tx) => {
       await tx.employeeService.deleteMany({
@@ -296,6 +306,7 @@ export class EmployeesController {
           email,
           phone,
           color,
+          canHandleHandoffs,
           ...(needsInvite
             ? { passwordHash: null, mustChangePassword: true }
             : {}),

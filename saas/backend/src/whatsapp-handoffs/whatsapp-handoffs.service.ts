@@ -1,7 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../events/realtime.service';
@@ -9,14 +12,26 @@ import { serializeDates } from '../common/public-shapes';
 import { normalizePhone } from '../common/phone';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { hasFeature } from '../entitlements/feature-catalog';
+import { WhatsappApiService } from '../whatsapp/whatsapp-api.service';
 
 export const HANDOFF_THRESHOLDS = [1, 2, 3, 5] as const;
 export type HandoffThreshold = (typeof HANDOFF_THRESHOLDS)[number];
 
 export type HandoffReason = 'unresolved' | 'human_requested' | 'product_sale';
 export type HandoffParty = 'client' | 'employee';
+export type HandoffAssigneeType = 'account' | 'employee';
+export type MessageSenderKind =
+  | 'client'
+  | 'employee_party'
+  | 'bot'
+  | 'human_wa'
+  | 'agent';
 
 const HUMAN_PAUSE_MS = 60 * 60 * 1000;
+
+type Actor =
+  | { kind: 'account' }
+  | { kind: 'employee'; employeeId: string };
 
 @Injectable()
 export class WhatsappHandoffsService {
@@ -24,22 +39,51 @@ export class WhatsappHandoffsService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly entitlements: EntitlementsService,
+    @Inject(forwardRef(() => WhatsappApiService))
+    private readonly whatsappApi: WhatsappApiService,
   ) {}
 
   shape(handoff: object) {
     return serializeDates(handoff);
   }
 
-  async list(accountId: string, status?: string) {
-    const where: { accountId: string; status?: string } = { accountId };
+  shapeMessage(message: object) {
+    return serializeDates(message);
+  }
+
+  async list(
+    accountId: string,
+    status?: string,
+    opts?: { party?: HandoffParty; forEmployeeId?: string },
+  ) {
+    const where: {
+      accountId: string;
+      status?: string;
+      party?: string;
+    } = { accountId };
     if (status === 'open' || status === 'resolved') {
       where.status = status;
+    }
+    if (opts?.party) {
+      where.party = opts.party;
     }
     const rows = await this.prisma.whatsappHandoff.findMany({
       where,
       orderBy: { openedAt: 'desc' },
       take: 100,
     });
+    // Profissionais só veem fila livre + os que estão com eles.
+    if (opts?.forEmployeeId) {
+      return rows
+        .filter(
+          (r) =>
+            r.status === 'resolved' ||
+            !r.assigneeType ||
+            (r.assigneeType === 'employee' &&
+              r.assignedEmployeeId === opts.forEmployeeId),
+        )
+        .map((r) => this.shape(r));
+    }
     return rows.map((r) => this.shape(r));
   }
 
@@ -74,13 +118,125 @@ export class WhatsappHandoffsService {
     return 2;
   }
 
-  async resolveManual(accountId: string, handoffId: string) {
-    const existing = await this.prisma.whatsappHandoff.findFirst({
-      where: { id: handoffId, accountId },
+  async findOpenByPhone(accountId: string, phoneRaw: string) {
+    const phone = normalizePhone(phoneRaw) || phoneRaw.replace(/\D/g, '');
+    if (!phone) return null;
+    return this.prisma.whatsappHandoff.findFirst({
+      where: { accountId, customerPhone: phone, status: 'open' },
+      orderBy: { openedAt: 'desc' },
     });
-    if (!existing) {
-      throw new NotFoundException({ error: 'Atendimento não encontrado.' });
+  }
+
+  async listMessages(accountId: string, handoffId: string) {
+    const handoff = await this.requireHandoff(accountId, handoffId);
+    const rows = await this.prisma.whatsappMessage.findMany({
+      where: { handoffId: handoff.id },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    return rows.map((r) => this.shapeMessage(r));
+  }
+
+  /**
+   * Persiste mensagem na thread de um handoff aberto (ou pelo id).
+   * Dedupa por providerMessageId quando informado.
+   */
+  async appendMessage(opts: {
+    accountId: string;
+    handoffId?: string;
+    phone?: string;
+    direction: 'inbound' | 'outbound';
+    senderKind: MessageSenderKind;
+    body: string;
+    providerMessageId?: string;
+    agentEmployeeId?: string | null;
+    sentByAccountOwner?: boolean;
+    updateLastMessage?: boolean;
+  }) {
+    const body = String(opts.body || '').trim();
+    if (!body) return null;
+
+    if (opts.providerMessageId) {
+      const dup = await this.prisma.whatsappMessage.findFirst({
+        where: {
+          accountId: opts.accountId,
+          providerMessageId: opts.providerMessageId,
+        },
+      });
+      if (dup) return this.shapeMessage(dup);
     }
+
+    let handoff = opts.handoffId
+      ? await this.prisma.whatsappHandoff.findFirst({
+          where: { id: opts.handoffId, accountId: opts.accountId },
+        })
+      : null;
+
+    if (!handoff && opts.phone) {
+      handoff = await this.findOpenByPhone(opts.accountId, opts.phone);
+    }
+    if (!handoff) return null;
+
+    const message = await this.prisma.whatsappMessage.create({
+      data: {
+        accountId: opts.accountId,
+        handoffId: handoff.id,
+        customerPhone: handoff.customerPhone,
+        direction: opts.direction,
+        senderKind: opts.senderKind,
+        body: body.slice(0, 4000),
+        providerMessageId: opts.providerMessageId || null,
+        agentEmployeeId: opts.agentEmployeeId || null,
+        sentByAccountOwner: Boolean(opts.sentByAccountOwner),
+      },
+    });
+
+    if (opts.updateLastMessage !== false) {
+      const updated = await this.prisma.whatsappHandoff.update({
+        where: { id: handoff.id },
+        data: { lastMessage: body.slice(0, 500) },
+      });
+      this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:updated', {
+        handoff: this.shape(updated),
+      });
+    }
+
+    const shaped = this.shapeMessage(message);
+    this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:message', {
+      handoffId: handoff.id,
+      message: shaped,
+    });
+    return shaped;
+  }
+
+  /** Seed da thread com lastMessage se ainda não houver mensagens. */
+  private async seedInitialMessage(handoff: {
+    id: string;
+    accountId: string;
+    customerPhone: string;
+    lastMessage: string;
+    party: string;
+  }) {
+    const body = String(handoff.lastMessage || '').trim();
+    if (!body) return;
+    const count = await this.prisma.whatsappMessage.count({
+      where: { handoffId: handoff.id },
+    });
+    if (count > 0) return;
+    await this.appendMessage({
+      accountId: handoff.accountId,
+      handoffId: handoff.id,
+      phone: handoff.customerPhone,
+      direction: 'inbound',
+      senderKind: handoff.party === 'employee' ? 'employee_party' : 'client',
+      body,
+      updateLastMessage: false,
+    });
+  }
+
+  async resolveManual(accountId: string, handoffId: string, actor?: Actor) {
+    const existing = await this.requireHandoff(accountId, handoffId);
+    if (actor) this.assertCanActOn(existing, actor, { allowUnassigned: true });
     if (existing.status === 'resolved') {
       return this.shape(existing);
     }
@@ -93,6 +249,236 @@ export class WhatsappHandoffsService {
       handoff: shaped,
     });
     return shaped;
+  }
+
+  /** Resolve e devolve o bot (limpa pausa automática do cliente). */
+  async returnToSof(accountId: string, handoffId: string, actor?: Actor) {
+    const existing = await this.requireHandoff(accountId, handoffId);
+    if (actor) this.assertCanActOn(existing, actor, { allowUnassigned: true });
+
+    const shaped = await this.resolveManual(accountId, handoffId);
+    if (existing.party === 'client') {
+      await this.resumeAutoPausedClient(accountId, existing.customerPhone);
+    }
+    return shaped;
+  }
+
+  async claim(accountId: string, handoffId: string, actor: Actor) {
+    const existing = await this.requireHandoff(accountId, handoffId);
+    if (existing.status !== 'open') {
+      throw new BadRequestException({ error: 'Atendimento já resolvido.' });
+    }
+    if (actor.kind === 'employee') {
+      if (existing.party !== 'client') {
+        throw new ForbiddenException({
+          error: 'Profissionais só atendem conversas de clientes.',
+        });
+      }
+      await this.assertEmployeeCanHandle(accountId, actor.employeeId);
+      if (
+        existing.assigneeType &&
+        !(
+          existing.assigneeType === 'employee' &&
+          existing.assignedEmployeeId === actor.employeeId
+        )
+      ) {
+        throw new BadRequestException({
+          error: 'Atendimento já atribuído a outra pessoa.',
+        });
+      }
+    } else if (
+      existing.assigneeType &&
+      existing.assigneeType !== 'account'
+    ) {
+      throw new BadRequestException({
+        error: 'Atendimento já atribuído a um profissional. Transfira ou liberte primeiro.',
+      });
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.whatsappHandoff.update({
+      where: { id: existing.id },
+      data:
+        actor.kind === 'account'
+          ? {
+              assigneeType: 'account',
+              assignedEmployeeId: null,
+              assignedAt: now,
+            }
+          : {
+              assigneeType: 'employee',
+              assignedEmployeeId: actor.employeeId,
+              assignedAt: now,
+            },
+    });
+    const shaped = this.shape(updated);
+    this.realtime.broadcast(accountId, 'whatsapp-handoff:updated', {
+      handoff: shaped,
+    });
+    return shaped;
+  }
+
+  async transfer(
+    accountId: string,
+    handoffId: string,
+    body: { assigneeType?: string; employeeId?: string },
+    actor: Actor,
+  ) {
+    const existing = await this.requireHandoff(accountId, handoffId);
+    if (existing.status !== 'open') {
+      throw new BadRequestException({ error: 'Atendimento já resolvido.' });
+    }
+    this.assertCanActOn(existing, actor, { allowUnassigned: actor.kind === 'account' });
+
+    const assigneeType = String(body?.assigneeType || '').trim();
+    if (assigneeType !== 'account' && assigneeType !== 'employee') {
+      throw new BadRequestException({
+        error: 'Informe assigneeType: account ou employee.',
+      });
+    }
+
+    if (assigneeType === 'employee') {
+      if (existing.party !== 'client') {
+        throw new BadRequestException({
+          error: 'Só conversas de clientes podem ir para profissionais.',
+        });
+      }
+      const employeeId = String(body?.employeeId || '').trim();
+      if (!employeeId) {
+        throw new BadRequestException({ error: 'Informe o profissional.' });
+      }
+      await this.assertEmployeeCanHandle(accountId, employeeId);
+      const updated = await this.prisma.whatsappHandoff.update({
+        where: { id: existing.id },
+        data: {
+          assigneeType: 'employee',
+          assignedEmployeeId: employeeId,
+          assignedAt: new Date(),
+        },
+      });
+      const shaped = this.shape(updated);
+      this.realtime.broadcast(accountId, 'whatsapp-handoff:updated', {
+        handoff: shaped,
+      });
+      return shaped;
+    }
+
+    const updated = await this.prisma.whatsappHandoff.update({
+      where: { id: existing.id },
+      data: {
+        assigneeType: 'account',
+        assignedEmployeeId: null,
+        assignedAt: new Date(),
+      },
+    });
+    const shaped = this.shape(updated);
+    this.realtime.broadcast(accountId, 'whatsapp-handoff:updated', {
+      handoff: shaped,
+    });
+    return shaped;
+  }
+
+  async release(accountId: string, handoffId: string, actor: Actor) {
+    const existing = await this.requireHandoff(accountId, handoffId);
+    if (existing.status !== 'open') {
+      throw new BadRequestException({ error: 'Atendimento já resolvido.' });
+    }
+    this.assertCanActOn(existing, actor, { allowUnassigned: false });
+
+    const updated = await this.prisma.whatsappHandoff.update({
+      where: { id: existing.id },
+      data: {
+        assigneeType: null,
+        assignedEmployeeId: null,
+        assignedAt: null,
+      },
+    });
+    const shaped = this.shape(updated);
+    this.realtime.broadcast(accountId, 'whatsapp-handoff:updated', {
+      handoff: shaped,
+    });
+    return shaped;
+  }
+
+  async reply(
+    accountId: string,
+    handoffId: string,
+    textRaw: string,
+    actor: Actor,
+  ) {
+    const text = String(textRaw || '').trim();
+    if (!text) {
+      throw new BadRequestException({ error: 'Informe a mensagem.' });
+    }
+    if (text.length > 4000) {
+      throw new BadRequestException({ error: 'Mensagem muito longa.' });
+    }
+
+    const existing = await this.requireHandoff(accountId, handoffId);
+    if (existing.status !== 'open') {
+      throw new BadRequestException({ error: 'Atendimento já resolvido.' });
+    }
+
+    // Auto-claim se ainda na fila e o ator pode assumir.
+    if (!existing.assigneeType) {
+      await this.claim(accountId, handoffId, actor);
+    } else {
+      this.assertCanActOn(existing, actor, { allowUnassigned: false });
+    }
+
+    const account = await this.prisma.account.findUnique({
+      where: { id: accountId },
+      select: { whatsappInstanceToken: true },
+    });
+
+    // Envio best-effort: inbox grava mesmo se a sessão WA estiver caída (dev/e2e).
+    let delivered = true;
+    try {
+      await this.whatsappApi.sendText(
+        existing.customerPhone,
+        text,
+        account?.whatsappInstanceToken || undefined,
+      );
+    } catch (err) {
+      delivered = false;
+      console.warn(
+        '[whatsapp-handoffs] Falha ao enviar reply via WhatsApp:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+
+    const now = new Date();
+    await this.prisma.whatsappHandoff.update({
+      where: { id: existing.id },
+      data: { humanRepliedAt: now },
+    });
+
+    if (existing.party === 'client') {
+      await this.pauseClientBot({
+        accountId,
+        phone: existing.customerPhone,
+        displayName: existing.customerName,
+      });
+    }
+
+    const message = await this.appendMessage({
+      accountId,
+      handoffId: existing.id,
+      direction: 'outbound',
+      senderKind: 'agent',
+      body: text,
+      agentEmployeeId: actor.kind === 'employee' ? actor.employeeId : null,
+      sentByAccountOwner: actor.kind === 'account',
+    });
+
+    const handoff = await this.prisma.whatsappHandoff.findUnique({
+      where: { id: existing.id },
+    });
+    return {
+      handoff: handoff ? this.shape(handoff) : null,
+      message,
+      delivered,
+    };
   }
 
   async resetUnresolved(
@@ -246,6 +632,14 @@ export class WhatsappHandoffsService {
           employeeId,
         },
       });
+      await this.appendMessage({
+        accountId: opts.accountId,
+        handoffId: updated.id,
+        direction: 'inbound',
+        senderKind: party === 'employee' ? 'employee_party' : 'client',
+        body: opts.lastMessage,
+        updateLastMessage: false,
+      });
       const shaped = this.shape(updated);
       this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:updated', {
         handoff: shaped,
@@ -266,6 +660,7 @@ export class WhatsappHandoffsService {
         status: 'open',
       },
     });
+    await this.seedInitialMessage(created);
     const shaped = this.shape(created);
     this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:opened', {
       handoff: shaped,
@@ -275,8 +670,6 @@ export class WhatsappHandoffsService {
 
   /**
    * Silencia o bot para este cliente por 1h e zera o contador de falhas.
-   * Usado quando a conversa vira caso de humano: alerta aberto na aba
-   * Atendimentos ou resposta humana pelo WhatsApp.
    */
   async pauseClientBot(opts: {
     accountId: string;
@@ -316,7 +709,6 @@ export class WhatsappHandoffsService {
 
   /**
    * Cliente chamou pela Sof durante a pausa automática: bot volta a responder.
-   * Pausa definida pelo dono na aba Clientes não é desfeita por aqui.
    */
   async resumeAutoPausedClient(accountId: string, rawPhone: string) {
     const phone = normalizePhone(rawPhone) || rawPhone.replace(/\D/g, '');
@@ -349,8 +741,8 @@ export class WhatsappHandoffsService {
   }
 
   /**
-   * Humano respondeu no WhatsApp: resolve alertas abertos.
-   * Cliente: pausa bot 1h. Profissional: só resolve (não silencia o bot do prof).
+   * Humano respondeu no WhatsApp (celular/Web): pausa bot, marca humanRepliedAt,
+   * persiste na thread — NÃO resolve (fechamento é explícito no inbox).
    */
   async onHumanReply(opts: {
     accountId: string;
@@ -358,9 +750,11 @@ export class WhatsappHandoffsService {
     displayName?: string;
     party?: HandoffParty;
     employeeId?: string;
+    messageBody?: string;
+    providerMessageId?: string;
   }) {
     const phone = normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
-    if (!phone) return { pausedUntil: null as Date | null, resolved: [] };
+    if (!phone) return { pausedUntil: null as Date | null, handoffs: [] };
 
     const party: HandoffParty =
       opts.party === 'employee' && opts.employeeId ? 'employee' : 'client';
@@ -371,44 +765,13 @@ export class WhatsappHandoffsService {
         where: { id: opts.employeeId, accountId: opts.accountId },
         data: { botUnresolvedCount: 0 },
       });
-
-      const open = await this.prisma.whatsappHandoff.findMany({
-        where: {
-          accountId: opts.accountId,
-          customerPhone: phone,
-          status: 'open',
-        },
+    } else {
+      await this.pauseClientBot({
+        accountId: opts.accountId,
+        phone,
+        displayName: opts.displayName,
       });
-
-      const resolved = [];
-      for (const row of open) {
-        const updated = await this.prisma.whatsappHandoff.update({
-          where: { id: row.id },
-          data: {
-            status: 'resolved',
-            humanRepliedAt: now,
-            resolvedAt: now,
-            party: 'employee',
-            employeeId: opts.employeeId,
-            clientId: null,
-            ...(opts.displayName ? { customerName: opts.displayName } : {}),
-          },
-        });
-        const shaped = this.shape(updated);
-        resolved.push(shaped);
-        this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:resolved', {
-          handoff: shaped,
-        });
-      }
-
-      return { pausedUntil: null as Date | null, resolved };
     }
-
-    const { client, pausedUntil } = await this.pauseClientBot({
-      accountId: opts.accountId,
-      phone,
-      displayName: opts.displayName,
-    });
 
     const open = await this.prisma.whatsappHandoff.findMany({
       where: {
@@ -418,27 +781,96 @@ export class WhatsappHandoffsService {
       },
     });
 
-    const resolved = [];
+    const handoffs = [];
     for (const row of open) {
       const updated = await this.prisma.whatsappHandoff.update({
         where: { id: row.id },
         data: {
-          status: 'resolved',
           humanRepliedAt: now,
-          resolvedAt: now,
-          clientId: client.id,
-          customerName: client.name,
-          party: 'client',
-          employeeId: null,
+          ...(opts.displayName ? { customerName: opts.displayName } : {}),
         },
       });
+      if (opts.messageBody) {
+        await this.appendMessage({
+          accountId: opts.accountId,
+          handoffId: row.id,
+          direction: 'outbound',
+          senderKind: 'human_wa',
+          body: opts.messageBody,
+          providerMessageId: opts.providerMessageId,
+          updateLastMessage: true,
+        });
+      }
       const shaped = this.shape(updated);
-      resolved.push(shaped);
-      this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:resolved', {
+      handoffs.push(shaped);
+      this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:updated', {
         handoff: shaped,
       });
     }
 
-    return { pausedUntil, resolved, client: this.shape(client) };
+    return { pausedUntil: party === 'client' ? now : null, handoffs };
+  }
+
+  private async requireHandoff(accountId: string, handoffId: string) {
+    const existing = await this.prisma.whatsappHandoff.findFirst({
+      where: { id: handoffId, accountId },
+    });
+    if (!existing) {
+      throw new NotFoundException({ error: 'Atendimento não encontrado.' });
+    }
+    return existing;
+  }
+
+  private async assertEmployeeCanHandle(
+    accountId: string,
+    employeeId: string,
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, accountId },
+      select: { id: true, canHandleHandoffs: true },
+    });
+    if (!employee) {
+      throw new NotFoundException({ error: 'Profissional não encontrado.' });
+    }
+    if (!employee.canHandleHandoffs) {
+      throw new ForbiddenException({
+        error: 'Este profissional não está habilitado para atendimentos.',
+      });
+    }
+    return employee;
+  }
+
+  private assertCanActOn(
+    handoff: {
+      assigneeType: string | null;
+      assignedEmployeeId: string | null;
+      party: string;
+    },
+    actor: Actor,
+    opts: { allowUnassigned: boolean },
+  ) {
+    if (actor.kind === 'account') return;
+
+    if (handoff.party !== 'client') {
+      throw new ForbiddenException({
+        error: 'Profissionais só atendem conversas de clientes.',
+      });
+    }
+
+    if (!handoff.assigneeType) {
+      if (opts.allowUnassigned) return;
+      throw new ForbiddenException({
+        error: 'Assuma o atendimento antes de continuar.',
+      });
+    }
+
+    if (
+      handoff.assigneeType !== 'employee' ||
+      handoff.assignedEmployeeId !== actor.employeeId
+    ) {
+      throw new ForbiddenException({
+        error: 'Este atendimento está com outra pessoa.',
+      });
+    }
   }
 }

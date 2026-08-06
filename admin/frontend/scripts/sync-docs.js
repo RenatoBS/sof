@@ -107,6 +107,17 @@ if (!fs.existsSync(srcDocs)) {
 
 fs.mkdirSync(dest, { recursive: true });
 
+/** Copia mídia referenciada pelos md (ex.: demo E2E) para o painel /docs. */
+const srcAssets = path.join(srcDocs, 'assets');
+const destAssets = path.join(dest, 'assets');
+if (fs.existsSync(srcAssets)) {
+  fs.mkdirSync(destAssets, { recursive: true });
+  for (const file of fs.readdirSync(srcAssets)) {
+    if (!/\.(mp4|webm|png|jpe?g|gif|webp)$/i.test(file)) continue;
+    fs.copyFileSync(path.join(srcAssets, file), path.join(destAssets, file));
+  }
+}
+
 const entries = [];
 
 for (const file of fs.readdirSync(srcDocs)) {
@@ -115,7 +126,11 @@ for (const file of fs.readdirSync(srcDocs)) {
   const from = path.join(srcDocs, file);
   const to = path.join(dest, file);
   const md = fs.readFileSync(from, 'utf8');
-  fs.writeFileSync(to, md);
+  // No painel, assets vivem em /internal-docs/assets/
+  const rewritten = md
+    .replaceAll('](./assets/', '](/internal-docs/assets/')
+    .replaceAll('src="./assets/', 'src="/internal-docs/assets/');
+  fs.writeFileSync(to, rewritten);
 
   const meta = META[slug] || {
     group: 'Outros',

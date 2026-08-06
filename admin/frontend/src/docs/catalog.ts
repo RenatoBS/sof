@@ -125,6 +125,11 @@ export function rewriteDocLinks(markdown: string): string {
         const name = h.split('/').pop() || h;
         return `[${label}](/guides/${name})`;
       }
+      // Mídia sincronizada de docs/assets → /internal-docs/assets
+      const assetMatch = /^(?:\.\.\/)?(?:\.\/)?assets\/(.+)$/.exec(h);
+      if (assetMatch) {
+        return `[${label}](/internal-docs/assets/${assetMatch[1]})`;
+      }
       const mdMatch = /(?:^|\/)([\w.-]+)\.md(?:#(.+))?$/.exec(h);
       if (mdMatch) {
         const slug = mdMatch[1];

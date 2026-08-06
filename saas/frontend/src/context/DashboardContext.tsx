@@ -12,8 +12,15 @@ import type {
   Product,
   Service,
   WhatsappHandoff,
+  WhatsappMessage,
 } from '@/src/api/types';
 import { dashboardApi } from '@/src/api/endpoints';
+
+export type HandoffLiveMessage = {
+  handoffId: string;
+  message: WhatsappMessage;
+  at: number;
+};
 
 type DashboardContextValue = {
   employees: Employee[];
@@ -22,6 +29,7 @@ type DashboardContextValue = {
   clients: Client[];
   appointments: Appointment[];
   handoffs: WhatsappHandoff[];
+  handoffLiveMessage: HandoffLiveMessage | null;
   loading: boolean;
   loadAll: () => Promise<void>;
   setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
@@ -30,6 +38,9 @@ type DashboardContextValue = {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   setHandoffs: React.Dispatch<React.SetStateAction<WhatsappHandoff[]>>;
+  setHandoffLiveMessage: React.Dispatch<
+    React.SetStateAction<HandoffLiveMessage | null>
+  >;
   getEmployee: (id: string) => Employee | undefined;
   getService: (id: string) => Service | undefined;
   getClient: (id: string) => Client | undefined;
@@ -44,6 +55,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [handoffs, setHandoffs] = useState<WhatsappHandoff[]>([]);
+  const [handoffLiveMessage, setHandoffLiveMessage] =
+    useState<HandoffLiveMessage | null>(null);
   const [loading, setLoading] = useState(false);
 
   const loadAll = useCallback(async () => {
@@ -97,6 +110,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       clients,
       appointments,
       handoffs,
+      handoffLiveMessage,
       loading,
       loadAll,
       setAppointments,
@@ -105,6 +119,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setProducts,
       setClients,
       setHandoffs,
+      setHandoffLiveMessage,
       getEmployee,
       getService,
       getClient,
@@ -116,6 +131,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       clients,
       appointments,
       handoffs,
+      handoffLiveMessage,
       loading,
       loadAll,
       getEmployee,

@@ -138,12 +138,12 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 - CRUD: adicionar / **editar** / remover.  
 - Criação e edição abrem em **modal** (mesmo padrão da agenda: overlay + Salvar / Fechar).  
 - Form front: máscara de telefone `(11) 99999-8888` + validação por campo (nome, telefone 10–15 dígitos, e-mail, ≥1 serviço) antes do POST/PUT.  
-- Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`) e **um ou mais serviços** do cardápio (obrigatório).  
+- Campos: nome, **telefone**, **e-mail de acesso**, **cor na agenda** (presets + seletor nativo `input type=color` na web / hex no nativo; API aceita qualquer `#RGB`/`#RRGGBB`), **um ou mais serviços** do cardápio (obrigatório) e **Pode atender handoffs** (`canHandleHandoffs` — libera a aba Atendimentos no portal).  
 - Se a conta **não tem serviços**, “Adicionar Profissional” redireciona para Serviços com o formulário de criação aberto (`?create=1`); após salvar o primeiro serviço, volta para Profissionais.  
 - Ao criar (ou resetar senha), o painel gera um **link de uso único** (válido 2h) para o profissional definir a senha em `/employee/set-password?token=…` — sem senha antiga; após salvar, login automático. A página mostra o e-mail de login.  
 - **Enviar no WhatsApp:** `POST /api/employees/:id/send-password-link` gera (ou regenera) o link, invalida a senha atual e envia **somente pelo WhatsApp** da conta (não por e-mail). Exige telefone do profissional e WhatsApp conectado.  
 - **Self-service:** o profissional também pode pedir o link — ver área do profissional e bot WhatsApp.
-- `PUT /api/employees/:id` substitui nome, e-mail, telefone, cor e a lista de serviços (`resetPassword` opcional → novo link).  
+- `PUT /api/employees/:id` substitui nome, e-mail, telefone, cor, `canHandleHandoffs` e a lista de serviços (`resetPassword` opcional → novo link).  
 - No modal de agendamento e no WhatsApp, só aparecem profissionais que realizam o serviço escolhido.
 
 ### Área do profissional
@@ -153,8 +153,9 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 - **Definir senha (convite/reset profissional):** `/employee/set-password?token=` — `GET/POST /api/employee-auth/password-setup` (público; token SHA-256, TTL 2h, uso único).
 - **Definir senha (conta):** `/set-password?token=` — `GET/POST /api/auth/password-setup`.
 - Portal `/(employee)/agenda`: agendamentos `scheduled` e `completed` daquele profissional; no celular, chips de dia + lista do dia; no desktop, colunas da semana.
-- Chrome do portal: topbar com logo + nome do negócio e, abaixo, **só o nome do profissional** (sem e-mail); à direita, sempre na mesma linha, o botão Suporte (ou Agenda, quando já está em Suporte) e **Sair como ícone** (`SofIconAction action="logout"`, `accessibilityLabel` “Sair”). Em telas estreitas os nomes truncam em vez de empurrar as ações para baixo. Segue o breakpoint de 720px do painel do dono (padding 16 em vez de 32, logo e nome do negócio menores).
-- Suporte (`/(employee)/support`, botão na topbar): **abre ticket**, comenta e muda status dos tickets do estabelecimento — ver [Suporte](#suporte).
+- Chrome do portal: topbar com logo + nome do negócio e, abaixo, **só o nome do profissional** (sem e-mail); à direita, **Atendimentos** (se `canHandleHandoffs`), Suporte (ou Agenda quando já está em outra seção) e **Sair como ícone**. Em telas estreitas os nomes truncam. Breakpoint 720px.
+- Atendimentos (`/(employee)/handoffs`): inbox de clientes (fila + reply) — ver [Atendimentos](#atendimentos-inbox-estilo-flex).
+- Suporte (`/(employee)/support`): **abre ticket**, comenta e muda status — ver [Suporte](#suporte).
 - Card de horário mostra **hora, cliente e serviço** (eventos `kind=block` seguem só com o título); o painel de detalhe traz a linha `Serviço:`. O nome vem de `serviceName` em `GET /api/employee/appointments`, com fallback no catálogo local (agendamento recém-criado pelo modal ainda não passou pela API de listagem).
 - Pode **marcar como concluído** (`POST /api/employee/appointments/:id/complete`) **somente dentro da janela** [início, fim] do atendimento; conclusão antecipada libera o restante do slot.  
 - Pode **cancelar** (`POST /api/employee/appointments/:id/cancel` → `status=cancelled`).  
@@ -188,18 +189,19 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 - Enquanto pausado, o webhook **não responde** (silêncio). Só vale para `Client` cadastrado (mesmo telefone da conversa).  
 - A pausa também pode vir da própria Sof (ver Atendimentos). `Client.botPausedAuto` separa as duas origens e o badge atualiza em tempo real via SSE `client:updated`.
 
-### Atendimentos (escalonamento humano)
+### Atendimentos (inbox estilo Flex)
 
-- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com alertas abertos em tempo real via SSE).  
-- Alerta abre quando: (a) o interlocutor **pede atendente explicitamente** (regex + intent `human` do NLU) — imediato; ou (b) o bot responde "não entendi" **N vezes seguidas** (default 2; configurável na aba: 1 / 2 / 3 / 5, salvo em `Account.whatsappHandoffThreshold`). Vale para **cliente** e **profissional**.  
-- Cada card mostra badge **Cliente** (azul) ou **Profissional** (lilás), nome/telefone, motivo (Pediu atendente / Bot não entendeu), última mensagem e desde quando; botões **Abrir no WhatsApp** (WhatsApp Web no navegador, `wa.me` no celular) e **Marcar resolvido**.  
-- Quando o alerta abre, a pessoa recebe no WhatsApp: "Avisei a equipe — alguém vai te responder por aqui em breve."  
-- **Cliente: alerta pausa o bot 1 h** (`Client.botPausedUntil` + `botPausedAuto`), nos dois motivos. Depois de avisar que vai chamar a equipe, a Sof sai da conversa para não atropelar quem for responder; a pausa aparece na aba **Clientes** na hora (SSE `client:updated`). Profissional não é pausado (bot operacional). Plano sem `handoffs` não abre alerta e, portanto, não pausa.  
-- **Voltar antes da hora:** se o cliente **chamar pela Sof** (“Sof”, “oi Sof, quero marcar”), a pausa automática cai, a conversa recomeça do menu e o bot responde. Só desfaz pausa automática — a que o dono definiu na aba Clientes e a pausa da conta inteira continuam valendo. Áudio não desfaz (a transcrição só roda depois da checagem de pausa). O alerta segue aberto até alguém marcar como resolvido.  
-- **Resposta humana** (mensagem `fromMe` que não veio da API — celular ou WhatsApp Web): em **cliente**, pausa o bot **1 h** (`Client.botPausedUntil`), zera o contador e resolve o alerta; em **profissional**, só resolve o alerta e zera `Employee.botUnresolvedCount` (sem pausar o bot operacional).  
-- Intents `cancel`/`list`/`book` do NLU (cliente) e intents operacionais do prof continuam pelo bot — só o pedido explícito por humano escala na hora.  
-- Modelo: `WhatsappHandoff.party` (`client` | `employee`) + `employeeId` opcional.  
-- API: `GET /api/whatsapp-handoffs` (`?status=open|resolved`), `GET/PUT …/settings`, `POST …/:id/resolve`. SSE: `whatsapp-handoff:opened|updated|resolved` + `client:updated` (pausa).
+- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com casos abertos via SSE). Inbox em 3 painéis (fila / thread / contexto): o dono assume, responde **pelo painel Sof** (via API WhatsApp) e pode transferir para profissionais com `Employee.canHandleHandoffs`.
+- Caso abre quando: (a) pedido explícito de atendente; (b) N “não entendi” seguidos (`Account.whatsappHandoffThreshold` 1/2/3/5); (c) venda com `Product.handoffEnabled` (`product_sale`). Vale para **cliente** e **profissional** (prof só na fila do dono).
+- **Atribuição:** `assigneeType` `null` (fila) | `account` (dono) | `employee` + `assignedEmployeeId`. Ações: Assumir, Transferir, Liberar, Resolver, Devolver à Sof (resolve + tira pausa automática do cliente).
+- **Thread:** modelo `WhatsappMessage` (`senderKind`: client | employee_party | bot | human_wa | agent). Mensagens inbound com bot pausado e outbound do painel / WhatsApp Web entram na conversa em tempo real (`whatsapp-handoff:message`).
+- Ao abrir: aviso no WA + **pausa do bot 1 h** no cliente (`botPausedAuto`). Profissional na ponta WA não é pausado.
+- **Resposta `fromMe` (celular/Web):** pausa o bot (cliente), grava na thread como `human_wa`, **não resolve** — fechamento é explícito no inbox.
+- **Devolver à Sof / chamar Sof:** resume pausa automática; alerta resolvido só no botão do painel (ou “Resolver”).
+- Portal do profissional (`/(employee)/handoffs`): só se `canHandleHandoffs`; vê fila livre + os seus; só `party=client`. Toggle no cadastro de Profissionais.
+- API conta: `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `GET …/:id/messages`, `POST …/:id/{reply,claim,transfer,release,resolve,return-to-sof}`.
+- API profissional: `GET/POST /api/employee/whatsapp-handoffs…` (+ `GET /api/employee/events/stream`).
+- SSE: `whatsapp-handoff:opened|updated|resolved|message` + `client:updated`.
 
 ### Faturamento
 
@@ -260,7 +262,7 @@ Com Uazapi (`WHATSAPP_BASE_URL` + `WHATSAPP_ADMIN_TOKEN` **ou** `WHATSAPP_TOKEN`
 - **Endereço:** se cadastrado em Conta, o bot responde a perguntas (“onde fica” / endereço) e inclui na **confirmação** do agendamento (e no lembrete). **Não** entra na saudação.  
 - **Pausa por cliente:** `Client.botPausedPermanent` / `botPausedUntil` — dono desativa na aba Clientes; webhook e simulador ignoram a conversa enquanto pausado.  
 - **Pausa da conta:** `Account.botPausedPermanent` / `botPausedUntil` — Conta → Bot do WhatsApp; silencia o bot para **clientes** até a data ou até reativar (profissionais cadastrados continuam no fluxo operacional).  
-- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem alerta na aba **Atendimentos** e pausam o bot **1 h** para aquele cliente (`Client.botPausedUntil` + `botPausedAuto`); resposta humana pelo WhatsApp faz o mesmo e ainda resolve o alerta. Chamar pela **Sof** durante a pausa automática traz o bot de volta e recomeça do menu (ver seção Atendimentos acima).  
+- **Escalonamento humano:** pedidos explícitos por atendente ou N "não entendi" seguidos abrem caso na aba **Atendimentos** e pausam o bot **1 h** para aquele cliente; resposta humana pelo WhatsApp (ou reply no painel) mantém a pausa e a thread — o caso só fecha com Resolver / Devolver à Sof. Chamar pela **Sof** durante a pausa automática traz o bot de volta e recomeça do menu (ver seção Atendimentos acima).
 - **Lembrete automático:** se `whatsappReminderMinutes > 0` e a instância está conectada, um job a cada 30 min avisa o cliente no WhatsApp antes do horário (1× por agendamento; fuso = `Account.timezone`). A confirmação do bot só promete lembrete quando a antecedência está ativa.  
 - **Aviso ao profissional:** ao criar agendamento `kind=service` (bot do cliente ou painel da conta), a conta envia WhatsApp ao telefone do profissional (`EmployeeBookingNotifyService`) com cliente, serviço e horário. Não envia se o próprio profissional criou (portal/bot operacional), se WhatsApp da conta estiver desconectado, ou se o telefone do prof for inválido. Falha de envio só no log — não bloqueia o agendamento.  
 - **Expediente:** só aceita data/hora em dias abertos e com o serviço cabendo no intervalo configurado em Conta.  
@@ -314,12 +316,13 @@ Arquivo: `saas/backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e
 | Orders | `GET /api/orders`, `PATCH …/:id/status` |
 | Clients | `GET/POST /api/clients`, `PUT/DELETE …/:id` (pause do bot no PUT) |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
-| WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `POST …/:id/resolve` |
+| WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `GET …/:id/messages`, `POST …/:id/{reply,claim,transfer,release,resolve,return-to-sof}` |
+| Employee handoffs | `GET/POST /api/employee/whatsapp-handoffs…` |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Plans (público) | `GET /api/plans` |
 | Payments | `POST /api/payments/webhook` |
 | WhatsApp | webhooks + `POST /api/whatsapp/simulate` + pareamento em `/api/account/whatsapp` |
-| Events | `GET /api/events/stream` |
+| Events | `GET /api/events/stream`, `GET /api/employee/events/stream` |
 | Support tickets | `GET/POST /api/tickets`, `GET …/:id`, `POST …/:id/comments`, `PATCH …/:id/status` |
 
 ### Admin API (`admin/backend`, porta 3011)
