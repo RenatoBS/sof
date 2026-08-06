@@ -46,7 +46,7 @@ function makeService(opts?: {
   const entitlements = {
     forAccount: jest.fn(async () => ({ handoffs: true })),
   };
-  const whatsappApi = {};
+  const whatsappApi = { sendText: jest.fn() };
   const service = new WhatsappHandoffsService(
     prisma as never,
     realtime as never,

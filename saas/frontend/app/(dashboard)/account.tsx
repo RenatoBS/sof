@@ -196,6 +196,13 @@ export default function AccountScreen() {
   const [botScopeError, setBotScopeError] = useState('');
   const [savingBotScope, setSavingBotScope] = useState(false);
 
+  const [botMenuOfferHuman, setBotMenuOfferHuman] = useState(false);
+  const [botMenuShowAddress, setBotMenuShowAddress] = useState(false);
+  const [botMenuShowHours, setBotMenuShowHours] = useState(false);
+  const [botMenuSaved, setBotMenuSaved] = useState('');
+  const [botMenuError, setBotMenuError] = useState('');
+  const [savingBotMenu, setSavingBotMenu] = useState(false);
+
   useEffect(() => {
     waModeRef.current = waMode;
   }, [waMode]);
@@ -298,6 +305,9 @@ export default function AccountScreen() {
       setBotPauseMode(botPauseModeFromAccount(account));
       setBotAttendsServices(account.botAttendsServices !== false);
       setBotAttendsProducts(Boolean(account.botAttendsProducts));
+      setBotMenuOfferHuman(Boolean(account.botMenuOfferHuman));
+      setBotMenuShowAddress(Boolean(account.botMenuShowAddress));
+      setBotMenuShowHours(Boolean(account.botMenuShowHours));
     }
     dashboardApi.integrations().then((data) => {
       setIntegrations({
@@ -824,6 +834,137 @@ export default function AccountScreen() {
           ) : null}
           {botScopeSaved ? (
             <Text style={styles.saved}>{botScopeSaved}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.pauseBlock}>
+          <Text style={styles.label}>Menu inicial do WhatsApp</Text>
+          <Text style={styles.help}>
+            Opções extras no primeiro menu da Sof. Endereço e horário usam o
+            cadastro do estabelecimento; atendente exige plano com handoff.
+          </Text>
+          <View style={styles.chips}>
+            <Pressable
+              style={[
+                styles.chip,
+                botMenuShowAddress && styles.chipActive,
+              ]}
+              disabled={savingBotMenu}
+              onPress={async () => {
+                const next = !botMenuShowAddress;
+                setBotMenuError('');
+                setSavingBotMenu(true);
+                try {
+                  const { account: updated } =
+                    await dashboardApi.updateAccount({
+                      botMenuShowAddress: next,
+                    });
+                  await setSession(updated);
+                  setBotMenuShowAddress(Boolean(updated.botMenuShowAddress));
+                  setBotMenuSaved('Menu do bot atualizado!');
+                  setTimeout(() => setBotMenuSaved(''), 2000);
+                } catch (err) {
+                  setBotMenuError(
+                    err instanceof Error ? err.message : 'Erro ao salvar.',
+                  );
+                } finally {
+                  setSavingBotMenu(false);
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  botMenuShowAddress && styles.chipTextActive,
+                ]}
+              >
+                Endereço
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, botMenuShowHours && styles.chipActive]}
+              disabled={savingBotMenu}
+              onPress={async () => {
+                const next = !botMenuShowHours;
+                setBotMenuError('');
+                setSavingBotMenu(true);
+                try {
+                  const { account: updated } =
+                    await dashboardApi.updateAccount({
+                      botMenuShowHours: next,
+                    });
+                  await setSession(updated);
+                  setBotMenuShowHours(Boolean(updated.botMenuShowHours));
+                  setBotMenuSaved('Menu do bot atualizado!');
+                  setTimeout(() => setBotMenuSaved(''), 2000);
+                } catch (err) {
+                  setBotMenuError(
+                    err instanceof Error ? err.message : 'Erro ao salvar.',
+                  );
+                } finally {
+                  setSavingBotMenu(false);
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  botMenuShowHours && styles.chipTextActive,
+                ]}
+              >
+                Horário
+              </Text>
+            </Pressable>
+            {has('clientRequestHuman') ? (
+              <Pressable
+                style={[
+                  styles.chip,
+                  botMenuOfferHuman && styles.chipActive,
+                ]}
+                disabled={savingBotMenu}
+                onPress={async () => {
+                  const next = !botMenuOfferHuman;
+                  setBotMenuError('');
+                  setSavingBotMenu(true);
+                  try {
+                    const { account: updated } =
+                      await dashboardApi.updateAccount({
+                        botMenuOfferHuman: next,
+                      });
+                    await setSession(updated);
+                    setBotMenuOfferHuman(Boolean(updated.botMenuOfferHuman));
+                    setBotMenuSaved('Menu do bot atualizado!');
+                    setTimeout(() => setBotMenuSaved(''), 2000);
+                  } catch (err) {
+                    setBotMenuError(
+                      err instanceof Error ? err.message : 'Erro ao salvar.',
+                    );
+                  } finally {
+                    setSavingBotMenu(false);
+                  }
+                }}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    botMenuOfferHuman && styles.chipTextActive,
+                  ]}
+                >
+                  Falar com atendente
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {!account?.address?.trim() && botMenuShowAddress ? (
+            <Text style={styles.help}>
+              Cadastre o endereço em Estabelecimento para a Sof responder certo.
+            </Text>
+          ) : null}
+          {botMenuError ? (
+            <Text style={styles.error}>{botMenuError}</Text>
+          ) : null}
+          {botMenuSaved ? (
+            <Text style={styles.saved}>{botMenuSaved}</Text>
           ) : null}
         </View>
 

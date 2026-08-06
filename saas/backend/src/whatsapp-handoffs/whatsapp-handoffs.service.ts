@@ -6,6 +6,7 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../events/realtime.service';
 import { serializeDates } from '../common/public-shapes';
@@ -129,6 +130,12 @@ export class WhatsappHandoffsService {
 
   async listMessages(accountId: string, handoffId: string) {
     const handoff = await this.requireHandoff(accountId, handoffId);
+    // Anexa transcript pendente (turnos do bot antes do open) na primeira leitura.
+    await this.attachPendingMessages(
+      accountId,
+      handoff.customerPhone,
+      handoff.id,
+    );
     const rows = await this.prisma.whatsappMessage.findMany({
       where: { handoffId: handoff.id },
       orderBy: { createdAt: 'asc' },
@@ -138,7 +145,88 @@ export class WhatsappHandoffsService {
   }
 
   /**
+   * Liga à thread mensagens do mesmo telefone ainda sem handoff
+   * (histórico do bot desde o último atendimento resolvido).
+   */
+  async attachPendingMessages(
+    accountId: string,
+    phoneRaw: string,
+    handoffId: string,
+  ) {
+    const phone = normalizePhone(phoneRaw) || phoneRaw.replace(/\D/g, '');
+    if (!phone) return 0;
+
+    const lastResolved = await this.prisma.whatsappHandoff.findFirst({
+      where: {
+        accountId,
+        customerPhone: phone,
+        status: 'resolved',
+        id: { not: handoffId },
+      },
+      orderBy: { resolvedAt: 'desc' },
+      select: { resolvedAt: true },
+    });
+
+    const result = await this.prisma.whatsappMessage.updateMany({
+      where: {
+        accountId,
+        customerPhone: phone,
+        handoffId: null,
+        ...(lastResolved?.resolvedAt
+          ? { createdAt: { gt: lastResolved.resolvedAt } }
+          : {}),
+      },
+      data: { handoffId },
+    });
+    return result.count;
+  }
+
+  /**
+   * Persiste um turno da conversa (cliente → Sof) mesmo sem handoff aberto.
+   * Quando há atendimento aberto, as mensagens já entram na thread.
+   */
+  async recordConversationTurn(opts: {
+    accountId: string;
+    phone: string;
+    inboundText: string;
+    replies?: string[];
+    party?: HandoffParty;
+  }) {
+    const phone = normalizePhone(opts.phone) || opts.phone.replace(/\D/g, '');
+    if (!phone) return;
+
+    const inbound = String(opts.inboundText || '').trim();
+    if (inbound) {
+      await this.appendMessage({
+        accountId: opts.accountId,
+        phone,
+        direction: 'inbound',
+        senderKind:
+          opts.party === 'employee' ? 'employee_party' : 'client',
+        body: inbound,
+        updateLastMessage: true,
+        allowWithoutHandoff: true,
+      });
+    }
+
+    for (const reply of opts.replies || []) {
+      const body = String(reply || '').trim();
+      if (!body) continue;
+      await this.appendMessage({
+        accountId: opts.accountId,
+        phone,
+        direction: 'outbound',
+        senderKind: 'bot',
+        body,
+        updateLastMessage: false,
+        allowWithoutHandoff: true,
+      });
+    }
+  }
+
+  /**
    * Persiste mensagem na thread de um handoff aberto (ou pelo id).
+   * Com `allowWithoutHandoff`, grava mesmo sem atendimento (transcript do bot).
    * Dedupa por providerMessageId quando informado.
    */
   async appendMessage(opts: {
@@ -152,6 +240,7 @@ export class WhatsappHandoffsService {
     agentEmployeeId?: string | null;
     sentByAccountOwner?: boolean;
     updateLastMessage?: boolean;
+    allowWithoutHandoff?: boolean;
   }) {
     const body = String(opts.body || '').trim();
     if (!body) return null;
@@ -175,13 +264,20 @@ export class WhatsappHandoffsService {
     if (!handoff && opts.phone) {
       handoff = await this.findOpenByPhone(opts.accountId, opts.phone);
     }
-    if (!handoff) return null;
+
+    const phone =
+      (handoff?.customerPhone && String(handoff.customerPhone)) ||
+      normalizePhone(opts.phone || '') ||
+      String(opts.phone || '').replace(/\D/g, '');
+    if (!phone) return null;
+
+    if (!handoff && !opts.allowWithoutHandoff) return null;
 
     const message = await this.prisma.whatsappMessage.create({
       data: {
         accountId: opts.accountId,
-        handoffId: handoff.id,
-        customerPhone: handoff.customerPhone,
+        handoffId: handoff?.id ?? null,
+        customerPhone: phone,
         direction: opts.direction,
         senderKind: opts.senderKind,
         body: body.slice(0, 4000),
@@ -191,7 +287,7 @@ export class WhatsappHandoffsService {
       },
     });
 
-    if (opts.updateLastMessage !== false) {
+    if (handoff && opts.updateLastMessage !== false) {
       const updated = await this.prisma.whatsappHandoff.update({
         where: { id: handoff.id },
         data: { lastMessage: body.slice(0, 500) },
@@ -202,14 +298,16 @@ export class WhatsappHandoffsService {
     }
 
     const shaped = this.shapeMessage(message);
-    this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:message', {
-      handoffId: handoff.id,
-      message: shaped,
-    });
+    if (handoff) {
+      this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:message', {
+        handoffId: handoff.id,
+        message: shaped,
+      });
+    }
     return shaped;
   }
 
-  /** Seed da thread com lastMessage se ainda não houver mensagens. */
+  /** Seed da thread: anexa transcript pendente; se vazio, usa lastMessage. */
   private async seedInitialMessage(handoff: {
     id: string;
     accountId: string;
@@ -217,6 +315,13 @@ export class WhatsappHandoffsService {
     lastMessage: string;
     party: string;
   }) {
+    const attached = await this.attachPendingMessages(
+      handoff.accountId,
+      handoff.customerPhone,
+      handoff.id,
+    );
+    if (attached > 0) return;
+
     const body = String(handoff.lastMessage || '').trim();
     if (!body) return;
     const count = await this.prisma.whatsappMessage.count({
@@ -565,6 +670,7 @@ export class WhatsappHandoffsService {
     reason: HandoffReason;
     party?: HandoffParty;
     employeeId?: string;
+    contextJson?: Prisma.InputJsonValue | null;
   }) {
     const ents = await this.entitlements.forAccount(opts.accountId);
     if (!hasFeature(ents, 'handoffs')) return null;
@@ -627,16 +733,22 @@ export class WhatsappHandoffsService {
           party,
           clientId,
           employeeId,
+          ...(opts.contextJson !== undefined
+            ? {
+                contextJson:
+                  opts.contextJson === null
+                    ? Prisma.JsonNull
+                    : opts.contextJson,
+              }
+            : {}),
         },
       });
-      await this.appendMessage({
-        accountId: opts.accountId,
-        handoffId: updated.id,
-        direction: 'inbound',
-        senderKind: party === 'employee' ? 'employee_party' : 'client',
-        body: opts.lastMessage,
-        updateLastMessage: false,
-      });
+      // Transcript do turno já foi gravado em recordConversationTurn.
+      await this.attachPendingMessages(
+        opts.accountId,
+        phone,
+        updated.id,
+      );
       const shaped = this.shape(updated);
       this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:updated', {
         handoff: shaped,
@@ -655,6 +767,9 @@ export class WhatsappHandoffsService {
         lastMessage: opts.lastMessage.slice(0, 500),
         reason: opts.reason,
         status: 'open',
+        ...(opts.contextJson
+          ? { contextJson: opts.contextJson }
+          : {}),
       },
     });
     await this.seedInitialMessage(created);

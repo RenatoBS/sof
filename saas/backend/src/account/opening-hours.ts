@@ -156,3 +156,16 @@ export function formatOpeningHoursSummary(hours: unknown): string {
     })
     .join('; ');
 }
+
+/** Resposta multilinha do bot (menu / pergunta de horário). */
+export function formatOpeningHoursLines(hours: unknown): string {
+  const normalized = normalizeOpeningHours(hours);
+  return normalized
+    .map((day, i) => {
+      const name = WEEKDAY_LABELS[i];
+      return day.open
+        ? `${name}: ${day.start}–${day.end}`
+        : `${name}: fechado`;
+    })
+    .join('\n');
+}
