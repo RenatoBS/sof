@@ -243,6 +243,27 @@ export function HandoffInbox({
     });
   };
 
+  const onComposerKey = (event: {
+    key?: string;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    preventDefault?: () => void;
+    nativeEvent?: { key?: string; ctrlKey?: boolean; metaKey?: boolean };
+  }) => {
+    const key = event.key || event.nativeEvent?.key;
+    const ctrl = Boolean(event.ctrlKey ?? event.nativeEvent?.ctrlKey);
+    const meta = Boolean(event.metaKey ?? event.nativeEvent?.metaKey);
+    if (key === 'Enter' && (ctrl || meta)) {
+      event.preventDefault?.();
+      send();
+    }
+  };
+
+  const productContext =
+    selected?.reason === 'product_sale' && selected.contextJson
+      ? selected.contextJson
+      : null;
+
   const queueItems = open;
   const enabledTransfer = transferableEmployees.filter(
     (e) => e.canHandleHandoffs,
@@ -356,6 +377,24 @@ export function HandoffInbox({
                 {assigneeLabel(selected, transferableEmployees)}
               </Text>
             </View>
+
+            {productContext?.productName ? (
+              <View style={styles.productBanner}>
+                <Text style={styles.productBannerLabel}>Produto selecionado</Text>
+                <Text style={styles.productBannerValue}>
+                  {productContext.productName}
+                  {productContext.quantity
+                    ? ` · qtd ${productContext.quantity}`
+                    : ''}
+                  {productContext.total != null
+                    ? ` · ${Number(productContext.total).toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}`
+                    : ''}
+                </Text>
+              </View>
+            ) : null}
 
             {error ? <SofErrorBanner message={error} /> : null}
 
@@ -529,16 +568,25 @@ export function HandoffInbox({
 
                 {canCompose(selected, mode, selfEmployeeId) ? (
                   <View style={styles.composerRow}>
-                    <TextInput
-                      style={styles.input}
-                      value={draft}
-                      onChangeText={setDraft}
-                      placeholder="Escreva a resposta…"
-                      placeholderTextColor={d.muted}
-                      multiline
-                      editable={!busy}
-                      onSubmitEditing={send}
-                    />
+                    <View style={styles.composerField}>
+                      <TextInput
+                        style={styles.input}
+                        value={draft}
+                        onChangeText={setDraft}
+                        placeholder="Escreva a resposta…"
+                        placeholderTextColor={d.muted}
+                        multiline
+                        editable={!busy}
+                        onSubmitEditing={send}
+                        // Web: Ctrl/Cmd+Enter envia (Enter sozinho = nova linha).
+                        // @ts-expect-error onKeyDown existe no RN Web
+                        onKeyDown={onComposerKey}
+                        onKeyPress={onComposerKey}
+                      />
+                      <Text style={styles.composerHint}>
+                        Ctrl+Enter para enviar
+                      </Text>
+                    </View>
                     <SofButton
                       title="Enviar"
                       variant="dark"
@@ -576,6 +624,36 @@ export function HandoffInbox({
           <Text style={styles.contextValue}>
             {REASON_LABEL[selected.reason] || selected.reason}
           </Text>
+          {productContext ? (
+            <>
+              <Text style={styles.contextLabel}>Produto</Text>
+              <Text style={styles.contextValue}>
+                {productContext.productName || '—'}
+                {productContext.quantity
+                  ? ` · qtd ${productContext.quantity}`
+                  : ''}
+              </Text>
+              {productContext.total != null ? (
+                <>
+                  <Text style={styles.contextLabel}>Total do pedido</Text>
+                  <Text style={styles.contextValue}>
+                    {Number(productContext.total).toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </Text>
+                </>
+              ) : null}
+              {productContext.orderId ? (
+                <>
+                  <Text style={styles.contextLabel}>Pedido</Text>
+                  <Text style={styles.contextValueMono}>
+                    {String(productContext.orderId).slice(0, 12)}…
+                  </Text>
+                </>
+              ) : null}
+            </>
+          ) : null}
           <Text style={styles.contextLabel}>Responsável</Text>
           <Text style={styles.contextValue}>
             {assigneeLabel(selected, transferableEmployees)}
@@ -774,6 +852,12 @@ const styles = StyleSheet.create({
   },
   actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   composerRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+  composerField: { flex: 1, gap: 4 },
+  composerHint: {
+    fontSize: 11,
+    color: d.muted,
+    fontFamily: d.fonts.body,
+  },
   input: {
     flex: 1,
     minHeight: 44,
@@ -828,5 +912,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: d.ink,
     fontFamily: d.fonts.body,
+  },
+  contextValueMono: {
+    fontSize: 12,
+    color: d.ink,
+    fontFamily: d.fonts.body,
+    opacity: 0.8,
+  },
+  productBanner: {
+    marginHorizontal: 14,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: d.radiusSm,
+    backgroundColor: d.accentSoft,
+    borderWidth: 1,
+    borderColor: d.line,
+    gap: 2,
+  },
+  productBannerLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: d.muted,
+    fontFamily: d.fonts.bodyMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  productBannerValue: {
+    fontSize: 14,
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+    fontWeight: '600',
   },
 });
