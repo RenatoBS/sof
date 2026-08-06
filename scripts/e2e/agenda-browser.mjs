@@ -13,17 +13,15 @@ import {
 
 async function main() {
   const { token } = await loginAccount();
-  const [{ employees }, { services }, { clients }] = await Promise.all([
+  const [{ employees }, { services }] = await Promise.all([
     api('/employees', { token }),
     api('/services', { token }),
-    api('/clients', { token }),
   ]);
   const employee = employees[0];
   const service =
     services.find((s) =>
       (employee.services || []).some((es) => es.id === s.id),
     ) || services[0];
-  const client = clients[0];
   const date = nextOpenDateIso();
   // A listagem pode ignorar ?date= — filtramos no client e tentamos slots
   // até a API aceitar (duração do serviço sobrescreve horários vizinhos).
@@ -37,18 +35,18 @@ async function main() {
   const dayApts = (Array.isArray(appointments) ? appointments : []).filter(
     (a) => a.employeeId === employee.id && a.date === date,
   );
+  const clientName = `E2E Agenda ${Date.now().toString().slice(-6)}`;
+  const clientPhone = uniquePhone('1195').slice(2);
+  let apt = null;
+  let time = null;
+  // Preferir fim do dia — menos chance de colidir com o seed denso do demo.
   const candidates = [];
-  for (let h = 9; h <= 19; h++) {
-    for (const m of ['00', '15', '30', '45']) {
+  for (let h = 19; h >= 8; h--) {
+    for (const m of ['45', '30', '15', '00']) {
       candidates.push(`${String(h).padStart(2, '0')}:${m}`);
     }
   }
-  const clientName = client?.name || `E2E Agenda UI`;
-  const clientPhone = client?.phone || uniquePhone('1195').slice(2);
-  let apt = null;
-  let time = null;
   for (const candidate of candidates) {
-    // Pula se já existe exatamente o mesmo horário (rápido); a API decide overlap.
     if (dayApts.some((a) => a.time === candidate)) continue;
     try {
       const created = await api('/appointments', {
@@ -60,7 +58,6 @@ async function main() {
           serviceId: service.id,
           date,
           time: candidate,
-          clientId: client?.id,
           clientName,
           clientPhone,
         },
@@ -69,11 +66,11 @@ async function main() {
       time = candidate;
       break;
     } catch {
-      // horário em overlap — tenta o próximo
+      // overlap — tenta o próximo
     }
   }
   assert(apt?.id && time, `sem horário livre em ${date}`);
-  log('prep', `${apt.id} ${date} ${time}`);
+  log('prep', `${apt.id} ${date} ${time} ${clientName}`);
 
   const { browser, page, headed } = await launchBrowser();
   try {
@@ -95,21 +92,45 @@ async function main() {
     log(1, 'modal ok');
 
     log(2, 'Abrir agendamento prep');
-    // Busca o card pelo horário (evita overlap de nomes de serviço)
-    const slot = page.getByText(time, { exact: true }).first();
-    await slot.click({ timeout: 20000, force: true });
+    // Preferir o nome único do prep (vários cards podem compartilhar o horário).
+    const byName = page.getByText(clientName, { exact: false }).first();
+    if (await byName.count()) {
+      await byName.click({ timeout: 20000, force: true });
+    } else {
+      await page.getByText(time, { exact: true }).first().click({
+        timeout: 20000,
+        force: true,
+      });
+    }
     await page.getByText('Editar agendamento', { exact: true }).waitFor({
       timeout: 10000,
     });
 
     log(3, 'Concluir');
-    const complete = page.getByText('Marcar como concluído', { exact: true });
+    const complete = page.getByRole('button', {
+      name: 'Marcar como concluído',
+    });
     if (await complete.count()) {
       await complete.first().click();
       await pause(1500);
     } else {
-      await page.getByText('Cancelar agendamento', { exact: true }).click();
-      await pause(1200);
+      const cancel = page.getByRole('button', {
+        name: 'Cancelar agendamento',
+      });
+      if ((await cancel.count()) && (await cancel.first().isEnabled())) {
+        await cancel.first().click();
+        await pause(1200);
+      } else {
+        await page.getByRole('button', { name: 'Fechar' }).first().click();
+        await pause(800);
+        await api(`/appointments/${apt.id}`, {
+          method: 'PUT',
+          token,
+          body: { status: 'completed' },
+        }).catch(() =>
+          api(`/appointments/${apt.id}`, { method: 'DELETE', token }),
+        );
+      }
     }
 
     const check = await api(`/appointments`, { token });

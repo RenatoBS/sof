@@ -265,13 +265,63 @@ npm run test:e2e:handoff
 E2E_HEADED=1 npm run test:e2e:browser   # Chromium maximizado (gravação/demo)
 ```
 
-**Demo (gravação):** execução headed da suíte browser contra QA (`qa.sof.solutions`) — janela maximizada no display — login conta/profissional, Agenda, Faturamento, Conta, CRUD Serviços/Clientes, Produtos/Pedidos e Suporte.
+**Demo (gravação):** execução headed contra QA (`qa.sof.solutions`), Chromium maximizado. Há um vídeo da suíte completa e um por domínio browser.
 
-[▶ Assista ao demo E2E (MP4)](/internal-docs/assets/e2e-browser-suite-qa.mp4)
+### Suíte completa
+
+[▶ Demo E2E — suíte browser](/internal-docs/assets/e2e-browser-suite-qa.mp4)
 
 <video controls src="/internal-docs/assets/e2e-browser-suite-qa.mp4" width="100%"></video>
 
-Arquivo versionado: [`docs/assets/e2e-browser-suite-qa.mp4`](/internal-docs/assets/e2e-browser-suite-qa.mp4). Para gravar de novo: `E2E_HEADED=1 npm run test:e2e:browser` (stack local) ou com `E2E_API_URL` / `E2E_WEB_URL` no ambiente alvo. Em headed, o Chromium preenche o display (`--start-maximized` + `--window-size` do X11 + `viewport: null` + CDP maximize/fallback).
+### Por domínio
+
+| Domínio | Script | Vídeo |
+|---------|--------|-------|
+| Auth (conta + profissional) | `auth-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-auth-browser-qa.mp4) |
+| Dashboard (Agenda / Faturamento / Conta) | `dashboard-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-dashboard-browser-qa.mp4) |
+| Agenda (modal + concluir) | `agenda-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-agenda-browser-qa.mp4) |
+| CRUD serviços / clientes / profissionais | `crud-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-crud-browser-qa.mp4) |
+| Produtos / pedidos | `products-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-products-browser-qa.mp4) |
+| Suporte | `support-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-support-browser-qa.mp4) |
+| Flex / Atendimentos | `flex-browser.mjs` | — (requer API com `afterBotResult` no simulate; gravar localmente com `npm run saas`) |
+
+<details>
+<summary>Players embutidos (por domínio)</summary>
+
+**Auth**
+
+<video controls src="/internal-docs/assets/e2e-auth-browser-qa.mp4" width="100%"></video>
+
+**Dashboard**
+
+<video controls src="/internal-docs/assets/e2e-dashboard-browser-qa.mp4" width="100%"></video>
+
+**Agenda**
+
+<video controls src="/internal-docs/assets/e2e-agenda-browser-qa.mp4" width="100%"></video>
+
+**CRUD**
+
+<video controls src="/internal-docs/assets/e2e-crud-browser-qa.mp4" width="100%"></video>
+
+**Produtos**
+
+<video controls src="/internal-docs/assets/e2e-products-browser-qa.mp4" width="100%"></video>
+
+**Suporte**
+
+<video controls src="/internal-docs/assets/e2e-support-browser-qa.mp4" width="100%"></video>
+
+</details>
+
+Arquivos em [`docs/assets/`](/internal-docs/assets/) (`e2e-*-browser-qa.mp4` + suíte). Para regravar um domínio:
+
+```bash
+E2E_HEADED=1 E2E_API_URL=… E2E_WEB_URL=… node scripts/e2e/auth-browser.mjs
+# …idem para dashboard|agenda|crud|products|support|flex
+```
+
+Em headed, o Chromium preenche o display (`--start-maximized` + `--window-size` do X11 + `viewport: null` + CDP maximize/fallback).
 
 **Matriz (API + browser por domínio)**
 

@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Vídeos E2E browser por domínio na documentação
+
+- **Contexto:** Um único MP4 da suíte dificulta achar o fluxo de um domínio (auth, agenda, CRUD…).
+- **Decisão:** Gravar e versionar um MP4 por script browser em `docs/assets/e2e-<domínio>-browser-qa.mp4`, além da suíte completa; documentar em `docs/local-development.md` com tabela + players. Flex fica sem vídeo em QA até o simulate abrir handoff (`afterBotResult`).
+- **Consequências:** Docs e painel `/docs` mostram demos isoladas; `sync-docs` copia todos os MP4 de `docs/assets/`.
+- **Alternativas descartadas:** Só suíte completa; hospedar fora do repo.
+
 ## 2026-08-06 — E2E headed maximiza a janela do Chromium
 
 - **Contexto:** A gravação demo da suíte browser abria em viewport fixo 1280×860, longe de tela cheia.
