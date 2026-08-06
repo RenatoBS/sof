@@ -53,6 +53,13 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | `Endereço do ${businessName}:` + linha com o endereço |
 | `Ainda não temos o endereço cadastrado do ${businessName}. Pode perguntar pelo WhatsApp do estabelecimento ou tentar de novo em breve.` |
 
+### Horário de atendimento
+
+| Mensagem |
+|----------|
+| `Horário de atendimento do ${businessName}:` + linhas por dia (`Domingo: 09:00–18:00` / `fechado`) |
+| `Ainda não temos o horário de atendimento cadastrado do ${businessName}.` |
+
 ### Fluxo de agendamento
 
 | Mensagem |
@@ -162,6 +169,9 @@ Variáveis: `${…}` = interpolação. Menus interativos do **cliente** também 
 | `${serviço} ${preço}` | `${duração} min · ${preço}` |
 | `Ver agendamentos` | `Seus horários agendados` |
 | `Cancelar horário` | `Cancelar um agendamento` |
+| `Endereço` | `Onde ficamos` *(opt-in `botMenuShowAddress`)* |
+| `Horário` | `Funcionamento` *(opt-in `botMenuShowHours`)* |
+| `Falar com atendente` | `Atendimento humano` *(opt-in `botMenuOfferHuman` + entitlement)* |
 | `${1º nome ou nome}` | nome completo do profissional |
 | `Escolher horário` | `Ver horários livres primeiro` |
 | `Deixa a Sof escolher` | `Quem estiver livre` / `Quem estiver livre nesse horário` |

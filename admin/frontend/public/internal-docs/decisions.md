@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Menu inicial: atendente, endereço e horário (opt-in)
+
+- **Contexto:** O dono queria expor no menu do WhatsApp “falar com atendente”, endereço e horário — hoje handoff só por texto livre, endereço só por FAQ e horário só nas regras de agenda.
+- **Decisão:** Três booleans em `Account` (`botMenuOfferHuman`, `botMenuShowAddress`, `botMenuShowHours`, default false). Conta → chips “Menu inicial do WhatsApp”. Bot anexa as opções nos menus de intenção/serviços/produtos. Atendente exige `clientRequestHuman`. FAQ de horário liga com o mesmo toggle; FAQ de endereço permanece sempre disponível.
+- **Consequências:** Migration `20260806030000_bot_menu_info_options`. Solo sem handoff não vê o chip de atendente.
+- **Alternativas descartadas:** Sempre mostrar no menu; embutir endereço/horário na saudação; um único toggle “info do estabelecimento”.
+
 ## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
 
 - **Contexto:** Os `npm test` do SaaS rodavam só dentro da matriz `build` (depois do `heroku-postbuild`). No deploy QA/prod isso misturava unitário com export Expo/build Nest e deixava o gate pouco claro.

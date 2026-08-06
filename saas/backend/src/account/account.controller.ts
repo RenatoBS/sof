@@ -84,6 +84,9 @@ export class AccountController {
       botPausedUntil?: string | null;
       botAttendsServices?: boolean;
       botAttendsProducts?: boolean;
+      botMenuOfferHuman?: boolean;
+      botMenuShowAddress?: boolean;
+      botMenuShowHours?: boolean;
       /** data URL base64; "" ou null remove o logo */
       logoBase64?: string | null;
     },
@@ -100,6 +103,9 @@ export class AccountController {
       botPausedUntil?: Date | null;
       botAttendsServices?: boolean;
       botAttendsProducts?: boolean;
+      botMenuOfferHuman?: boolean;
+      botMenuShowAddress?: boolean;
+      botMenuShowHours?: boolean;
       logoBase64?: string;
     } = {};
 
@@ -200,6 +206,23 @@ export class AccountController {
       }
       data.botAttendsServices = nextServices;
       data.botAttendsProducts = nextProducts;
+    }
+
+    if (body?.botMenuOfferHuman !== undefined) {
+      const next = Boolean(body.botMenuOfferHuman);
+      if (next) {
+        await this.entitlements.assertFeature(
+          req.account.id,
+          'clientRequestHuman',
+        );
+      }
+      data.botMenuOfferHuman = next;
+    }
+    if (body?.botMenuShowAddress !== undefined) {
+      data.botMenuShowAddress = Boolean(body.botMenuShowAddress);
+    }
+    if (body?.botMenuShowHours !== undefined) {
+      data.botMenuShowHours = Boolean(body.botMenuShowHours);
     }
 
     const account = await this.prisma.account.update({

@@ -41,6 +41,12 @@ export type Account = {
   botAttendsServices?: boolean;
   /** Bot oferece fluxo de venda de produtos (default false). */
   botAttendsProducts?: boolean;
+  /** Menu inicial: opção “Falar com atendente”. */
+  botMenuOfferHuman?: boolean;
+  /** Menu inicial: opção de endereço. */
+  botMenuShowAddress?: boolean;
+  /** Menu inicial: opção de horário de atendimento. */
+  botMenuShowHours?: boolean;
   createdAt: string;
   whatsappConnectedAt?: string | null;
 };
