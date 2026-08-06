@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Form de profissional: switches empilhados (handoff / senha)
+
+- **Contexto:** No modal Novo/Editar profissional, o chip `alignSelf: flex-start` de handoff (e o de reset de senha) quebrava no RN Web — texto longo e layout frágil, no mesmo espírito do form de produto.
+- **Decisão:** Substituir por linhas full-width com título, hint e switch visual (track/thumb), empilhadas.
+- **Consequências:** Controles legíveis e clicáveis; alinhado ao padrão do `ProductFormModal`.
+- **Alternativas descartadas:** Manter chip compacto; `Switch` nativo.
+
 ## 2026-08-06 — Threshold “não entendi” na Conta + inbox mobile
 
 - **Contexto:** Config de limiar vivia na aba Atendimentos (longe das outras preferências do bot). No mobile, Resolvidos ficava acima do chat e empurrava a conversa para baixo.
