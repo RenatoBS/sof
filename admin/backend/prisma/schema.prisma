@@ -50,6 +50,12 @@ model Account {
   botAttendsServices    Boolean  @default(true)
   /// Bot oferece fluxo de venda de produtos
   botAttendsProducts    Boolean  @default(false)
+  /// Menu inicial: opção “Falar com atendente” (exige entitlement clientRequestHuman)
+  botMenuOfferHuman     Boolean  @default(false)
+  /// Menu inicial + perguntas: mostrar/responder endereço
+  botMenuShowAddress    Boolean  @default(false)
+  /// Menu inicial + perguntas: mostrar/responder horário de atendimento
+  botMenuShowHours      Boolean  @default(false)
   createdAt             DateTime @default(now())
 
   planRef          Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)

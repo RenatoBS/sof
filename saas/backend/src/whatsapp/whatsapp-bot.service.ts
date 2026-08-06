@@ -6,6 +6,7 @@ import { serializeDates } from '../common/public-shapes';
 import { normalizePhone } from '../common/phone';
 import {
   checkWithinOpeningHours,
+  formatOpeningHoursLines,
   formatOpeningHoursSummary,
   getDaySchedule,
   normalizeOpeningHours,
@@ -102,6 +103,8 @@ const TIME_ID_RE = /^time:(\d{2}:\d{2})$/;
 const SLOT_ID_RE = /^slot:(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/;
 const ADDRESS_RE =
   /\b(endere[cç]o|onde\s+fica|localiza[cç][aã]o|como\s+chegar|onde\s+voc[eê]s?\s+(fica|est[aã]o)|maps?)\b/i;
+const HOURS_RE =
+  /\b(hor[aá]rio(s)?(\s+de\s+(atendimento|funcionamento))?|funcionamento|que\s+horas?\s+(voc[eê]s?\s+)?(abre|fecha)|quando\s+(voc[eê]s?\s+)?(abre|funcionam?)|dias?\s+de\s+funcionamento)\b/i;
 // Só pedidos explícitos por atendimento humano — menções soltas a
 // "atendente"/"humano" seguem no fluxo normal do bot.
 const HUMAN_REQUEST_RE =
@@ -115,6 +118,13 @@ function formatAddressReply(account: Account) {
   return botCopy.formatAddressReply({
     businessName: account.businessName,
     address: accountAddress(account),
+  });
+}
+
+function formatHoursReply(account: Account) {
+  return botCopy.formatHoursReply({
+    businessName: account.businessName,
+    hoursLines: formatOpeningHoursLines(account.openingHours),
   });
 }
 
@@ -1257,6 +1267,97 @@ export class WhatsappBotService {
     return Boolean(account.botAttendsProducts);
   }
 
+  private botMenuFlags(account: Account, ents: EntitlementsMap) {
+    return {
+      human:
+        Boolean(account.botMenuOfferHuman) &&
+        hasFeature(ents, 'clientRequestHuman'),
+      address: Boolean(account.botMenuShowAddress),
+      hours: Boolean(account.botMenuShowHours),
+    };
+  }
+
+  private infoMenuChoices(flags: {
+    human: boolean;
+    address: boolean;
+    hours: boolean;
+  }): WhatsappMenuChoice[] {
+    const choices: WhatsappMenuChoice[] = [];
+    if (flags.address) {
+      choices.push({
+        id: 'action:address',
+        title: 'Endereço',
+        description: 'Onde ficamos',
+      });
+    }
+    if (flags.hours) {
+      choices.push({
+        id: 'action:hours',
+        title: 'Horário',
+        description: 'Funcionamento',
+      });
+    }
+    if (flags.human) {
+      choices.push({
+        id: 'action:human',
+        title: 'Falar com atendente',
+        description: 'Atendimento humano',
+      });
+    }
+    return choices;
+  }
+
+  private async infoMenuChoicesFor(
+    account: Account,
+  ): Promise<WhatsappMenuChoice[]> {
+    const ents = await this.entsFor(account.id);
+    return this.infoMenuChoices(this.botMenuFlags(account, ents));
+  }
+
+  private matchInfoAction(
+    trimmed: string,
+    extras: WhatsappMenuChoice[],
+  ): 'address' | 'hours' | 'human' | null {
+    if (
+      trimmed === 'action:address' ||
+      /^endere[cç]o$/i.test(trimmed) ||
+      /^como chegar$/i.test(trimmed)
+    ) {
+      return extras.some((c) => c.id === 'action:address') ? 'address' : null;
+    }
+    if (
+      trimmed === 'action:hours' ||
+      /^hor[aá]rio(s)?$/i.test(trimmed) ||
+      /^funcionamento$/i.test(trimmed)
+    ) {
+      return extras.some((c) => c.id === 'action:hours') ? 'hours' : null;
+    }
+    if (
+      trimmed === 'action:human' ||
+      /^falar com atendente$/i.test(trimmed) ||
+      /^atendente$/i.test(trimmed)
+    ) {
+      return extras.some((c) => c.id === 'action:human') ? 'human' : null;
+    }
+    return null;
+  }
+
+  private replyInfoAction(
+    account: Account,
+    action: 'address' | 'hours' | 'human',
+  ): WhatsappBotResult {
+    if (action === 'address') {
+      return { replies: [formatAddressReply(account)] };
+    }
+    if (action === 'hours') {
+      return { replies: [formatHoursReply(account)] };
+    }
+    return {
+      replies: [botCopy.handoffToTeam()],
+      humanRequested: true,
+    };
+  }
+
   private async startConversation(
     account: Account,
     customerPhone: string,
@@ -1274,7 +1375,10 @@ export class WhatsappBotService {
         step: 'awaiting_intent',
         data: { clientId: client.id, clientName: client.name },
       });
-      return this.intentMenu(intro);
+      return this.intentMenu(
+        intro,
+        await this.infoMenuChoicesFor(account),
+      );
     }
 
     if (attProducts && !attServices) {
@@ -1290,7 +1394,10 @@ export class WhatsappBotService {
     return this.mainMenu(account, client, services, customerPhone, intro);
   }
 
-  private intentMenu(intro: string): WhatsappBotResult {
+  private intentMenu(
+    intro: string,
+    extras: WhatsappMenuChoice[] = [],
+  ): WhatsappBotResult {
     const body = `${intro} ${botCopy.intentMenuPrompt()}`;
     return this.menuReply(
       body,
@@ -1305,6 +1412,7 @@ export class WhatsappBotService {
           title: 'Comprar produto',
           description: 'Ver catálogo e pedir',
         },
+        ...extras,
       ],
       { listButton: 'Ver opções' },
     );
@@ -1321,12 +1429,17 @@ export class WhatsappBotService {
   private productMenu(
     bodyText: string,
     products: CatalogProduct[],
+    extras: WhatsappMenuChoice[] = [],
   ): WhatsappBotResult {
-    const choices: WhatsappMenuChoice[] = products.map((p) => ({
-      id: `prod:${p.id}`,
-      title: this.productChoiceTitle(p.name, p.price),
-      description: (p.description || '').trim().slice(0, 72) || this.formatPrice(p.price),
-    }));
+    const choices: WhatsappMenuChoice[] = [
+      ...products.map((p) => ({
+        id: `prod:${p.id}`,
+        title: this.productChoiceTitle(p.name, p.price),
+        description:
+          (p.description || '').trim().slice(0, 72) || this.formatPrice(p.price),
+      })),
+      ...extras,
+    ];
     return this.menuReply(bodyText, choices, { listButton: 'Ver produtos' });
   }
 
@@ -1341,9 +1454,11 @@ export class WhatsappBotService {
       step: 'awaiting_product',
       data: { clientId: client.id, clientName: client.name },
     });
+    const extras = await this.infoMenuChoicesFor(account);
     return this.productMenu(
       `${intro} ${botCopy.askProductPrompt()}`,
       products,
+      extras,
     );
   }
 
@@ -1528,13 +1643,14 @@ export class WhatsappBotService {
       client.id,
       customerPhone,
     );
+    const extras = await this.infoMenuChoicesFor(account);
 
     await this.saveSession(account.id, customerPhone, {
       step: 'awaiting_service',
       data: { clientId: client.id, clientName: client.name },
     });
 
-    if (future.length === 0) {
+    if (future.length === 0 && extras.length === 0) {
       return this.serviceMenu(
         `${intro} Qual serviço você quer agendar?`,
         services,
@@ -1547,19 +1663,29 @@ export class WhatsappBotService {
         title: this.serviceChoiceTitle(s.name, s.price),
         description: `${s.duration} min · ${this.formatPrice(s.price)}`,
       })),
-      {
-        id: 'action:list',
-        title: 'Ver agendamentos',
-        description: 'Seus horários agendados',
-      },
-      {
-        id: 'action:cancel',
-        title: 'Cancelar horário',
-        description: 'Cancelar um agendamento',
-      },
+      ...(future.length > 0
+        ? [
+            {
+              id: 'action:list',
+              title: 'Ver agendamentos',
+              description: 'Seus horários agendados',
+            },
+            {
+              id: 'action:cancel',
+              title: 'Cancelar horário',
+              description: 'Cancelar um agendamento',
+            },
+          ]
+        : []),
+      ...extras,
     ];
 
-    return this.menuReply(`${intro}\n\nO que você precisa?`, choices, {
+    const body =
+      future.length === 0
+        ? `${intro} Qual serviço você quer agendar?`
+        : `${intro}\n\nO que você precisa?`;
+
+    return this.menuReply(body, choices, {
       listButton: 'Ver opções',
     });
   }
@@ -1684,6 +1810,9 @@ export class WhatsappBotService {
       };
     }
 
+    if (trimmed === 'action:address') {
+      return { replies: [formatAddressReply(account)] };
+    }
     if (
       ADDRESS_RE.test(trimmed) ||
       lower === 'endereço' ||
@@ -1692,7 +1821,14 @@ export class WhatsappBotService {
       return { replies: [formatAddressReply(account)] };
     }
 
-    if (HUMAN_REQUEST_RE.test(trimmed)) {
+    if (trimmed === 'action:hours') {
+      return { replies: [formatHoursReply(account)] };
+    }
+    if (Boolean(account.botMenuShowHours) && HOURS_RE.test(trimmed)) {
+      return { replies: [formatHoursReply(account)] };
+    }
+
+    if (trimmed === 'action:human' || HUMAN_REQUEST_RE.test(trimmed)) {
       const entsHuman = await this.entsFor(account.id);
       if (!hasFeature(entsHuman, 'clientRequestHuman')) {
         return {
@@ -1845,14 +1981,33 @@ export class WhatsappBotService {
         return { replies: [botCopy.conversationReset()] };
       }
       const client = { id: clientId, name: clientName };
+      const extras = await this.infoMenuChoicesFor(account);
+      const infoAction = this.matchInfoAction(trimmed, extras);
+      if (infoAction) {
+        return this.replyInfoAction(account, infoAction);
+      }
+      const totalChoices = 2 + extras.length;
+      const byNumber = this.parseChoice(trimmed, totalChoices);
+      if (byNumber !== null && byNumber >= 2) {
+        const extra = extras[byNumber - 2];
+        if (extra?.id === 'action:address') {
+          return this.replyInfoAction(account, 'address');
+        }
+        if (extra?.id === 'action:hours') {
+          return this.replyInfoAction(account, 'hours');
+        }
+        if (extra?.id === 'action:human') {
+          return this.replyInfoAction(account, 'human');
+        }
+      }
       const wantsService =
         trimmed === 'intent:service' ||
         /agendar|servi[cç]o/i.test(trimmed) ||
-        this.parseChoice(trimmed, 2) === 0;
+        byNumber === 0;
       const wantsProduct =
         trimmed === 'intent:product' ||
         /comprar|produto/i.test(trimmed) ||
-        this.parseChoice(trimmed, 2) === 1;
+        byNumber === 1;
       if (wantsService && canBook) {
         return this.mainMenu(
           account,
@@ -1871,7 +2026,9 @@ export class WhatsappBotService {
           botCopy.ACK,
         );
       }
-      return this.withUnresolved(this.intentMenu(botCopy.intentMenuPrompt()));
+      return this.withUnresolved(
+        this.intentMenu(botCopy.intentMenuPrompt(), extras),
+      );
     }
 
     if (step === 'awaiting_product') {
@@ -1882,10 +2039,31 @@ export class WhatsappBotService {
         return { replies: [botCopy.conversationReset()] };
       }
       const client = { id: clientId, name: clientName };
+      const extras = await this.infoMenuChoicesFor(account);
+      const infoAction = this.matchInfoAction(trimmed, extras);
+      if (infoAction) {
+        return this.replyInfoAction(account, infoAction);
+      }
+      const byNumber = this.parseChoice(
+        trimmed,
+        products.length + extras.length,
+      );
+      if (byNumber !== null && byNumber >= products.length) {
+        const extra = extras[byNumber - products.length];
+        if (extra?.id === 'action:address') {
+          return this.replyInfoAction(account, 'address');
+        }
+        if (extra?.id === 'action:hours') {
+          return this.replyInfoAction(account, 'hours');
+        }
+        if (extra?.id === 'action:human') {
+          return this.replyInfoAction(account, 'human');
+        }
+      }
       const product = this.matchProduct(trimmed, products);
       if (!product) {
         return this.withUnresolved(
-          this.productMenu(botCopy.askProductPrompt(), products),
+          this.productMenu(botCopy.askProductPrompt(), products, extras),
         );
       }
       if (product.stock != null && product.stock <= 0) {
@@ -1893,6 +2071,7 @@ export class WhatsappBotService {
           this.productMenu(
             botCopy.productOutOfStock(product.name),
             products,
+            extras,
           ),
         );
       }
@@ -1981,7 +2160,12 @@ export class WhatsappBotService {
       const future = client
         ? await this.listFutureAppointments(account.id, client.id, phone)
         : [];
+      const extras = await this.infoMenuChoicesFor(account);
       const manageCount = future.length > 0 ? 2 : 0;
+      const infoAction = this.matchInfoAction(trimmed, extras);
+      if (infoAction) {
+        return this.replyInfoAction(account, infoAction);
+      }
 
       const wantsList =
         trimmed === 'action:list' || /^ver agendamentos?$/i.test(trimmed);
@@ -1989,12 +2173,33 @@ export class WhatsappBotService {
         trimmed === 'action:cancel' ||
         /^cancelar (hor[aá]rio|agendamento)$/i.test(trimmed);
 
-      const byNumber = this.parseChoice(trimmed, services.length + manageCount);
+      const byNumber = this.parseChoice(
+        trimmed,
+        services.length + manageCount + extras.length,
+      );
       let action: 'list' | 'cancel' | null = null;
       if (wantsList) action = 'list';
       else if (wantsCancel) action = 'cancel';
-      else if (byNumber !== null && byNumber >= services.length) {
+      else if (
+        byNumber !== null &&
+        byNumber >= services.length &&
+        byNumber < services.length + manageCount
+      ) {
         action = byNumber === services.length ? 'list' : 'cancel';
+      } else if (
+        byNumber !== null &&
+        byNumber >= services.length + manageCount
+      ) {
+        const extra = extras[byNumber - services.length - manageCount];
+        if (extra?.id === 'action:address') {
+          return this.replyInfoAction(account, 'address');
+        }
+        if (extra?.id === 'action:hours') {
+          return this.replyInfoAction(account, 'hours');
+        }
+        if (extra?.id === 'action:human') {
+          return this.replyInfoAction(account, 'human');
+        }
       }
 
       if (action && client) {

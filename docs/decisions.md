@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Menu inicial: atendente, endereço e horário (opt-in)
+
+- **Contexto:** O dono queria expor no menu do WhatsApp “falar com atendente”, endereço e horário — hoje handoff só por texto livre, endereço só por FAQ e horário só nas regras de agenda.
+- **Decisão:** Três booleans em `Account` (`botMenuOfferHuman`, `botMenuShowAddress`, `botMenuShowHours`, default false). Conta → chips “Menu inicial do WhatsApp”. Bot anexa as opções nos menus de intenção/serviços/produtos. Atendente exige `clientRequestHuman`. FAQ de horário liga com o mesmo toggle; FAQ de endereço permanece sempre disponível.
+- **Consequências:** Migration `20260806030000_bot_menu_info_options`. Solo sem handoff não vê o chip de atendente.
+- **Alternativas descartadas:** Sempre mostrar no menu; embutir endereço/horário na saudação; um único toggle “info do estabelecimento”.
+
 ## 2026-08-06 — Form de produto: tile de imagem + toggles empilhados
 
 - **Contexto:** No modal Novo/Editar produto, o botão “Adicionar imagens” (`SofButton` light full-width) parecia desabilitado; os pills “Abrir handoff ao vender” e “Ativo no bot” na mesma `row` se sobrepunham no RN Web.
@@ -30,6 +37,7 @@ Formato sugerido:
 - **Decisão:** (1) Composer web: Ctrl/Cmd+Enter envia. (2) `WhatsappMessage.handoffId` opcional + `recordConversationTurn` em todo turno do bot; ao abrir/listar, `attachPendingMessages` liga o histórico desde o último handoff resolvido. (3) `WhatsappHandoff.contextJson` com snapshot do pedido/produto; banner + painel de contexto na UI.
 - **Consequências:** Atendente vê a conversa com a Sof e o produto da venda; migration `20260806020000_flex_transcript_product_context`.
 - **Alternativas descartadas:** Só seed de lastMessage; buscar Order por telefone sem gravar no handoff (race); Enter sozinho para enviar (conflita com multiline).
+
 
 ## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
 

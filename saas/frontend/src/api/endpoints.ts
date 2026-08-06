@@ -407,6 +407,9 @@ export const dashboardApi = {
     botPausedUntil?: string | null;
     botAttendsServices?: boolean;
     botAttendsProducts?: boolean;
+    botMenuOfferHuman?: boolean;
+    botMenuShowAddress?: boolean;
+    botMenuShowHours?: boolean;
     logoBase64?: string | null;
   }) => api<{ account: Account }>('/account', { method: 'PUT', body }),
   connectWhatsapp: (body?: { phone?: string }) =>
