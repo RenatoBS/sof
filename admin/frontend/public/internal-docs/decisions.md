@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Vídeos E2E Flex / handoff na documentação
+
+- **Contexto:** Após publicar Flex em QA (`v0.0.11-stg`), o simulate passa a abrir handoff (`afterBotResult`) e dá para gravar demos do inbox.
+- **Decisão:** Versionar `docs/assets/e2e-flex-browser-qa.mp4` e `e2e-handoff-inbox-browser-qa.mp4`; linkar na tabela de demos em `docs/local-development.md`.
+- **Consequências:** Cobertura visual completa dos domínios browser, inclusive Atendimentos (conta + profissional) e o fluxo assume/reply/resolve.
+- **Alternativas descartadas:** Só suíte completa; gravar só contra stack local.
+
 ## 2026-08-06 — Vídeos E2E browser por domínio na documentação
 
 - **Contexto:** Um único MP4 da suíte dificulta achar o fluxo de um domínio (auth, agenda, CRUD…).

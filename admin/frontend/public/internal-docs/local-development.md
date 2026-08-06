@@ -283,7 +283,8 @@ E2E_HEADED=1 npm run test:e2e:browser   # Chromium maximizado (gravação/demo)
 | CRUD serviços / clientes / profissionais | `crud-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-crud-browser-qa.mp4) |
 | Produtos / pedidos | `products-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-products-browser-qa.mp4) |
 | Suporte | `support-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-support-browser-qa.mp4) |
-| Flex / Atendimentos | `flex-browser.mjs` | — (requer API com `afterBotResult` no simulate; gravar localmente com `npm run saas`) |
+| Flex / Atendimentos (conta + profissional) | `flex-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-flex-browser-qa.mp4) |
+| Flex inbox (handoff assume/reply/resolve) | `handoff-inbox-browser.mjs` | [▶ MP4](/internal-docs/assets/e2e-handoff-inbox-browser-qa.mp4) |
 
 <details>
 <summary>Players embutidos (por domínio)</summary>
@@ -312,6 +313,14 @@ E2E_HEADED=1 npm run test:e2e:browser   # Chromium maximizado (gravação/demo)
 
 <video controls src="/internal-docs/assets/e2e-support-browser-qa.mp4" width="100%"></video>
 
+**Flex / Atendimentos**
+
+<video controls src="/internal-docs/assets/e2e-flex-browser-qa.mp4" width="100%"></video>
+
+**Flex inbox (handoff)**
+
+<video controls src="/internal-docs/assets/e2e-handoff-inbox-browser-qa.mp4" width="100%"></video>
+
 </details>
 
 Arquivos em [`docs/assets/`](/internal-docs/assets/) (`e2e-*-browser-qa.mp4` + suíte). Para regravar um domínio:
@@ -319,6 +328,8 @@ Arquivos em [`docs/assets/`](/internal-docs/assets/) (`e2e-*-browser-qa.mp4` + s
 ```bash
 E2E_HEADED=1 E2E_API_URL=… E2E_WEB_URL=… node scripts/e2e/auth-browser.mjs
 # …idem para dashboard|agenda|crud|products|support|flex
+# inbox isolado:
+E2E_HEADED=1 node scripts/e2e/handoff-inbox-browser.mjs
 ```
 
 Em headed, o Chromium preenche o display (`--start-maximized` + `--window-size` do X11 + `viewport: null` + CDP maximize/fallback).
