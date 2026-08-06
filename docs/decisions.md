@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Resolver atendimento despausa o bot do cliente
+
+- **Contexto:** Ao abrir handoff a Sof pausa o bot 1h (`botPausedAuto`). Só “Devolver à Sof” limpava essa pausa; “Resolver” deixava o cliente silenciado até expirar o timer.
+- **Decisão:** `resolveManual` chama `resumeAutoPausedClient` para `party=client`. `returnToSof` passa a ser alias de resolve (mesma limpeza).
+- **Consequências:** Qualquer fechamento explícito no inbox devolve o bot; pausa manual do dono (`botPausedAuto=false`) continua intocada.
+- **Alternativas descartadas:** Manter resolve sem despausar; só despausar em return-to-sof.
+
 ## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
 
 - **Contexto:** Os `npm test` do SaaS rodavam só dentro da matriz `build` (depois do `heroku-postbuild`). No deploy QA/prod isso misturava unitário com export Expo/build Nest e deixava o gate pouco claro.

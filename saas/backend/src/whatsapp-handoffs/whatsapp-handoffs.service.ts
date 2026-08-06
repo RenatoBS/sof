@@ -244,6 +244,10 @@ export class WhatsappHandoffsService {
       where: { id: existing.id },
       data: { status: 'resolved', resolvedAt: new Date() },
     });
+    // Resolver (ou Devolver à Sof) devolve o bot: limpa pausa automática do cliente.
+    if (existing.party === 'client') {
+      await this.resumeAutoPausedClient(accountId, existing.customerPhone);
+    }
     const shaped = this.shape(updated);
     this.realtime.broadcast(accountId, 'whatsapp-handoff:resolved', {
       handoff: shaped,
@@ -251,16 +255,9 @@ export class WhatsappHandoffsService {
     return shaped;
   }
 
-  /** Resolve e devolve o bot (limpa pausa automática do cliente). */
+  /** Resolve e devolve o bot (pausa automática já limpa em `resolveManual`). */
   async returnToSof(accountId: string, handoffId: string, actor?: Actor) {
-    const existing = await this.requireHandoff(accountId, handoffId);
-    if (actor) this.assertCanActOn(existing, actor, { allowUnassigned: true });
-
-    const shaped = await this.resolveManual(accountId, handoffId);
-    if (existing.party === 'client') {
-      await this.resumeAutoPausedClient(accountId, existing.customerPhone);
-    }
-    return shaped;
+    return this.resolveManual(accountId, handoffId, actor);
   }
 
   async claim(accountId: string, handoffId: string, actor: Actor) {
