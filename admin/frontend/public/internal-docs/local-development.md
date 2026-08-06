@@ -271,7 +271,7 @@ E2E_HEADED=1 npm run test:e2e:browser   # Chromium maximizado (gravação/demo)
 
 <video controls src="/internal-docs/assets/e2e-browser-suite-qa.mp4" width="100%"></video>
 
-Arquivo versionado: [`docs/assets/e2e-browser-suite-qa.mp4`](/internal-docs/assets/e2e-browser-suite-qa.mp4). Para gravar de novo: `E2E_HEADED=1 npm run test:e2e:browser` (stack local) ou com `E2E_API_URL` / `E2E_WEB_URL` no ambiente alvo. Em headed, o Chromium abre maximizado (`--start-maximized` + `viewport: null` + CDP `windowState: maximized`).
+Arquivo versionado: [`docs/assets/e2e-browser-suite-qa.mp4`](/internal-docs/assets/e2e-browser-suite-qa.mp4). Para gravar de novo: `E2E_HEADED=1 npm run test:e2e:browser` (stack local) ou com `E2E_API_URL` / `E2E_WEB_URL` no ambiente alvo. Em headed, o Chromium preenche o display (`--start-maximized` + `--window-size` do X11 + `viewport: null` + CDP maximize/fallback).
 
 **Matriz (API + browser por domínio)**
 

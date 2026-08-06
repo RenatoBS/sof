@@ -25,27 +25,54 @@ async function main() {
     ) || services[0];
   const client = clients[0];
   const date = nextOpenDateIso();
-  // Horário único por run evita conflito com leftovers do demo em QA.
-  const minute = String(Date.now() % 60).padStart(2, '0');
-  const time = `16:${minute}`;
+  // A listagem pode ignorar ?date= — filtramos no client e tentamos slots
+  // até a API aceitar (duração do serviço sobrescreve horários vizinhos).
+  let appointments = [];
+  try {
+    const listed = await api(`/appointments`, { token });
+    appointments = listed.appointments || [];
+  } catch {
+    appointments = [];
+  }
+  const dayApts = (Array.isArray(appointments) ? appointments : []).filter(
+    (a) => a.employeeId === employee.id && a.date === date,
+  );
+  const candidates = [];
+  for (let h = 9; h <= 19; h++) {
+    for (const m of ['00', '15', '30', '45']) {
+      candidates.push(`${String(h).padStart(2, '0')}:${m}`);
+    }
+  }
   const clientName = client?.name || `E2E Agenda UI`;
-
-  const created = await api('/appointments', {
-    method: 'POST',
-    token,
-    body: {
-      kind: 'service',
-      employeeId: employee.id,
-      serviceId: service.id,
-      date,
-      time,
-      clientId: client?.id,
-      clientName,
-      clientPhone: client?.phone || uniquePhone('1195').slice(2),
-    },
-  });
-  const apt = created.appointment;
-  assert(apt?.id, 'prep appointment');
+  const clientPhone = client?.phone || uniquePhone('1195').slice(2);
+  let apt = null;
+  let time = null;
+  for (const candidate of candidates) {
+    // Pula se já existe exatamente o mesmo horário (rápido); a API decide overlap.
+    if (dayApts.some((a) => a.time === candidate)) continue;
+    try {
+      const created = await api('/appointments', {
+        method: 'POST',
+        token,
+        body: {
+          kind: 'service',
+          employeeId: employee.id,
+          serviceId: service.id,
+          date,
+          time: candidate,
+          clientId: client?.id,
+          clientName,
+          clientPhone,
+        },
+      });
+      apt = created.appointment;
+      time = candidate;
+      break;
+    } catch {
+      // horário em overlap — tenta o próximo
+    }
+  }
+  assert(apt?.id && time, `sem horário livre em ${date}`);
   log('prep', `${apt.id} ${date} ${time}`);
 
   const { browser, page, headed } = await launchBrowser();
