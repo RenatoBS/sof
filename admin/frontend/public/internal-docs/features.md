@@ -191,7 +191,7 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 
 ### Atendimentos (inbox estilo Flex)
 
-- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com casos abertos via SSE). Inbox em 3 painéis no desktop (fila / thread / contexto). Em telas estreitas (`<960`): **Abertos → chat → Resolvidos** (resolvidos abaixo do thread). O limiar de “não entendi” fica em **Conta**, não nesta tela.
+- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com casos abertos via SSE). Inbox em 3 painéis no desktop (fila / thread / contexto): o dono assume, responde **pelo painel Sof** e pode transferir para profissionais com `Employee.canHandleHandoffs`. Em telas estreitas (`<960`): ordem **Abertos → chat → Resolvidos**. O limiar de “não entendi” fica em **Conta**.
 - Caso abre quando: (a) pedido explícito de atendente; (b) N “não entendi” seguidos (`Account.whatsappHandoffThreshold` 1/2/3/5); (c) venda com `Product.handoffEnabled` (`product_sale`). Vale para **cliente** e **profissional** (prof só na fila do dono).
 - **Atribuição:** `assigneeType` `null` (fila) | `account` (dono) | `employee` + `assignedEmployeeId`. Ações: Assumir, Transferir, Liberar, Resolver, Devolver à Sof (resolve + tira pausa automática do cliente).
 - **Thread:** modelo `WhatsappMessage` (`senderKind`: client | employee_party | bot | human_wa | agent). Mensagens inbound com bot pausado e outbound do painel / WhatsApp Web entram na conversa em tempo real (`whatsapp-handoff:message`).
