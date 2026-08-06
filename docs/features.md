@@ -174,6 +174,7 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 - `paymentLinkUrl`: link externo do estabelecimento (Pix, Mercado Pago, etc.) — a Sof **não** cria nada na Stripe; o bot inclui o link na confirmação do pedido.  
 - Aba **Produtos** com segmentos **Catálogo** e **Pedidos**.  
 - CRUD: `GET/POST /api/products`, `PUT/DELETE …/:id`. Upload de imagem no painel web (mesmo compress do logo).  
+- Modal de cadastro/edição: tile dashed **+ Adicionar** ao lado das thumbs (não botão full-width); opções **Abrir handoff ao vender** e **Ativo no bot** em linhas empilhadas com switch visual (evita overlap no RN Web).  
 - Ao criar o **primeiro** produto, a API liga `Account.botAttendsProducts`.  
 - Pedidos: `GET /api/orders`, `PATCH /api/orders/:id/status` (`pending` | `confirmed` | `cancelled` | `completed`). Sem pagamento online no v1 — o pedido fica registrado para a equipe combinar pagamento/retirada.  
 - SSE: `order:created` quando o bot confirma uma compra.
