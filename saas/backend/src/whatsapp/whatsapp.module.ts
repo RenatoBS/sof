@@ -13,7 +13,7 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
 @Module({
   imports: [
     forwardRef(() => AuthModule),
-    WhatsappHandoffsModule,
+    forwardRef(() => WhatsappHandoffsModule),
     forwardRef(() => EmployeePortalModule),
     EntitlementsModule,
   ],

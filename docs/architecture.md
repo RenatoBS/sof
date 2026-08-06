@@ -55,9 +55,9 @@ Registrados em `saas/backend/src/app.module.ts`:
 | `CheckoutModule` | assinatura / Checkout Session Stripe (+ cupom no create) |
 | `PaymentsModule` | webhook Stripe |
 | `WhatsappModule` | webhook Meta/Uazapi + bot + simulador; copy/persona em `whatsapp/bot-copy.ts` ([`docs/brand.md`](brand.md)) |
-| `WhatsappHandoffsModule` | alertas de atendimento humano (escalonamento do bot) |
+| `WhatsappHandoffsModule` | inbox de atendimento humano (fila, thread, claim/reply) |
 | `RemindersModule` | job de lembretes WhatsApp (a cada 30 min) |
-| `EventsModule` | SSE de appointments + handoffs |
+| `EventsModule` | SSE de appointments + handoffs + mensagens |
 | `SupportTicketsModule` | tickets de suporte (conta + profissional) |
 | `HealthController` | `GET /api/health` |
 
@@ -82,7 +82,8 @@ Account  (plan / planPrice snapshot + planId → Plan; botAttendsServices / botA
   ├── Appointment[]  (kind=service → employeeId+serviceId; kind=block → título+duração livres)
   ├── CheckoutSession[]
   ├── WhatsappSession[]
-  ├── WhatsappHandoff[]  (alerta: reason unresolved|human_requested|product_sale)
+  ├── WhatsappHandoff[]  (inbox: assignee + reason unresolved|human_requested|product_sale)
+  ├── WhatsappMessage[]  (thread do handoff)
   └── SupportTicket[]
         └── SupportTicketComment[]  (authorRole: account|employee|admin)
 
@@ -107,7 +108,7 @@ Campos relevantes em `Account`: `businessName`, `email`, `phone` (responsável; 
 
 `Client`: nome, telefone (único por conta); `botPausedPermanent` e `botPausedUntil` silenciam o bot WhatsApp para aquele número (`clients/client-bot-pause.ts`); `botPausedAuto` marca que quem pausou foi a própria Sof (alerta de atendimento ou resposta humana) — só essa pausa é desfeita quando o cliente chama pela Sof, a do dono não; `botUnresolvedCount` conta "não entendi" consecutivos para escalonamento.
 
-`WhatsappHandoff`: alerta de atendimento humano por conversa — `party` (`client` | `employee`), `clientId` / `employeeId` opcionais, `reason` (`unresolved` | `human_requested` | `product_sale`), `status` (`open` | `resolved`), `lastMessage`, `openedAt`, `humanRepliedAt`, `resolvedAt`. Um aberto por telefone (refresh em novas falhas). Contadores: `Client.botUnresolvedCount` e `Employee.botUnresolvedCount`. `Account.whatsappHandoffThreshold` (1|2|3|5, default 2) define quantas falhas abrem alerta (cliente e prof). Fluxo: webhook detecta `fromMe` sem `wasSentByApi` → `onHumanReply`: em cliente pausa bot 1 h e resolve; em profissional só resolve (sem pausar o bot operacional). Abrir/atualizar alerta de **cliente** também pausa 1 h (`pauseClientBot`, chamado em `whatsapp.controller.ts#pauseAfterHandoff`) — o bot sai da conversa assim que ela vira caso de humano. Volta antes da hora se o cliente chamar pela Sof: `shouldSilenceIncoming` usa `mentionsSof` (`whatsapp/sof-mention.ts`), chama `resumeAutoPausedClient` e reinicia a sessão do bot. Webhook Uazapi **sem** excluir `fromMe` (só `wasSentByApi` + grupos); `GET /api/account/whatsapp/status` ressincroniza a config no máx. 1x/hora por instância.
+`WhatsappHandoff`: inbox de atendimento humano — `party` (`client` | `employee`), `clientId` / `employeeId` (ponta WA), `assigneeType` (`null`|`account`|`employee`) + `assignedEmployeeId` (quem assume no painel), `reason` (`unresolved` | `human_requested` | `product_sale`), `status` (`open` | `resolved`), `lastMessage`, timestamps. Um aberto por telefone. `WhatsappMessage` guarda a thread (`senderKind`: client | employee_party | bot | human_wa | agent). `Employee.canHandleHandoffs` libera o portal. Contadores: `Client.botUnresolvedCount` / `Employee.botUnresolvedCount`; threshold em `Account.whatsappHandoffThreshold`. Abrir caso de cliente pausa o bot 1 h (`pauseClientBot`). `fromMe` (não-API) → pausa + mensagem `human_wa`, **sem** auto-resolve. Reply do painel usa `sendText` (API) e persiste como `agent`. Mensagem inbound com bot silenciado ainda grava na thread. Cliente chama Sof → `resumeAutoPausedClient`. SSE inclui `whatsapp-handoff:message`; profissional usa `GET /api/employee/events/stream`.
 
 `Appointment`: `kind` (`service` | `block`), data/hora, `status` (`scheduled` | `completed` | `cancelled`), `completedAt`, `source` (`manual` | `whatsapp`). Em `service`: cliente, `serviceId`, preço; valida vínculo N:N e **expediente**. Em `block`: `title` + `durationMinutes` (sem cliente/serviço); **não** exige expediente. Ambos usam conflito de agenda (`durationMinutes` ou duração do serviço; `appointments/schedule-conflict.ts` — só `scheduled` ocupa slot). Recorrência materializa ocorrências com o mesmo `recurrenceGroupId` (`appointments/recurrence.ts`). Conclusão: manual (conta sem restrição de janela; profissional só em [início, fim]) ou job `AppointmentCompletionsScheduler` (~5 min) quando `now >= endAt`; SSE `appointment:updated`. Cancelamento usa soft-cancel (`cancelled`). Lembrete WhatsApp: `reminderClaimedAt` / `reminderSentAt` (no máximo 1 envio bem-sucedido; job em `reminders/`; só `scheduled`). Aviso imediato ao profissional: `EmployeeBookingNotifyService` (WhatsApp da conta → `Employee.phone`) após create de `kind=service`.
 
@@ -141,7 +142,7 @@ URLs:
 
 ### Tempo real
 
-`GET /api/events/stream` (SSE). Front usa `react-native-sse` com header Bearer (`saas/frontend/src/hooks/useRealtime.ts`). Eventos tipados: `appointment:created|updated|deleted`, `whatsapp-handoff:opened|updated|resolved` e `client:updated` (pausa automática do bot entrando ou saindo — mantém o badge da aba Clientes em dia sem reload).
+`GET /api/events/stream` (SSE; conta) e `GET /api/employee/events/stream` (profissional). Front usa `react-native-sse` com Bearer (`useRealtime.ts`). Eventos: `appointment:created|updated|deleted`, `whatsapp-handoff:opened|updated|resolved|message`, `client:updated`.
 
 ## Frontend (`saas/frontend/`)
 
@@ -169,7 +170,7 @@ URLs:
 | `/(dashboard)/simulator` | Simulador WhatsApp (`noindex`; fora das tabs) |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
-| `/(dashboard)/handoffs` | Atendimentos (alertas de escalonamento + config) |
+| `/(dashboard)/handoffs` | Atendimentos (inbox Flex + config threshold) |
 | `/(dashboard)/support` | Tickets de suporte Sof |
 | `/(dashboard)/billing` | Faturamento |
 | `/(dashboard)/account` | Conta / horários / integrações |

@@ -258,3 +258,117 @@ cd saas/frontend && npm test
 - Backend: specs colocalizados `*.spec.ts` (phone, password, plans, entitlements, handoffs, reminders…).
 - Frontend: `src/**/__tests__/**/*.test.ts` (validation, appEnv, api client).
 - CI: matriz `saas-backend` e `saas-frontend` rodam `npm test` em [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
+## Testes E2E (produto SaaS)
+
+Scripts Node em [`scripts/e2e/`](../scripts/e2e/) (não Jest Nest). Conta alvo: Equipe `demo@sof.com` / `SEED_DEMO_PASSWORD`.
+
+**Pré-requisitos**
+
+1. Postgres + seed Equipe (`npm run db:up` e seed do backend).
+2. Stack no ar: `npm run saas` (API `:3001`, web `:8081`).
+3. Playwright (1×): `cd e2e && npm install && npx playwright install chromium && cd ..`.
+
+**Comandos**
+
+```bash
+npm run test:e2e:api       # só API
+npm run test:e2e:browser   # só Playwright
+npm run test:e2e:all       # API + browser (fail-fast; E2E_FAIL_FAST=0 continua)
+
+# Inbox Flex isolado (também coberto em flex-*)
+npm run test:e2e:handoff-api
+npm run test:e2e:handoff-browser
+npm run test:e2e:handoff
+
+E2E_HEADED=1 npm run test:e2e:browser   # Chromium maximizado (gravação/demo)
+```
+
+**Demo (gravação):** execução headed contra QA (`qa.sof.solutions`), Chromium maximizado. Há um vídeo da suíte completa e um por domínio browser.
+
+### Suíte completa
+
+[▶ Demo E2E — suíte browser](./assets/e2e-browser-suite-qa.mp4)
+
+<video controls src="./assets/e2e-browser-suite-qa.mp4" width="100%"></video>
+
+### Por domínio
+
+| Domínio | Script | Vídeo |
+|---------|--------|-------|
+| Auth (conta + profissional) | `auth-browser.mjs` | [▶ MP4](./assets/e2e-auth-browser-qa.mp4) |
+| Dashboard (Agenda / Faturamento / Conta) | `dashboard-browser.mjs` | [▶ MP4](./assets/e2e-dashboard-browser-qa.mp4) |
+| Agenda (modal + concluir) | `agenda-browser.mjs` | [▶ MP4](./assets/e2e-agenda-browser-qa.mp4) |
+| CRUD serviços / clientes / profissionais | `crud-browser.mjs` | [▶ MP4](./assets/e2e-crud-browser-qa.mp4) |
+| Produtos / pedidos | `products-browser.mjs` | [▶ MP4](./assets/e2e-products-browser-qa.mp4) |
+| Suporte | `support-browser.mjs` | [▶ MP4](./assets/e2e-support-browser-qa.mp4) |
+| Flex / Atendimentos (conta + profissional) | `flex-browser.mjs` | [▶ MP4](./assets/e2e-flex-browser-qa.mp4) |
+| Flex inbox (handoff assume/reply/resolve) | `handoff-inbox-browser.mjs` | [▶ MP4](./assets/e2e-handoff-inbox-browser-qa.mp4) |
+
+<details>
+<summary>Players embutidos (por domínio)</summary>
+
+**Auth**
+
+<video controls src="./assets/e2e-auth-browser-qa.mp4" width="100%"></video>
+
+**Dashboard**
+
+<video controls src="./assets/e2e-dashboard-browser-qa.mp4" width="100%"></video>
+
+**Agenda**
+
+<video controls src="./assets/e2e-agenda-browser-qa.mp4" width="100%"></video>
+
+**CRUD**
+
+<video controls src="./assets/e2e-crud-browser-qa.mp4" width="100%"></video>
+
+**Produtos**
+
+<video controls src="./assets/e2e-products-browser-qa.mp4" width="100%"></video>
+
+**Suporte**
+
+<video controls src="./assets/e2e-support-browser-qa.mp4" width="100%"></video>
+
+**Flex / Atendimentos**
+
+<video controls src="./assets/e2e-flex-browser-qa.mp4" width="100%"></video>
+
+**Flex inbox (handoff)**
+
+<video controls src="./assets/e2e-handoff-inbox-browser-qa.mp4" width="100%"></video>
+
+</details>
+
+Arquivos em [`docs/assets/`](./assets/) (`e2e-*-browser-qa.mp4` + suíte). Para regravar um domínio:
+
+```bash
+E2E_HEADED=1 E2E_API_URL=… E2E_WEB_URL=… node scripts/e2e/auth-browser.mjs
+# …idem para dashboard|agenda|crud|products|support|flex
+# inbox isolado:
+E2E_HEADED=1 node scripts/e2e/handoff-inbox-browser.mjs
+```
+
+Em headed, o Chromium preenche o display (`--start-maximized` + `--window-size` do X11 + `viewport: null` + CDP maximize/fallback).
+
+**Matriz (API + browser por domínio)**
+
+| Domínio | API | Browser |
+|---------|-----|---------|
+| Auth (conta + profissional) | `auth-api.mjs` | `auth-browser.mjs` |
+| Agenda | `agenda-api.mjs` | `agenda-browser.mjs` |
+| CRUD serviços/clientes/profissionais | `crud-api.mjs` | `crud-browser.mjs` |
+| Bot WA (simulate) | `bot-api.mjs` | — (prep via API) |
+| Produtos / pedidos | `products-orders-api.mjs` | `products-browser.mjs` |
+| Flex / Atendimentos | `flex-api.mjs` (+ `handoff-inbox-api.mjs`) | `flex-browser.mjs` (+ `handoff-inbox-browser.mjs`) |
+| Suporte | `support-api.mjs` | `support-browser.mjs` |
+| Conta (integrations / WA status / toggles) | `account-api.mjs` | smoke em `dashboard-browser.mjs` |
+| Dashboard tabs | — | `dashboard-browser.mjs` |
+
+**Fora de escopo (frágil / externo):** Checkout Stripe pago, QR/paircode Uazapi real, e-mail real.
+
+**Envs úteis:** `E2E_API_URL`, `E2E_WEB_URL`, `E2E_EMAIL`, `E2E_PASSWORD`, `E2E_EMPLOYEE_EMAIL`, `E2E_BETWEEN_MS` (pausa entre scripts), `E2E_FAIL_FAST=0`.
+
+Credenciais padrão: `SEED_DEMO_*` em `saas/backend/.env`. Runner: [`scripts/e2e/run.mjs`](../scripts/e2e/run.mjs).

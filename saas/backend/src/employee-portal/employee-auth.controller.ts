@@ -22,6 +22,10 @@ import {
   verifyPassword,
 } from '../common/password';
 import {
+  LOGIN_THROTTLE,
+  PASSWORD_RESET_THROTTLE,
+} from '../common/throttle-limits';
+import {
   EMPLOYEE_COOKIE_NAME,
   cookieOptions,
   signEmployeeToken,
@@ -49,7 +53,7 @@ export class EmployeeAuthController {
 
   @Post('login')
   @HttpCode(200)
-  @Throttle({ default: { limit: 20, ttl: 15 * 60 * 1000 } })
+  @Throttle(LOGIN_THROTTLE)
   async login(
     @Body() body: { email?: string; password?: string },
     @Res({ passthrough: true }) res: Response,
@@ -108,7 +112,7 @@ export class EmployeeAuthController {
    */
   @Post('request-password-reset')
   @HttpCode(200)
-  @Throttle({ default: { limit: 8, ttl: 15 * 60 * 1000 } })
+  @Throttle(PASSWORD_RESET_THROTTLE)
   async requestPasswordReset(@Body() body: { email?: string }) {
     const email = String(body?.email || '')
       .trim()

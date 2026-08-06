@@ -61,6 +61,7 @@ export function EmployeeFormModal({
   const [color, setColor] = useState(defaultColor);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [resetPassword, setResetPassword] = useState(false);
+  const [canHandleHandoffs, setCanHandleHandoffs] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<EmployeeFieldErrors>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,6 +77,7 @@ export function EmployeeFormModal({
     );
     setServiceIds((employee?.services || []).map((s) => s.id));
     setResetPassword(false);
+    setCanHandleHandoffs(Boolean(employee?.canHandleHandoffs));
     setFieldErrors({});
     setError('');
     setTouched(false);
@@ -124,6 +126,7 @@ export function EmployeeFormModal({
         phone: normalizePhoneDigits(phone),
         serviceIds,
         color: normalizeHex(color),
+        canHandleHandoffs,
       };
       if (employee) {
         const { employee: saved, resetLink, expiresAt } =
@@ -308,6 +311,22 @@ export function EmployeeFormModal({
       {touched && fieldErrors.services ? (
         <SofErrorBanner message={fieldErrors.services} />
       ) : null}
+      <Pressable
+        onPress={() => setCanHandleHandoffs((v) => !v)}
+        style={[styles.resetChip, canHandleHandoffs && styles.chipActive]}
+      >
+        <Text
+          style={[styles.chipText, canHandleHandoffs && styles.chipTextActive]}
+        >
+          {canHandleHandoffs
+            ? 'Pode atender handoffs (ligado)'
+            : 'Pode atender handoffs (desligado)'}
+        </Text>
+      </Pressable>
+      <Text style={styles.colorHint}>
+        Com a opção ligada, o profissional vê a fila de Atendimentos no portal e
+        pode assumir conversas de clientes.
+      </Text>
       {isEditing ? (
         <Pressable
           onPress={() => setResetPassword((v) => !v)}

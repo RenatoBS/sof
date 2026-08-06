@@ -14,6 +14,7 @@ import type {
   SupportTicketComment,
   SupportTicketStatus,
   WhatsappHandoff,
+  WhatsappMessage,
 } from '@/src/api/types';
 
 export const authApi = {
@@ -136,6 +137,49 @@ export const employeeApi = {
     }),
   services: () =>
     api<{ services: Service[] }>('/employee/services', { auth: 'employee' }),
+  whatsappHandoffs: (status?: 'open' | 'resolved') =>
+    api<{ handoffs: WhatsappHandoff[] }>(
+      `/employee/whatsapp-handoffs${status ? `?status=${status}` : ''}`,
+      { auth: 'employee' },
+    ),
+  whatsappHandoffMessages: (id: string) =>
+    api<{ messages: WhatsappMessage[] }>(
+      `/employee/whatsapp-handoffs/${id}/messages`,
+      { auth: 'employee' },
+    ),
+  replyWhatsappHandoff: (id: string, text: string) =>
+    api<{ handoff: WhatsappHandoff | null; message: WhatsappMessage | null }>(
+      `/employee/whatsapp-handoffs/${id}/reply`,
+      { method: 'POST', body: { text }, auth: 'employee' },
+    ),
+  claimWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(
+      `/employee/whatsapp-handoffs/${id}/claim`,
+      { method: 'POST', auth: 'employee' },
+    ),
+  transferWhatsappHandoff: (
+    id: string,
+    body: { assigneeType: 'account' | 'employee'; employeeId?: string },
+  ) =>
+    api<{ handoff: WhatsappHandoff }>(
+      `/employee/whatsapp-handoffs/${id}/transfer`,
+      { method: 'POST', body, auth: 'employee' },
+    ),
+  releaseWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(
+      `/employee/whatsapp-handoffs/${id}/release`,
+      { method: 'POST', auth: 'employee' },
+    ),
+  resolveWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(
+      `/employee/whatsapp-handoffs/${id}/resolve`,
+      { method: 'POST', auth: 'employee' },
+    ),
+  returnWhatsappHandoffToSof: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(
+      `/employee/whatsapp-handoffs/${id}/return-to-sof`,
+      { method: 'POST', auth: 'employee' },
+    ),
 };
 
 export const checkoutApi = {
@@ -213,6 +257,7 @@ export const dashboardApi = {
     phone: string;
     serviceIds: string[];
     color?: string;
+    canHandleHandoffs?: boolean;
   }) =>
     api<{
       employee: Employee;
@@ -230,6 +275,7 @@ export const dashboardApi = {
       phone: string;
       serviceIds: string[];
       color?: string;
+      canHandleHandoffs?: boolean;
       resetPassword?: boolean;
     },
   ) =>
@@ -403,6 +449,33 @@ export const dashboardApi = {
     ),
   resolveWhatsappHandoff: (id: string) =>
     api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/resolve`, {
+      method: 'POST',
+    }),
+  whatsappHandoffMessages: (id: string) =>
+    api<{ messages: WhatsappMessage[] }>(`/whatsapp-handoffs/${id}/messages`),
+  replyWhatsappHandoff: (id: string, text: string) =>
+    api<{ handoff: WhatsappHandoff | null; message: WhatsappMessage | null }>(
+      `/whatsapp-handoffs/${id}/reply`,
+      { method: 'POST', body: { text } },
+    ),
+  claimWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/claim`, {
+      method: 'POST',
+    }),
+  transferWhatsappHandoff: (
+    id: string,
+    body: { assigneeType: 'account' | 'employee'; employeeId?: string },
+  ) =>
+    api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/transfer`, {
+      method: 'POST',
+      body,
+    }),
+  releaseWhatsappHandoff: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/release`, {
+      method: 'POST',
+    }),
+  returnWhatsappHandoffToSof: (id: string) =>
+    api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/return-to-sof`, {
       method: 'POST',
     }),
   simulateWhatsapp: (message: string, customerPhone: string) =>

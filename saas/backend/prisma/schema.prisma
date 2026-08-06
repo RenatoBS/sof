@@ -67,6 +67,7 @@ model Account {
   checkoutSessions CheckoutSession[]
   whatsappSessions WhatsappSession[]
   whatsappHandoffs WhatsappHandoff[]
+  whatsappMessages WhatsappMessage[]
   supportTickets   SupportTicket[]
   promoRedemptions PromoCouponRedemption[]
   passwordTokens   AccountPasswordToken[]
@@ -102,13 +103,17 @@ model Employee {
   color              String
   /// Falhas consecutivas do bot (escalonamento humano, espelho do Client)
   botUnresolvedCount Int      @default(0)
+  /// Pode assumir e responder handoffs de clientes no inbox Atendimentos
+  canHandleHandoffs  Boolean  @default(false)
   createdAt          DateTime @default(now())
 
   account              Account                 @relation(fields: [accountId], references: [id], onDelete: Cascade)
   appointments         Appointment[]
   services             EmployeeService[]
   passwordTokens       EmployeePasswordToken[]
-  handoffs             WhatsappHandoff[]
+  handoffs             WhatsappHandoff[]       @relation("HandoffPartyEmployee")
+  assignedHandoffs     WhatsappHandoff[]       @relation("HandoffAssignee")
+  agentMessages        WhatsappMessage[]
   supportTicketsCreated SupportTicket[]        @relation("SupportTicketCreator")
   supportTicketComments SupportTicketComment[] @relation("SupportTicketCommentEmployee")
 
@@ -325,34 +330,66 @@ model WhatsappSession {
   @@index([accountId])
 }
 
-/// Alerta de conversa que o bot não resolveu / pediu humano
+/// Alerta / conversa de atendimento humano (inbox Flex)
 model WhatsappHandoff {
-  id              String    @id @default(cuid())
-  accountId       String
-  clientId        String?
-  employeeId      String?
+  id                 String    @id @default(cuid())
+  accountId          String
+  clientId           String?
+  employeeId         String?
   /// client | employee — quem está na ponta do WhatsApp
-  party           String    @default("client")
-  customerPhone   String
-  customerName    String    @default("")
-  lastMessage     String    @default("")
-  /// unresolved | human_requested
-  reason          String
+  party              String    @default("client")
+  customerPhone      String
+  customerName       String    @default("")
+  lastMessage        String    @default("")
+  /// unresolved | human_requested | product_sale
+  reason             String
   /// open | resolved
-  status          String    @default("open")
-  openedAt        DateTime  @default(now())
-  humanRepliedAt  DateTime?
-  resolvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status             String    @default("open")
+  /// null = fila | account = dono | employee = profissional
+  assigneeType       String?
+  assignedEmployeeId String?
+  assignedAt         DateTime?
+  openedAt           DateTime  @default(now())
+  humanRepliedAt     DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  client   Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  account          Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  client           Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  employee         Employee?         @relation("HandoffPartyEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  assignedEmployee Employee?         @relation("HandoffAssignee", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  messages         WhatsappMessage[]
 
   @@index([accountId, status, openedAt])
   @@index([accountId, customerPhone, status])
   @@index([employeeId])
+  @@index([assignedEmployeeId])
+}
+
+/// Mensagem persistida do inbox de atendimentos (thread por handoff)
+model WhatsappMessage {
+  id                  String   @id @default(cuid())
+  accountId           String
+  handoffId           String
+  customerPhone       String
+  /// inbound | outbound
+  direction           String
+  /// client | employee_party | bot | human_wa | agent
+  senderKind          String
+  body                String   @db.Text
+  agentEmployeeId     String?
+  sentByAccountOwner  Boolean  @default(false)
+  providerMessageId   String?
+  createdAt           DateTime @default(now())
+
+  account       Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  handoff       WhatsappHandoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  agentEmployee Employee?       @relation(fields: [agentEmployeeId], references: [id], onDelete: SetNull)
+
+  @@index([handoffId, createdAt])
+  @@index([accountId, customerPhone, createdAt])
+  @@index([providerMessageId])
 }
 
 /// Operador do painel admin Sof (plataforma, não tenant)

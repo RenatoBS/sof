@@ -17,6 +17,55 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Vídeos E2E Flex / handoff na documentação
+
+- **Contexto:** Após publicar Flex em QA (`v0.0.11-stg`), o simulate passa a abrir handoff (`afterBotResult`) e dá para gravar demos do inbox.
+- **Decisão:** Versionar `docs/assets/e2e-flex-browser-qa.mp4` e `e2e-handoff-inbox-browser-qa.mp4`; linkar na tabela de demos em `docs/local-development.md`.
+- **Consequências:** Cobertura visual completa dos domínios browser, inclusive Atendimentos (conta + profissional) e o fluxo assume/reply/resolve.
+- **Alternativas descartadas:** Só suíte completa; gravar só contra stack local.
+
+## 2026-08-06 — Vídeos E2E browser por domínio na documentação
+
+- **Contexto:** Um único MP4 da suíte dificulta achar o fluxo de um domínio (auth, agenda, CRUD…).
+- **Decisão:** Gravar e versionar um MP4 por script browser em `docs/assets/e2e-<domínio>-browser-qa.mp4`, além da suíte completa; documentar em `docs/local-development.md` com tabela + players. Flex fica sem vídeo em QA até o simulate abrir handoff (`afterBotResult`).
+- **Consequências:** Docs e painel `/docs` mostram demos isoladas; `sync-docs` copia todos os MP4 de `docs/assets/`.
+- **Alternativas descartadas:** Só suíte completa; hospedar fora do repo.
+
+## 2026-08-06 — E2E headed maximiza a janela do Chromium
+
+- **Contexto:** A gravação demo da suíte browser abria em viewport fixo 1280×860, longe de tela cheia.
+- **Decisão:** Em `E2E_HEADED=1`, `launchBrowser` usa `--start-maximized`, `--window-size`/`--window-position` do display (`xdpyinfo`), `viewport: null` e CDP `Browser.setWindowBounds` (maximize com fallback para bounds explícitos). Headless mantém 1280×860.
+- **Consequências:** Demos/gravações preenchem o display (~1920×1200 na VM); headless/CI inalterados.
+- **Alternativas descartadas:** Viewport fixo maior; só `--start-maximized` sem fallback de bounds.
+
+## 2026-08-06 — Vídeo demo da suíte E2E browser na documentação
+
+- **Contexto:** A suíte Playwright headed precisa de prova visual para quem roda `test:e2e:browser`.
+- **Decisão:** Gravar execução contra QA e versionar em `docs/assets/e2e-browser-suite-qa.mp4`; linkar em `docs/local-development.md`. `sync-docs` copia mídias de `docs/assets/` para `admin/frontend/public/internal-docs/assets/`.
+- **Consequências:** Demo visível no repo e no painel `/docs` (link MP4). Artefatos em `scripts/e2e/artifacts/` continuam gitignored.
+- **Alternativas descartadas:** Só link externo; commitar em `scripts/e2e/artifacts/` (já ignorado).
+
+## 2026-08-05 — Suíte E2E produto (API + Playwright por domínio)
+
+- **Contexto:** Precisávamos cobrir auth, agenda, CRUD, bot, produtos, Flex, suporte e conta — sem Stripe pago nem Uazapi real. Já existia o padrão `scripts/e2e/` do handoff.
+- **Decisão:** Um script Node por domínio (API e browser); runner `scripts/e2e/run.mjs` com `npm run test:e2e:api|browser|all`; helpers em `lib.mjs` (login conta/profissional, `ensureEmployeePassword`, Playwright). Fora de escopo: checkout pago, QR WA, e-mail real. Throttle de login/reset mais folgado fora de produção (`throttle-limits.ts`) para a suíte não esgotar o limite local.
+- **Consequências:** `test:e2e:all` verde com stack + seed Equipe. Scripts handoff* permanecem como subset do Flex.
+- **Alternativas descartadas:** Jest Nest E2E; um único mega-script; depender de Stripe/Uazapi reais.
+
+## 2026-08-05 — Reply do inbox best-effort + E2E API/browser
+
+- **Contexto:** Com a sessão Uazapi caída, `POST …/reply` estourava 500 e o agente não conseguia gravar a conversa no painel. Também faltava teste integrado do inbox Flex.
+- **Decisão:** `reply` tenta `sendText` e, se falhar, ainda persiste a mensagem (`delivered: false`). Scripts E2E em `scripts/e2e/` (API + Playwright) e `npm run test:e2e:handoff*`. Simulador passa a chamar `afterBotResult` (abre handoff de verdade).
+- **Consequências:** Inbox útil em dev/sem WA; entrega real continua quando a sessão está ok. Playwright vive em `e2e/node_modules`.
+- **Alternativas descartadas:** Falhar o reply inteiro sem WA; mock só nos testes.
+
+## 2026-08-05 — Inbox Flex de Atendimentos (reply interno + claim)
+
+- **Contexto:** A aba Atendimentos só listava alertas e mandava o humano para o WhatsApp externo. Equipes Equipe/Rede precisam handoff dentro da Sof (estilo Twilio Flex), com profissionais habilitados pela conta.
+- **Decisão:** Inbox com fila/thread/contexto; `WhatsappMessage` persiste a conversa; `assigneeType` + `assignedEmployeeId` para claim/transfer; `Employee.canHandleHandoffs` + portal `/(employee)/handoffs`; reply via `WhatsappApiService.sendText`. `fromMe` no WA deixa de auto-resolver — fechamento é explícito (Resolver / Devolver à Sof). Profissionais só atendem `party=client`.
+- **Consequências:** Atendimento humano acontece no painel; deep link WhatsApp vira secundário. SSE ganha `whatsapp-handoff:message` e stream do profissional. Planos sem `handoffs` inalterados.
+- **Alternativas descartadas:** Só deep link (status quo); status disponível/ocupado e filas por skill (v2); auto-resolve no `fromMe` (conflita com inbox aberto).
+
 ## 2026-08-05 — Suíte unitária SaaS (Jest + jest-expo)
 
 - **Contexto:** CI do frontend era no-op (`echo`); backend já tinha Jest com poucos specs. Precisávamos de base unitária expandível sem confundir com E2E Playwright.

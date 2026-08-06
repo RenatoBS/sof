@@ -87,7 +87,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const isCompact = width < 720;
   const { account, loading, logout } = useAuth();
   const { has } = useEntitlements();
-  const { loadAll, setAppointments, setClients, handoffs, setHandoffs, services, products, loading: dashLoading } =
+  const { loadAll, setAppointments, setClients, handoffs, setHandoffs, setHandoffLiveMessage, services, products, loading: dashLoading } =
     useDashboard();
   const { showToast } = useToast();
   const pathname = usePathname();
@@ -152,6 +152,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       },
       onHandoffUpdated: upsertHandoff,
       onHandoffResolved: upsertHandoff,
+      onHandoffMessage: (handoffId, message) => {
+        setHandoffLiveMessage({ handoffId, message, at: Date.now() });
+      },
       onClientUpdated: (client: Client) => {
         setClients((prev) => {
           const idx = prev.findIndex((c) => c.id === client.id);
