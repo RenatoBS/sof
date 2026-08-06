@@ -349,6 +349,8 @@ model WhatsappHandoff {
   assigneeType       String?
   assignedEmployeeId String?
   assignedAt         DateTime?
+  /// Contexto extra do motivo (ex.: produto/pedido em product_sale)
+  contextJson        Json?
   openedAt           DateTime  @default(now())
   humanRepliedAt     DateTime?
   resolvedAt         DateTime?
@@ -367,11 +369,12 @@ model WhatsappHandoff {
   @@index([assignedEmployeeId])
 }
 
-/// Mensagem persistida do inbox de atendimentos (thread por handoff)
+/// Mensagem persistida do inbox de atendimentos (thread por handoff;
+/// handoffId null = turno do bot antes de abrir o atendimento)
 model WhatsappMessage {
   id                  String   @id @default(cuid())
   accountId           String
-  handoffId           String
+  handoffId           String?
   customerPhone       String
   /// inbound | outbound
   direction           String
@@ -383,9 +386,9 @@ model WhatsappMessage {
   providerMessageId   String?
   createdAt           DateTime @default(now())
 
-  account       Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  handoff       WhatsappHandoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
-  agentEmployee Employee?       @relation(fields: [agentEmployeeId], references: [id], onDelete: SetNull)
+  account       Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  handoff       WhatsappHandoff? @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  agentEmployee Employee?        @relation(fields: [agentEmployeeId], references: [id], onDelete: SetNull)
 
   @@index([handoffId, createdAt])
   @@index([accountId, customerPhone, createdAt])

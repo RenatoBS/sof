@@ -17,6 +17,20 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Form de produto: tile de imagem + toggles empilhados
+
+- **Contexto:** No modal Novo/Editar produto, o botão “Adicionar imagens” (`SofButton` light full-width) parecia desabilitado; os pills “Abrir handoff ao vender” e “Ativo no bot” na mesma `row` se sobrepunham no RN Web.
+- **Decisão:** Tile dashed `+ Adicionar` na grade de thumbs; opções em linhas full-width com título, hint e switch custom (track/thumb), empilhadas.
+- **Consequências:** Controles clicáveis e legíveis sem overlap; layout alinhado ao restante do dashboard.
+- **Alternativas descartadas:** Manter pills lado a lado com `flexWrap`; `Switch` nativo (visual inconsistente com o tema dashboard).
+
+## 2026-08-06 — Flex UI: Ctrl+Enter, transcript completo e produto no contexto
+
+- **Contexto:** No inbox, Enter não enviava de forma confiável; a thread só mostrava a última mensagem (seed de `lastMessage`); em `product_sale` o atendente não via qual produto o cliente pediu.
+- **Decisão:** (1) Composer web: Ctrl/Cmd+Enter envia. (2) `WhatsappMessage.handoffId` opcional + `recordConversationTurn` em todo turno do bot; ao abrir/listar, `attachPendingMessages` liga o histórico desde o último handoff resolvido. (3) `WhatsappHandoff.contextJson` com snapshot do pedido/produto; banner + painel de contexto na UI.
+- **Consequências:** Atendente vê a conversa com a Sof e o produto da venda; migration `20260806020000_flex_transcript_product_context`.
+- **Alternativas descartadas:** Só seed de lastMessage; buscar Order por telefone sem gravar no handoff (race); Enter sozinho para enviar (conflita com multiline).
+
 ## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
 
 - **Contexto:** Os `npm test` do SaaS rodavam só dentro da matriz `build` (depois do `heroku-postbuild`). No deploy QA/prod isso misturava unitário com export Expo/build Nest e deixava o gate pouco claro.
