@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Form de profissional: switches empilhados (handoff / senha)
+
+- **Contexto:** No modal Novo/Editar profissional, o chip `alignSelf: flex-start` de handoff (e o de reset de senha) quebrava no RN Web — texto longo e layout frágil, no mesmo espírito do form de produto.
+- **Decisão:** Substituir por linhas full-width com título, hint e switch visual (track/thumb), empilhadas.
+- **Consequências:** Controles legíveis e clicáveis; alinhado ao padrão do `ProductFormModal`.
+- **Alternativas descartadas:** Manter chip compacto; `Switch` nativo.
+
 ## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
 
 - **Contexto:** Os `npm test` do SaaS rodavam só dentro da matriz `build` (depois do `heroku-postbuild`). No deploy QA/prod isso misturava unitário com export Expo/build Nest e deixava o gate pouco claro.

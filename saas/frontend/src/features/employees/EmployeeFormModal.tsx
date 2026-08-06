@@ -311,34 +311,79 @@ export function EmployeeFormModal({
       {touched && fieldErrors.services ? (
         <SofErrorBanner message={fieldErrors.services} />
       ) : null}
+
+      <Text style={styles.label}>Opções</Text>
       <Pressable
         onPress={() => setCanHandleHandoffs((v) => !v)}
-        style={[styles.resetChip, canHandleHandoffs && styles.chipActive]}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: canHandleHandoffs }}
+        style={[styles.optionRow, canHandleHandoffs && styles.optionRowOn]}
       >
-        <Text
-          style={[styles.chipText, canHandleHandoffs && styles.chipTextActive]}
+        <View style={styles.optionCopy}>
+          <Text
+            style={[
+              styles.optionTitle,
+              canHandleHandoffs && styles.optionTitleOn,
+            ]}
+          >
+            Pode atender handoffs
+          </Text>
+          <Text
+            style={[
+              styles.optionHint,
+              canHandleHandoffs && styles.optionHintOn,
+            ]}
+          >
+            Vê a fila de Atendimentos no portal e assume conversas de clientes
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.switchTrack,
+            canHandleHandoffs && styles.switchTrackOn,
+          ]}
         >
-          {canHandleHandoffs
-            ? 'Pode atender handoffs (ligado)'
-            : 'Pode atender handoffs (desligado)'}
-        </Text>
+          <View
+            style={[
+              styles.switchThumb,
+              canHandleHandoffs && styles.switchThumbOn,
+            ]}
+          />
+        </View>
       </Pressable>
-      <Text style={styles.colorHint}>
-        Com a opção ligada, o profissional vê a fila de Atendimentos no portal e
-        pode assumir conversas de clientes.
-      </Text>
+
       {isEditing ? (
         <Pressable
           onPress={() => setResetPassword((v) => !v)}
-          style={[styles.resetChip, resetPassword && styles.chipActive]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: resetPassword }}
+          style={[styles.optionRow, resetPassword && styles.optionRowOn]}
         >
-          <Text
-            style={[styles.chipText, resetPassword && styles.chipTextActive]}
+          <View style={styles.optionCopy}>
+            <Text
+              style={[
+                styles.optionTitle,
+                resetPassword && styles.optionTitleOn,
+              ]}
+            >
+              Gerar novo link de senha
+            </Text>
+            <Text
+              style={[styles.optionHint, resetPassword && styles.optionHintOn]}
+            >
+              Envia um link de uso único (válido por 2h) para redefinir a senha
+            </Text>
+          </View>
+          <View
+            style={[styles.switchTrack, resetPassword && styles.switchTrackOn]}
           >
-            {resetPassword
-              ? '✓ Gerar novo link de senha'
-              : 'Gerar novo link de senha'}
-          </Text>
+            <View
+              style={[
+                styles.switchThumb,
+                resetPassword && styles.switchThumbOn,
+              ]}
+            />
+          </View>
         </Pressable>
       ) : (
         <Text style={styles.hint}>
@@ -417,14 +462,64 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
   chipText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
   chipTextActive: { fontWeight: '700', fontFamily: d.fonts.bodyMedium },
-  resetChip: {
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: d.line,
     borderRadius: d.radiusSm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     backgroundColor: d.surface,
-    marginTop: 8,
-    alignSelf: 'flex-start',
+    marginBottom: 8,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  optionRowOn: {
+    backgroundColor: d.accentSoft,
+    borderColor: d.ink,
+  },
+  optionCopy: { flex: 1, minWidth: 0, gap: 2 },
+  optionTitle: {
+    color: d.ink,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
+  optionTitleOn: { color: d.ink },
+  optionHint: {
+    color: d.muted,
+    fontSize: 12,
+    fontFamily: d.fonts.body,
+    lineHeight: 16,
+  },
+  optionHintOn: { color: d.mutedStrong },
+  switchTrack: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: d.fill,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 2,
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  switchTrackOn: {
+    backgroundColor: d.ink,
+    borderColor: d.ink,
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: d.line,
+  },
+  switchThumbOn: {
+    alignSelf: 'flex-end',
+    borderColor: 'transparent',
   },
 });
