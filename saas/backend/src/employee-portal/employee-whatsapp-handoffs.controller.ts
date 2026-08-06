@@ -57,6 +57,15 @@ export class EmployeeWhatsappHandoffsController {
     return { handoffs };
   }
 
+  @Get('macros')
+  async listMacros(@Req() req: EmployeeAuthedRequest) {
+    await this.assertEmployeeAccess(req);
+    const macros = await this.handoffs.listMacros(req.account.id, {
+      activeOnly: true,
+    });
+    return { macros };
+  }
+
   @Get(':id/messages')
   async messages(
     @Req() req: EmployeeAuthedRequest,
@@ -71,7 +80,8 @@ export class EmployeeWhatsappHandoffsController {
   async reply(
     @Req() req: EmployeeAuthedRequest,
     @Param('id') id: string,
-    @Body() body: { text?: string },
+    @Body()
+    body: { text?: string; mediaBase64?: string; mediaName?: string },
   ) {
     await this.assertEmployeeAccess(req);
     return this.handoffs.reply(
@@ -79,6 +89,10 @@ export class EmployeeWhatsappHandoffsController {
       id,
       String(body?.text || ''),
       this.actor(req),
+      {
+        mediaBase64: body?.mediaBase64,
+        mediaName: body?.mediaName,
+      },
     );
   }
 

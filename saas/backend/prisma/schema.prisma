@@ -74,6 +74,7 @@ model Account {
   whatsappSessions WhatsappSession[]
   whatsappHandoffs WhatsappHandoff[]
   whatsappMessages WhatsappMessage[]
+  handoffMacros    HandoffMacro[]
   supportTickets   SupportTicket[]
   promoRedemptions PromoCouponRedemption[]
   passwordTokens   AccountPasswordToken[]
@@ -375,6 +376,22 @@ model WhatsappHandoff {
   @@index([assignedEmployeeId])
 }
 
+/// Resposta rápida do inbox (macros criadas pelo dono; uso no composer)
+model HandoffMacro {
+  id        String   @id @default(cuid())
+  accountId String
+  title     String
+  body      String   @db.Text
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, active, sortOrder])
+}
+
 /// Mensagem persistida do inbox de atendimentos (thread por handoff;
 /// handoffId null = turno do bot antes de abrir o atendimento)
 model WhatsappMessage {
@@ -387,6 +404,12 @@ model WhatsappMessage {
   /// client | employee_party | bot | human_wa | agent
   senderKind          String
   body                String   @db.Text
+  /// null | image | video | audio | document
+  mediaKind           String?
+  /// Data URL da mídia (image/video/audio/pdf)
+  mediaUrl            String?  @db.Text
+  /// Nome do arquivo (útil p/ PDF)
+  mediaName           String?
   agentEmployeeId     String?
   sentByAccountOwner  Boolean  @default(false)
   providerMessageId   String?

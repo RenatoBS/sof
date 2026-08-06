@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -10,12 +18,22 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import type { Employee, WhatsappHandoff, WhatsappMessage } from '@/src/api/types';
+import type {
+  Employee,
+  HandoffMacro,
+  WhatsappHandoff,
+  WhatsappMessage,
+} from '@/src/api/types';
 import {
   SofButton,
   SofEmptyState,
   SofErrorBanner,
 } from '@/src/components/ui';
+import {
+  fileToHandoffMedia,
+  mediaKindLabel,
+  type HandoffMediaAttachment,
+} from '@/src/lib/handoff-media';
 import { d } from '@/src/theme/dashboard';
 import { formatPhone } from '@/src/context/DashboardContext';
 
@@ -38,6 +56,7 @@ export type HandoffInboxApi = {
   reply: (
     id: string,
     text: string,
+    media?: { mediaBase64?: string; mediaName?: string },
   ) => Promise<{ handoff: WhatsappHandoff | null; message: WhatsappMessage | null }>;
   claim: (id: string) => Promise<{ handoff: WhatsappHandoff }>;
   transfer: (
@@ -59,8 +78,12 @@ type Props = {
   mode: 'account' | 'employee';
   /** Id do profissional logado (modo employee). */
   selfEmployeeId?: string;
+  /** Cor do profissional logado (modo employee — cards atribuídos a si). */
+  selfEmployeeColor?: string;
   /** Lista de profissionais habilitados (para transferir no dashboard). */
   transferableEmployees?: Employee[];
+  /** Macros ativas para inserir no composer. */
+  macros?: HandoffMacro[];
   /** Mensagem SSE nova — pai passa quando chega whatsapp-handoff:message. */
   liveMessage?: { handoffId: string; message: WhatsappMessage } | null;
 };
@@ -94,6 +117,25 @@ function assigneeLabel(
   return emp?.name || 'Profissional';
 }
 
+/** Cor do profissional responsável (mesma lógica da Agenda). */
+function assigneeColor(
+  h: WhatsappHandoff,
+  employees: Employee[],
+  self?: { id?: string; color?: string },
+): string | null {
+  if (h.assigneeType !== 'employee' || !h.assignedEmployeeId) return null;
+  const emp = employees.find((e) => e.id === h.assignedEmployeeId);
+  if (emp?.color?.trim()) return emp.color.trim();
+  if (
+    self?.id &&
+    self.color?.trim() &&
+    h.assignedEmployeeId === self.id
+  ) {
+    return self.color.trim();
+  }
+  return null;
+}
+
 function isMine(
   h: WhatsappHandoff,
   mode: 'account' | 'employee',
@@ -121,9 +163,19 @@ export function HandoffInbox({
   api,
   mode,
   selfEmployeeId,
+  selfEmployeeColor,
   transferableEmployees = [],
+  macros = [],
   liveMessage,
 }: Props) {
+  const selfColorRef = useMemo(
+    () => ({ id: selfEmployeeId, color: selfEmployeeColor }),
+    [selfEmployeeId, selfEmployeeColor],
+  );
+  const activeMacros = useMemo(
+    () => macros.filter((m) => m.active && m.body.trim()),
+    [macros],
+  );
   const { width } = useWindowDimensions();
   const wide = width >= 960;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -133,6 +185,15 @@ export function HandoffInbox({
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
+  /** Só mobile: listas recolhíveis para liberar espaço pro chat. */
+  const [openExpanded, setOpenExpanded] = useState(true);
+  const [resolvedExpanded, setResolvedExpanded] = useState(false);
+  const [macrosOpen, setMacrosOpen] = useState(false);
+  const [attachment, setAttachment] = useState<HandoffMediaAttachment | null>(
+    null,
+  );
+  const [attachBusy, setAttachBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const open = useMemo(
@@ -195,8 +256,17 @@ export function HandoffInbox({
       setMessages([]);
       return;
     }
+    setMacrosOpen(false);
+    setAttachment(null);
     void loadMessages(selectedId);
   }, [selectedId, loadMessages]);
+
+  const insertMacro = useCallback((macro: HandoffMacro) => {
+    const text = macro.body.trim();
+    if (!text) return;
+    setDraft((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text));
+    setMacrosOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!liveMessage) return;
@@ -226,12 +296,31 @@ export function HandoffInbox({
     }
   };
 
+  const pickAttachment = async (file: File | null | undefined) => {
+    if (!file) return;
+    setAttachBusy(true);
+    setError('');
+    try {
+      const media = await fileToHandoffMedia(file);
+      setAttachment(media);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível anexar.');
+    } finally {
+      setAttachBusy(false);
+    }
+  };
+
   const send = () => {
-    if (!selected || !draft.trim()) return;
+    if (!selected) return;
     const text = draft.trim();
+    if (!text && !attachment) return;
+    const media = attachment
+      ? { mediaBase64: attachment.dataUrl, mediaName: attachment.name }
+      : undefined;
     void run('reply', async () => {
-      const res = await api.reply(selected.id, text);
+      const res = await api.reply(selected.id, text, media);
       setDraft('');
+      setAttachment(null);
       if (res.handoff) patchHandoff(res.handoff);
       if (res.message) {
         setMessages((prev) =>
@@ -260,96 +349,179 @@ export function HandoffInbox({
   };
 
   const productContext =
-    selected?.reason === 'product_sale' && selected.contextJson
+    selected?.contextJson &&
+    (selected.contextJson.productName || selected.contextJson.productId)
       ? selected.contextJson
       : null;
+  const selectedAssigneeColor = selected
+    ? assigneeColor(selected, transferableEmployees, selfColorRef)
+    : null;
 
   const queueItems = open;
   const enabledTransfer = transferableEmployees.filter(
     (e) => e.canHandleHandoffs,
   );
 
+  const showOpenList = wide || openExpanded;
+  const showResolvedList = wide || resolvedExpanded;
+  const resolvedCountLabel = resolved.length ? `(${resolved.length})` : '';
+
   const resolvedSection =
     resolved.length > 0 ? (
       <View
         style={[styles.resolvedBlock, !wide && styles.resolvedBlockMobile]}
       >
-        <Text style={styles.sectionTitleSmall}>
-          Resolvidos {resolved.length ? `(${Math.min(resolved.length, 8)})` : ''}
-        </Text>
-        {resolved.slice(0, 8).map((h) => (
+        {wide ? (
+          <Text style={styles.sectionTitleSmall}>
+            Resolvidos {resolvedCountLabel}
+          </Text>
+        ) : (
           <Pressable
-            key={h.id}
-            onPress={() => setSelectedId(h.id)}
-            style={[
-              styles.queueItem,
-              styles.queueItemResolved,
-              h.id === selectedId && styles.queueItemActive,
-            ]}
+            onPress={() => setResolvedExpanded((v) => !v)}
+            style={styles.sectionToggle}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: resolvedExpanded }}
+            accessibilityLabel={
+              resolvedExpanded
+                ? 'Recolher resolvidos'
+                : 'Expandir resolvidos'
+            }
           >
-            <Text style={styles.queueName} numberOfLines={1}>
-              {h.customerName || formatPhone(h.customerPhone)}
+            <Text style={styles.sectionTitleSmallInline}>
+              Resolvidos {resolvedCountLabel}
             </Text>
-            <Text style={styles.queueMeta}>
-              {h.resolvedAt ? formatWhen(h.resolvedAt) : ''}
+            <Text style={styles.sectionToggleAction}>
+              {resolvedExpanded ? '▴ Recolher' : '▾ Expandir'}
             </Text>
           </Pressable>
-        ))}
+        )}
+        {showResolvedList ? (
+          <View style={styles.queueListWrap}>
+            <ScrollView
+              style={styles.queueScrollCompactResolved}
+              nestedScrollEnabled
+            >
+              {resolved.slice(0, 20).map((h) => {
+                const color = assigneeColor(
+                  h,
+                  transferableEmployees,
+                  selfColorRef,
+                );
+                return (
+                  <Pressable
+                    key={h.id}
+                    onPress={() => setSelectedId(h.id)}
+                    style={[
+                      styles.queueItem,
+                      styles.queueItemCompact,
+                      styles.queueItemResolved,
+                      h.id === selectedId && styles.queueItemActive,
+                      color ? { borderLeftColor: color } : null,
+                    ]}
+                  >
+                    <Text style={styles.queueName} numberOfLines={1}>
+                      {h.customerName || formatPhone(h.customerPhone)}
+                    </Text>
+                    <Text style={styles.queueMeta}>
+                      {h.resolvedAt ? formatWhen(h.resolvedAt) : ''}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            {resolved.length > 3 ? (
+              <Text style={styles.queueScrollHint}>Mais ↓</Text>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     ) : null;
 
   return (
     <View style={[styles.root, wide && styles.rootWide]}>
       <View style={[styles.queue, wide && styles.queueWide]}>
-        <Text style={styles.sectionTitle}>
-          Abertos {queueItems.length ? `(${queueItems.length})` : ''}
-        </Text>
-        {queueItems.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <SofEmptyState
-              title="Nenhum atendimento pendente"
-              body="O bot está dando conta sozinho."
-            />
-          </View>
+        {wide ? (
+          <Text style={styles.sectionTitle}>
+            Abertos {queueItems.length ? `(${queueItems.length})` : ''}
+          </Text>
         ) : (
-          <ScrollView style={styles.queueScroll}>
-            {queueItems.map((h) => {
-              const active = h.id === selectedId;
-              return (
-                <Pressable
-                  key={h.id}
-                  onPress={() => {
-                    setSelectedId(h.id);
-                    setShowTransfer(false);
-                  }}
-                  style={[
-                    styles.queueItem,
-                    active && styles.queueItemActive,
-                    h.party === 'employee' && styles.queueItemEmployee,
-                  ]}
-                >
-                  <View style={styles.queueTop}>
-                    <Text style={styles.queueName} numberOfLines={1}>
-                      {h.customerName || formatPhone(h.customerPhone)}
-                    </Text>
-                    <Text style={styles.queueReason}>
-                      {REASON_LABEL[h.reason] || h.reason}
-                    </Text>
-                  </View>
-                  <Text style={styles.queueMeta} numberOfLines={1}>
-                    {assigneeLabel(h, transferableEmployees)} ·{' '}
-                    {formatWhen(h.openedAt)}
-                  </Text>
-                  {h.lastMessage ? (
-                    <Text style={styles.queuePreview} numberOfLines={2}>
-                      {h.lastMessage}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          <Pressable
+            onPress={() => setOpenExpanded((v) => !v)}
+            style={styles.sectionToggle}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: openExpanded }}
+            accessibilityLabel={
+              openExpanded ? 'Recolher abertos' : 'Expandir abertos'
+            }
+          >
+            <Text style={styles.sectionTitle}>
+              Abertos {queueItems.length ? `(${queueItems.length})` : ''}
+            </Text>
+            <Text style={styles.sectionToggleAction}>
+              {openExpanded ? '▴ Recolher' : '▾ Expandir'}
+            </Text>
+          </Pressable>
         )}
+        {showOpenList ? (
+          queueItems.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <SofEmptyState
+                title="Nenhum atendimento pendente"
+                body="O bot está dando conta sozinho."
+              />
+            </View>
+          ) : (
+            <View style={styles.queueListWrap}>
+              <ScrollView
+                style={styles.queueScrollCompactOpen}
+                nestedScrollEnabled
+              >
+                {queueItems.map((h) => {
+                  const active = h.id === selectedId;
+                  const color = assigneeColor(
+                    h,
+                    transferableEmployees,
+                    selfColorRef,
+                  );
+                  return (
+                    <Pressable
+                      key={h.id}
+                      onPress={() => {
+                        setSelectedId(h.id);
+                        setShowTransfer(false);
+                      }}
+                      style={[
+                        styles.queueItem,
+                        styles.queueItemCompact,
+                        active && styles.queueItemActive,
+                        h.party === 'employee' && !color
+                          ? styles.queueItemEmployee
+                          : null,
+                        color ? { borderLeftColor: color } : null,
+                      ]}
+                    >
+                      <View style={styles.queueTop}>
+                        <Text style={styles.queueName} numberOfLines={1}>
+                          {h.customerName || formatPhone(h.customerPhone)}
+                        </Text>
+                        <Text style={styles.queueReason}>
+                          {REASON_LABEL[h.reason] || h.reason}
+                        </Text>
+                      </View>
+                      <Text style={styles.queueMeta} numberOfLines={1}>
+                        {assigneeLabel(h, transferableEmployees)} ·{' '}
+                        {formatWhen(h.openedAt)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              {queueItems.length > 3 ? (
+                <Text style={styles.queueScrollHint}>Mais ↓</Text>
+              ) : null}
+            </View>
+          )
+        ) : null}
 
         {wide ? resolvedSection : null}
       </View>
@@ -373,7 +545,18 @@ export function HandoffInbox({
                   {selected.party === 'employee' ? 'Profissional' : 'Cliente'}
                 </Text>
               </View>
-              <Text style={styles.assigneeChip}>
+              <Text
+                style={[
+                  styles.assigneeChip,
+                  selectedAssigneeColor
+                    ? {
+                        borderColor: selectedAssigneeColor,
+                        backgroundColor: `${selectedAssigneeColor}22`,
+                        color: d.ink,
+                      }
+                    : null,
+                ]}
+              >
                 {assigneeLabel(selected, transferableEmployees)}
               </Text>
             </View>
@@ -411,6 +594,10 @@ export function HandoffInbox({
                 messages.map((m) => {
                   const mine =
                     m.senderKind === 'agent' || m.senderKind === 'human_wa';
+                  const caption =
+                    m.body && m.body !== mediaKindLabel(m.mediaKind)
+                      ? m.body
+                      : '';
                   return (
                     <View
                       key={m.id}
@@ -424,14 +611,84 @@ export function HandoffInbox({
                           ? 'Dono'
                           : SENDER_LABEL[m.senderKind] || m.senderKind}
                       </Text>
-                      <Text
-                        style={[
-                          styles.bubbleBody,
-                          mine && styles.bubbleBodyOut,
-                        ]}
-                      >
-                        {m.body}
-                      </Text>
+                      {m.mediaUrl && m.mediaKind === 'image' ? (
+                        <Image
+                          source={{ uri: m.mediaUrl }}
+                          style={styles.bubbleMediaImage}
+                          resizeMode="cover"
+                        />
+                      ) : null}
+                      {m.mediaUrl &&
+                      m.mediaKind === 'video' &&
+                      Platform.OS === 'web'
+                        ? createElement('video', {
+                            src: m.mediaUrl,
+                            controls: true,
+                            style: {
+                              width: '100%',
+                              maxHeight: 220,
+                              borderRadius: 8,
+                              marginTop: 4,
+                            },
+                          })
+                        : null}
+                      {m.mediaUrl &&
+                      m.mediaKind === 'audio' &&
+                      Platform.OS === 'web'
+                        ? createElement('audio', {
+                            src: m.mediaUrl,
+                            controls: true,
+                            style: { width: '100%', marginTop: 4 },
+                          })
+                        : null}
+                      {m.mediaUrl && m.mediaKind === 'document' ? (
+                        <Pressable
+                          onPress={() =>
+                            Linking.openURL(m.mediaUrl!).catch(() => undefined)
+                          }
+                          style={styles.bubbleDoc}
+                        >
+                          <Text
+                            style={[
+                              styles.bubbleDocText,
+                              mine && styles.bubbleBodyOut,
+                            ]}
+                          >
+                            PDF · {m.mediaName || 'documento.pdf'}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                      {m.mediaUrl &&
+                      (m.mediaKind === 'video' || m.mediaKind === 'audio') &&
+                      Platform.OS !== 'web' ? (
+                        <Text
+                          style={[
+                            styles.bubbleBody,
+                            mine && styles.bubbleBodyOut,
+                          ]}
+                        >
+                          {mediaKindLabel(m.mediaKind)}
+                        </Text>
+                      ) : null}
+                      {caption ? (
+                        <Text
+                          style={[
+                            styles.bubbleBody,
+                            mine && styles.bubbleBodyOut,
+                          ]}
+                        >
+                          {caption}
+                        </Text>
+                      ) : !m.mediaUrl ? (
+                        <Text
+                          style={[
+                            styles.bubbleBody,
+                            mine && styles.bubbleBodyOut,
+                          ]}
+                        >
+                          {m.body}
+                        </Text>
+                      ) : null}
                       <Text
                         style={[
                           styles.bubbleTime,
@@ -567,35 +824,179 @@ export function HandoffInbox({
                 ) : null}
 
                 {canCompose(selected, mode, selfEmployeeId) ? (
-                  <View style={styles.composerRow}>
-                    <View style={styles.composerField}>
-                      <TextInput
-                        style={styles.input}
-                        value={draft}
-                        onChangeText={setDraft}
-                        placeholder="Escreva a resposta…"
-                        placeholderTextColor={d.muted}
-                        multiline
-                        editable={!busy}
-                        onSubmitEditing={send}
-                        // Web: Ctrl/Cmd+Enter envia (Enter sozinho = nova linha).
-                        // @ts-expect-error onKeyDown existe no RN Web
-                        onKeyDown={onComposerKey}
-                        onKeyPress={onComposerKey}
+                  <>
+                    {activeMacros.length > 0 ? (
+                      <View style={styles.macroSelectWrap}>
+                        <Text style={styles.macroSelectLabel}>Macro</Text>
+                        {Platform.OS === 'web' ? (
+                          createElement(
+                            'select',
+                            {
+                              value: '',
+                              disabled: Boolean(busy),
+                              'aria-label': 'Inserir macro no texto',
+                              onChange: (e: {
+                                target: { value: string };
+                              }) => {
+                                const macro = activeMacros.find(
+                                  (m) => m.id === e.target.value,
+                                );
+                                if (macro) insertMacro(macro);
+                              },
+                              style: {
+                                width: '100%',
+                                height: 40,
+                                borderWidth: 1,
+                                borderStyle: 'solid',
+                                borderColor: d.line,
+                                borderRadius: 8,
+                                paddingLeft: 10,
+                                paddingRight: 10,
+                                fontSize: 14,
+                                color: d.ink,
+                                backgroundColor: '#fff',
+                                fontFamily: d.fonts.body,
+                              },
+                            },
+                            createElement(
+                              'option',
+                              { value: '', disabled: true, hidden: true },
+                              'Inserir macro…',
+                            ),
+                            ...activeMacros.map((macro) =>
+                              createElement(
+                                'option',
+                                { key: macro.id, value: macro.id },
+                                macro.title,
+                              ),
+                            ),
+                          )
+                        ) : (
+                          <>
+                            <Pressable
+                              onPress={() => setMacrosOpen((v) => !v)}
+                              style={styles.macroSelectButton}
+                              disabled={Boolean(busy)}
+                              accessibilityRole="button"
+                              accessibilityState={{ expanded: macrosOpen }}
+                            >
+                              <Text style={styles.macroSelectButtonText}>
+                                Inserir macro…
+                              </Text>
+                              <Text style={styles.macroSelectChevron}>
+                                {macrosOpen ? '▲' : '▼'}
+                              </Text>
+                            </Pressable>
+                            {macrosOpen ? (
+                              <View style={styles.macroSelectList}>
+                                {activeMacros.map((macro) => (
+                                  <Pressable
+                                    key={macro.id}
+                                    onPress={() => insertMacro(macro)}
+                                    style={styles.macroSelectOption}
+                                    disabled={Boolean(busy)}
+                                  >
+                                    <Text
+                                      style={styles.macroSelectOptionText}
+                                      numberOfLines={1}
+                                    >
+                                      {macro.title}
+                                    </Text>
+                                  </Pressable>
+                                ))}
+                              </View>
+                            ) : null}
+                          </>
+                        )}
+                      </View>
+                    ) : null}
+                    {attachment ? (
+                      <View style={styles.attachPreview}>
+                        {attachment.kind === 'image' ? (
+                          <Image
+                            source={{ uri: attachment.dataUrl }}
+                            style={styles.attachThumb}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text style={styles.attachMeta} numberOfLines={1}>
+                            {mediaKindLabel(attachment.kind)} {attachment.name}
+                          </Text>
+                        )}
+                        <Pressable
+                          onPress={() => setAttachment(null)}
+                          disabled={Boolean(busy)}
+                        >
+                          <Text style={styles.attachRemove}>Remover</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                    <View style={styles.composerRow}>
+                      <View style={styles.composerField}>
+                        <TextInput
+                          style={styles.input}
+                          value={draft}
+                          onChangeText={setDraft}
+                          placeholder={
+                            attachment
+                              ? 'Legenda opcional…'
+                              : 'Escreva a resposta…'
+                          }
+                          placeholderTextColor={d.muted}
+                          multiline
+                          editable={!busy}
+                          onSubmitEditing={send}
+                          // Web: Ctrl/Cmd+Enter envia (Enter sozinho = nova linha).
+                          // @ts-expect-error onKeyDown existe no RN Web
+                          onKeyDown={onComposerKey}
+                          onKeyPress={onComposerKey}
+                        />
+                        <Text style={styles.composerHint}>
+                          Ctrl+Enter para enviar
+                        </Text>
+                      </View>
+                      {Platform.OS === 'web' ? (
+                        <>
+                          {createElement('input', {
+                            ref: (el: HTMLInputElement | null) => {
+                              fileInputRef.current = el;
+                            },
+                            type: 'file',
+                            accept:
+                              'image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/*,application/pdf',
+                            style: { display: 'none' },
+                            onChange: (e: {
+                              target: { files: FileList | null; value: string };
+                            }) => {
+                              const file = e.target.files?.[0];
+                              void pickAttachment(file);
+                              e.target.value = '';
+                            },
+                          })}
+                          <SofButton
+                            title="Anexar"
+                            variant="light"
+                            theme="dashboard"
+                            loading={attachBusy}
+                            disabled={Boolean(busy) || attachBusy}
+                            onPress={() => fileInputRef.current?.click()}
+                          />
+                        </>
+                      ) : null}
+                      <SofButton
+                        title="Enviar"
+                        variant="dark"
+                        theme="dashboard"
+                        loading={busy === 'reply'}
+                        disabled={
+                          Boolean(busy) ||
+                          (!draft.trim() && !attachment) ||
+                          attachBusy
+                        }
+                        onPress={send}
                       />
-                      <Text style={styles.composerHint}>
-                        Ctrl+Enter para enviar
-                      </Text>
                     </View>
-                    <SofButton
-                      title="Enviar"
-                      variant="dark"
-                      theme="dashboard"
-                      loading={busy === 'reply'}
-                      disabled={Boolean(busy) || !draft.trim()}
-                      onPress={send}
-                    />
-                  </View>
+                  </>
                 ) : (
                   <Text style={styles.muted}>
                     Assuma o atendimento para responder por aqui.
@@ -606,6 +1007,44 @@ export function HandoffInbox({
           </>
         )}
       </View>
+
+      {!wide && selected ? (
+        <View style={[styles.context, styles.contextMobile]}>
+          <Text style={styles.sectionTitleSmall}>Contexto</Text>
+          {productContext ? (
+            <View style={styles.contextProductBlock}>
+              <Text style={styles.contextLabel}>Produto selecionado</Text>
+              <Text style={styles.contextValue}>
+                {productContext.productName || '—'}
+                {productContext.quantity
+                  ? ` · qtd ${productContext.quantity}`
+                  : ''}
+              </Text>
+              {productContext.total != null ? (
+                <Text style={styles.contextValue}>
+                  {Number(productContext.total).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </Text>
+              ) : null}
+              {productContext.paymentLinkUrl ? (
+                <Text style={styles.contextValueMono} numberOfLines={2}>
+                  {productContext.paymentLinkUrl}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          <Text style={styles.contextLabel}>Motivo</Text>
+          <Text style={styles.contextValue}>
+            {REASON_LABEL[selected.reason] || selected.reason}
+          </Text>
+          <Text style={styles.contextLabel}>Responsável</Text>
+          <Text style={styles.contextValue}>
+            {assigneeLabel(selected, transferableEmployees)}
+          </Text>
+        </View>
+      ) : null}
 
       {!wide ? resolvedSection : null}
 
@@ -625,8 +1064,8 @@ export function HandoffInbox({
             {REASON_LABEL[selected.reason] || selected.reason}
           </Text>
           {productContext ? (
-            <>
-              <Text style={styles.contextLabel}>Produto</Text>
+            <View style={styles.contextProductBlock}>
+              <Text style={styles.contextLabel}>Produto selecionado</Text>
               <Text style={styles.contextValue}>
                 {productContext.productName || '—'}
                 {productContext.quantity
@@ -652,7 +1091,15 @@ export function HandoffInbox({
                   </Text>
                 </>
               ) : null}
-            </>
+              {productContext.paymentLinkUrl ? (
+                <>
+                  <Text style={styles.contextLabel}>Link de pagamento</Text>
+                  <Text style={styles.contextValueMono} numberOfLines={3}>
+                    {productContext.paymentLinkUrl}
+                  </Text>
+                </>
+              ) : null}
+            </View>
           ) : null}
           <Text style={styles.contextLabel}>Responsável</Text>
           <Text style={styles.contextValue}>
@@ -683,7 +1130,33 @@ const styles = StyleSheet.create({
   rootWide: { flexDirection: 'row', alignItems: 'stretch', gap: 12 },
   queue: { gap: 8 },
   queueWide: { width: 280, flexShrink: 0 },
-  queueScroll: { maxHeight: 420 },
+  queueListWrap: { gap: 4 },
+  /** Viewport ~3 cards + scroll (desktop e mobile). */
+  queueScrollCompactOpen: { maxHeight: 186 },
+  queueScrollCompactResolved: { maxHeight: 168 },
+  queueScrollHint: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: d.muted,
+    fontFamily: d.fonts.bodyMedium,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  sectionToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    minHeight: 44,
+    paddingVertical: 4,
+  },
+  sectionToggleAction: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: d.accent,
+    fontFamily: d.fonts.bodyMedium,
+    flexShrink: 0,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -699,6 +1172,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginBottom: 6,
   },
+  sectionTitleSmallInline: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: d.muted,
+    fontFamily: d.fonts.bodyMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    flex: 1,
+  },
   emptyBox: {
     borderWidth: 1,
     borderColor: d.line,
@@ -709,14 +1191,22 @@ const styles = StyleSheet.create({
   queueItem: {
     borderWidth: 1,
     borderColor: d.line,
+    borderLeftWidth: 4,
+    borderLeftColor: d.line,
     borderRadius: d.radiusSm,
     padding: 12,
     marginBottom: 8,
     backgroundColor: d.surface,
     gap: 4,
   },
+  queueItemCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    gap: 2,
+  },
   queueItemActive: { borderColor: d.accent, backgroundColor: d.accentSoft },
-  queueItemEmployee: { borderColor: '#c4b5fd' },
+  queueItemEmployee: { borderLeftColor: '#c4b5fd' },
   queueItemResolved: { opacity: 0.7 },
   queueTop: {
     flexDirection: 'row',
@@ -837,6 +1327,26 @@ const styles = StyleSheet.create({
     fontFamily: d.fonts.body,
   },
   bubbleBodyOut: { color: '#fff' },
+  bubbleMediaImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginTop: 4,
+    backgroundColor: '#e2e8f0',
+  },
+  bubbleDoc: {
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+  bubbleDocText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: d.ink,
+    fontFamily: d.fonts.bodyMedium,
+  },
   bubbleTime: {
     fontSize: 10,
     color: d.muted,
@@ -844,11 +1354,88 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   bubbleTimeOut: { color: 'rgba(255,255,255,0.65)' },
+  attachPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: d.radiusSm,
+    backgroundColor: d.accentSoft,
+  },
+  attachThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: '#e2e8f0',
+  },
+  attachMeta: {
+    flex: 1,
+    fontSize: 13,
+    color: d.ink,
+    fontFamily: d.fonts.body,
+  },
+  attachRemove: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#b91c1c',
+    fontFamily: d.fonts.bodyMedium,
+  },
   composer: {
     borderTopWidth: 1,
     borderTopColor: d.line,
     padding: 12,
     gap: 10,
+  },
+  macroSelectWrap: { gap: 6 },
+  macroSelectLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: d.muted,
+    fontFamily: d.fonts.bodyMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  macroSelectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: d.radiusSm,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    minHeight: 40,
+  },
+  macroSelectButtonText: {
+    fontSize: 14,
+    color: d.muted,
+    fontFamily: d.fonts.body,
+  },
+  macroSelectChevron: {
+    fontSize: 10,
+    color: d.muted,
+    fontFamily: d.fonts.body,
+  },
+  macroSelectList: {
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: d.radiusSm,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+    maxHeight: 180,
+  },
+  macroSelectOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: d.line,
+  },
+  macroSelectOptionText: {
+    fontSize: 14,
+    color: d.ink,
+    fontFamily: d.fonts.body,
   },
   actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   composerRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
@@ -899,6 +1486,19 @@ const styles = StyleSheet.create({
     backgroundColor: d.surface,
     padding: 14,
     gap: 6,
+  },
+  contextMobile: {
+    width: '100%',
+  },
+  contextProductBlock: {
+    marginTop: 4,
+    marginBottom: 4,
+    padding: 10,
+    borderRadius: d.radiusSm,
+    backgroundColor: d.accentSoft,
+    borderWidth: 1,
+    borderColor: d.line,
+    gap: 2,
   },
   contextLabel: {
     fontSize: 11,

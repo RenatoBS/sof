@@ -68,6 +68,18 @@ export type WhatsappInteractiveMenu = {
   footerText?: string;
 };
 
+export type HandoffProductContext = {
+  orderId?: string | null;
+  productId?: string | null;
+  productName?: string | null;
+  quantity?: number | null;
+  unitPrice?: number | null;
+  lineTotal?: number | null;
+  total?: number | null;
+  status?: string | null;
+  paymentLinkUrl?: string | null;
+};
+
 export type WhatsappBotResult = {
   replies: string[];
   interactive?: WhatsappInteractiveMenu[];
@@ -81,6 +93,8 @@ export type WhatsappBotResult = {
   humanRequested?: boolean;
   /** Pedido de produto com handoffEnabled — abre alerta product_sale. */
   productSaleHandoff?: boolean;
+  /** Snapshot do produto/pedido para o painel de contexto do inbox. */
+  handoffContext?: HandoffProductContext;
 };
 
 const DATETIME_RE = /(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/;
@@ -1599,6 +1613,17 @@ export class WhatsappBotService {
       this.realtime.broadcast(account.id, 'order:created', { order: shaped });
 
       const withHandoff = Boolean(product.handoffEnabled);
+      const handoffContext: HandoffProductContext = {
+        orderId: order.id,
+        productId: product.id,
+        productName: product.name,
+        quantity,
+        unitPrice: product.price,
+        lineTotal: order.total,
+        total: order.total,
+        status: order.status,
+        paymentLinkUrl: product.paymentLinkUrl || null,
+      };
       return {
         replies: [
           botCopy.orderPlaced({
@@ -1609,6 +1634,7 @@ export class WhatsappBotService {
         ],
         order: shaped,
         productSaleHandoff: withHandoff || undefined,
+        handoffContext: withHandoff ? handoffContext : undefined,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';

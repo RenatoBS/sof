@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { employeeApi } from '@/src/api/endpoints';
-import type { WhatsappHandoff, WhatsappMessage } from '@/src/api/types';
+import type {
+  HandoffMacro,
+  WhatsappHandoff,
+  WhatsappMessage,
+} from '@/src/api/types';
 import { useEmployeeAuth } from '@/src/auth/EmployeeAuthProvider';
 import { SofLoadingGate, SofPageHeader } from '@/src/components/ui';
 import { HandoffInbox } from '@/src/features/handoffs/HandoffInbox';
@@ -11,6 +15,7 @@ import { useRealtime } from '@/src/hooks/useRealtime';
 export default function EmployeeHandoffsScreen() {
   const { employee, loading: authLoading } = useEmployeeAuth();
   const [handoffs, setHandoffs] = useState<WhatsappHandoff[]>([]);
+  const [macros, setMacros] = useState<HandoffMacro[]>([]);
   const [loading, setLoading] = useState(true);
   const [liveMessage, setLiveMessage] = useState<{
     handoffId: string;
@@ -20,10 +25,15 @@ export default function EmployeeHandoffsScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await employeeApi.whatsappHandoffs();
-      setHandoffs(res.handoffs);
+      const [handoffsRes, macrosRes] = await Promise.all([
+        employeeApi.whatsappHandoffs(),
+        employeeApi.handoffMacros().catch(() => ({ macros: [] as HandoffMacro[] })),
+      ]);
+      setHandoffs(handoffsRes.handoffs);
+      setMacros(macrosRes.macros);
     } catch {
       setHandoffs([]);
+      setMacros([]);
     } finally {
       setLoading(false);
     }
@@ -103,6 +113,8 @@ export default function EmployeeHandoffsScreen() {
         api={api}
         mode="employee"
         selfEmployeeId={employee.id}
+        selfEmployeeColor={employee.color}
+        macros={macros}
         liveMessage={liveMessage}
       />
     </View>

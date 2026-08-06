@@ -29,6 +29,77 @@ export type MessageSenderKind =
   | 'agent';
 
 const HUMAN_PAUSE_MS = 60 * 60 * 1000;
+const MACRO_TITLE_MAX = 60;
+const MACRO_BODY_MAX = 4000;
+const MACRO_MAX_PER_ACCOUNT = 50;
+
+type MediaKind = 'image' | 'video' | 'audio' | 'document';
+
+const MEDIA_LIMITS: Record<MediaKind, { mime: RegExp; maxBytes: number }> = {
+  image: { mime: /^image\/(jpeg|jpg|png|webp)$/i, maxBytes: 2 * 1024 * 1024 },
+  video: { mime: /^video\/(mp4|webm)$/i, maxBytes: 16 * 1024 * 1024 },
+  audio: {
+    mime: /^audio\/(mpeg|mp3|ogg|mp4|aac|webm|wav)$/i,
+    maxBytes: 5 * 1024 * 1024,
+  },
+  document: { mime: /^application\/pdf$/i, maxBytes: 10 * 1024 * 1024 },
+};
+
+function mediaKindLabel(kind?: MediaKind | null): string {
+  if (kind === 'image') return '[Imagem]';
+  if (kind === 'video') return '[Vídeo]';
+  if (kind === 'audio') return '[Áudio]';
+  if (kind === 'document') return '[PDF]';
+  return '';
+}
+
+function dataUrlByteLength(dataUrl: string): number {
+  const i = dataUrl.indexOf(',');
+  if (i < 0) return 0;
+  return Math.floor(((dataUrl.length - i - 1) * 3) / 4);
+}
+
+function parseHandoffMedia(
+  raw?: string,
+): { kind: MediaKind; dataUrl: string; fileName?: string } | null {
+  const dataUrl = String(raw || '').trim();
+  if (!dataUrl) return null;
+  const match = /^data:([^;]+);base64,/i.exec(dataUrl);
+  if (!match) {
+    throw new BadRequestException({
+      error: 'Anexo inválido. Envie um data URL base64.',
+    });
+  }
+  const mime = match[1].toLowerCase();
+  let kind: MediaKind | null = null;
+  for (const [k, rule] of Object.entries(MEDIA_LIMITS) as Array<
+    [MediaKind, { mime: RegExp; maxBytes: number }]
+  >) {
+    if (rule.mime.test(mime)) {
+      kind = k;
+      break;
+    }
+  }
+  if (!kind) {
+    throw new BadRequestException({
+      error: 'Tipo não suportado. Use imagem, vídeo, áudio ou PDF.',
+    });
+  }
+  if (dataUrlByteLength(dataUrl) > MEDIA_LIMITS[kind].maxBytes) {
+    throw new BadRequestException({
+      error: `Arquivo muito grande para ${kind}.`,
+    });
+  }
+  const fileName =
+    kind === 'document'
+      ? 'documento.pdf'
+      : kind === 'image'
+        ? 'imagem.jpg'
+        : kind === 'video'
+          ? 'video.mp4'
+          : 'audio.mp3';
+  return { kind, dataUrl, fileName };
+}
 
 type Actor =
   | { kind: 'account' }
@@ -236,6 +307,9 @@ export class WhatsappHandoffsService {
     direction: 'inbound' | 'outbound';
     senderKind: MessageSenderKind;
     body: string;
+    mediaKind?: 'image' | 'video' | 'audio' | 'document' | null;
+    mediaUrl?: string | null;
+    mediaName?: string | null;
     providerMessageId?: string;
     agentEmployeeId?: string | null;
     sentByAccountOwner?: boolean;
@@ -243,7 +317,7 @@ export class WhatsappHandoffsService {
     allowWithoutHandoff?: boolean;
   }) {
     const body = String(opts.body || '').trim();
-    if (!body) return null;
+    if (!body && !opts.mediaUrl) return null;
 
     if (opts.providerMessageId) {
       const dup = await this.prisma.whatsappMessage.findFirst({
@@ -273,6 +347,7 @@ export class WhatsappHandoffsService {
 
     if (!handoff && !opts.allowWithoutHandoff) return null;
 
+    const storedBody = (body || mediaKindLabel(opts.mediaKind)).slice(0, 4000);
     const message = await this.prisma.whatsappMessage.create({
       data: {
         accountId: opts.accountId,
@@ -280,7 +355,10 @@ export class WhatsappHandoffsService {
         customerPhone: phone,
         direction: opts.direction,
         senderKind: opts.senderKind,
-        body: body.slice(0, 4000),
+        body: storedBody,
+        mediaKind: opts.mediaKind || null,
+        mediaUrl: opts.mediaUrl || null,
+        mediaName: opts.mediaName ? String(opts.mediaName).slice(0, 200) : null,
         providerMessageId: opts.providerMessageId || null,
         agentEmployeeId: opts.agentEmployeeId || null,
         sentByAccountOwner: Boolean(opts.sentByAccountOwner),
@@ -290,7 +368,7 @@ export class WhatsappHandoffsService {
     if (handoff && opts.updateLastMessage !== false) {
       const updated = await this.prisma.whatsappHandoff.update({
         where: { id: handoff.id },
-        data: { lastMessage: body.slice(0, 500) },
+        data: { lastMessage: storedBody.slice(0, 500) },
       });
       this.realtime.broadcast(opts.accountId, 'whatsapp-handoff:updated', {
         handoff: this.shape(updated),
@@ -507,10 +585,12 @@ export class WhatsappHandoffsService {
     handoffId: string,
     textRaw: string,
     actor: Actor,
+    media?: { mediaBase64?: string; mediaName?: string },
   ) {
     const text = String(textRaw || '').trim();
-    if (!text) {
-      throw new BadRequestException({ error: 'Informe a mensagem.' });
+    const mediaParsed = parseHandoffMedia(media?.mediaBase64);
+    if (!text && !mediaParsed) {
+      throw new BadRequestException({ error: 'Informe a mensagem ou anexe um arquivo.' });
     }
     if (text.length > 4000) {
       throw new BadRequestException({ error: 'Mensagem muito longa.' });
@@ -532,15 +612,27 @@ export class WhatsappHandoffsService {
       where: { id: accountId },
       select: { whatsappInstanceToken: true },
     });
+    const instanceToken = account?.whatsappInstanceToken || undefined;
 
     // Envio best-effort: inbox grava mesmo se a sessão WA estiver caída (dev/e2e).
     let delivered = true;
     try {
-      await this.whatsappApi.sendText(
-        existing.customerPhone,
-        text,
-        account?.whatsappInstanceToken || undefined,
-      );
+      if (mediaParsed) {
+        await this.whatsappApi.sendMedia({
+          to: existing.customerPhone,
+          type: mediaParsed.kind,
+          file: mediaParsed.dataUrl,
+          caption: text || undefined,
+          fileName: media?.mediaName || mediaParsed.fileName,
+          instanceToken,
+        });
+      } else {
+        await this.whatsappApi.sendText(
+          existing.customerPhone,
+          text,
+          instanceToken,
+        );
+      }
     } catch (err) {
       delivered = false;
       console.warn(
@@ -568,7 +660,10 @@ export class WhatsappHandoffsService {
       handoffId: existing.id,
       direction: 'outbound',
       senderKind: 'agent',
-      body: text,
+      body: text || mediaKindLabel(mediaParsed?.kind),
+      mediaKind: mediaParsed?.kind || null,
+      mediaUrl: mediaParsed?.dataUrl || null,
+      mediaName: media?.mediaName || mediaParsed?.fileName || null,
       agentEmployeeId: actor.kind === 'employee' ? actor.employeeId : null,
       sentByAccountOwner: actor.kind === 'account',
     });
@@ -984,5 +1079,126 @@ export class WhatsappHandoffsService {
         error: 'Este atendimento está com outra pessoa.',
       });
     }
+  }
+
+  shapeMacro(macro: object) {
+    return serializeDates(macro);
+  }
+
+  async listMacros(accountId: string, opts?: { activeOnly?: boolean }) {
+    const rows = await this.prisma.handoffMacro.findMany({
+      where: {
+        accountId,
+        ...(opts?.activeOnly ? { active: true } : {}),
+      },
+      orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }],
+    });
+    return rows.map((r) => this.shapeMacro(r));
+  }
+
+  async createMacro(
+    accountId: string,
+    body: { title?: string; body?: string; sortOrder?: number; active?: boolean },
+  ) {
+    const title = String(body?.title || '').trim();
+    const text = String(body?.body || '').trim();
+    if (!title || title.length > MACRO_TITLE_MAX) {
+      throw new BadRequestException({
+        error: `Informe um título (1–${MACRO_TITLE_MAX} caracteres).`,
+      });
+    }
+    if (!text || text.length > MACRO_BODY_MAX) {
+      throw new BadRequestException({
+        error: `Informe o texto da macro (1–${MACRO_BODY_MAX} caracteres).`,
+      });
+    }
+    const count = await this.prisma.handoffMacro.count({ where: { accountId } });
+    if (count >= MACRO_MAX_PER_ACCOUNT) {
+      throw new BadRequestException({
+        error: `Limite de ${MACRO_MAX_PER_ACCOUNT} macros por conta.`,
+      });
+    }
+    const maxOrder = await this.prisma.handoffMacro.aggregate({
+      where: { accountId },
+      _max: { sortOrder: true },
+    });
+    const sortOrder =
+      typeof body?.sortOrder === 'number' && Number.isFinite(body.sortOrder)
+        ? Math.max(0, Math.floor(body.sortOrder))
+        : (maxOrder._max.sortOrder ?? -1) + 1;
+    const created = await this.prisma.handoffMacro.create({
+      data: {
+        accountId,
+        title,
+        body: text,
+        sortOrder,
+        active: body?.active === false ? false : true,
+      },
+    });
+    return this.shapeMacro(created);
+  }
+
+  async updateMacro(
+    accountId: string,
+    id: string,
+    body: {
+      title?: string;
+      body?: string;
+      sortOrder?: number;
+      active?: boolean;
+    },
+  ) {
+    const existing = await this.prisma.handoffMacro.findFirst({
+      where: { id, accountId },
+    });
+    if (!existing) {
+      throw new NotFoundException({ error: 'Macro não encontrada.' });
+    }
+    const data: {
+      title?: string;
+      body?: string;
+      sortOrder?: number;
+      active?: boolean;
+    } = {};
+    if (body?.title !== undefined) {
+      const title = String(body.title || '').trim();
+      if (!title || title.length > MACRO_TITLE_MAX) {
+        throw new BadRequestException({
+          error: `Informe um título (1–${MACRO_TITLE_MAX} caracteres).`,
+        });
+      }
+      data.title = title;
+    }
+    if (body?.body !== undefined) {
+      const text = String(body.body || '').trim();
+      if (!text || text.length > MACRO_BODY_MAX) {
+        throw new BadRequestException({
+          error: `Informe o texto da macro (1–${MACRO_BODY_MAX} caracteres).`,
+        });
+      }
+      data.body = text;
+    }
+    if (typeof body?.sortOrder === 'number' && Number.isFinite(body.sortOrder)) {
+      data.sortOrder = Math.max(0, Math.floor(body.sortOrder));
+    }
+    if (typeof body?.active === 'boolean') {
+      data.active = body.active;
+    }
+    const updated = await this.prisma.handoffMacro.update({
+      where: { id: existing.id },
+      data,
+    });
+    return this.shapeMacro(updated);
+  }
+
+  async deleteMacro(accountId: string, id: string) {
+    const existing = await this.prisma.handoffMacro.findFirst({
+      where: { id, accountId },
+    });
+    if (!existing) {
+      throw new NotFoundException({ error: 'Macro não encontrada.' });
+    }
+    await this.prisma.handoffMacro.delete({ where: { id: existing.id } });
+    return { ok: true as const };
   }
 }

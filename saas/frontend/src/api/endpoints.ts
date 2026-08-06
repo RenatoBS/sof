@@ -13,6 +13,7 @@ import type {
   SupportTicket,
   SupportTicketComment,
   SupportTicketStatus,
+  HandoffMacro,
   WhatsappHandoff,
   WhatsappMessage,
 } from '@/src/api/types';
@@ -147,10 +148,22 @@ export const employeeApi = {
       `/employee/whatsapp-handoffs/${id}/messages`,
       { auth: 'employee' },
     ),
-  replyWhatsappHandoff: (id: string, text: string) =>
+  replyWhatsappHandoff: (
+    id: string,
+    text: string,
+    media?: { mediaBase64?: string; mediaName?: string },
+  ) =>
     api<{ handoff: WhatsappHandoff | null; message: WhatsappMessage | null }>(
       `/employee/whatsapp-handoffs/${id}/reply`,
-      { method: 'POST', body: { text }, auth: 'employee' },
+      {
+        method: 'POST',
+        body: {
+          text,
+          mediaBase64: media?.mediaBase64,
+          mediaName: media?.mediaName,
+        },
+        auth: 'employee',
+      },
     ),
   claimWhatsappHandoff: (id: string) =>
     api<{ handoff: WhatsappHandoff }>(
@@ -180,6 +193,10 @@ export const employeeApi = {
       `/employee/whatsapp-handoffs/${id}/return-to-sof`,
       { method: 'POST', auth: 'employee' },
     ),
+  handoffMacros: () =>
+    api<{ macros: HandoffMacro[] }>('/employee/whatsapp-handoffs/macros', {
+      auth: 'employee',
+    }),
 };
 
 export const checkoutApi = {
@@ -450,16 +467,56 @@ export const dashboardApi = {
       '/whatsapp-handoffs/settings',
       { method: 'PUT', body: { threshold } },
     ),
+  handoffMacros: () =>
+    api<{ macros: HandoffMacro[] }>('/whatsapp-handoffs/macros'),
+  createHandoffMacro: (body: {
+    title: string;
+    body: string;
+    active?: boolean;
+    sortOrder?: number;
+  }) =>
+    api<{ macro: HandoffMacro }>('/whatsapp-handoffs/macros', {
+      method: 'POST',
+      body,
+    }),
+  updateHandoffMacro: (
+    id: string,
+    body: {
+      title?: string;
+      body?: string;
+      active?: boolean;
+      sortOrder?: number;
+    },
+  ) =>
+    api<{ macro: HandoffMacro }>(`/whatsapp-handoffs/macros/${id}`, {
+      method: 'PUT',
+      body,
+    }),
+  deleteHandoffMacro: (id: string) =>
+    api<{ ok: boolean }>(`/whatsapp-handoffs/macros/${id}`, {
+      method: 'DELETE',
+    }),
   resolveWhatsappHandoff: (id: string) =>
     api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/resolve`, {
       method: 'POST',
     }),
   whatsappHandoffMessages: (id: string) =>
     api<{ messages: WhatsappMessage[] }>(`/whatsapp-handoffs/${id}/messages`),
-  replyWhatsappHandoff: (id: string, text: string) =>
+  replyWhatsappHandoff: (
+    id: string,
+    text: string,
+    media?: { mediaBase64?: string; mediaName?: string },
+  ) =>
     api<{ handoff: WhatsappHandoff | null; message: WhatsappMessage | null }>(
       `/whatsapp-handoffs/${id}/reply`,
-      { method: 'POST', body: { text } },
+      {
+        method: 'POST',
+        body: {
+          text,
+          mediaBase64: media?.mediaBase64,
+          mediaName: media?.mediaName,
+        },
+      },
     ),
   claimWhatsappHandoff: (id: string) =>
     api<{ handoff: WhatsappHandoff }>(`/whatsapp-handoffs/${id}/claim`, {
