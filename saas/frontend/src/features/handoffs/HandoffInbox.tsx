@@ -592,8 +592,10 @@ export function HandoffInbox({
                 <Text style={styles.muted}>Sem mensagens ainda.</Text>
               ) : (
                 messages.map((m) => {
-                  const mine =
+                  const isSof = m.senderKind === 'bot';
+                  const isTeam =
                     m.senderKind === 'agent' || m.senderKind === 'human_wa';
+                  const isOutgoing = isTeam || isSof;
                   const caption =
                     m.body && m.body !== mediaKindLabel(m.mediaKind)
                       ? m.body
@@ -603,10 +605,20 @@ export function HandoffInbox({
                       key={m.id}
                       style={[
                         styles.bubble,
-                        mine ? styles.bubbleOut : styles.bubbleIn,
+                        isOutgoing
+                          ? isSof
+                            ? styles.bubbleOutSof
+                            : styles.bubbleOut
+                          : styles.bubbleIn,
                       ]}
                     >
-                      <Text style={styles.bubbleSender}>
+                      <Text
+                        style={[
+                          styles.bubbleSender,
+                          isSof && styles.bubbleSenderSof,
+                          isTeam && styles.bubbleSenderOut,
+                        ]}
+                      >
                         {m.sentByAccountOwner
                           ? 'Dono'
                           : SENDER_LABEL[m.senderKind] || m.senderKind}
@@ -651,7 +663,7 @@ export function HandoffInbox({
                           <Text
                             style={[
                               styles.bubbleDocText,
-                              mine && styles.bubbleBodyOut,
+                              isTeam && styles.bubbleBodyOut,
                             ]}
                           >
                             PDF · {m.mediaName || 'documento.pdf'}
@@ -664,7 +676,7 @@ export function HandoffInbox({
                         <Text
                           style={[
                             styles.bubbleBody,
-                            mine && styles.bubbleBodyOut,
+                            isTeam && styles.bubbleBodyOut,
                           ]}
                         >
                           {mediaKindLabel(m.mediaKind)}
@@ -674,7 +686,7 @@ export function HandoffInbox({
                         <Text
                           style={[
                             styles.bubbleBody,
-                            mine && styles.bubbleBodyOut,
+                            isTeam && styles.bubbleBodyOut,
                           ]}
                         >
                           {caption}
@@ -683,7 +695,7 @@ export function HandoffInbox({
                         <Text
                           style={[
                             styles.bubbleBody,
-                            mine && styles.bubbleBodyOut,
+                            isTeam && styles.bubbleBodyOut,
                           ]}
                         >
                           {m.body}
@@ -692,7 +704,8 @@ export function HandoffInbox({
                       <Text
                         style={[
                           styles.bubbleTime,
-                          mine && styles.bubbleTimeOut,
+                          isTeam && styles.bubbleTimeOut,
+                          isSof && styles.bubbleTimeSof,
                         ]}
                       >
                         {formatWhen(m.createdAt)}
@@ -1313,12 +1326,24 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     backgroundColor: d.ink,
   },
+  bubbleOutSof: {
+    alignSelf: 'flex-end',
+    backgroundColor: d.copperSoft,
+    borderWidth: 1,
+    borderColor: d.copper,
+  },
   bubbleSender: {
     fontSize: 10,
     fontWeight: '700',
     color: d.muted,
     fontFamily: d.fonts.bodyMedium,
     textTransform: 'uppercase',
+  },
+  bubbleSenderSof: {
+    color: d.copperInk,
+  },
+  bubbleSenderOut: {
+    color: 'rgba(255,255,255,0.72)',
   },
   bubbleBody: {
     fontSize: 14,
@@ -1354,6 +1379,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   bubbleTimeOut: { color: 'rgba(255,255,255,0.65)' },
+  bubbleTimeSof: { color: d.copperInk },
   attachPreview: {
     flexDirection: 'row',
     alignItems: 'center',
