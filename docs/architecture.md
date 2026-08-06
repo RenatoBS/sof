@@ -170,10 +170,10 @@ URLs:
 | `/(dashboard)/simulator` | Simulador WhatsApp (`noindex`; fora das tabs) |
 | `/(dashboard)/employees` | Profissionais |
 | `/(dashboard)/services` | Serviços |
-| `/(dashboard)/handoffs` | Atendimentos (inbox Flex + config threshold) |
+| `/(dashboard)/handoffs` | Atendimentos (inbox Flex) |
 | `/(dashboard)/support` | Tickets de suporte Sof |
 | `/(dashboard)/billing` | Faturamento |
-| `/(dashboard)/account` | Conta / horários / integrações |
+| `/(dashboard)/account` | Conta (WA, escopo do bot, limiar “não entendi”, pausa, lembretes, horários) |
 | `/employee/login` | Redirect → `/login` |
 | `/(employee)/agenda` | Agenda do profissional |
 | `/(employee)/support` | Tickets da conta (comentar / status) |

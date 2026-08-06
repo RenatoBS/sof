@@ -196,6 +196,12 @@ export default function AccountScreen() {
   const [botScopeError, setBotScopeError] = useState('');
   const [savingBotScope, setSavingBotScope] = useState(false);
 
+  const [handoffThreshold, setHandoffThreshold] = useState<number | null>(null);
+  const [handoffAllowed, setHandoffAllowed] = useState<number[]>([1, 2, 3, 5]);
+  const [savingHandoffThreshold, setSavingHandoffThreshold] = useState(false);
+  const [handoffThresholdError, setHandoffThresholdError] = useState('');
+  const [handoffThresholdSaved, setHandoffThresholdSaved] = useState('');
+
   useEffect(() => {
     waModeRef.current = waMode;
   }, [waMode]);
@@ -322,6 +328,17 @@ export default function AccountScreen() {
     if (!wantsAutoQr) return;
     void fetchQr();
   }, [wantsAutoQr, fetchQr]);
+
+  useEffect(() => {
+    if (!has('handoffs')) return;
+    dashboardApi
+      .whatsappHandoffSettings()
+      .then((res) => {
+        setHandoffThreshold(res.threshold);
+        setHandoffAllowed(res.allowed);
+      })
+      .catch(() => undefined);
+  }, [has]);
 
   if (!account) return null;
 
@@ -826,6 +843,67 @@ export default function AccountScreen() {
             <Text style={styles.saved}>{botScopeSaved}</Text>
           ) : null}
         </View>
+
+        {has('handoffs') ? (
+          <View style={styles.pauseBlock}>
+            <Text style={styles.label}>Escalonar após “não entendi”</Text>
+            <Text style={styles.help}>
+              Quantas respostas “não entendi” seguidas do bot abrem um
+              atendimento na aba Atendimentos (cliente e profissional). Pedidos
+              explícitos por atendente sempre abrem na hora.
+            </Text>
+            <View style={styles.chips}>
+              {handoffAllowed.map((value) => {
+                const active = handoffThreshold === value;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={async () => {
+                      if (savingHandoffThreshold || value === handoffThreshold) {
+                        return;
+                      }
+                      setHandoffThresholdError('');
+                      setSavingHandoffThreshold(true);
+                      const previous = handoffThreshold;
+                      setHandoffThreshold(value);
+                      try {
+                        await dashboardApi.updateWhatsappHandoffSettings(value);
+                        setHandoffThresholdSaved('Limiar salvo!');
+                        setTimeout(() => setHandoffThresholdSaved(''), 2000);
+                      } catch (err) {
+                        setHandoffThreshold(previous);
+                        setHandoffThresholdError(
+                          err instanceof Error
+                            ? err.message
+                            : 'Não foi possível salvar.',
+                        );
+                      } finally {
+                        setSavingHandoffThreshold(false);
+                      }
+                    }}
+                    style={[styles.chip, active && styles.chipActive]}
+                    disabled={savingHandoffThreshold}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        active && styles.chipTextActive,
+                      ]}
+                    >
+                      {value}x
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {handoffThresholdError ? (
+              <Text style={styles.error}>{handoffThresholdError}</Text>
+            ) : null}
+            {handoffThresholdSaved ? (
+              <Text style={styles.saved}>{handoffThresholdSaved}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {has('botPause') && waLinked ? (
           <View style={styles.pauseBlock}>
