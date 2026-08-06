@@ -74,8 +74,23 @@ async function main() {
   const browser = await chromium.launch({
     headless: !headed,
     slowMo: headed ? 200 : 0,
+    ...(headed ? { args: ['--start-maximized'] } : {}),
   });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const page = await browser.newPage(
+    headed ? { viewport: null } : { viewport: { width: 1280, height: 860 } },
+  );
+  if (headed) {
+    try {
+      const session = await page.context().newCDPSession(page);
+      const { windowId } = await session.send('Browser.getWindowForTarget');
+      await session.send('Browser.setWindowBounds', {
+        windowId,
+        bounds: { windowState: 'maximized' },
+      });
+    } catch {
+      // ignore
+    }
+  }
 
   try {
     log(1, 'Login');

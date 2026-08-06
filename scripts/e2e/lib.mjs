@@ -249,8 +249,25 @@ export async function launchBrowser() {
   const browser = await chromium.launch({
     headless: !headed,
     slowMo: headed ? 180 : 0,
+    // Headed: maximize so demos/recordings fill the display.
+    ...(headed ? { args: ['--start-maximized'] } : {}),
   });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  // null viewport lets the maximized window dictate size (Playwright default is 1280x720).
+  const page = await browser.newPage(
+    headed ? { viewport: null } : { viewport: { width: 1280, height: 860 } },
+  );
+  if (headed) {
+    try {
+      const session = await page.context().newCDPSession(page);
+      const { windowId } = await session.send('Browser.getWindowForTarget');
+      await session.send('Browser.setWindowBounds', {
+        windowId,
+        bounds: { windowState: 'maximized' },
+      });
+    } catch {
+      // Window managers that reject maximize still keep --start-maximized / null viewport.
+    }
+  }
   return { browser, page, headed };
 }
 

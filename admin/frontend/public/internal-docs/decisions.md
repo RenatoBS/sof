@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — E2E headed maximiza a janela do Chromium
+
+- **Contexto:** A gravação demo da suíte browser abria em viewport fixo 1280×860, longe de tela cheia.
+- **Decisão:** Em `E2E_HEADED=1`, `launchBrowser` usa `--start-maximized`, `viewport: null` e CDP `Browser.setWindowBounds({ windowState: 'maximized' })`. Headless mantém 1280×860.
+- **Consequências:** Demos/gravações preenchem o display; headless/CI inalterados.
+- **Alternativas descartadas:** Viewport fixo maior; só `--window-size` sem maximize.
+
 ## 2026-08-06 — Vídeo demo da suíte E2E browser na documentação
 
 - **Contexto:** A suíte Playwright headed precisa de prova visual para quem roda `test:e2e:browser`.
