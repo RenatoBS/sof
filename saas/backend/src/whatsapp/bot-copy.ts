@@ -43,6 +43,17 @@ export function formatAddressReply(opts: {
   return `Endereço do ${opts.businessName}:\n${address}`;
 }
 
+export function formatHoursReply(opts: {
+  businessName: string;
+  hoursLines: string;
+}): string {
+  const lines = (opts.hoursLines || '').trim();
+  if (!lines) {
+    return `Ainda não temos o horário de atendimento cadastrado do ${opts.businessName}.`;
+  }
+  return `Horário de atendimento do ${opts.businessName}:\n${lines}`;
+}
+
 export function handoffToTeam(): string {
   return `${ACK} — vou chamar a equipe para continuar por aqui.`;
 }
