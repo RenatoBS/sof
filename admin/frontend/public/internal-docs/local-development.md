@@ -265,6 +265,14 @@ npm run test:e2e:handoff
 E2E_HEADED=1 npm run test:e2e:browser   # ver Chromium
 ```
 
+**Demo (gravação):** execução headed da suíte browser contra QA (`qa.sof.solutions`) — login conta/profissional, Agenda, Faturamento, Conta, CRUD Serviços/Clientes, Produtos/Pedidos e Suporte (~1m24s).
+
+[▶ Assista ao demo E2E (MP4)](/internal-docs/assets/e2e-browser-suite-qa.mp4)
+
+<video controls src="/internal-docs/assets/e2e-browser-suite-qa.mp4" width="100%"></video>
+
+Arquivo versionado: [`docs/assets/e2e-browser-suite-qa.mp4`](/internal-docs/assets/e2e-browser-suite-qa.mp4). Para gravar de novo: `E2E_HEADED=1 npm run test:e2e:browser` (stack local) ou com `E2E_API_URL` / `E2E_WEB_URL` no ambiente alvo.
+
 **Matriz (API + browser por domínio)**
 
 | Domínio | API | Browser |

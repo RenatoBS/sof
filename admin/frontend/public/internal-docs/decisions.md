@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Vídeo demo da suíte E2E browser na documentação
+
+- **Contexto:** A suíte Playwright headed precisa de prova visual para quem roda `test:e2e:browser`.
+- **Decisão:** Gravar execução contra QA e versionar em `docs/assets/e2e-browser-suite-qa.mp4`; linkar em `docs/local-development.md`. `sync-docs` copia mídias de `docs/assets/` para `admin/frontend/public/internal-docs/assets/`.
+- **Consequências:** Demo visível no repo e no painel `/docs` (link MP4). Artefatos em `scripts/e2e/artifacts/` continuam gitignored.
+- **Alternativas descartadas:** Só link externo; commitar em `scripts/e2e/artifacts/` (já ignorado).
+
 ## 2026-08-05 — Suíte E2E produto (API + Playwright por domínio)
 
 - **Contexto:** Precisávamos cobrir auth, agenda, CRUD, bot, produtos, Flex, suporte e conta — sem Stripe pago nem Uazapi real. Já existia o padrão `scripts/e2e/` do handoff.
