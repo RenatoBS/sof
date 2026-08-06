@@ -157,6 +157,7 @@ Sof/
 | Cupons promocionais | `PromoCoupon` / `PromoCouponRedemption`; admin `/coupons`; checkout `couponCode`; `saas/backend/src/promo-coupons/`, `billing/` |
 | Inbox Atendimentos | `WhatsappHandoff` + `WhatsappMessage`; `saas/backend/src/whatsapp-handoffs/`; UI `handoffs.tsx` + `HandoffInbox` |
 | Suíte E2E (API + Playwright) | `scripts/e2e/` · `npm run test:e2e:all` · ver `docs/local-development.md` |
+| Testes unitários SaaS | `saas/backend` Jest `*.spec.ts` · `saas/frontend` jest-expo `__tests__` · `npm run test:unit` |
 | Client HTTP front | `saas/frontend/src/api/client.ts`, `endpoints.ts` |
 | Auth front | `saas/frontend/src/auth/AuthProvider.tsx` |
 | Rotas UI | `saas/frontend/app/` |

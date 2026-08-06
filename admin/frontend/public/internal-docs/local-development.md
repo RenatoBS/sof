@@ -240,6 +240,25 @@ npm run admin-frontend:web
 
 `saas` / `admin` chamam [`scripts/dev-stack.js`](../scripts/dev-stack.js) (Node puro, sem dependências — a raiz não tem `node_modules`). O log da API sai prefixado com `[api]`; o Expo fica com o terminal, então QR e atalhos de teclado continuam funcionando. `Ctrl+C` derruba os dois — o script mata a árvore de processos, porque `npm run` não repassa o sinal para `nest`/`expo`. Se um dos lados cair, o outro é encerrado junto. O Postgres **não** entra nesses comandos: rode `npm run db:up` antes. Falta de `node_modules` no pacote alvo aborta com a instrução de instalar.
 
+## Testes unitários SaaS
+
+Jest no backend (Nest) e jest-expo no frontend. Sem banco nem stack no ar.
+
+```bash
+# Na raiz
+npm run test:unit                 # backend + frontend
+npm run test:unit:saas-backend
+npm run test:unit:saas-frontend
+
+# Ou no pacote
+cd saas/backend && npm test
+cd saas/frontend && npm test
+```
+
+- Backend: specs colocalizados `*.spec.ts` (phone, password, plans, entitlements, handoffs, reminders…).
+- Frontend: `src/**/__tests__/**/*.test.ts` (validation, appEnv, api client).
+- CI: matriz `saas-backend` e `saas-frontend` rodam `npm test` em [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
 ## Testes E2E (produto SaaS)
 
 Scripts Node em [`scripts/e2e/`](../scripts/e2e/) (não Jest Nest). Conta alvo: Equipe `demo@sof.com` / `SEED_DEMO_PASSWORD`.

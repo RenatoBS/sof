@@ -31,7 +31,7 @@ jobs:
           - name: saas-frontend
             dir: saas/frontend
             check: npx tsc --noEmit
-            test: echo "sem suíte de testes"
+            test: npm test
           - name: admin-backend
             dir: admin/backend
             check: npx tsc --noEmit
