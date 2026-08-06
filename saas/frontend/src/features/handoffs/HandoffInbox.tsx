@@ -269,6 +269,35 @@ export function HandoffInbox({
     (e) => e.canHandleHandoffs,
   );
 
+  const resolvedSection =
+    resolved.length > 0 ? (
+      <View
+        style={[styles.resolvedBlock, !wide && styles.resolvedBlockMobile]}
+      >
+        <Text style={styles.sectionTitleSmall}>
+          Resolvidos {resolved.length ? `(${Math.min(resolved.length, 8)})` : ''}
+        </Text>
+        {resolved.slice(0, 8).map((h) => (
+          <Pressable
+            key={h.id}
+            onPress={() => setSelectedId(h.id)}
+            style={[
+              styles.queueItem,
+              styles.queueItemResolved,
+              h.id === selectedId && styles.queueItemActive,
+            ]}
+          >
+            <Text style={styles.queueName} numberOfLines={1}>
+              {h.customerName || formatPhone(h.customerPhone)}
+            </Text>
+            <Text style={styles.queueMeta}>
+              {h.resolvedAt ? formatWhen(h.resolvedAt) : ''}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    ) : null;
+
   return (
     <View style={[styles.root, wide && styles.rootWide]}>
       <View style={[styles.queue, wide && styles.queueWide]}>
@@ -322,29 +351,7 @@ export function HandoffInbox({
           </ScrollView>
         )}
 
-        {resolved.length > 0 ? (
-          <View style={styles.resolvedBlock}>
-            <Text style={styles.sectionTitleSmall}>Resolvidos</Text>
-            {resolved.slice(0, 8).map((h) => (
-              <Pressable
-                key={h.id}
-                onPress={() => setSelectedId(h.id)}
-                style={[
-                  styles.queueItem,
-                  styles.queueItemResolved,
-                  h.id === selectedId && styles.queueItemActive,
-                ]}
-              >
-                <Text style={styles.queueName} numberOfLines={1}>
-                  {h.customerName || formatPhone(h.customerPhone)}
-                </Text>
-                <Text style={styles.queueMeta}>
-                  {h.resolvedAt ? formatWhen(h.resolvedAt) : ''}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+        {wide ? resolvedSection : null}
       </View>
 
       <View style={[styles.thread, wide && styles.threadWide]}>
@@ -600,6 +607,8 @@ export function HandoffInbox({
         )}
       </View>
 
+      {!wide ? resolvedSection : null}
+
       {wide && selected ? (
         <View style={styles.context}>
           <Text style={styles.sectionTitleSmall}>Contexto</Text>
@@ -741,6 +750,14 @@ const styles = StyleSheet.create({
     fontFamily: d.fonts.body,
   },
   resolvedBlock: { marginTop: 12, gap: 4 },
+  resolvedBlockMobile: {
+    marginTop: 0,
+    borderWidth: 1,
+    borderColor: d.line,
+    borderRadius: d.radiusSm,
+    backgroundColor: d.surface,
+    padding: 12,
+  },
   thread: {
     flex: 1,
     minWidth: 0,

@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Threshold “não entendi” na Conta + inbox mobile
+
+- **Contexto:** Config de limiar vivia na aba Atendimentos (longe das outras preferências do bot). No mobile, Resolvidos ficava acima do chat e empurrava a conversa para baixo.
+- **Decisão:** Mover chips 1x/2x/3x/5x para Conta (após “O bot atende”, gate `handoffs`). Em `HandoffInbox` com `width < 960`, ordem **Abertos → thread → Resolvidos**.
+- **Consequências:** Atendimentos fica só inbox; Conta concentra preferências do bot. Layout wide inalterado (resolvidos na coluna da fila).
+- **Alternativas descartadas:** Manter config no inbox; tabs mobile Abertos/Resolvidos.
+
 ## 2026-08-06 — Resolver atendimento despausa o bot do cliente
 
 - **Contexto:** Ao abrir handoff a Sof pausa o bot 1h (`botPausedAuto`). Só “Devolver à Sof” limpava essa pausa; “Resolver” deixava o cliente silenciado até expirar o timer.
