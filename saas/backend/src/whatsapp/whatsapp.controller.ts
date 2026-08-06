@@ -14,6 +14,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthedRequest } from '../auth/auth.guard';
@@ -509,6 +510,15 @@ export class WhatsappController {
       displayName: employee?.name,
     };
 
+    // Transcript completo (cliente + Sof) para o inbox — com ou sem handoff.
+    await this.handoffs.recordConversationTurn({
+      accountId: opts.accountId,
+      phone: opts.customerPhone,
+      inboundText: opts.text,
+      replies: opts.result.replies || [],
+      party,
+    });
+
     if (opts.result.humanRequested) {
       const opened = await this.handoffs.openOrRefresh({
         accountId: opts.accountId,
@@ -526,17 +536,28 @@ export class WhatsappController {
         await this.api
           .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
           .catch(() => undefined);
+        await this.handoffs.appendMessage({
+          accountId: opts.accountId,
+          phone: opts.customerPhone,
+          direction: 'outbound',
+          senderKind: 'bot',
+          body: HANDOFF_NOTICE,
+          updateLastMessage: false,
+          allowWithoutHandoff: true,
+        });
       }
       await this.pauseAfterHandoff(opts, party, opened);
       return { handoffOpened: Boolean(opened?.created) };
     }
 
     if (opts.result.productSaleHandoff) {
+      const contextJson = this.productSaleContext(opts.result.order);
       const opened = await this.handoffs.openOrRefresh({
         accountId: opts.accountId,
         phone: opts.customerPhone,
         lastMessage: opts.text,
         reason: 'product_sale',
+        contextJson: contextJson ?? undefined,
         ...partyOpts,
       });
       await this.handoffs.resetUnresolved(
@@ -548,6 +569,15 @@ export class WhatsappController {
         await this.api
           .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
           .catch(() => undefined);
+        await this.handoffs.appendMessage({
+          accountId: opts.accountId,
+          phone: opts.customerPhone,
+          direction: 'outbound',
+          senderKind: 'bot',
+          body: HANDOFF_NOTICE,
+          updateLastMessage: false,
+          allowWithoutHandoff: true,
+        });
       }
       await this.pauseAfterHandoff(opts, party, opened);
       return { handoffOpened: Boolean(opened?.created) };
@@ -571,6 +601,15 @@ export class WhatsappController {
           await this.api
             .sendText(opts.customerPhone, HANDOFF_NOTICE, opts.instanceToken)
             .catch(() => undefined);
+          await this.handoffs.appendMessage({
+            accountId: opts.accountId,
+            phone: opts.customerPhone,
+            direction: 'outbound',
+            senderKind: 'bot',
+            body: HANDOFF_NOTICE,
+            updateLastMessage: false,
+            allowWithoutHandoff: true,
+          });
         }
         await this.pauseAfterHandoff(opts, party, opened);
         return { handoffOpened: Boolean(opened?.created) };
@@ -584,6 +623,37 @@ export class WhatsappController {
       partyOpts,
     );
     return { handoffOpened: false };
+  }
+
+  /** Snapshot do pedido/produto para o painel do atendente. */
+  private productSaleContext(
+    order: unknown,
+  ): Prisma.InputJsonValue | null {
+    if (!order || typeof order !== 'object') return null;
+    const o = order as {
+      id?: string;
+      total?: number;
+      status?: string;
+      items?: Array<{
+        productId?: string;
+        productName?: string;
+        quantity?: number;
+        unitPrice?: number;
+        lineTotal?: number;
+      }>;
+    };
+    const item = Array.isArray(o.items) ? o.items[0] : undefined;
+    if (!item?.productName && !o.id) return null;
+    return {
+      orderId: o.id ?? null,
+      productId: item?.productId ?? null,
+      productName: item?.productName ?? null,
+      quantity: item?.quantity ?? null,
+      unitPrice: item?.unitPrice ?? null,
+      lineTotal: item?.lineTotal ?? null,
+      total: o.total ?? null,
+      status: o.status ?? null,
+    };
   }
 
   private extractUazapiSelection(

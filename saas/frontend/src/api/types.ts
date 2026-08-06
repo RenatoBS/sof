@@ -151,6 +151,18 @@ export type WhatsappHandoff = {
   assigneeType?: 'account' | 'employee' | string | null;
   assignedEmployeeId?: string | null;
   assignedAt?: string | null;
+  /** Snapshot do motivo (ex.: produto/pedido em product_sale) */
+  contextJson?: {
+    orderId?: string | null;
+    productId?: string | null;
+    productName?: string | null;
+    quantity?: number | null;
+    unitPrice?: number | null;
+    lineTotal?: number | null;
+    total?: number | null;
+    status?: string | null;
+    paymentLinkUrl?: string | null;
+  } | null;
   openedAt: string;
   humanRepliedAt?: string | null;
   resolvedAt?: string | null;
@@ -161,7 +173,7 @@ export type WhatsappHandoff = {
 export type WhatsappMessage = {
   id: string;
   accountId: string;
-  handoffId: string;
+  handoffId?: string | null;
   customerPhone: string;
   direction: 'inbound' | 'outbound' | string;
   senderKind: 'client' | 'employee_party' | 'bot' | 'human_wa' | 'agent' | string;

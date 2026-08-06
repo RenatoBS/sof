@@ -193,8 +193,10 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 
 - Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com casos abertos via SSE). Inbox em 3 painéis (fila / thread / contexto): o dono assume, responde **pelo painel Sof** (via API WhatsApp) e pode transferir para profissionais com `Employee.canHandleHandoffs`.
 - Caso abre quando: (a) pedido explícito de atendente; (b) N “não entendi” seguidos (`Account.whatsappHandoffThreshold` 1/2/3/5); (c) venda com `Product.handoffEnabled` (`product_sale`). Vale para **cliente** e **profissional** (prof só na fila do dono).
+- Em `product_sale`, o handoff guarda `contextJson` (produto, qtd, total, orderId) e o painel exibe banner + bloco no contexto.
 - **Atribuição:** `assigneeType` `null` (fila) | `account` (dono) | `employee` + `assignedEmployeeId`. Ações: Assumir, Transferir, Liberar, Resolver, Devolver à Sof (resolve + tira pausa automática do cliente).
-- **Thread:** modelo `WhatsappMessage` (`senderKind`: client | employee_party | bot | human_wa | agent). Mensagens inbound com bot pausado e outbound do painel / WhatsApp Web entram na conversa em tempo real (`whatsapp-handoff:message`).
+- **Thread:** modelo `WhatsappMessage` (`senderKind`: client | employee_party | bot | human_wa | agent). Turnos do bot (inbound + replies) são gravados **antes** de abrir o caso (`handoffId` null) e anexados à thread ao abrir / ao listar mensagens — o atendente vê o histórico desde o início da conversa com a Sof, não só a última mensagem. Mensagens inbound com bot pausado e outbound do painel / WhatsApp Web entram em tempo real (`whatsapp-handoff:message`).
+- Composer: **Ctrl+Enter** (ou Cmd+Enter) envia; Enter sozinho = nova linha.
 - Ao abrir: aviso no WA + **pausa do bot 1 h** no cliente (`botPausedAuto`). Profissional na ponta WA não é pausado.
 - **Resposta `fromMe` (celular/Web):** pausa o bot (cliente), grava na thread como `human_wa`, **não resolve** — fechamento é explícito no inbox.
 - **Devolver à Sof / chamar Sof:** resume pausa automática; alerta resolvido só no botão do painel (ou “Resolver”).
