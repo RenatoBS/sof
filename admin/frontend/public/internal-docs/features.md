@@ -192,18 +192,20 @@ Após o login, se a conta não tem **nenhum serviço nem produto**, o painel red
 
 ### Atendimentos (inbox estilo Flex)
 
-- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com casos abertos via SSE). Inbox em 3 painéis no desktop (fila / thread / contexto): o dono assume, responde **pelo painel Sof** e pode transferir para profissionais com `Employee.canHandleHandoffs`. Em telas estreitas (`<960`): ordem **Abertos → chat → Resolvidos**. O limiar de “não entendi” fica em **Conta**.
+- Aba **Atendimentos** na tabbar (ícone + label; badge vermelho com casos abertos via SSE). Inbox em 3 painéis no desktop (fila / thread / contexto): o dono assume, responde **pelo painel Sof** e pode transferir para profissionais com `Employee.canHandleHandoffs`. Em telas estreitas (`<960`): ordem **Abertos → chat → Resolvidos**, com **Expandir/Recolher** em cada lista (Abertos aberto por padrão; Resolvidos recolhido). Em qualquer largura, cada lista mostra ~3 itens com scroll e hint “Mais ↓” se houver mais. O limiar de “não entendi” fica em **Conta**.
 - Caso abre quando: (a) pedido explícito de atendente; (b) N “não entendi” seguidos (`Account.whatsappHandoffThreshold` 1/2/3/5); (c) venda com `Product.handoffEnabled` (`product_sale`). Vale para **cliente** e **profissional** (prof só na fila do dono).
-- Em `product_sale`, o handoff guarda `contextJson` (produto, qtd, total, orderId) e o painel exibe banner + bloco no contexto.
-- **Atribuição:** `assigneeType` `null` (fila) | `account` (dono) | `employee` + `assignedEmployeeId`. Ações: Assumir, Transferir, Liberar, Resolver, Devolver à Sof. **Resolver** e **Devolver à Sof** fecham o caso e **despausam** a pausa automática do bot naquele cliente (`resumeAutoPausedClient`). Pausa manual do dono na aba Clientes não é tocada.
+- Handoff de produto (`product_sale`) e também human/unresolved com produto na sessão ou pedido pending gravam `contextJson` (produto, qtd, total, orderId, paymentLink). O painel **Contexto** (desktop e mobile) e o banner da thread mostram o **produto selecionado**.
+- **Atribuição:** `assigneeType` `null` (fila) | `account` (dono) | `employee` + `assignedEmployeeId`. Ações: Assumir, Transferir, Liberar, Resolver, Devolver à Sof. **Resolver** e **Devolver à Sof** fecham o caso e **despausam** a pausa automática do bot naquele cliente (`resumeAutoPausedClient`). Pausa manual do dono na aba Clientes não é tocada. Card com profissional responsável usa a **cor do profissional** (borda esquerda, como na Agenda).
 - **Thread:** modelo `WhatsappMessage` (`senderKind`: client | employee_party | bot | human_wa | agent). Turnos do bot (inbound + replies) são gravados **antes** de abrir o caso (`handoffId` null) e anexados à thread ao abrir / ao listar mensagens — o atendente vê o histórico desde o início da conversa com a Sof, não só a última mensagem. Mensagens inbound com bot pausado e outbound do painel / WhatsApp Web entram em tempo real (`whatsapp-handoff:message`).
 - Composer: **Ctrl+Enter** (ou Cmd+Enter) envia; Enter sozinho = nova linha.
+- **Anexos:** botão **Anexar** no composer (imagem jpeg/png/webp, vídeo mp4/webm, áudio, PDF). Envia via Uazapi `/send/media`; grava `WhatsappMessage.mediaKind` / `mediaUrl` / `mediaName` na thread. Caption = texto do draft (opcional). Meta Cloud API não aceita data URL.
+- **Macros:** o dono gerencia em Atendimentos → botão **Macros** (modal: título + texto, ativar/desativar, excluir; máx. 50). Modelo `HandoffMacro`. No composer, um **select** lista as macros **ativas** e ao escolher **insere o texto no draft** (não envia). Profissional com `canHandleHandoffs` só usa (`GET` ativas).
 - Ao abrir: aviso no WA + **pausa do bot 1 h** no cliente (`botPausedAuto`). Profissional na ponta WA não é pausado.
 - **Resposta `fromMe` (celular/Web):** pausa o bot (cliente), grava na thread como `human_wa`, **não resolve** — fechamento é explícito no inbox.
 - **Devolver à Sof / Resolver:** ambos resolvem o alerta e retomam o bot se a pausa era automática (`botPausedAuto`). Chamar pela **Sof** durante a pausa automática (cliente) também traz o bot de volta sem precisar do painel.
 - Portal do profissional (`/(employee)/handoffs`): só se `canHandleHandoffs`; vê fila livre + os seus; só `party=client`. Toggle no cadastro de Profissionais.
-- API conta: `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `GET …/:id/messages`, `POST …/:id/{reply,claim,transfer,release,resolve,return-to-sof}`.
-- API profissional: `GET/POST /api/employee/whatsapp-handoffs…` (+ `GET /api/employee/events/stream`).
+- API conta: `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `GET/POST/PUT/DELETE …/macros`, `GET …/:id/messages`, `POST …/:id/{reply,claim,transfer,release,resolve,return-to-sof}`.
+- API profissional: `GET/POST /api/employee/whatsapp-handoffs…`, `GET …/macros` (+ `GET /api/employee/events/stream`).
 - SSE: `whatsapp-handoff:opened|updated|resolved|message` + `client:updated`.
 
 ### Faturamento
@@ -323,8 +325,8 @@ Arquivo: `saas/backend/prisma/seed.ts`. Também faz upsert do catálogo `Plan` e
 | Orders | `GET /api/orders`, `PATCH …/:id/status` |
 | Clients | `GET/POST /api/clients`, `PUT/DELETE …/:id` (pause do bot no PUT) |
 | Appointments | `GET/POST /api/appointments`, `PUT/DELETE …/:id` (`DELETE ?scope=series` remove série) |
-| WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `GET …/:id/messages`, `POST …/:id/{reply,claim,transfer,release,resolve,return-to-sof}` |
-| Employee handoffs | `GET/POST /api/employee/whatsapp-handoffs…` |
+| WhatsApp handoffs | `GET /api/whatsapp-handoffs`, `GET/PUT …/settings`, `GET/POST/PUT/DELETE …/macros`, `GET …/:id/messages`, `POST …/:id/{reply,claim,transfer,release,resolve,return-to-sof}` |
+| Employee handoffs | `GET/POST /api/employee/whatsapp-handoffs…`, `GET …/macros` |
 | Checkout | `POST /api/checkout/create`, `GET …/status/:sessionId` |
 | Plans (público) | `GET /api/plans` |
 | Payments | `POST /api/payments/webhook` |

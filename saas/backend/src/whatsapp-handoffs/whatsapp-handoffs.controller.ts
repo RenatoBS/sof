@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -51,6 +52,56 @@ export class WhatsappHandoffsController {
     );
   }
 
+  @Get('macros')
+  async listMacros(@Req() req: AuthedRequest) {
+    await this.entitlements.assertFeature(req.account.id, 'handoffs');
+    const macros = await this.handoffs.listMacros(req.account.id);
+    return { macros };
+  }
+
+  @Post('macros')
+  async createMacro(
+    @Req() req: AuthedRequest,
+    @Body()
+    body: {
+      title?: string;
+      body?: string;
+      sortOrder?: number;
+      active?: boolean;
+    },
+  ) {
+    await this.entitlements.assertFeature(req.account.id, 'handoffs');
+    const macro = await this.handoffs.createMacro(req.account.id, body || {});
+    return { macro };
+  }
+
+  @Put('macros/:id')
+  async updateMacro(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      title?: string;
+      body?: string;
+      sortOrder?: number;
+      active?: boolean;
+    },
+  ) {
+    await this.entitlements.assertFeature(req.account.id, 'handoffs');
+    const macro = await this.handoffs.updateMacro(
+      req.account.id,
+      id,
+      body || {},
+    );
+    return { macro };
+  }
+
+  @Delete('macros/:id')
+  async deleteMacro(@Req() req: AuthedRequest, @Param('id') id: string) {
+    await this.entitlements.assertFeature(req.account.id, 'handoffs');
+    return this.handoffs.deleteMacro(req.account.id, id);
+  }
+
   @Get(':id/messages')
   async messages(@Req() req: AuthedRequest, @Param('id') id: string) {
     await this.entitlements.assertFeature(req.account.id, 'handoffs');
@@ -62,7 +113,8 @@ export class WhatsappHandoffsController {
   async reply(
     @Req() req: AuthedRequest,
     @Param('id') id: string,
-    @Body() body: { text?: string },
+    @Body()
+    body: { text?: string; mediaBase64?: string; mediaName?: string },
   ) {
     await this.entitlements.assertFeature(req.account.id, 'handoffs');
     return this.handoffs.reply(
@@ -70,6 +122,10 @@ export class WhatsappHandoffsController {
       id,
       String(body?.text || ''),
       this.actor(),
+      {
+        mediaBase64: body?.mediaBase64,
+        mediaName: body?.mediaName,
+      },
     );
   }
 

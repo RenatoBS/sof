@@ -19,7 +19,8 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(
     json({
-      limit: '8mb',
+      // Anexos do inbox (vídeo até ~16 MB → ~22 MB em base64)
+      limit: '24mb',
       verify: (req, _res, buf) => {
         (req as { rawBody?: Buffer }).rawBody = buf;
       },

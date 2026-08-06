@@ -520,11 +520,17 @@ export class WhatsappController {
     });
 
     if (opts.result.humanRequested) {
+      const contextJson = await this.resolveHandoffProductContext(
+        opts.accountId,
+        opts.customerPhone,
+        opts.result,
+      );
       const opened = await this.handoffs.openOrRefresh({
         accountId: opts.accountId,
         phone: opts.customerPhone,
         lastMessage: opts.text,
         reason: 'human_requested',
+        contextJson: contextJson ?? undefined,
         ...partyOpts,
       });
       await this.handoffs.resetUnresolved(
@@ -551,7 +557,11 @@ export class WhatsappController {
     }
 
     if (opts.result.productSaleHandoff) {
-      const contextJson = this.productSaleContext(opts.result.order);
+      const contextJson = await this.resolveHandoffProductContext(
+        opts.accountId,
+        opts.customerPhone,
+        opts.result,
+      );
       const opened = await this.handoffs.openOrRefresh({
         accountId: opts.accountId,
         phone: opts.customerPhone,
@@ -590,11 +600,17 @@ export class WhatsappController {
         ...partyOpts,
       });
       if (bump.reached) {
+        const contextJson = await this.resolveHandoffProductContext(
+          opts.accountId,
+          opts.customerPhone,
+          opts.result,
+        );
         const opened = await this.handoffs.openOrRefresh({
           accountId: opts.accountId,
           phone: opts.customerPhone,
           lastMessage: opts.text,
           reason: 'unresolved',
+          contextJson: contextJson ?? undefined,
           ...partyOpts,
         });
         if (opened?.created && !opts.skipOutboundNotice) {
@@ -625,6 +641,78 @@ export class WhatsappController {
     return { handoffOpened: false };
   }
 
+  /**
+   * Snapshot do produto/pedido para o painel Contexto do inbox.
+   * Preferência: handoffContext do bot → order do turno → sessão/pedido recente.
+   */
+  private async resolveHandoffProductContext(
+    accountId: string,
+    customerPhone: string,
+    result: Awaited<ReturnType<WhatsappBotService['handleIncomingMessage']>>,
+  ): Promise<Prisma.InputJsonValue | null> {
+    if (result.handoffContext?.productName || result.handoffContext?.productId) {
+      return result.handoffContext as Prisma.InputJsonValue;
+    }
+    const fromOrder = this.productSaleContext(result.order);
+    if (fromOrder) return fromOrder;
+
+    const phone = normalizePhone(customerPhone) || customerPhone.replace(/\D/g, '');
+    if (!phone) return null;
+
+    const pending = await this.prisma.order.findFirst({
+      where: {
+        accountId,
+        clientPhone: phone,
+        status: 'pending',
+        source: 'whatsapp',
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { items: true },
+    });
+    const fromPending = this.productSaleContext(pending);
+    if (fromPending) return fromPending;
+
+    const session = await this.prisma.whatsappSession.findUnique({
+      where: {
+        accountId_customerPhone: { accountId, customerPhone: phone },
+      },
+    });
+    const data = (session?.data || {}) as {
+      productId?: string;
+      quantity?: number;
+    };
+    if (!data.productId) return null;
+    const product = await this.prisma.product.findFirst({
+      where: {
+        id: data.productId,
+        accountId,
+        active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        paymentLinkUrl: true,
+      },
+    });
+    if (!product) return null;
+    const qty =
+      typeof data.quantity === 'number' && data.quantity > 0
+        ? data.quantity
+        : null;
+    return {
+      orderId: null,
+      productId: product.id,
+      productName: product.name,
+      quantity: qty,
+      unitPrice: product.price,
+      lineTotal: qty != null ? product.price * qty : null,
+      total: qty != null ? product.price * qty : product.price,
+      status: null,
+      paymentLinkUrl: product.paymentLinkUrl || null,
+    };
+  }
+
   /** Snapshot do pedido/produto para o painel do atendente. */
   private productSaleContext(
     order: unknown,
@@ -653,6 +741,7 @@ export class WhatsappController {
       lineTotal: item?.lineTotal ?? null,
       total: o.total ?? null,
       status: o.status ?? null,
+      paymentLinkUrl: null,
     };
   }
 

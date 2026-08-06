@@ -176,6 +176,17 @@ export type WhatsappHandoff = {
   updatedAt: string;
 };
 
+export type HandoffMacro = {
+  id: string;
+  accountId: string;
+  title: string;
+  body: string;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type WhatsappMessage = {
   id: string;
   accountId: string;
@@ -184,6 +195,9 @@ export type WhatsappMessage = {
   direction: 'inbound' | 'outbound' | string;
   senderKind: 'client' | 'employee_party' | 'bot' | 'human_wa' | 'agent' | string;
   body: string;
+  mediaKind?: 'image' | 'video' | 'audio' | 'document' | string | null;
+  mediaUrl?: string | null;
+  mediaName?: string | null;
   agentEmployeeId?: string | null;
   sentByAccountOwner?: boolean;
   providerMessageId?: string | null;

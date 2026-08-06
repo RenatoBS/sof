@@ -17,6 +17,41 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Mídia no inbox de Atendimentos
+
+- **Contexto:** Atendente precisava mandar comprovante/foto/áudio/PDF pelo painel, não só texto.
+- **Decisão:** Estender `POST …/reply` com `mediaBase64` (+ `mediaName`). Uazapi `sendMedia` (`image|video|audio|document`). Persistir data URL em `WhatsappMessage`. Limites: img 2 MB, áudio 5 MB, PDF 10 MB, vídeo 16 MB; JSON body até 24 MB.
+- **Consequências:** Thread mostra mídia; DB cresce com anexos; Meta sem data URL falha com erro claro.
+- **Alternativas descartadas:** S3/blob externo; rota separada por tipo; mídia inbound nesta entrega.
+
+## 2026-08-06 — Macros de atendimento (respostas rápidas)
+
+- **Contexto:** Dono e profissionais repetem as mesmas frases no inbox; faltava canned replies por conta.
+- **Decisão:** Modelo `HandoffMacro` (title + body, active, sortOrder, máx. 50). CRUD só do dono via modal em Atendimentos; composer (conta + profissional) usa **select** das ativas e **insere no draft** (não envia). Gate `handoffs`.
+- **Consequências:** Equipe padroniza respostas sem sair do chat; profissional não edita o catálogo.
+- **Alternativas descartadas:** Gestão em Conta; envio imediato ao clicar; variáveis `{{nome}}` na v1.
+
+## 2026-08-06 — Inbox: produto selecionado no Contexto
+
+- **Contexto:** Ao abrir atendimento por venda (ou no meio do fluxo de produto), o atendente precisava ver qual produto o cliente escolheu; o painel Contexto só aparecia no desktop e só se `reason=product_sale`.
+- **Decisão:** Bot grava `handoffContext` explícito no `product_sale`; human/unresolved também anexam produto da sessão ou último pedido WhatsApp pending. UI lê `contextJson` independente do motivo e mostra Contexto no mobile.
+- **Consequências:** Card/contexto sempre com nome, qtd e total quando houver produto; casos antigos sem `contextJson` continuam sem bloco.
+- **Alternativas descartadas:** Só banner na thread; exigir `reason=product_sale` na UI.
+
+## 2026-08-06 — Inbox: cor do profissional no card atribuído
+
+- **Contexto:** Na fila de Atendimentos era difícil ver de relance quem está com cada caso.
+- **Decisão:** Quando `assigneeType=employee`, o card (e o chip do responsável na thread) usa `Employee.color` na borda esquerda — mesmo padrão da Agenda. Portal do profissional usa a própria cor da sessão.
+- **Consequências:** Casos na fila / com dono / sem responsável ficam neutros; só atribuição a profissional colore.
+- **Alternativas descartadas:** Fundo inteiro colorido; badge só com iniciais.
+
+## 2026-08-06 — Inbox mobile: Expandir/Recolher Abertos e Resolvidos
+
+- **Contexto:** Em telas `<960`, as listas Abertos e Resolvidos competem com o chat e empurram a conversa para fora da viewport.
+- **Decisão:** Em `HandoffInbox` no layout estreito, headers das seções viram toggle (Expandir/Recolher). Defaults: Abertos expandido, Resolvidos recolhido. Em qualquer largura, viewport de ~3 cards com scroll + hint “Mais ↓” se count > 3 (sem preview na fila). Desktop (`≥960`) continua sempre expandido.
+- **Consequências:** Atendente libera espaço pro thread sem trocar a ordem Abertos → chat → Resolvidos.
+- **Alternativas descartadas:** Tabs Abertos/Resolvidos; recolher automaticamente ao selecionar um caso.
+
 ## 2026-08-06 — Form de profissional: switches empilhados (handoff / senha)
 
 - **Contexto:** No modal Novo/Editar profissional, o chip `alignSelf: flex-start` de handoff (e o de reset de senha) quebrava no RN Web — texto longo e layout frágil, no mesmo espírito do form de produto.
