@@ -17,6 +17,13 @@ Formato sugerido:
 
 ---
 
+## 2026-08-06 — Resolver atendimento despausa o bot do cliente
+
+- **Contexto:** Ao abrir handoff a Sof pausa o bot 1h (`botPausedAuto`). Só “Devolver à Sof” limpava essa pausa; “Resolver” deixava o cliente silenciado até expirar o timer.
+- **Decisão:** `resolveManual` chama `resumeAutoPausedClient` para `party=client`. `returnToSof` passa a ser alias de resolve (mesma limpeza).
+- **Consequências:** Qualquer fechamento explícito no inbox devolve o bot; pausa manual do dono (`botPausedAuto=false`) continua intocada.
+- **Alternativas descartadas:** Manter resolve sem despausar; só despausar em return-to-sof.
+
 ## 2026-08-06 — Menu inicial: atendente, endereço e horário (opt-in)
 
 - **Contexto:** O dono queria expor no menu do WhatsApp “falar com atendente”, endereço e horário — hoje handoff só por texto livre, endereço só por FAQ e horário só nas regras de agenda.
@@ -37,7 +44,6 @@ Formato sugerido:
 - **Decisão:** (1) Composer web: Ctrl/Cmd+Enter envia. (2) `WhatsappMessage.handoffId` opcional + `recordConversationTurn` em todo turno do bot; ao abrir/listar, `attachPendingMessages` liga o histórico desde o último handoff resolvido. (3) `WhatsappHandoff.contextJson` com snapshot do pedido/produto; banner + painel de contexto na UI.
 - **Consequências:** Atendente vê a conversa com a Sof e o produto da venda; migration `20260806020000_flex_transcript_product_context`.
 - **Alternativas descartadas:** Só seed de lastMessage; buscar Order por telefone sem gravar no handoff (race); Enter sozinho para enviar (conflita com multiline).
-
 
 ## 2026-08-06 — Unitários SaaS como jobs explícitos no gate de deploy
 

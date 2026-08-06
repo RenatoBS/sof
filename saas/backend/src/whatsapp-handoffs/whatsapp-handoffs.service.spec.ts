@@ -23,9 +23,22 @@ function makeService(opts?: {
         id: 'h1',
         accountId: 'acc-1',
         status: 'open',
+        party: 'client',
+        customerPhone: '11999990000',
         openedAt: new Date('2026-08-05T12:00:00Z'),
         resolvedAt: null,
+        ...(opts?.handoff || {}),
         ...data,
+      })),
+    },
+    client: {
+      updateMany: jest.fn(async () => ({ count: 1 })),
+      findUnique: jest.fn(async () => ({
+        id: 'c1',
+        accountId: 'acc-1',
+        phone: '11999990000',
+        botPausedUntil: null,
+        botPausedAuto: false,
       })),
     },
   };
@@ -101,6 +114,8 @@ describe('WhatsappHandoffsService.resolveManual', () => {
         id: 'h1',
         accountId: 'acc-1',
         status: 'open',
+        party: 'client',
+        customerPhone: '11999990000',
         openedAt: new Date(),
         resolvedAt: null,
       },
@@ -108,6 +123,19 @@ describe('WhatsappHandoffsService.resolveManual', () => {
     const shaped = await service.resolveManual('acc-1', 'h1');
     expect(shaped.status).toBe('resolved');
     expect(prisma.whatsappHandoff.update).toHaveBeenCalled();
+    expect(prisma.client.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          accountId: 'acc-1',
+          phone: '11999990000',
+          botPausedAuto: true,
+        }),
+        data: expect.objectContaining({
+          botPausedUntil: null,
+          botPausedAuto: false,
+        }),
+      }),
+    );
     expect(realtime.broadcast).toHaveBeenCalledWith(
       'acc-1',
       'whatsapp-handoff:resolved',
@@ -120,6 +148,8 @@ describe('WhatsappHandoffsService.resolveManual', () => {
       id: 'h1',
       accountId: 'acc-1',
       status: 'resolved',
+      party: 'client',
+      customerPhone: '11999990000',
       openedAt: new Date(),
       resolvedAt: new Date(),
     };
@@ -127,5 +157,22 @@ describe('WhatsappHandoffsService.resolveManual', () => {
     const out = await service.resolveManual('acc-1', 'h1');
     expect(out.status).toBe('resolved');
     expect(prisma.whatsappHandoff.update).not.toHaveBeenCalled();
+    expect(prisma.client.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('não despausa quando party é employee', async () => {
+    const { service, prisma } = makeService({
+      handoff: {
+        id: 'h1',
+        accountId: 'acc-1',
+        status: 'open',
+        party: 'employee',
+        customerPhone: '11988887777',
+        openedAt: new Date(),
+        resolvedAt: null,
+      },
+    });
+    await service.resolveManual('acc-1', 'h1');
+    expect(prisma.client.updateMany).not.toHaveBeenCalled();
   });
 });
