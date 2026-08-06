@@ -74,7 +74,15 @@ async function main() {
   const browser = await chromium.launch({
     headless: !headed,
     slowMo: headed ? 200 : 0,
-    ...(headed ? { args: ['--start-maximized'] } : {}),
+    ...(headed
+      ? {
+          args: [
+            '--start-maximized',
+            '--window-size=1920,1200',
+            '--window-position=0,0',
+          ],
+        }
+      : {}),
   });
   const page = await browser.newPage(
     headed ? { viewport: null } : { viewport: { width: 1280, height: 860 } },
@@ -87,6 +95,21 @@ async function main() {
         windowId,
         bounds: { windowState: 'maximized' },
       });
+      const { bounds } = await session.send('Browser.getWindowBounds', {
+        windowId,
+      });
+      if ((bounds?.width || 0) < 1840) {
+        await session.send('Browser.setWindowBounds', {
+          windowId,
+          bounds: {
+            left: 0,
+            top: 0,
+            width: 1920,
+            height: 1200,
+            windowState: 'normal',
+          },
+        });
+      }
     } catch {
       // ignore
     }

@@ -2,10 +2,26 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(__dirname, '../..');
+
+/** Tamanho do display X11 (gravações headed) — fallback 1920×1080. */
+export function displayScreenSize() {
+  try {
+    const display = process.env.DISPLAY || ':1';
+    const out = execSync(`xdpyinfo -display ${display}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const m = out.match(/dimensions:\s+(\d+)x(\d+)/);
+    if (m) return { width: Number(m[1]), height: Number(m[2]) };
+  } catch {
+    // headless / sem X
+  }
+  return { width: 1920, height: 1080 };
+}
 
 /** Lê `saas/backend/.env` sem depender de dotenv. */
 export function loadBackendEnv() {
@@ -246,13 +262,22 @@ export function headedBrowser() {
 export async function launchBrowser() {
   const { chromium } = loadPlaywright();
   const headed = headedBrowser();
+  const screen = displayScreenSize();
   const browser = await chromium.launch({
     headless: !headed,
     slowMo: headed ? 180 : 0,
-    // Headed: maximize so demos/recordings fill the display.
-    ...(headed ? { args: ['--start-maximized'] } : {}),
+    // Headed: fill the display so demos/recordings are not a small floating window.
+    ...(headed
+      ? {
+          args: [
+            '--start-maximized',
+            `--window-size=${screen.width},${screen.height}`,
+            '--window-position=0,0',
+          ],
+        }
+      : {}),
   });
-  // null viewport lets the maximized window dictate size (Playwright default is 1280x720).
+  // null viewport lets the real window size dictate layout (Playwright default is 1280x720).
   const page = await browser.newPage(
     headed ? { viewport: null } : { viewport: { width: 1280, height: 860 } },
   );
@@ -264,8 +289,28 @@ export async function launchBrowser() {
         windowId,
         bounds: { windowState: 'maximized' },
       });
-    } catch {
-      // Window managers that reject maximize still keep --start-maximized / null viewport.
+      let { bounds } = await session.send('Browser.getWindowBounds', {
+        windowId,
+      });
+      // Some WMs ignore maximize; force explicit bounds to the display size.
+      if ((bounds?.width || 0) < screen.width - 80) {
+        await session.send('Browser.setWindowBounds', {
+          windowId,
+          bounds: {
+            left: 0,
+            top: 0,
+            width: screen.width,
+            height: screen.height,
+            windowState: 'normal',
+          },
+        });
+        ({ bounds } = await session.send('Browser.getWindowBounds', {
+          windowId,
+        }));
+      }
+      log('browser', `window ${bounds.width}x${bounds.height} (${bounds.windowState})`);
+    } catch (err) {
+      log('browser', `maximize skip: ${err?.message || err}`);
     }
   }
   return { browser, page, headed };

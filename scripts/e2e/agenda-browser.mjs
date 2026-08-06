@@ -25,7 +25,9 @@ async function main() {
     ) || services[0];
   const client = clients[0];
   const date = nextOpenDateIso();
-  const time = '15:45';
+  // Horário único por run evita conflito com leftovers do demo em QA.
+  const minute = String(Date.now() % 60).padStart(2, '0');
+  const time = `16:${minute}`;
   const clientName = client?.name || `E2E Agenda UI`;
 
   const created = await api('/appointments', {
