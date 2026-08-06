@@ -189,7 +189,7 @@ Reutilizável (`workflow_call`) e também disparado em PR e push na `main`. Jobs
 | `schema-sync` | `npm run admin:sync-schema` + diff | sim |
 | `content-sync` | `scripts/check-content-sync.sh` (docs/guides sincronizados em `admin/frontend/public/`) | sim |
 
-`prisma generate` roda com `DATABASE_URL`/`DIRECT_URL` fictícias — o CI não acessa banco. Local: `npm run test:unit`.
+`prisma generate` roda com `DATABASE_URL`/`DIRECT_URL` fictícias — o CI não acessa banco. Local: `npm run test:unit`. Local (docs): `npm run check:content-sync` reproduz o job `content-sync`.
 
 #### Configuração no GitHub
 
