@@ -196,7 +196,9 @@ export function ProductFormModal({
           <View key={`${idx}-${uri.slice(0, 24)}`} style={styles.thumbWrap}>
             <Image source={{ uri }} style={styles.thumb} />
             <Pressable
-              onPress={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
+              onPress={() =>
+                setImages((prev) => prev.filter((_, i) => i !== idx))
+              }
               style={styles.thumbRemove}
               accessibilityLabel="Remover imagem"
             >
@@ -204,37 +206,69 @@ export function ProductFormModal({
             </Pressable>
           </View>
         ))}
+        {images.length < MAX_IMAGES ? (
+          <Pressable
+            onPress={pickImages}
+            disabled={imageBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar imagens"
+            style={({ pressed }) => [
+              styles.addImage,
+              imageBusy && styles.addImageBusy,
+              pressed && !imageBusy && styles.addImagePressed,
+            ]}
+          >
+            <Text style={styles.addImagePlus}>+</Text>
+            <Text style={styles.addImageText}>
+              {imageBusy ? 'Processando…' : 'Adicionar'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
-      <SofButton
-        title={imageBusy ? 'Processando…' : 'Adicionar imagens'}
-        variant="light"
-        theme="dashboard"
-        onPress={pickImages}
-        disabled={imageBusy || images.length >= MAX_IMAGES}
-        loading={imageBusy}
-      />
 
-      <View style={styles.toggles}>
-        <Pressable
-          style={[styles.toggle, handoffEnabled && styles.toggleOn]}
-          onPress={() => setHandoffEnabled((v) => !v)}
-        >
-          <Text style={[styles.toggleText, handoffEnabled && styles.toggleTextOn]}>
+      <Text style={styles.label}>Opções</Text>
+      <Pressable
+        onPress={() => setHandoffEnabled((v) => !v)}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: handoffEnabled }}
+        style={[styles.optionRow, handoffEnabled && styles.optionRowOn]}
+      >
+        <View style={styles.optionCopy}>
+          <Text
+            style={[styles.optionTitle, handoffEnabled && styles.optionTitleOn]}
+          >
             Abrir handoff ao vender
           </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.toggle, active && styles.toggleOn]}
-          onPress={() => setActive((v) => !v)}
-        >
-          <Text style={[styles.toggleText, active && styles.toggleTextOn]}>
+          <Text
+            style={[styles.optionHint, handoffEnabled && styles.optionHintOn]}
+          >
+            Após o pedido, a Sof chama a equipe no WhatsApp
+          </Text>
+        </View>
+        <View style={[styles.switchTrack, handoffEnabled && styles.switchTrackOn]}>
+          <View
+            style={[styles.switchThumb, handoffEnabled && styles.switchThumbOn]}
+          />
+        </View>
+      </Pressable>
+      <Pressable
+        onPress={() => setActive((v) => !v)}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: active }}
+        style={[styles.optionRow, active && styles.optionRowOn]}
+      >
+        <View style={styles.optionCopy}>
+          <Text style={[styles.optionTitle, active && styles.optionTitleOn]}>
             Ativo no bot
           </Text>
-        </Pressable>
-      </View>
-      <Text style={styles.hint}>
-        Com handoff ligado, a Sof registra o pedido e chama a equipe no WhatsApp.
-      </Text>
+          <Text style={[styles.optionHint, active && styles.optionHintOn]}>
+            Aparece na lista de produtos do WhatsApp
+          </Text>
+        </View>
+        <View style={[styles.switchTrack, active && styles.switchTrackOn]}>
+          <View style={[styles.switchThumb, active && styles.switchThumbOn]} />
+        </View>
+      </Pressable>
       {error ? <SofErrorBanner message={error} /> : null}
     </EntityFormModal>
   );
@@ -248,8 +282,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     fontFamily: d.fonts.bodyMedium,
+    marginTop: 4,
+    marginBottom: 8,
   },
-  thumbs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  thumbs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
   thumbWrap: { position: 'relative' },
   thumb: {
     width: 72,
@@ -267,19 +308,101 @@ const styles = StyleSheet.create({
     backgroundColor: d.ink,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
   },
-  thumbRemoveText: { color: '#fff', fontSize: 14, fontWeight: '700', lineHeight: 16 },
-  toggles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  toggle: {
+  thumbRemoveText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  addImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: d.line,
+    borderStyle: 'dashed',
+    backgroundColor: d.fill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  addImageBusy: { opacity: 0.55 },
+  addImagePressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  addImagePlus: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: d.ink,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
+  addImageText: {
+    fontSize: 11,
+    color: d.mutedStrong,
+    fontFamily: d.fonts.bodyMedium,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: d.line,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: d.radiusSm,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     backgroundColor: d.surface,
+    marginBottom: 8,
   },
-  toggleOn: { backgroundColor: d.ink, borderColor: d.ink },
-  toggleText: { color: d.ink, fontSize: 13, fontFamily: d.fonts.body },
-  toggleTextOn: { color: '#fff' },
-  hint: { color: d.muted, fontSize: 12, fontFamily: d.fonts.body },
+  optionRowOn: {
+    backgroundColor: d.accentSoft,
+    borderColor: d.ink,
+  },
+  optionCopy: { flex: 1, minWidth: 0, gap: 2 },
+  optionTitle: {
+    color: d.ink,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: d.fonts.bodyMedium,
+  },
+  optionTitleOn: { color: d.ink },
+  optionHint: {
+    color: d.muted,
+    fontSize: 12,
+    fontFamily: d.fonts.body,
+    lineHeight: 16,
+  },
+  optionHintOn: { color: d.mutedStrong },
+  switchTrack: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: d.fill,
+    borderWidth: 1,
+    borderColor: d.line,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  switchTrackOn: {
+    backgroundColor: d.ink,
+    borderColor: d.ink,
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: d.line,
+  },
+  switchThumbOn: {
+    alignSelf: 'flex-end',
+    borderColor: 'transparent',
+  },
+  hint: {
+    color: d.muted,
+    fontSize: 12,
+    fontFamily: d.fonts.body,
+    marginBottom: 12,
+  },
 });
